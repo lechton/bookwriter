@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>7 — Reactive object: reads track, writes trigger, through plain dots</title>
+<link rel="stylesheet" href="../../../assets/styles/base.css">
+<link rel="stylesheet" href="../../../assets/styles/cards.css">
+<link rel="stylesheet" href="../../../assets/styles/diagrams.css">
+
+</head>
+<body>
+<section class="card">
+<h2>7 — Reactive object: reads track, writes trigger, through plain dots</h2>
+<p class="tags"><span>Proxy</span><span>Observer</span><span>Reactivity</span></p>
+<p><strong>Q. With reactive({ claps: 0 }), you never call subscribe. So why does article.claps = 2 re-run the effect that read it?</strong></p>
+<p class="lbl lbl-answer"><strong>Answer.</strong> Because the object is wrapped in a proxy whose traps are wired to the track-and-trigger engine. Reading <code>article.claps</code> runs the <code>get</code> trap, which records the active effect. Writing <code>article.claps = 2</code> runs the <code>set</code> trap, which re-runs every recorded effect. You wrote plain dot syntax; the proxy did the bookkeeping.</p>
+<p class="lbl lbl-why-it-works"><strong>Why it works.</strong> The pieces from the last two cards are joined here. The proxy intercepts every property, even ones added later. The <code>get</code> trap uses that interception to <em>track</em> whoever is reading. The <code>set</code> trap uses it to <em>trigger</em> everyone who ever read. The surface stays clean — <code>article.claps</code>, no method calls — and underneath, an entire dependency graph keeps itself in sync.</p>
+<figure class="cb"><figcaption>examples/reactive.js</figcaption><pre><code>let activeEffect = null;               // who's reading right now?
+function reactive(target) {
+  const deps = new Set();
+  return new Proxy(target, {           // wrap in a proxy
+    get(obj, key) {
+      if (activeEffect) deps.add(activeEffect);  // track on read
+      return obj[key];
+    },
+    set(obj, key, value) {
+      obj[key] = value;
+      deps.forEach(run =&gt; run());      // trigger on write
+      return true;
+    }
+  });
+}
+function effect(fn) {
+  activeEffect = fn;
+  fn();
+  activeEffect = null;
+}
+const article = reactive({ claps: 0 });
+effect(() =&gt; console.log("claps:", article.claps));  // "claps: 0"
+article.claps = 1;                                    // "claps: 1"
+article.claps = 2;                                    // "claps: 2"</code></pre></figure>
+<div class="dg" style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:32px 16px 20px; background:#fff; border:4px solid #000; position:relative;">
+<span style="position:absolute; top:-12px; left:16px; background:#000; color:#fff; font-size:7.5pt; font-weight:800; padding:2px 8px; letter-spacing:0.1em; text-transform:uppercase;">One Surface, Two Faces</span>
+<div style="border:3px solid #000; background:#bbf7d0; padding:8px 16px; font-family:var(--mono); font-weight:800; font-size:13pt; box-shadow:4px 4px 0 0 #000; text-align:center;">
+article.claps = 2
+</div>
+<div style="font-size:7pt; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; background:#fff; border:2px solid #000; padding:2px 8px;">clean syntax · no subscribe call</div>
+<div style="font-size:18pt; font-weight:900; line-height:1;">↓</div>
+<div style="display:flex; gap:10px; width:100%;">
+<div style="flex:1; border:3px solid #000; background:#bfdbfe; padding:10px 8px; box-shadow:4px 4px 0 0 #000; text-align:center;">
+<div style="font-size:6.5pt; font-weight:800; background:#3b82f6; color:#fff; padding:2px 6px; display:inline-block; border:2px solid #000;">get TRAP</div>
+<div style="font-family:var(--mono); font-weight:800; font-size:10pt; margin-top:6px;">on read</div>
+<div style="font-size:7pt; font-weight:800; text-transform:uppercase; color:#1e3a8a; margin-top:4px;">tracks the reader</div>
+</div>
+<div style="flex:1; border:3px solid #000; background:#fef08a; padding:10px 8px; box-shadow:4px 4px 0 0 #000; text-align:center;">
+<div style="font-size:6.5pt; font-weight:800; background:#eab308; color:#000; padding:2px 6px; display:inline-block; border:2px solid #000;">set TRAP</div>
+<div style="font-family:var(--mono); font-weight:800; font-size:10pt; margin-top:6px;">on write</div>
+<div style="font-size:7pt; font-weight:800; text-transform:uppercase; color:#854d0e; margin-top:4px;">triggers readers</div>
+</div>
+</div>
+</div>
+<blockquote class="move"><p><strong>Summary.</strong> A reactive object hides the track-and-trigger engine behind ordinary dot-notation: writes trigger, reads track, all through proxy traps. This is almost exactly what a framework hands you, and what Svelte calls a rune.</p></blockquote>
+</section>
+</body>
+</html>

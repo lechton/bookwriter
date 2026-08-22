@@ -1,0 +1,9 @@
+# 4 | Getter: A Getter Runs a Function Every Time You Read It
+
+We have our shared session state, but every time we want to check the user, we have to call the current function. It is obvious that code is running. But what if a read itself could secretly run code without looking like a function call at all? In our newsroom, an article has an author. When we display the article on the page, we want to format that author into a proper byline, adding the word "By" before their name. Look at the code snippet you have in front of you, titled: Getter: A Getter Runs a Function Every Time You Read It.
+
+We start by placing an author property directly on our article object, storing the name Ada Lovelace. This is a plain data property. When we read it, JavaScript simply hands back the stored string. No code runs. But right below it, we define a property called byline, using the special keyword get. 
+
+This makes byline a getter. A getter is a property that runs a function on every read instead of returning a stored value. When we read the byline property, we do not use parentheses. To the outside world, it looks exactly like reading a plain data property. But behind the scenes, reading it triggers the function. The function takes the word "By", joins it with the current author's name, and returns the fresh string: By Ada Lovelace.
+
+If an editor changes the article's author to Grace Hopper, the plain author property is updated. The next time we read the byline property, the getter runs its code again, picking up the new author and returning By Grace Hopper. This trick is called interception. Interception is making an ordinary read or write secretly run code. The getter intercepts the read of the byline property and runs our formatting code in the gap. But a getter has a serious limitation: it only guards the one specific property you named in advance. What catches a property you did not name?

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Q36 — `$state.frozen` / `$state.raw`: Opting Out of Deep Reactivity</title>
+<link rel="stylesheet" href="../../../assets/styles/base.css">
+<link rel="stylesheet" href="../../../assets/styles/cards.css">
+<link rel="stylesheet" href="../../../assets/styles/diagrams.css">
+<link rel="stylesheet" href="../../../assets/styles/metaphors.css">
+</head>
+<body>
+<section class="card">
+<div class="q"><span class="qn">Q36</span><h2><code>$state.frozen</code> / <code>$state.raw</code>: Opting Out of Deep Reactivity</h2></div>
+<p class="tags"><span>Svelte 5</span><span>Runes</span><span>$state.raw</span><span>Performance</span></p>
+<p class="lbl lbl-question"><strong>Question.</strong> What is the <code>$state.frozen</code> rune, and in what scenarios should it be chosen over standard <code>$state</code>?</p>
+<p class="lbl lbl-answer"><strong>Answer.</strong> The rune that was prototyped as <code>$state.frozen</code> shipped in Svelte 5 as **<code>$state.raw</code>*<em>. It declares reactive state that Svelte does </em>not* wrap in a deep Proxy: assignment to the variable itself is reactive (<code>config = newConfig</code> triggers updates), but mutating a nested property (<code>config.theme = 'dark'</code>) is silent — there is no proxy to detect it, so no update fires.</p>
+<p>Use it whenever you hold <strong>read-mostly structured data that you replace wholesale instead of mutate in place</strong>: configuration objects, look-up tables, parsed fixtures, feature flags, immutable shapes received from a store. The payoff is concrete: Svelte skips the per-property proxy allocation on every access, so cold reads and initial mount of large objects are cheaper, and you stop paying for fine-grained tracking you never use.</p>
+<p>The trap is symmetric: reaching for <code>$state.raw</code> to "optimize" a value you then mutate at depth is the same bug as legacy Svelte's <code>user.age = 31</code> — the change lands in memory but the UI never hears about it. The rule is prescriptive, not stylistic: deep reactivity is the default because it is always correct; <code>$state.raw</code> is an opt-out you take only when you commit to the replace-don't-mutate discipline for that value.</p>
+<figure class="cb"><figcaption>App.svelte</figcaption><pre><code>&lt;script&gt;
+  // Deeply reactive: every nested property is tracked.
+  // Use when you will mutate fields in place.
+  let session = $state({ user: { name: 'Ada', role: 'admin' } });
+
+  // Not deeply reactive: assignment is reactive, mutation is not.
+  // Use when you always replace the whole value.
+  let config = $state.raw({
+    apiUrl: 'https://api.example.com',
+    retries: 3,
+    features: { beta: false },
+  });
+
+  function patchConfig(next) {
+    // ✅ Replace the reference -&gt; UI updates.
+    config = { ...config, ...next };
+  }
+
+  function misuseConfig() {
+    // ❌ Silent: no proxy here, so this change never reaches the DOM.
+    config.features.beta = true;
+  }
+&lt;/script&gt;
+
+&lt;p&gt;{session.user.name} ({session.user.role})&lt;/p&gt;
+&lt;p&gt;API: {config.apiUrl}, retries: {config.retries}&lt;/p&gt;
+&lt;button onclick={() =&gt; patchConfig({ retries: 5 })}&gt;Bump retries&lt;/button&gt;</code></pre></figure>
+<div class="dg" style="display:flex; flex-direction:column; gap:18px; padding:28px 24px; background-color:#faf7f0; border:4px solid #000; position:relative; font-family:monospace; color:#0a0a0a;">
+</div>
+<blockquote class="move"><p><strong>Summary.</strong> <code>$state.raw</code> (the rune prototyped as <code>$state.frozen</code>) is the deliberate off-switch for deep proxying. Choose it for read-mostly structured data that you replace rather than mutate, and leave <code>$state</code> as the default everywhere else — because only the deep variant is correct when you need in-place edits to render.</p></blockquote>
+<div class="dg" style="font-family:monospace; background:#faf7f0; border:4px solid #000; padding:24px; display:flex; gap:20px; align-items:stretch; position:relative;">
+
+  <!-- LEFT CARD: $state — deep proxy on (default, neutral white) -->
+  <div style="flex:1; border:4px solid #000; background:#fff; padding:18px 16px 14px; position:relative; display:flex; flex-direction:column;">
+    <div style="font-size:11pt; font-weight:900; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:14px; border-bottom:3px solid #000; padding-bottom:6px;">$state(hugeArray)</div>
+
+    <!-- Scattered proxy boxes -->
+    <div style="flex:1; display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; align-content:center; padding:8px 0;">
+      <div style="border:2px solid #000; background:#fff; padding:6px 0; text-align:center; font-size:10pt; font-weight:900;">P</div>
+      <div style="border:2px solid #000; background:#fff; padding:6px 0; text-align:center; font-size:10pt; font-weight:900;">P</div>
+      <div style="border:2px solid #000; background:#fff; padding:6px 0; text-align:center; font-size:10pt; font-weight:900;">P</div>
+      <div style="border:2px solid #000; background:#fff; padding:6px 0; text-align:center; font-size:10pt; font-weight:900;">P</div>
+      <div style="border:2px solid #000; background:#fff; padding:6px 0; text-align:center; font-size:10pt; font-weight:900;">P</div>
+      <div style="border:2px solid #000; background:#fff; padding:6px 0; text-align:center; font-size:10pt; font-weight:900;">P</div>
+      <div style="border:2px solid #000; background:#fff; padding:6px 0; text-align:center; font-size:10pt; font-weight:900;">P</div>
+      <div style="border:2px solid #000; background:#fff; padding:6px 0; text-align:center; font-size:10pt; font-weight:900;">P</div>
+    </div>
+
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#475569; margin-top:10px; text-align:center;">proxy on every property</div>
+  </div>
+
+  <!-- RIGHT CARD: $state.raw — deep proxy off (prescriptive choice, mustard accent) -->
+  <div style="flex:1; border:4px solid #000; background:#fff; padding:18px 16px 14px; position:relative; display:flex; flex-direction:column; box-shadow:6px 6px 0 0 #000;">
+    <div style="font-size:11pt; font-weight:900; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:14px; border-bottom:3px solid #000; padding-bottom:6px;">$state.raw(hugeArray)</div>
+
+    <!-- One flat block, no interior structure -->
+    <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:8px 0;">
+      <div style="background:#facc15; border:4px solid #000; padding:24px 18px; text-align:center; font-weight:900; font-size:12pt; width:80%; box-shadow:4px 4px 0 0 #000;">
+        [ ...one value... ]
+      </div>
+    </div>
+
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#475569; margin-top:10px; text-align:center;">tracked only at the binding</div>
+  </div>
+
+</div>
+
+</section>
+</body>
+</html>

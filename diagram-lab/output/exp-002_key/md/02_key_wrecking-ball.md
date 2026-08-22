@@ -1,0 +1,60 @@
+## 19 — Key blocks: a key change never updates, it rebuilds
+@tags Key Blocks, State, Components
+
+**Q. I switched articles and my half-typed comment draft vanished — I only changed the key, so why did everything inside rebuild?**
+
+**Answer.** Because `{#key}` never updates anything. When the key expression changes, Svelte destroys everything inside the block — the component instance, its local state, your draft — and builds a brand-new instance from zero. A key change is not a refresh; it is a teardown followed by a fresh start.
+
+**Why it works.** Every normal state change in Svelte patches the DOM in place and preserves component state, so it is natural to expect a key change to behave the same way. But the key exists to declare identity: a new key means "this is a different thing," and Svelte takes you literally, throwing the old instance away so no stale state leaks into the new one.
+
+```svelte title="ArticlePage.svelte"
+<script>
+  let { article } = $props();
+</script>
+
+{#key article.id}
+  <ArticleView {article} />
+  <!-- new id → old instance destroyed, fresh state, transitions replay -->
+{/key}
+```
+
+**Diagram concept.** The Wrecking Ball: a normal state change is a renovation — the building stays, the furniture stays; a key change is a demolition at the same address — old instance razed, new one erected, nothing inside survives.
+
+<div class="dg" style="display:flex; flex-direction:column; gap:14px; padding:36px 14px 18px; background:#fff; border:4px solid #000; position:relative;">
+<span style="position:absolute; top:-12px; left:16px; background:#000; color:#fff; font-size:7.5pt; font-weight:800; padding:2px 8px; letter-spacing:0.1em; text-transform:uppercase;">The Wrecking Ball</span>
+<div style="display:flex; flex-direction:column; gap:6px;">
+<span style="font-size:6.5pt; font-weight:800; text-transform:uppercase; color:#166534;">id stays 7 · normal update</span>
+<div style="display:flex; align-items:center; gap:8px;">
+<div style="flex:1.2; border:3px solid #000; background:#fef08a; padding:8px 6px; font-family:var(--mono); font-weight:800; font-size:8.5pt; text-align:center; box-shadow:4px 4px 0 0 #000;">claps = 12</div>
+<div style="flex:0.7; position:relative; display:flex; align-items:center; justify-content:center; height:26px;">
+<div style="position:absolute; left:0; right:-6px; top:50%; border-top:4px solid #000;"></div>
+<div style="position:absolute; right:-8px; top:50%; transform:translateY(-50%); width:0; height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; border-left:8px solid #000;"></div>
+<span style="position:relative; background:#000; color:#fff; font-size:6.5pt; font-weight:800; text-transform:uppercase; padding:2px 6px;">patch</span>
+</div>
+<div style="flex:1.2; border:3px solid #000; background:#bbf7d0; padding:8px 6px; text-align:center; box-shadow:4px 4px 0 0 #000;">
+<b style="font-family:var(--mono); font-size:9pt;">ArticleView</b><br/>
+<span style="font-size:6.5pt; font-weight:800; color:#166534; text-transform:uppercase;">renovated in place · draft survives</span>
+</div>
+</div>
+</div>
+<div style="display:flex; flex-direction:column; gap:6px;">
+<span style="font-size:6.5pt; font-weight:800; text-transform:uppercase; color:#b91c1c;">id goes 7 → 8 · key fires</span>
+<div style="display:flex; align-items:center; gap:8px;">
+<div style="flex:1.2; border:3px dashed #9ca3af; background:#f3f4f6; padding:8px 6px; text-align:center; opacity:0.85;">
+<b style="font-family:var(--mono); font-size:9pt; color:#6b7280; text-decoration:line-through;">ArticleView</b><br/>
+<span style="font-size:6.5pt; font-weight:800; color:#9ca3af; text-transform:uppercase;">demolished · draft destroyed</span>
+</div>
+<div style="flex:0.7; position:relative; display:flex; align-items:center; justify-content:center; height:26px;">
+<div style="position:absolute; left:0; right:-6px; top:50%; border-top:4px solid #000;"></div>
+<div style="position:absolute; right:-8px; top:50%; transform:translateY(-50%); width:0; height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; border-left:8px solid #000;"></div>
+<span style="position:relative; background:#b91c1c; color:#fff; font-size:6.5pt; font-weight:800; text-transform:uppercase; padding:2px 6px;">teardown</span>
+</div>
+<div style="flex:1.2; border:3px solid #000; background:#bfdbfe; padding:8px 6px; text-align:center; box-shadow:4px 4px 0 0 #000;">
+<b style="font-family:var(--mono); font-size:9pt;">ArticleView</b><br/>
+<span style="font-size:6.5pt; font-weight:800; color:#1d4ed8; text-transform:uppercase;">fresh instance · state from zero</span>
+</div>
+</div>
+</div>
+</div>
+
+> **Summary.** A key change is a demolition, not a refresh: everything inside `{#key}` is destroyed and rebuilt with fresh state. Reach for it when switching to a new article should feel like opening a clean page — and expect anything unsaved inside to be gone.

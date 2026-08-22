@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 49: Syncing Local Variables with Incoming Props</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 49: Syncing Local Variables with Incoming Props</h1>
+<aside class="interview-question">
+  <p class="iq-eyebrow">Interview Question</p>
+  <p class="iq-text">How do you initialize a reactive local variable that dynamically syncs with an incoming prop using Runes?</p>
+</aside>
+
+<p>A common source of confusion when moving from legacy Svelte to Svelte 5 runes is how to handle a local variable that needs to initialize from an incoming prop, but also needs to stay in sync when that prop changes over time. </p>
+<p>If you pass a prop down to a child component and assign it to a <strong><code>$state</code></strong> rune — the rune used to declare reactive state — it will capture the <em>initial</em> value of that prop perfectly. However, if the parent later updates the prop, the child's <code>$state</code> variable will stubbornly hold onto the original value. The connection is severed the moment the child component is created.</p>
+<p>To solve this, we rely on the <strong><code>$derived</code></strong> rune — a reactive declaration that automatically recalculates its value whenever its dependencies change.</p>
+<div class="keep-together">
+<h3>The problem with <code>$state</code></h3>
+<p>When a component is instantiated, code inside the <code>&lt;script&gt;</code> block runs exactly once. </p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> { initialCount } = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">let</span> count = <span class="rune">$state</span>(initialCount); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Reads initialCount <b class="tag">ONCE</b> during creation</span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;p&gt;Count is: {count}&lt;/p&gt;</span></div></div></div>
+<p>In the example above, <code>count</code> is a completely independent variable. It took <code>initialCount</code> as its starting value, but it has no ongoing relationship with it. If the parent component changes <code>initialCount</code>, the child component will ignore the change, and <code>count</code> will not update.</p>
+</div>
+<div class="keep-together">
+<h3>The solution: <code>$derived</code></h3>
+<p>If you want a variable to dynamically sync with a prop, you declare it as derived state. Anything read synchronously inside a <code>$derived</code> expression is considered a <strong>dependency</strong> — a reactive value that Svelte watches for changes. When the dependency changes, the derived state is marked as <strong>dirty</strong> (meaning it's stale and needs recalculation) and will be updated automatically.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> { post } = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">let</span> likes = <span class="rune">$derived</span>(post.likes); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Creates a continuous, <b class="tag">REACTIVE</b> relationship</span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;p&gt;Total likes: {likes}&lt;/p&gt;</span></div></div></div>
+<p>Because <code>$derived</code> expressions are re-evaluated when their inputs change, <code>likes</code> will always stay in sync with <code>post.likes</code>. Whenever the parent updates the <code>post</code> prop, <code>likes</code> recalculates.</p>
+</div>
+<div class="keep-together">
+<h3>Overriding derived values for Optimistic UI</h3>
+<p>Historically, derived values were strictly read-only. You could not assign a new value to <code>likes = 5</code>. But starting in Svelte 5.25, you can temporarily override the value of a <code>$derived</code> variable by simply reassigning it (as long as you didn't declare it with <code>const</code>).</p>
+<p>This is specifically designed for <strong>optimistic UI</strong> — a pattern where you update the user interface immediately before the server confirms the change, making the app feel lightning fast. </p>
+<p>Here is how it works in practice:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> { post, like } = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">let</span> likes = <span class="rune">$derived</span>(post.likes); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Derived from the <b class="tag">SOURCE</b> of truth (the prop)</span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">async</span> <span class="kw">function</span> <span class="fn">onclick</span>() {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  likes += <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">1. optimistic override: increment <b class="tag">LOCALLY</b> immediately</span>
+      </div></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="kw">try</span> {</span></div>
+<div class="row"><span class="num">9</span><span class="src">    <span class="kw">await</span> <span class="fn">like</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">2. tell the server to <b class="tag">SAVE</b> the change, re-deriving likes</span>
+      </div></div>
+<div class="row"><span class="num">10</span><span class="src">  } <span class="kw">catch</span> {</span></div>
+<div class="row"><span class="num">11</span><span class="src">    likes -= <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">3. rollback: if network request failed, <b class="tag">REVERT</b> the override</span>
+      </div></div>
+<div class="row"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row"><span class="num">13</span><span class="src">}</span></div>
+<div class="row"><span class="num">14</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src"></span></div>
+<div class="row"><span class="num">16</span><span class="src">&lt;button {onclick}&gt;🧡 {likes}&lt;/button&gt;</span></div></div></div>
+<p>When you write <code>likes += 1</code>, you are temporarily overriding the derived value. When the parent eventually passes down a new <code>post</code> object with updated likes, the <code>$derived</code> rune recalculates, and the override is washed away by the new source of truth.</p>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p>If you need a local variable that dynamically syncs with an incoming prop, do not use <code>$state</code>. Use <code>$derived</code>. And if you need to let the user temporarily update that value before the parent data catches up, you can safely reassign the derived variable.</p>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<blockquote><strong>Frequency Rating System</strong> ★★★ = Very common gotcha / pattern ★★☆ = Common gotcha / pattern ★☆☆ = Niche / Advanced pattern</blockquote>
+<div class="keep-together">
+<h3>★★★ Two-way prop sync uses <code>$bindable</code></h3>
+<p>The <code>$derived</code> pattern above is one-way (parent → child). When the child must also push changes back up to the parent — a text input bound to a parent-owned string, a checkbox toggling parent state — declare the prop with <code>$bindable()</code> and use <code>bind:text</code> in the parent. The Svelte docs are explicit: <em>"don't mutate props. Either use callback props to communicate changes, or — if parent and child should share the same object — use the <code>$bindable</code> rune."</em></p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> { text = <span class="rune">$bindable</span>(<span class="str">''</span>) } = <span class="rune">$props</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Enables two-way data <b class="tag">FLOW</b></span>
+      </div></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;/script&gt;</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>★★☆ Multi-statement derived values use <code>$derived.by</code></h3>
+<p>The <code>$derived(expr)</code> form takes a single expression. If your transform needs a loop, an intermediate <code>let</code>, or a <code>try/catch</code>, switch to <code>$derived.by()</code>. Under the hood <code>$derived(expr)</code> is exactly equivalent to <code>$derived.by(() =&gt; expr)</code>; <code>.by</code> exists only for multi-statement bodies.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> formatted = <span class="rune">$derived</span>.<span class="fn">by</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="kw">let</span> str = text.<span class="fn">trim</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Allows complex <b class="tag">LOGIC</b> inside the derivation</span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">return</span> str.<span class="fn">toUpperCase</span>();</span></div>
+<div class="row"><span class="num">5</span><span class="src">});</span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/script&gt;</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>★☆☆ Editable-and-syncing local drafts use <code>$effect</code></h3>
+<p>When the child must own its own edits (a form draft the user is typing into) but also needs to re-sync when the parent hands down a new prop, the pattern is <code>$state(prop.value)</code> combined with <code>$effect()</code>. Use this sparingly — <code>$effect</code>-driven sync can create loops if you write back to the same signal you read (see Lecture 21). Default to <code>$derived</code> first; reach for this only when editability and continuous sync are both required.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> { user } = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">let</span> draft = <span class="rune">$state</span>(user.name);</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="rune">$effect</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  draft = user.name; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Carefully syncs <b class="tag">UPSTREAM</b> changes into local draft</span>
+      </div></div>
+<div class="row"><span class="num">7</span><span class="src">});</span></div>
+<div class="row"><span class="num">8</span><span class="src">&lt;/script&gt;</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>★★★ Destructuring a prop is a one-shot snapshot</h3>
+<p><code>let { title } = $props()</code> reads <code>title</code> once, at component setup. Later changes to the parent's prop do not flow into the destructured <code>title</code> variable. This is the same JavaScript-level gotcha as destructuring a <code>$state</code> proxy (see Lecture 50). If you need ongoing reactivity, read through the props object: <code>{title}</code> in the template, or <code>let p = $props()</code> and then <code>p.title</code>.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> { title } = <span class="rune">$props</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Severs the <b class="tag">REACTIVE</b> connection to the prop</span>
+      </div></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;/script&gt;</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>★★☆ Derived expressions must be side-effect-free</h3>
+<p>The <code>$derived</code> body may not mutate state. Svelte disallows this because derived values must be pure functions of their inputs — side effects belong in <code>$effect</code>, not <code>$derived</code>. If your "sync" needs to write to another signal as part of its work, you are writing an effect, not a derived.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> count = <span class="rune">$state</span>(<span class="nl">0</span>);</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">let</span> doubled = <span class="rune">$derived</span>.<span class="fn">by</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">4</span><span class="src">  count += <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Mutating state here is a <b class="tag">COMPILE ERROR</b></span>
+      </div></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="kw">return</span> count * <span class="nl">2</span>;</span></div>
+<div class="row"><span class="num">6</span><span class="src">});</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;/script&gt;</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>★☆☆ Passing proxied data to external libraries</h3>
+<p>A <code>$derived</code> whose source is a <code>$state</code> proxy returns a proxied value. Some libraries (structured clone, certain chart libraries) trip over Proxy objects. Wrap the handoff with <code>$state.snapshot(derivedValue)</code> to pass a static deep clone instead.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> data = <span class="rune">$derived</span>(post.metrics);</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="rune">$effect</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="kw">new</span> <span class="fn">Chart</span>(<span class="rune">$state</span>.<span class="fn">snapshot</span>(data)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Passes a raw, <b class="tag">CLONED</b> object</span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">});</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;/script&gt;</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>★★★ Don't conflate the three syncing runes</h3>
+<p>Picking the wrong one is the most common source of "why isn't my UI updating" bugs in Svelte 5 components that receive props.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> { data } = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">let</span> a = <span class="rune">$state</span>(data); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Initializes once, then goes <b class="tag">DEAF</b></span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">let</span> b = <span class="rune">$derived</span>(data); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Listens forever, but is <b class="tag">READ-ONLY</b></span>
+      </div></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">let</span> { c = <span class="rune">$bindable</span>() } = <span class="rune">$props</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Listens forever AND is <b class="tag">WRITABLE</b></span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/script&gt;</span></div></div></div>
+</div>
+
+</main>
+</body>
+</html>

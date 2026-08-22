@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 50: Array Updates in $state vs Legacy Re-assignment</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 50: Array Updates in $state vs Legacy Re-assignment</h1>
+<p>One of the most common stumbling blocks for developers learning Svelte 4 was updating an array. If you had a list of items and you called <code>items.push(newItem)</code>, the array would update in memory, but the user interface would completely ignore the change. The new item simply would not appear on screen. This failure occurred because legacy Svelte's reactivity system was fundamentally tied to the <strong>assignment operator</strong> — the literal <code>=</code> sign in your code. If the compiler did not see an <code>=</code> sign targeting the <code>items</code> variable, it assumed the variable had not changed, and therefore no UI update was scheduled. To fix this, developers were forced to write repetitive, non-intuitive boilerplate like <code>items = [...items, newItem]</code> or <code>items = items</code> simply to force the compiler to notice the mutation.</p>
+<p>Svelte 5 eliminates this entire class of bugs by abandoning assignment-based tracking in favor of the <code>$state</code> rune. When you pass an array into <code>$state()</code>, Svelte does not just hold onto the array; it transforms it into a deeply reactive <strong>state proxy</strong> — a native JavaScript object wrapper that intercepts every time you read or write a property underneath it. Because the proxy intercepts operations at runtime rather than relying on compile-time source code analysis, Svelte 5 inherently understands when you call mutating array methods like <code>.push()</code>, <code>.pop()</code>, or <code>.splice()</code>. When the proxy detects that the array has been mutated through one of these methods, it automatically alerts the reactivity system to surgically update the specific parts of the UI that depend on that array.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> items = <span class="rune">$state</span>([<span class="nl">1</span>, <span class="nl">2</span>]);</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">function</span> <span class="fn">addItem</span>() {</span></div>
+<div class="row"><span class="num">5</span><span class="src">  items.<span class="fn">push</span>(<span class="nl">3</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Intercept array method mutations <b class="tag">AUTOMATICALLY</b> at runtime</span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;/script&gt;</span></div></div></div>
+<p>This shift from compile-time assignment tracking to runtime proxies drastically simplifies how you work with complex data structures. In Svelte 5, you write standard, idiomatic JavaScript. To add an item to an array, you just call <code>items.push(newItem)</code>. To update a specific item deep inside an array of objects, you simply access it by index and reassign its property, such as <code>todos[0].done = true</code>. Because <code>$state</code> creates deep proxies by default, every nested object and array inside your root state is also recursively converted into a proxy, ensuring that even deeply nested mutations are caught and tracked automatically without requiring full object replacement.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> todos = <span class="rune">$state</span>([{ text: <span class="str">'Buy milk'</span>, done: <span class="kw">false</span> }]);</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">function</span> <span class="fn">completeTask</span>() {</span></div>
+<div class="row"><span class="num">5</span><span class="src">  todos[<span class="nl">0</span>].done = <span class="kw">true</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Deeply nested mutations are <b class="tag">CAUGHT</b> without replacement</span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;/script&gt;</span></div></div></div>
+<p>However, the proxy-based system does introduce a specific constraint regarding destructuring. If you destructure a primitive value out of a state proxy, such as <code>let { done } = todos[0]</code>, you are pulling out the raw boolean value at that exact moment in time, completely severing its connection to the reactive proxy. If you later execute <code>todos[0].done = true</code>, your local <code>done</code> variable will not magically update, because standard JavaScript passes primitive values by value, not by reference. Therefore, when working with <code>$state</code> arrays, you must avoid destructuring primitive properties if you need them to remain reactive over time; instead, reference the proxy properties directly in your templates and logic.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">let</span> todos = <span class="rune">$state</span>([{ text: <span class="str">'Buy milk'</span>, done: <span class="kw">false</span> }]);</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">function</span> <span class="fn">toggle</span>() {</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="kw">let</span> { done } = todos[<span class="nl">0</span>]; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Pulls raw primitive, severing <b class="tag">CONNECTION</b> to proxy</span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">  done = <span class="kw">true</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Original proxy is NOT <b class="tag">UPDATED</b></span>
+      </div></div>
+<div class="row"><span class="num">7</span><span class="src">}</span></div>
+<div class="row"><span class="num">8</span><span class="src">&lt;/script&gt;</span></div></div></div>
+
+</main>
+</body>
+</html>

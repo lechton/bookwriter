@@ -1,0 +1,9 @@
+# 2 | Closure: A Function Keeps Its Variables Alive and Private
+
+We ended our last section by asking how we can keep a private counter alive without using a class at all. Let us look at a real problem in our newsroom. We want to add an applause button to our articles, and we need to track the number of claps. But we want to keep that clap count strictly private, safe from any outside interference. Look at the code snippet you have in front of you, titled: Closure: A Function Keeps Its Variables Alive and Private.
+
+Normally, when a function finishes running, its local variables vanish. The memory is cleared. But JavaScript has a powerful exception. We create a factory function called create clap button. Inside it, we declare a local variable named claps and set it to zero. Then, instead of returning a number, our factory function returns an object containing two methods. One method increments the count, and the other reads the total.
+
+Because these two methods reference the local claps variable, that variable cannot be thrown away when the factory finishes. The variable stays alive. We call this a closure. A closure is a function bundled with the variables it captured from where it was defined. The two methods close over the claps variable, keeping it alive long after the factory function has returned.
+
+This gives us exactly what we wanted for our newsroom. The claps variable is alive, because the methods still hold it, and it is entirely private. Nothing outside the factory can read or write that variable directly. The only way to change the count is to call the clap method. The only way to read it is to call the total method. Private state is powerful, but it is trapped inside one function. What if many different files across our application need to share the exact same value?

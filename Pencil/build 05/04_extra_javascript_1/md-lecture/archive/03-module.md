@@ -1,0 +1,9 @@
+# 3 | Module: A Module's State Is Created Once and Shared by Every Importer
+
+We just saw how a closure keeps state private, but that state is trapped inside the function that created it. What if many different files across our application need to share the exact same value? In our newsroom, we need to know who is reading our articles and clicking the clap buttons. We need a concept of a signed-in reader, and that reader's name must be accessible from the masthead, the comment form, and the article itself. Look at the code snippet you have in front of you, titled: Module: A Module's State Is Created Once and Shared by Every Importer.
+
+We solve this by putting our state in a module. A module is a file whose top-level code runs once and whose exports are shared. In our snippet, we have a file called session. Inside it, we declare a variable called current user and set it to John. Notice that we do not export this variable. Because it is not exported, it remains completely private. No other file can see or touch it directly.
+
+Instead, we export two functions: login, which changes the current user, and current, which reads it back. When our application starts, the first file that imports these functions causes the session module to run. The current user variable is created once. After that, every other file that imports from the session module gets connected to that exact same variable. It acts as a single shared store for the entire application.
+
+If the application calls the login function and changes the name to Ada Lovelace, that single private variable is updated. The next time any file calls the current function, it will receive Ada Lovelace. The value is shared everywhere, perfectly in sync, because there is only ever one copy in memory. The value is shared now, but reads and writes are still plain function calls. What if a read itself could secretly run code?

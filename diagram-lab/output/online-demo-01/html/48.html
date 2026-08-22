@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Q48 — Practical `tick()` Scenario: Auto-Scrolling a Chat Log</title>
+<link rel="stylesheet" href="../../../assets/styles/base.css">
+<link rel="stylesheet" href="../../../assets/styles/cards.css">
+<link rel="stylesheet" href="../../../assets/styles/diagrams.css">
+<link rel="stylesheet" href="../../../assets/styles/metaphors.css">
+</head>
+<body>
+<section class="card">
+<div class="q"><span class="qn">Q48</span><h2>Practical <code>tick()</code> Scenario: Auto-Scrolling a Chat Log</h2></div>
+<p class="tags"><span>Svelte 5</span><span>tick</span><span>DOM</span><span>scroll</span><span>Practical</span></p>
+<p class="lbl lbl-question"><strong>Question.</strong> Provide a practical scenario where awaiting <code>tick()</code> is required to read accurate DOM states after a state change.</p>
+<p class="lbl lbl-answer"><strong>Answer.</strong> </p>
+<p><strong>The scenario — a chat log that must auto-scroll to the bottom</strong></p>
+<ul><li><strong>The feature:</strong> a chat component renders an array of messages with <code>{#each}</code>, and every time a new message arrives, the container must scroll to the <strong>bottom</strong> so the latest message is visible.</li><li><strong>The measurement:</strong> to scroll to the bottom you read **<code>el.scrollHeight</code><strong> (the full height of the content) and assign it to </strong><code>el.scrollTop</code><strong> (the scroll position). This is a </strong>DOM read followed by a DOM write** that depends on the read.</li><li><strong>The trap:</strong> calling <code>messages.push(newMsg)</code> dirties state, but the new <code>&lt;li&gt;</code> is <strong>not in the DOM yet</strong> because the flush is scheduled for after the handler returns (see Q46). Reading <code>scrollHeight</code> at that instant returns the <strong>pre-push height</strong> — the new message is invisible, and the scroll lands one message short.</li></ul>
+<p>**The fix — <code>await tick()</code> between the write and the read**</p>
+<ul><li><strong>Yield before measuring:</strong> insert **<code>await tick()</code>** between the state change and the DOM read. <code>tick()</code> returns a <strong>Promise</strong> that resolves once the current <strong>reactive flush</strong> finishes — the flush being Svelte's term for the moment the new <code>&lt;li&gt;</code> is actually written to the DOM.</li><li><strong>Now the read is accurate:</strong> by the time execution resumes, the DOM reflects the new array, so **<code>el.scrollHeight</code>** includes the freshly pushed message, and <code>el.scrollTop = el.scrollHeight</code> lands exactly at the bottom.</li><li>**The handler must be <code>async</code>:** <code>await</code> only works inside a function declared **<code>async</code>**, so the click/send handler must be <code>async function send()</code> rather than a plain function.</li></ul>
+<p>**Why you cannot fake it with <code>setTimeout</code>**</p>
+<ul><li>**<code>setTimeout(fn, 0)</code> is wrong:<strong> it schedules the callback on the </strong>macrotask queue<strong>, which runs </strong>after** rendering — meaning the user sees one frame of the old scroll position before it jumps. <code>tick()</code> resolves on the <strong>microtask queue</strong>, before paint, so the scroll updates <strong>in the same frame</strong> as the new message.</li><li><strong>No debounce either:</strong> wrapping the scroll in a timeout adds <strong>visible latency</strong> that feels broken. <code>tick()</code> adds none — it waits only for the flush that was already going to happen.</li></ul>
+<figure class="cb"><figcaption>Chat.svelte</figcaption><pre><code>&lt;script&gt;
+  import { tick } from 'svelte';
+
+  let messages = $state(['hello', 'world']);
+  let logEl;
+
+  async function send() {
+    messages.push('new message');   // State changed; &lt;li&gt; not in DOM yet.
+    await tick();                   // Wait for the flush to write the new &lt;li&gt;.
+    logEl.scrollTop = logEl.scrollHeight;  // Now scrollHeight includes the new row.
+  }
+&lt;/script&gt;
+
+&lt;ul bind:this={logEl} style="height:120px; overflow:auto;"&gt;
+  {#each messages as m}&lt;li&gt;{m}&lt;/li&gt;{/each}
+&lt;/ul&gt;
+&lt;button onclick={send}&gt;send&lt;/button&gt;</code></pre></figure>
+<div class="dg" style="display:flex; flex-direction:column; gap:18px; padding:28px 24px; background-color:#faf7f0; border:4px solid #000; position:relative; font-family:monospace; color:#0a0a0a;">
+</div>
+<blockquote class="move"><p><strong>Summary.</strong> Auto-scrolling a chat log after <code>messages.push(...)</code> requires reading <code>scrollHeight</code>, but the new <code>&lt;li&gt;</code> is not in the DOM until the flush runs. <code>await tick()</code> between the push and the read guarantees the measurement reflects the new state — and unlike <code>setTimeout</code>, it resolves before paint, so there is no visible latency.</p></blockquote>
+<div class="dg" style="font-family:monospace; background:#faf7f0; border:4px solid #000; padding:24px 22px 20px; display:flex; gap:18px; align-items:stretch; position:relative;">
+
+  <!-- LEFT CARD: without tick() — scroll boundary one row short -->
+  <div style="flex:1; border:4px solid #000; background:#fff; padding:14px 14px 12px; position:relative; display:flex; flex-direction:column; box-shadow:4px 4px 0 0 #000;">
+    <div style="font-size:10pt; font-weight:900; letter-spacing:0.04em; margin-bottom:10px; border-bottom:3px solid #000; padding-bottom:5px;">without tick()</div>
+
+    <!-- chat log mock: 3 message rows, scroll boundary cuts off row 3 -->
+    <div style="position:relative; flex:1; border:2px solid #000; background:#f1f5f9; overflow:hidden; padding:6px;">
+      <div style="border:1px solid #000; background:#fff; padding:4px 6px; font-size:9pt; margin-bottom:4px;">msg 1</div>
+      <div style="border:1px solid #000; background:#fff; padding:4px 6px; font-size:9pt; margin-bottom:4px;">msg 2</div>
+      <div style="border:1px solid #000; background:#fff; padding:4px 6px; font-size:9pt; opacity:0.55;">msg 3 (latest, cut off)</div>
+      <!-- scroll boundary line positioned above row 3 -->
+      <div style="position:absolute; left:0; right:0; bottom:22px; height:3px; background:#000;"></div>
+      <div style="position:absolute; right:4px; bottom:24px; background:#000; color:#fff; padding:1px 5px; font-size:7pt; font-weight:900; letter-spacing:0.08em; text-transform:uppercase;">scroll boundary</div>
+    </div>
+
+    <!-- crossed-out token -->
+    <div style="position:absolute; top:8px; right:8px; border:2px solid #000; background:#fff; padding:2px 6px; font-size:8pt; font-weight:900; text-decoration:line-through;">await tick()</div>
+
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#475569; margin-top:10px; text-align:center;">scroll lands one short</div>
+  </div>
+
+  <!-- RIGHT CARD: with tick() — scroll boundary flush at bottom -->
+  <div style="flex:1; border:4px solid #000; background:#fff; padding:14px 14px 12px; position:relative; display:flex; flex-direction:column; box-shadow:4px 4px 0 0 #000;">
+    <div style="font-size:10pt; font-weight:900; letter-spacing:0.04em; margin-bottom:10px; border-bottom:3px solid #000; padding-bottom:5px;">with tick()</div>
+
+    <!-- chat log mock: 3 message rows, scroll boundary at very bottom -->
+    <div style="position:relative; flex:1; border:2px solid #000; background:#f1f5f9; overflow:hidden; padding:6px;">
+      <div style="border:1px solid #000; background:#fff; padding:4px 6px; font-size:9pt; margin-bottom:4px;">msg 1</div>
+      <div style="border:1px solid #000; background:#fff; padding:4px 6px; font-size:9pt; margin-bottom:4px;">msg 2</div>
+      <div style="border:1px solid #000; background:#facc15; padding:4px 6px; font-size:9pt; font-weight:900;">msg 3 (latest, visible)</div>
+      <!-- scroll boundary line at the very bottom -->
+      <div style="position:absolute; left:0; right:0; bottom:0; height:3px; background:#000;"></div>
+      <div style="position:absolute; right:4px; bottom:4px; background:#000; color:#fff; padding:1px 5px; font-size:7pt; font-weight:900; letter-spacing:0.08em; text-transform:uppercase;">scroll boundary</div>
+    </div>
+
+    <!-- mustard-yellow token (the only accent in the diagram) -->
+    <div style="position:absolute; top:8px; right:8px; border:2px solid #000; background:#facc15; padding:2px 6px; font-size:8pt; font-weight:900; box-shadow:2px 2px 0 0 #000;">await tick()</div>
+
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#475569; margin-top:10px; text-align:center;">scroll lands at the bottom</div>
+  </div>
+
+</div>
+
+</section>
+</body>
+</html>

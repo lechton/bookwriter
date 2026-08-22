@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Q46 — Microtask Batching</title>
+<link rel="stylesheet" href="../../../assets/styles/base.css">
+<link rel="stylesheet" href="../../../assets/styles/cards.css">
+<link rel="stylesheet" href="../../../assets/styles/diagrams.css">
+<link rel="stylesheet" href="../../../assets/styles/metaphors.css">
+</head>
+<body>
+<section class="card">
+<div class="q"><span class="qn">Q46</span><h2>Microtask Batching</h2></div>
+<p class="tags"><span>Svelte 5</span><span>Reactivity</span><span>Microtask</span><span>Performance</span></p>
+<p class="lbl lbl-question"><strong>Question.</strong> What is the microtask batching mechanism in Svelte, and how does it protect against redundant UI renders?</p>
+<p class="lbl lbl-answer"><strong>Answer.</strong> </p>
+<p><strong>The mechanism — what happens on every write</strong></p>
+<ul><li><strong>Two-step write:</strong> every **<code>$state</code> assignment** (a line like <code>count = 5</code>) does two things in sequence — it stores the new value <strong>immediately</strong>, and it tells Svelte to schedule <strong>one flush</strong> later. A <strong>flush</strong> is Svelte's term for the moment it actually updates the screen.</li><li><strong>Scheduled, not immediate:</strong> that flush is queued on the <strong>microtask queue</strong> — a built-in JavaScript list of tiny tasks that the browser runs <em>after</em> your current function finishes, but <em>before</em> it paints anything. So if you write to the same variable ten times in a row, all ten writes land <strong>before the flush ever runs</strong>.</li><li><strong>What the flush does:</strong> Svelte looks at every **<code>$derived</code> value<strong> (a computed value that depends on others) whose inputs changed, recomputes only those, and then writes the </strong>final values** to the DOM. Intermediate steps are skipped entirely.</li></ul>
+<p><strong>The protection — why renders are not redundant</strong></p>
+<ul><li><strong>One render per tick:</strong> a loop calling <code>count += 1</code> <strong>ten times</strong> produces <strong>one DOM update</strong> at the end, not ten. The flush sees the final value of <code>count</code> and acts on that alone.</li><li><strong>Multiple variables coalesce:</strong> if a handler updates <strong>several variables at once</strong>, each is <strong>flagged as changed</strong> (Svelte marks "this one's stale, re-check it"), but Svelte processes <strong>all of those flags in a single flush</strong> that runs once after the handler returns — never one flush per variable.</li><li><strong>No wasted renders:</strong> Svelte <strong>never paints</strong> an intermediate value that the user would never see, because the screen only updates after the flush.</li></ul>
+<p><strong>The rule — what you should and should not do</strong></p>
+<ul><li><strong>Do not debounce:</strong> never reach for **<code>setTimeout</code><strong> or </strong>manual batching<strong> to combine reactive writes — the </strong>runtime already does it**, so adding your own delay just makes the UI feel laggy.</li><li>**Do await <code>tick()</code><strong> when you need to read the </strong>DOM after it has settled** (see Q47). <code>tick()</code> is Svelte's function that returns a Promise resolving <strong>once the current flush finishes</strong> — the <strong>only</strong> legitimate reason to wait for a flush.</li></ul>
+<figure class="cb"><figcaption>App.svelte</figcaption><pre><code>&lt;script&gt;
+  let count = $state(0);
+  let label = $state('ready');
+
+  function burst() {
+    // Ten synchronous writes — but Svelte schedules ONE flush.
+    for (let i = 0; i &lt; 10; i++) count += 1;
+    label = `done at ${count}`;
+    // When the microtask runs, count is 10 and label is 'done at 10'.
+    // The DOM is updated exactly once with those final values.
+  }
+&lt;/script&gt;
+
+&lt;button onclick={burst}&gt;burst&lt;/button&gt;
+&lt;p&gt;{label}&lt;/p&gt;</code></pre></figure>
+<div class="dg" style="display:flex; flex-direction:column; gap:18px; padding:28px 24px; background-color:#faf7f0; border:4px solid #000; position:relative; font-family:monospace; color:#0a0a0a;">
+</div>
+<blockquote class="move"><p><strong>Summary.</strong> Svelte schedules exactly one flush per microtask. Multiple synchronous writes to one or more signals coalesce into a single render of the final state, so intermediate values the user would never see are never written to the DOM. The runtime already batches — do not add manual debouncing on top.</p></blockquote>
+<div class="dg" style="font-family:monospace; background:#faf7f0; border:4px solid #000; padding:28px 24px 24px; display:flex; flex-direction:column; align-items:center; gap:0; position:relative;">
+
+  <!-- ELEMENT 1: synchronous writes stack (grouped, counts as one element) -->
+  <div style="position:relative; display:flex; flex-direction:column; align-items:stretch; gap:6px; padding-top:18px;">
+    <div style="position:absolute; top:-2px; left:50%; transform:translateX(-50%); background:#000; color:#fff; padding:3px 10px; font-size:8pt; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; border:2px solid #000; white-space:nowrap;">synchronous writes</div>
+    <div style="border:2px solid #000; background:#fff; padding:8px 18px; font-size:11pt; font-weight:700; text-align:center;">count += 1</div>
+    <div style="border:2px solid #000; background:#fff; padding:8px 18px; font-size:11pt; font-weight:700; text-align:center;">count += 1</div>
+    <div style="border:2px solid #000; background:#fff; padding:8px 18px; font-size:11pt; font-weight:700; text-align:center;">count += 1</div>
+  </div>
+
+  <!-- ARROW 1 + "coalesced" pill (element 4) -->
+  <div style="position:relative; height:54px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding-top:8px;">
+    <div style="width:5px; height:30px; background:#000;"></div>
+    <div style="width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-top:13px solid #000;"></div>
+    <div style="position:absolute; top:14px; left:calc(50% + 14px); background:#0e7490; color:#fff; border:2px solid #000; padding:3px 9px; font-size:8pt; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; white-space:nowrap;">coalesced</div>
+  </div>
+
+  <!-- ELEMENT 2: one microtask flush (mustard-yellow focal point) -->
+  <div style="border:4px solid #000; background:#facc15; padding:16px 28px; text-align:center; box-shadow:6px 6px 0 0 #000; min-width:280px;">
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#3f2d00; margin-bottom:6px;">flush</div>
+    <div style="font-size:13pt; font-weight:900;">one microtask flush</div>
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#3f2d00; margin-top:6px;">reads final state only</div>
+  </div>
+
+  <!-- ARROW 2 (no pill) -->
+  <div style="height:40px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding-top:8px;">
+    <div style="width:5px; height:24px; background:#000;"></div>
+    <div style="width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-top:13px solid #000;"></div>
+  </div>
+
+  <!-- ELEMENT 3: one DOM update -->
+  <div style="border:4px solid #000; background:#fff; padding:14px 24px; text-align:center; box-shadow:4px 4px 0 0 #000; min-width:240px;">
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#475569; margin-bottom:6px;">render</div>
+    <div style="font-size:13pt; font-weight:900;">one DOM update</div>
+    <div style="font-size:10pt; font-weight:700; margin-top:6px; background:#f1f5f9; border:1px solid #000; padding:4px 10px; display:inline-block;">count = 3</div>
+  </div>
+
+</div>
+
+</section>
+</body>
+</html>

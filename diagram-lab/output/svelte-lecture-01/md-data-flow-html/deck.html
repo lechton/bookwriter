@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Svelte 5 Data Flow Atlas</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<article class="lecture"><h1>Data Flow 49: Where <code>$derived</code> Belongs in the Product Tree</h1>
+<p>Lecture 49 teaches <code>$derived</code> as the rune for keeping a local variable continuously synced with an incoming prop, plus the Svelte 5.25 twist that lets you reassign that derived value for optimistic UI (see Lecture 49 for how <code>$derived</code> works). This file does not re-teach the mechanism; it shows <em>where</em> that sync belongs in ElectroShop, and why one tier beats the two on either side of it. The running example is a product's wishlist count: a number that arrives on the <code>product</code> prop, must stay current as the grid re-renders, and must jump instantly when the user clicks the heart before the server confirms.</p>
+<div class="keep-together">
+<h3>A) The Technical Svelte Information</h3>
+<p>The <code>$derived</code> rune declares a value that recalculates whenever any reactive state read inside its expression changes. For prop sync, <code>let wishlistCount = $derived(product.wishlistCount)</code> reads <code>product.wishlistCount</code> at setup and then re-reads it every time the parent hands down a new <code>product</code>, keeping the child in continuous sync without the one-shot deafness of <code>$state</code> (the trap Lecture 49 opens with). Because the derived expression is a pure function of its inputs, Svelte also permits a temporary reassignment (<code>wishlistCount += 1</code>) that holds until the next recalculation washes it away, the mechanism behind optimistic UI.</p>
+</div>
+<div class="keep-together">
+<h3>B) Large Scale Data Flow Context</h3>
+<blockquote><code>ElectroShopApp</code> (Holds global user session) ➔ <code>ShopLayout</code> ➔ <code>MainContent</code> ➔ <code>ProductGrid</code> (Holds raw product array, iterates) ➔ <strong><code>ProductCard</code></strong> (Where the prop sync lives) ➔ <code>ProductActions</code> ➔ <code>WishlistButton</code> (Renders the count, fires the click)</blockquote>
+</div>
+<div class="keep-together">
+<h3>C) Nuanced Small Scale Data Flow</h3>
+<blockquote><code>ProductGrid</code> (passes one raw <code>product</code> object as prop per card) ➔ <code>ProductCard</code> (receives <code>let { product } = $props()</code>) ➔ <strong><code>$derived(product.wishlistCount)</code></strong> (one-line sync; re-derives on every prop change) ➔ <code>WishlistButton</code> (receives <code>wishlistCount</code>, renders the heart, optimistically overrides on click)</blockquote>
+</div>
+<div class="keep-together">
+<h3>Why this placement</h3>
+<ol><li><strong>Why not derive in <code>ProductGrid</code>?</strong> The grid's job is to iterate. If it owned each card's derived count, any single product update would force it to walk the whole array and re-derive every card. Putting <code>$derived</code> inside <code>ProductCard</code> means each card owns exactly one derivation, scoped to its own prop, and the grid stays a dumb iterator.</li>
+<li><strong>Why not derive in <code>WishlistButton</code>?</strong> The button is a presentational leaf: render a heart, show a number, fire a click. Lifting the sync into it couples display to the data-plumbing contract with the parent and forces the button to know what a <code>product</code> prop is. The derived value should arrive at the button already computed.</li>
+<li><strong>Why <code>$derived</code> and not <code>$state</code> here?</strong> The count's source of truth is the parent's <code>product</code> prop, not the card. <code>$state(product.wishlistCount)</code> would snapshot the value once at card creation and go deaf to every later prop change, the precise trap Lecture 49 exists to prevent. <code>$derived</code> keeps the card reactive to the grid above it.</li>
+<li><strong>Why the sync and the override live in the same tier.</strong> The optimistic override (<code>wishlistCount += 1</code>) only works if the derived value and the click handler share scope. <code>ProductCard</code> owns both: it declares <code>$derived(product.wishlistCount)</code> and passes an <code>onclick</code> down to <code>WishlistButton</code>. When the click fires, the card bumps its derived value locally; when the server confirms and the grid hands down a fresh <code>product</code>, the derivation recalculates and the override is quietly replaced by the new source of truth.</li></ol>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ProductCard.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">let</span> { product, addToWishlist } = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">  </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Continuous sync with the parent's prop, never a one-shot snapshot</span>
+      </div></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="kw">let</span> wishlistCount = <span class="rune">$derived</span>(product.wishlistCount);</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleWishlist</span>() {</span></div>
+<div class="row"><span class="num">8</span><span class="src">    </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">1. optimistic override: bump the count <b class="tag">LOCALLY</b> before the server answers</span>
+      </div></div>
+<div class="row"><span class="num">9</span><span class="src">    wishlistCount += <span class="nl">1</span>;</span></div>
+<div class="row"><span class="num">10</span><span class="src">    <span class="kw">try</span> {</span></div>
+<div class="row"><span class="num">11</span><span class="src">      <span class="kw">await</span> <span class="fn">addToWishlist</span>(product.id); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">2. tell the server to <b class="tag">SAVE</b> the click</span>
+      </div></div>
+<div class="row"><span class="num">12</span><span class="src">    } <span class="kw">catch</span> {</span></div>
+<div class="row"><span class="num">13</span><span class="src">      wishlistCount -= <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">3. rollback: <b class="tag">REVERT</b> the override if the request failed</span>
+      </div></div>
+<div class="row"><span class="num">14</span><span class="src">    }</span></div>
+<div class="row"><span class="num">15</span><span class="src">  }</span></div>
+<div class="row"><span class="num">16</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">17</span><span class="src"></span></div>
+<div class="row"><span class="num">18</span><span class="src">&lt;WishlistButton count={wishlistCount} onclick={handleWishlist} /&gt;</span></div></div></div>
+</div>
+</article>
+</main>
+</body>
+</html>

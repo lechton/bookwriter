@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Q47 — The `tick()` Function</title>
+<link rel="stylesheet" href="../../../assets/styles/base.css">
+<link rel="stylesheet" href="../../../assets/styles/cards.css">
+<link rel="stylesheet" href="../../../assets/styles/diagrams.css">
+<link rel="stylesheet" href="../../../assets/styles/metaphors.css">
+</head>
+<body>
+<section class="card">
+<div class="q"><span class="qn">Q47</span><h2>The <code>tick()</code> Function</h2></div>
+<p class="tags"><span>Svelte 5</span><span>Reactivity</span><span>tick</span><span>DOM</span></p>
+<p class="lbl lbl-question"><strong>Question.</strong> How do you manually tap into the rendering cycle using Svelte's <code>tick</code> function, and what does it return?</p>
+<p class="lbl lbl-answer"><strong>Answer.</strong> </p>
+<p>**What <code>tick()</code> is and what it returns**</p>
+<ul><li><strong>Returns a Promise:</strong> <code>tick()</code> is a function imported from <code>'svelte'</code> that returns a <strong>Promise</strong> — a built-in JavaScript object representing a value that will be available later. You <code>await</code> it inside an <code>async</code> function.</li><li><strong>Resolves after the flush:</strong> the Promise resolves (becomes ready) <strong>once the current reactive flush finishes</strong> — the flush being Svelte's term for the moment it walks the dirty signals and writes the final values to the DOM (see Q46).</li><li><strong>No value carried:</strong> <code>tick()</code> does <strong>not return a value</strong> when awaited. It is a synchronization primitive — its job is to give you a moment in time, not data.</li></ul>
+<p><strong>Why you need it</strong></p>
+<ul><li><strong>DOM reads are stale mid-handler:</strong> when you write <code>el.scrollTop = 0</code> right after a state change, the DOM has <strong>not updated yet</strong> because the flush is scheduled for after your handler returns. Reading <code>el.scrollHeight</code> at that instant returns the <strong>old value</strong>.</li><li>**<code>await tick()</code> unblocks the flush:<strong> by awaiting the Promise, you yield control back to JavaScript, the microtask queue runs, the </strong>flush executes and paints**, and execution resumes with the DOM in its new state.</li><li><strong>The fix is one line:</strong> <code>count += 1; await tick(); console.log(el.scrollHeight);</code> — now the log shows the <strong>post-update measurement</strong>.</li></ul>
+<p><strong>The rules for correct use</strong></p>
+<ul><li>**Only inside <code>async</code> functions:** <code>await</code> is a JavaScript keyword that only works inside a function declared <code>async</code>. Using <code>await tick()</code> in a synchronous handler is a syntax error.</li><li><strong>Use sparingly:</strong> reach for <code>tick()</code> only when you genuinely need to <strong>read or measure the DOM</strong> after a state change. Most reactive code never needs it — Svelte's template bindings already reflect new state automatically.</li><li><strong>Never use it to order side effects:</strong> if you need code to run after state settles, prefer **<code>$effect</code>** (see Q20) over manual <code>tick()</code>. <code>tick()</code> answers <em>measurement</em>, <code>$effect</code> answers <em>reaction</em>.</li></ul>
+<figure class="cb"><figcaption>App.svelte</figcaption><pre><code>&lt;script&gt;
+  import { tick } from 'svelte';
+
+  let items = $state(['a', 'b']);
+  let listEl;
+
+  async function addAndScroll() {
+    items.push('c');           // State changed, but DOM is not updated yet.
+    await tick();              // Wait for the flush to write the new &lt;li&gt;.
+    listEl.scrollTop = listEl.scrollHeight;  // Now measures the full list.
+  }
+&lt;/script&gt;
+
+&lt;ul bind:this={listEl}&gt;
+  {#each items as item}&lt;li&gt;{item}&lt;/li&gt;{/each}
+&lt;/ul&gt;
+&lt;button onclick={addAndScroll}&gt;add and scroll&lt;/button&gt;</code></pre></figure>
+<div class="dg" style="display:flex; flex-direction:column; gap:18px; padding:28px 24px; background-color:#faf7f0; border:4px solid #000; position:relative; font-family:monospace; color:#0a0a0a;">
+</div>
+<blockquote class="move"><p><strong>Summary.</strong> <code>tick()</code> is imported from <code>'svelte'</code> and returns a Promise that resolves after the current reactive flush finishes. <code>await</code> it inside an <code>async</code> function when you need to read or measure the DOM after a state change; for everything else, prefer <code>$effect</code>.</p></blockquote>
+<div class="dg" style="font-family:monospace; background:#faf7f0; border:4px solid #000; padding:28px 22px 22px; display:flex; flex-direction:column; align-items:center; gap:0; position:relative;">
+
+  <!-- ELEMENT 1: state changed (neutral white) -->
+  <div style="border:4px solid #000; background:#fff; padding:14px 22px; text-align:center; box-shadow:4px 4px 0 0 #000; min-width:240px;">
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#475569; margin-bottom:6px;">state</div>
+    <div style="font-size:12pt; font-weight:900;">items.push('c')</div>
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#475569; margin-top:6px;">state changed, DOM stale</div>
+  </div>
+
+  <!-- ARROW 1 + "yields control" pill (ELEMENT 4) -->
+  <div style="position:relative; height:50px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;">
+    <div style="width:5px; height:24px; background:#000;"></div>
+    <div style="width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-top:13px solid #000;"></div>
+    <div style="position:absolute; top:8px; left:calc(50% + 14px); background:#0e7490; color:#fff; border:2px solid #000; padding:3px 9px; font-size:8pt; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; white-space:nowrap;">yields control</div>
+  </div>
+
+  <!-- ELEMENT 2: await tick() (mustard-yellow focal point) -->
+  <div style="border:4px solid #000; background:#facc15; padding:16px 28px; text-align:center; box-shadow:6px 6px 0 0 #000; min-width:240px;">
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#3f2d00; margin-bottom:6px;">yield point</div>
+    <div style="font-size:13pt; font-weight:900;">await tick()</div>
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#3f2d00; margin-top:6px;">handler pauses, microtask runs</div>
+  </div>
+
+  <!-- ARROW 2 (no pill) -->
+  <div style="height:34px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;">
+    <div style="width:5px; height:20px; background:#000;"></div>
+    <div style="width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-top:13px solid #000;"></div>
+  </div>
+
+  <!-- ELEMENT 3: flush runs + DOM ready (merged into one box) -->
+  <div style="border:4px solid #000; background:#fff; padding:14px 22px; text-align:center; box-shadow:4px 4px 0 0 #000; min-width:240px;">
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#475569; margin-bottom:6px;">flush + resume</div>
+    <div style="font-size:12pt; font-weight:900;">DOM is current</div>
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#475569; margin-top:6px;">execution resumes, measurements valid</div>
+  </div>
+
+</div>
+
+</section>
+</body>
+</html>

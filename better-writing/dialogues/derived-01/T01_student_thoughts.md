@@ -1,0 +1,17 @@
+# T01 — Student THOUGHTS (reading the professor's T01 turn)
+
+Reading him word by word.
+
+He opens by restating the last lesson. "A signal is a closure holding one value and its own private list." Fine, I know this cold, we built it. "The only moment a dependency can be discovered is the moment of reading, while the flag is up." Yes. "The only moment that dependency gets acted on is the moment of writing." Yes. "Read subscribes. Write notifies." Tattooed on my brain at this point. "flagged_function is the one shared variable... watchEffect raises the flag, runs your function once, lowers it." All confirmed. Good. He is just re-seating me before the new thing. I am with him.
+
+Then: "the derived values, what is the architecture that is built upon." Hold on. "That is built upon" trails off. Built upon what? He is assuming I supply the answer: built upon the signal architecture he just restated. I think that is what he means, the derived rune sits on top of makeSignal and flagged_function. But the sentence does not say so. I will assume it and watch whether it holds. Mild flag: the phrasing is incomplete.
+
+"the derived rune, and the watch rune represent different things." OK. Two runes being contrasted. I know the watch rune. That is `$effect`, our `watchEffect`, the thing that runs a function now and re-runs it whenever a signal it read changes. The derived rune is `$derived`, which I have seen in the Svelte docs but we never built from scratch, so I only have a fuzzy sense of it: "a value computed from other values." That is about all I actually know.
+
+"They may seem the same, but are not." And here is where I dig my heels in. To me they DO seem the same. In every small example I have written, "a watcher that recomputes something when state changes" and "a derived value that updates when state changes" have been interchangeable. Both are "some code that re-fires when a signal changes." I cannot, off the top of my head, point to a case where swapping one for the other broke anything. So he has just made a claim with zero evidence attached.
+
+He even admits it: "I am going to leave that claim hanging on purpose. I am not going to show you the difference yet." Fine. He wants me to push back. He says so outright. So I should not nod. I should produce the strongest counterexample I can, the case where I am most sure they are identical, and make him crack it open.
+
+The cleanest counterexample I know: doubling a counter. I have a signal `n`. I want `nDoubled`. Route one, the derived route, would be something like "nDoubled is derived from n times two." Route two, the watcher route, is: make a second signal to hold the answer, and run a watcher that recomputes n times two and writes it into that second signal whenever n changes. Both give me a thing called nDoubled that tracks n times two. Both update when n updates. If he cannot find the difference here, then "they are not the same" is an empty sentence. Let me throw this at him and see what he does with it.
+
+One more thing I notice, that I will keep in my pocket: he used the word "rune" twice without defining the difference between a rune and the plain functions we built. In Svelte a rune is `$state`, `$derived`, `$effect`, the dollar-prefixed keywords. Our `makeSignal` and `watchEffect` are the hand-built versions underneath. I think he is using "rune" loosely to mean "the concept, whether the Svelte rune or our hand-built version." I will let that pass, it is not the seam. The seam is "same or not same," and I am going straight at it.

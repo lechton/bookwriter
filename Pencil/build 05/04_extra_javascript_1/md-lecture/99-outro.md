@@ -1,0 +1,11 @@
+# 99 | Outro: Synthesis (groundwork with no corresponding code snippet)
+
+We have taken the magic apart, piece by piece, and found nothing but plain JavaScript underneath. The entire mechanism of reactivity is simply a property read that something else is secretly watching.
+
+We started with a closure, a function bundled with the variables it captured from where it was defined, giving us private state. We looked at a module, a file whose top-level code runs once and whose exports are shared, giving us shared state. We saw a plain data property, which stores a value and returns it directly when read, turn into a getter, a property that runs a function on every read instead of returning a stored value. That was our first taste of interception, making an ordinary read or write secretly run code.
+
+To intercept every property without naming them first, we reached for a Proxy, an invisible wrapper around an object that lets us secretly intercept standard operations. A trap is simply a handler function a Proxy runs for a specific operation, like getting or setting a value. We used those traps to build a signal, a value that secretly records who reads it, and then re-runs them when it changes. We built an effect, a function whose reads subscribe it to changes, so it automatically re-runs when its signals update. The connection between them is a dependency, the recorded link from a signal to an effect that read it.
+
+Putting the Proxy and the signal together gave us a reactive object, a Proxy that tracks reads and triggers writes on every property. This creates fine-grained reactivity, where only the effects that actually read a value re-run when it changes. Svelte hands you this power through a rune, a compiler symbol that tells Svelte to mark a specific piece of code as reactive. In the browser, this produces a fine-grained update, where only the specific HTML elements that read a value are updated, never the entire component.
+
+We have walked through every step in this chapter, exactly in order, skipping nothing. There is no magic left. You now know exactly what is happening when you change a variable and the screen updates. The read is intercepted, the effect is triggered, and the page redraws. We will use this exact tracking pattern in everything we build next.

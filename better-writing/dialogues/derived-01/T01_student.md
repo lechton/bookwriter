@@ -1,0 +1,3 @@
+# T01 — Student
+
+How is that? We can use them both in the same way. Take the simplest case. I have a signal `n`, and I want its double. I can do it with a derived, sure, n times two. But I can just as easily do it with a watcher: I make a second signal to hold the answer, and I run a watcher that, every time `n` changes, recomputes n times two and writes the result into that second signal. Same number comes out. Same update the moment `n` moves. So where is the difference you are claiming? From where I am sitting, a watcher plus a spare signal does exactly the job of a derived. Show me where I am wrong.

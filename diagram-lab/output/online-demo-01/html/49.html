@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Q49 — Syncing Local State with a Prop</title>
+<link rel="stylesheet" href="../../../assets/styles/base.css">
+<link rel="stylesheet" href="../../../assets/styles/cards.css">
+<link rel="stylesheet" href="../../../assets/styles/diagrams.css">
+<link rel="stylesheet" href="../../../assets/styles/metaphors.css">
+</head>
+<body>
+<section class="card">
+<div class="q"><span class="qn">Q49</span><h2>Syncing Local State with a Prop</h2></div>
+<p class="tags"><span>Svelte 5</span><span>Runes</span><span>$state</span><span>$derived</span><span>Props</span></p>
+<p class="lbl lbl-question"><strong>Question.</strong> How do you initialize a reactive local variable that dynamically syncs with an incoming prop using Runes?</p>
+<p class="lbl lbl-answer"><strong>Answer.</strong> </p>
+<p><strong>The two patterns — pick by whether the local copy must be editable</strong></p>
+<ul><li>**Editable local copy → <code>$state(prop)</code>:** declare <code>let local = $state(prop.value)</code> to create a <strong>deeply reactive local variable</strong> (see Q34) whose initial value is copied from the prop. The user can then mutate <code>local</code> freely — typing into a bound input, toggling, etc.</li><li>**Read-only mirror → <code>$derived(prop.value)</code>:** declare <code>let mirror = $derived(prop.value)</code> to create a <strong>memoized computed value</strong> (see Q37) that re-evaluates whenever the prop changes. You cannot assign to a <code>$derived</code> — it is a pure function of its inputs.</li></ul>
+<p>**Why <code>$state(prop)</code> alone does not sync**</p>
+<ul><li><strong>One-shot initialization:</strong> writing <code>let local = $state(prop.value)</code> copies the prop's value <strong>once</strong>, at component setup. The <code>$state(...)</code> call runs a single time, so later changes to the prop do <strong>not</strong> flow into <code>local</code>.</li><li><strong>The prop is a moving target:</strong> props in Svelte 5 are reactive — the parent can pass a new value at any time, and the child sees the update — but <code>$state(initialValue)</code> only reads <code>initialValue</code> at birth.</li><li><strong>The fix when you need both:</strong> to get an editable local copy that <em>also</em> re-syncs when the prop changes, combine the two — declare <code>let local = $state(prop.value)</code> and add a <code>$effect(() =&gt; { local = prop.value; })</code> that watches the prop and overwrites the local copy on change (with care; see Q21 about avoiding effect loops).</li></ul>
+<p><strong>The prescriptive rule</strong></p>
+<ul><li>**Default to <code>$derived</code>:<strong> if the local value is a pure transform of the prop (formatting, filtering, computing), reach for </strong><code>$derived</code>** — it is always correct, never goes stale, and costs nothing when nobody reads it.</li><li>**Reach for <code>$state(prop)</code><strong> only when the child </strong>must own its own edits** to the value (form inputs, draft text, in-progress edits). Accept that you then own the synchronization back to the prop.</li><li>**Avoid the legacy <code>let x = prop</code>:** it neither tracks the prop nor participates in reactivity — a silent source of stale-UI bugs.</li></ul>
+<figure class="cb"><figcaption>Editor.svelte</figcaption><pre><code>&lt;script&gt;
+  let { initialText = '' } = $props();
+
+  // Editable local copy — initialized once from the prop.
+  let draft = $state(initialText);
+
+  // Read-only mirror — recomputes whenever initialText changes.
+  let preview = $derived(draft.toUpperCase());
+&lt;/script&gt;
+
+&lt;input bind:value={draft} /&gt;
+&lt;p&gt;Preview: {preview}&lt;/p&gt;</code></pre></figure>
+<div class="dg" style="display:flex; flex-direction:column; gap:18px; padding:28px 24px; background-color:#faf7f0; border:4px solid #000; position:relative; font-family:monospace; color:#0a0a0a;">
+</div>
+<blockquote class="move"><p><strong>Summary.</strong> Use <code>$state(prop.value)</code> for an editable local copy initialized once from a prop, and <code>$derived(prop.value)</code> for a read-only computed mirror that re-syncs automatically. <code>$state(prop)</code> alone does not track later prop changes — pair it with a <code>$effect</code> only when you need both editability and continuous sync.</p></blockquote>
+<div class="dg" style="font-family:monospace; background:#faf7f0; border:4px solid #000; padding:26px 22px 20px; display:flex; gap:18px; align-items:stretch; position:relative;">
+
+  <!-- LEFT CARD: $state(prop.value) — copied once, no later flow -->
+  <div style="flex:1; border:4px solid #000; background:#fff; padding:14px 14px 12px; position:relative; display:flex; flex-direction:column; box-shadow:4px 4px 0 0 #000;">
+    <div style="font-size:10pt; font-weight:900; letter-spacing:0.02em; margin-bottom:12px; border-bottom:3px solid #000; padding-bottom:5px;">$state(prop.value)</div>
+
+    <!-- timeline: initial slot filled, later slot dashed empty -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:14px; padding:8px 0;">
+      <div>
+        <div style="font-size:8pt; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; color:#475569; margin-bottom:4px;">initial</div>
+        <div style="border:2px solid #000; background:#fff; padding:8px 12px; font-size:10pt; font-weight:700; text-align:center;">"hello"</div>
+      </div>
+      <div>
+        <div style="font-size:8pt; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; color:#94a3b8; margin-bottom:4px;">later</div>
+        <div style="border:2px dashed #94a3b8; background:#faf7f0; padding:8px 12px; font-size:10pt; font-weight:700; text-align:center; color:#94a3b8;">(empty)</div>
+      </div>
+    </div>
+
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#475569; margin-top:10px; text-align:center;">copied once, no later tracking</div>
+  </div>
+
+  <!-- RIGHT CARD: $derived(prop.value) — continuous flow -->
+  <div style="flex:1; border:4px solid #000; background:#fff; padding:14px 14px 12px; position:relative; display:flex; flex-direction:column; box-shadow:4px 4px 0 0 #000;">
+    <div style="font-size:10pt; font-weight:900; letter-spacing:0.02em; margin-bottom:12px; border-bottom:3px solid #000; padding-bottom:5px;">$derived(prop.value)</div>
+
+    <!-- timeline: both slots filled, connected by mustard-yellow arrow (continuous flow) -->
+    <div style="flex:1; display:flex; flex-direction:column; align-items:stretch; gap:0; padding:8px 0;">
+      <div>
+        <div style="font-size:8pt; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; color:#475569; margin-bottom:4px;">initial</div>
+        <div style="border:2px solid #000; background:#fff; padding:8px 12px; font-size:10pt; font-weight:700; text-align:center;">"hello"</div>
+      </div>
+
+      <!-- mustard-yellow connecting arrow (the only accent in the diagram) -->
+      <div style="position:relative; height:28px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <div style="width:4px; height:18px; background:#facc15; border-left:2px solid #000; border-right:2px solid #000;"></div>
+        <div style="width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-top:10px solid #facc15;"></div>
+      </div>
+
+      <div>
+        <div style="font-size:8pt; font-weight:900; letter-spacing:0.1em; text-transform:uppercase; color:#475569; margin-bottom:4px;">later</div>
+        <div style="border:2px solid #000; background:#fff; padding:8px 12px; font-size:10pt; font-weight:700; text-align:center;">"world"</div>
+      </div>
+    </div>
+
+    <div style="font-size:9pt; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#475569; margin-top:10px; text-align:center;">recomputes whenever prop changes</div>
+  </div>
+
+</div>
+
+</section>
+</body>
+</html>
