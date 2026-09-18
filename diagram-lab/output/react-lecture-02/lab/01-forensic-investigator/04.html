@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 04: How the Root Component Lands on the Page</title>
+<link rel="stylesheet" href="../../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 04: How the Root Component Lands on the Page</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">You wrote App.jsx. How does it actually get onto the page?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol>  <li>Samira Vance, a platform engineer at The National Times, prepared the breaking news live wire widget on Monday morning.</li>
+  <li>The widget sat inside an existing editorial page containing a static fallback ticker inside <code>&lt;div id="root"&gt;</code>.</li>
+  <li>Samira called <code>createRoot(container).render(&lt;App /&gt;)</code> to activate live updates for readers.</li>
+  <li>The moment the script executed, the existing ticker vanished into a blank white box before rendering.</li>
+  <li>Furthermore, an inline script directly below <code>render()</code> tried to read the headline and crashed with <code>null</code>.</li>
+  <li>Why did mounting React wipe out the existing fallback markup and fail to populate the DOM synchronously?</li>
+  <li>Today you will uncover how <code>createRoot</code> bridges JavaScript to the DOM, and how React schedules your initial render.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Crime Scene: The Vanishing Ticker and the Null Element</h3>
+<p>You already know how to author React components. You write a function, return JSX elements, and compose child components into a structured visual hierarchy. But components authored in <code>.jsx</code> or <code>.tsx</code> files are simply JavaScript functions in memory. They do not attach themselves to the browser window automatically.</p>
+<p>When developers inspect modern build templates, they find an <code>index.html</code> file containing an empty container: <code>&lt;div id="root"&gt;&lt;/div&gt;</code>. Somewhere in their project scripts, a single function bridges that empty container to their root component.</p>
+<p>When Samira Vance deployed the breaking news live wire widget for <em>The National Times</em>, that bridge produced two baffling production failures.</p>
+<p>First, the newsroom page was not an empty document. To protect readers on slow mobile networks, the backend server had rendered a static fallback news ticker directly inside <code>&lt;div id="root"&gt;</code>. The headline was visible and readable immediately. But the moment Samira's script loaded, the headline vanished into a blank white box. Half a second later, the React component finally mounted, creating an unexpected visual flicker on the page.</p>
+<p>Second, Samira wrote an analytics tracker on the line immediately following <code>root.render(&lt;App /&gt;)</code>. The tracker ran <code>document.getElementById('live-headline')</code> to log the initial story title. To her shock, the expression returned <code>null</code>. The browser threw a fatal TypeError, halting the analytics pipeline.</p>
+<p>React does not push HTML strings into the browser synchronously like <code>innerHTML</code>. Instead, React uses a dedicated package called <strong><code>react-dom/client</code></strong>.</p>
+<p>The bridge between your JavaScript code and the browser window is created using the <strong><code>createRoot</code></strong> function. Calling <code>createRoot(domNode)</code> creates a <strong>React Root</strong>, a specialized management container that takes complete authority over the provided DOM node.</p>
+<p>When you call <code>createRoot</code> on a container, React prepares that container for pure client-side rendering. On its initial render, <code>createRoot</code> intentionally clears all pre-existing HTML inside that container to ensure that client-managed nodes start from a pristine state.</p>
+<p>Furthermore, calling <code>root.render(&lt;App /&gt;)</code> does not build DOM elements synchronously. Instead, <code>root.render</code> schedules a render pass on React's internal concurrent work loop and returns <code>undefined</code> immediately. The JavaScript thread keeps running before the browser paints a single DOM node.</p>
+<figure class="visual-aid">
+  <img src="images/04/01.jpeg" alt="React Root Bridge Architecture" class="raster-diagram">
+</figure>
+<aside class="callout callout-diagram">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><rect x="9" y="2" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="16" y="16" width="6" height="6" rx="1"></rect><path d="M5 16v-3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"></path><path d="M12 11V8"></path></svg>Diagram 4.1</p>
+  <p>The <strong>Browser DOM Container</strong> is claimed by the <strong>React Root Manager</strong> through createRoot, which takes ownership and schedules mounting for the <strong>Root Component Tree</strong> via root.render.</p>
+</aside>
+<p>Here is the exact setup code that Samira ran in production:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">main.tsx</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">createRoot</span> } <span class="kw">from</span> <span class="str">'react-dom/client'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> container = document.<span class="fn">getElementById</span>(<span class="str">'root'</span>);</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">if</span> (container) {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="kw">const</span> root = <span class="hook">createRoot</span>(container);</span></div>
+<div class="row"><span class="num">7</span><span class="src">  root.<span class="fn">render</span>(&lt;App /&gt;); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> assuming render is synchronous and leaves existing HTML intact</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">  console.<span class="fn">log</span>(container.innerHTML); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Prints empty or pre-render state</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.2rem auto 0.4rem;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #cbd5e1;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef4444; border: 1px solid #dc2626; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f59e0b; border: 1px solid #d97706; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #10b981; border: 1px solid #059669; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 250px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 30%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      border-bottom: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+    .rce-theme .rce-tree,
+    .rce-theme .rce-tree ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree ul {
+      padding-left: 1.25rem;
+    }
+    .rce-theme .rce-tree li {
+      position: relative;
+      margin: 0;
+      padding: 2px 0;
+    }
+    .rce-theme .rce-tree li::before,
+    .rce-theme .rce-tree li::after {
+      position: absolute;
+      left: -0.62rem;
+      content: "";
+    }
+    .rce-theme .rce-tree li::before {
+      top: 0.95rem;
+      width: 0.62rem;
+      border-top: 1px solid #cbd5e1;
+    }
+    .rce-theme .rce-tree li::after {
+      top: 0;
+      width: 0;
+      height: 100%;
+      border-left: 1px solid #cbd5e1;
+    }
+    .rce-theme .rce-sidebar > .rce-tree > li::before,
+    .rce-theme .rce-sidebar > .rce-tree > li::after {
+      display: none;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.80rem;
+      font-weight: 500;
+      color: #0f172a;
+      padding: 0.28rem 0.38rem;
+      border-radius: 5px;
+      line-height: 1.2;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex-shrink: 0;
+    }
+    .rce-theme .rce-stage {
+      flex: 1;
+      padding: 1.4rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      padding: 1.85rem 1rem 0.95rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #ffffff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node.kind-shell {
+      border-color: #475569;
+      background: #f8fafc;
+    }
+    .rce-theme .rce-node.kind-child {
+      border-color: #087ea4;
+      background: #ffffff;
+      margin-top: 0.8rem;
+      padding: 1.6rem 0.9rem 0.85rem;
+    }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.32rem 0.70rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1;
+      color: #ffffff;
+      user-select: none;
+    }
+    .rce-theme .rce-node.kind-shell > .rce-node-label {
+      background: #475569;
+    }
+    .rce-theme .rce-node.kind-child > .rce-node-label {
+      background: #087ea4;
+    }
+    .rce-theme .rce-node-props {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 0.68rem;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.9);
+      font-style: italic;
+      margin-left: 0.3rem;
+    }
+    .rce-theme .dom-info {
+      font-size: 0.76rem;
+      color: #64748b;
+      margin-bottom: 0.4rem;
+      font-family: "JetBrains Mono", monospace;
+    }
+    .rce-theme .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .rce-theme .app-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .rce-theme .live-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.64rem;
+      font-weight: 700;
+      color: #15803d;
+      background: #dcfce7;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .rce-theme .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #16a34a;
+    }
+    .rce-theme .metric-bar {
+      display: flex;
+      justify-content: space-between;
+      background: #f1f5f9;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      color: #334155;
+    }
+    .rce-theme .metric-bar strong {
+      color: #087ea4;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">React Component Explorer - Root Mount Pipeline</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Project Files</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            index.html
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+            src
+          </span>
+          <ul>
+            <li>
+              <span class="rce-tree-label active">
+                <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                main.tsx
+              </span>
+            </li>
+            <li>
+              <span class="rce-tree-label">
+                <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                App.tsx
+              </span>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-shell">
+          <span class="rce-node-label">DOM Node &lt;div id="root"&gt;</span>
+          <div class="dom-info">createRoot(document.getElementById('root'))</div>
+
+          <div class="rce-node kind-child">
+            <span class="rce-node-label">&lt;App /&gt; <span class="rce-node-props">root.render(&lt;App /&gt;)</span></span>
+            <div class="app-header">
+              <span class="app-title">The National Times Live Wire</span>
+              <span class="live-tag"><i class="live-dot"></i> LIVE DESK</span>
+            </div>
+            <div class="metric-bar">
+              <span>Concurrent Readers: <strong>14,280</strong></span>
+              <span>Feed Status: <strong>Synced</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 4.1: React Component Explorer illustrating index.html with div id root, main.tsx calling createRoot, and the mounted App component on the blueprint canvas.</figcaption>
+</figure>
+<p>When you examine the component explorer above, the architectural boundary becomes tangible. The physical browser document owns <code>&lt;div id="root"&gt;</code>. React takes ownership of that DOM node through <code>createRoot</code>. Inside that boundary, React mounts <code>&lt;App /&gt;</code>, displaying the live desk badge, reader metrics, and news feed.</p>
+<p>Because Samira used <code>createRoot</code> on a container that already held server-rendered HTML, React wiped the container clean before rendering. And because she expected <code>root.render</code> to execute synchronously, her analytics query ran while the container was still empty.</p>
+<p>Understanding this bridge requires mastering the complete lifecycle of the React Root:</p>
+<ol>  <li><strong>Container Acquisition</strong>: Finding a valid, non-null DOM element using native Web APIs.</li>
+  <li><strong>Root Creation</strong>: Calling <code>createRoot</code> to allocate a concurrent Fiber root container.</li>
+  <li><strong>Scheduled Mounting</strong>: Calling <code>root.render</code> to enqueue the root element onto the work loop.</li>
+  <li><strong>Lifecycle Teardown</strong>: Calling <code>root.unmount</code> when removing a React application from the page.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Under the Hood: The createRoot Contract and FiberRootNode</h3>
+<p>To master how React connects to the web browser, you must separate the core React library from its platform renderers.</p>
+<p>The core <code>react</code> package is completely platform-agnostic. It defines what a component is, how hooks store state, and how elements are constructed. It has no knowledge of browsers, DOM nodes, HTML tags, or mobile operating systems.</p>
+<p>The bridge between React and the browser document lives in a distinct companion package: <strong><code>react-dom</code></strong>. Specifically, modern client-side mounting APIs live in the submodule <strong><code>react-dom/client</code></strong>.</p>
+<p>When you execute <code>const root = createRoot(domNode, options?)</code>, React performs several critical operations in browser memory.</p>
+<p>First, React validates that <code>domNode</code> is a legitimate browser Element. If you pass <code>null</code> or <code>undefined</code> (for example, if <code>document.getElementById('root')</code> failed to find a match), <code>createRoot</code> immediately throws a descriptive error.</p>
+<p>Second, React allocates an internal engine object known as a <strong><code>FiberRootNode</code></strong>. The <code>FiberRootNode</code> serves as the administrative hub for your entire application. It stores the pending work queue and tracks scheduler priority. It also manages error boundaries and holds a pointer to the host DOM container.</p>
+<p>Third, <code>createRoot</code> returns a lightweight JavaScript object containing exactly two public methods:</p>
+<ul>
+  <li><strong><code>render(reactNode)</code></strong>: Schedules the provided React component tree to be displayed inside the root container.</li>
+  <li><strong><code>unmount()</code></strong>: Destroys the React tree and removes all event listeners to clean up memory.</li>
+</ul>
+<p>Here is the production-grade entry point showing modern React 19 configuration options:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">main.tsx</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">createRoot</span> } <span class="kw">from</span> <span class="str">'react-dom/client'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> domNode = document.<span class="fn">getElementById</span>(<span class="str">'root'</span>)!;</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">const</span> root = <span class="hook">createRoot</span>(domNode, {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  identifierPrefix: <span class="str">'nt-live-'</span>, </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> prefixes IDs for useId to prevent multi-root collisions</span></div></div></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="fn">onRecoverableError</span>(error, errorInfo) {</span></div>
+<div class="row"><span class="num">8</span><span class="src">    console.<span class="fn">error</span>(<span class="str">'Recoverable root error:'</span>, error, errorInfo.componentStack);</span></div>
+<div class="row"><span class="num">9</span><span class="src">  },</span></div>
+<div class="row"><span class="num">10</span><span class="src">});</span></div>
+<div class="row"><span class="num">11</span><span class="src">root.<span class="fn">render</span>(&lt;App /&gt;);</span></div></div></div></div>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer xt-adapted">
+  <style>
+    .component-explorer.xt-adapted {
+      margin: 1.3rem auto 0.5rem;
+      max-width: 668px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      overflow: visible;
+      box-shadow: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .xt-adapted .title-row {
+      text-align: left;
+      margin: 0 0 6px 4px;
+    }
+    .xt-adapted .title-mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.86rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #7c3aed;
+    }
+    .xt-adapted .frame {
+      background: #f5effd;
+      border: 1px solid #e9d5ff;
+      border-radius: 14px;
+      padding: 16px 18px 18px;
+      box-shadow: none;
+    }
+    .xt-adapted .frame-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .xt-adapted .frame-info .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.68rem;
+      color: #6b7280;
+      letter-spacing: 0.03em;
+    }
+    .xt-adapted .event {
+      background: #ffffff;
+      border: 1px solid #ebe6fd;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #1f2937;
+      box-shadow: none;
+    }
+    .xt-adapted .cols {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .xt-adapted .middle {
+      position: absolute;
+      left: calc(50% - 20px);
+      top: 0px;
+      z-index: 10;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #7c3aed;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      box-shadow: none;
+    }
+    .xt-adapted .panel {
+      border-radius: 14px;
+      border: 1px solid #e9d5ff;
+      overflow: hidden;
+      background: #ffffff;
+      box-shadow: none;
+    }
+    .xt-adapted .panel.flawed {
+      background: #f0eaf7;
+    }
+    .xt-adapted .panel-head {
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 9px 14px;
+      border-bottom: 1px solid #e9d5ff;
+    }
+    .xt-adapted .panel.flawed .panel-head {
+      background: #e9e1f5;
+      color: #581c87;
+    }
+    .xt-adapted .panel.sound .panel-head {
+      background: #ffffff;
+      color: #7c3aed;
+    }
+    .xt-adapted .panel-body {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .xt-adapted .card {
+      background: #ffffff;
+      border: 1px solid #f3e8ff;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.76rem;
+      line-height: 1.35;
+    }
+    .xt-adapted .card-label {
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+    .xt-adapted .card-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 700;
+      font-size: 0.75rem;
+    }
+    .xt-adapted .card.defect {
+      background: #fff1e5;
+      border: 1.5px solid #f6c39a;
+      color: #9a3412;
+    }
+    .xt-adapted .card.defect .card-code {
+      color: #c2410c;
+    }
+    .xt-adapted .card.pass {
+      background: #f0fdf4;
+      border: 1.5px solid #bbf7d0;
+      color: #166534;
+    }
+    .xt-adapted .card.pass .card-code {
+      color: #15803d;
+    }
+    .xt-adapted .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+    .xt-adapted .status-badge.broken {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .xt-adapted .status-badge.working {
+      background: #dcfce7;
+      color: #15803d;
+    }
+  </style>
+
+  <div class="title-row">
+    <span class="title-mono">ROOT MOUNTING &amp; HYDRATION LIFECYCLE</span>
+  </div>
+
+  <div class="frame">
+    <div class="frame-info">
+      <span class="mono">EVALUATION: DOM TAKEOVER</span>
+      <span class="mono">PACKAGE: react-dom/client</span>
+    </div>
+
+    <div class="event">
+      CONTAINER BINDING: createRoot() vs hydrateRoot()
+    </div>
+
+    <div class="cols">
+      <div class="middle">VS</div>
+
+      <div class="panel flawed">
+        <div class="panel-head">Client Mount: createRoot()</div>
+        <div class="panel-body">
+          <div class="card defect">
+            <div class="card-label">Container Pre-Mount Action</div>
+            <div class="card-code">container.innerHTML = ''</div>
+            <div>Clears all pre-existing HTML nodes in container</div>
+          </div>
+          <div class="card defect">
+            <div class="card-label">DOM Node Origin</div>
+            <div class="card-code">document.createElement()</div>
+            <div>Constructs every DOM element from scratch</div>
+          </div>
+          <div class="card defect">
+            <div class="card-label">Server Markup Preservation</div>
+            <div class="card-code">WIPED BEFORE RENDER</div>
+            <div>Triggers layout flash if server HTML existed</div>
+            <div class="status-badge broken">&#10005; CLEARS EXISTING DOM</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel sound">
+        <div class="panel-head">Server Mount: hydrateRoot()</div>
+        <div class="panel-body">
+          <div class="card pass">
+            <div class="card-label">Container Pre-Mount Action</div>
+            <div class="card-code">Preserves server HTML</div>
+            <div>Retains existing nodes painted by the browser</div>
+          </div>
+          <div class="card pass">
+            <div class="card-label">DOM Node Origin</div>
+            <div class="card-code">Adopts existing browser nodes</div>
+            <div>Attaches event listeners without reconstructing tree</div>
+          </div>
+          <div class="card pass">
+            <div class="card-label">Server Markup Preservation</div>
+            <div class="card-code">100% PRESERVED &amp; HYDRATED</div>
+            <div>Instant interactive paint with zero visual flicker</div>
+            <div class="status-badge working">&#10003; ATTACHES LISTENERS IN PLACE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 4.2: Symmetrical State Audit contrasting createRoot client rendering vs hydrateRoot server markup adoption and listener attachment.</figcaption>
+</figure>
+<p>In the audit above, the mechanical distinction between client-side mounting and server-side hydration is stark. While <code>createRoot</code> prepares a blank slate by clearing existing DOM nodes, <code>hydrateRoot</code> preserves pre-existing HTML and attaches event listeners directly to matching elements.</p>
+<p>To thoroughly comprehend this mounting foundation, we must examine the four foundational pillars of <strong><code>createRoot</code></strong>.</p>
+<h4>1. Technical Nomenclature &amp; Syntax Decoding</h4>
+<p>The function name <strong><code>createRoot</code></strong> explicitly describes its architectural role. In computer science, a tree data structure must have a single starting node called the root. <code>createRoot</code> accepts two arguments: a physical <code>domNode</code> (the host element) and an optional <code>options</code> configuration object. In React 19, options include <code>identifierPrefix</code> (used by <code>useId</code> to prevent ID collisions when multiple roots share a page) and specialized error callbacks like <code>onCaughtError</code>, <code>onUncaughtError</code>, and <code>onRecoverableError</code>.</p>
+<h4>2. Tactile Everyday Physical Analogy</h4>
+<p>Think of the browser's native DOM like an industrial cargo dock. The cargo dock is built out of heavy concrete and steel, capable of holding any standard shipping container. Think of React as an automated robotic warehousing system that operates on its own proprietary digital schedule. You cannot simply drop the robotic system directly onto the raw concrete without an interface. <code>createRoot</code> is like bolting down a heavy-duty docking adapter to a specific bay on the dock. Once the docking adapter is locked in place, the robotic crane (<code>root.render</code>) can load and unload thousands of digital packages without disturbing the rest of the harbor.</p>
+<h4>3. The "Why We Suffered Before" Contrast</h4>
+<p>Before React 18, applications were mounted using a legacy method: <code>ReactDOM.render(&lt;App /&gt;, domNode)</code>. The legacy API suffered from a fatal architectural flaw: it was completely synchronous. When you called <code>ReactDOM.render</code>, React took over the JavaScript main thread and refused to yield until the entire component tree was constructed and committed to the DOM. If your tree contained thousands of nodes, the browser froze completely. Keystrokes were dropped and animations stuttered. Furthermore, the legacy method had no way to pause work or prioritize urgent user gestures. <code>createRoot</code> replaced this legacy API by unlocking the concurrent scheduler, allowing React to break large rendering tasks into small, non-blocking time slices.</p>
+<h4>4. The Physical Runtime Engine Routine</h4>
+<p>What happens under the hood when <code>createRoot(domNode)</code> executes? React initializes a <code>FiberRootNode</code> and points its <code>containerInfo</code> property to <code>domNode</code>. It attaches event listeners to <code>domNode</code> so React can catch all user events from child elements. When you call <code>root.render(&lt;App /&gt;)</code>, React wraps your element in an update object. It places this update into the root's work queue, where the scheduler assigns it execution time.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <p><strong>The Root API Return Value</strong>: <code>createRoot</code> returns a root object with two methods: <code>render</code> and <code>unmount</code>. The <code>render</code> method returns <code>undefined</code>. Never attempt to chain methods after <code>render()</code> or await its completion as a Promise.</p>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Hidden Iceberg: The Asynchronous Mount Trap</h3>
+<p>The second failure in our crime scene occurred when Samira tried to query the DOM on the line immediately following <code>root.render(&lt;App /&gt;)</code>.</p>
+<p>Many developers assume that calling <code>render</code> works like calling a synchronous utility function. They expect that by the time line two executes, line one has already completed its job and updated the browser screen.</p>
+<p>In modern React 19, this assumption is completely false.</p>
+<p>When you call <code>root.render(&lt;App /&gt;)</code>, React does not construct DOM nodes immediately. Instead, <code>root.render</code> simply packages your root component into an update payload and deposits it onto the <strong>concurrent work loop</strong>. React then returns control of the thread back to your code immediately.</p>
+<p>Here is the naive code that crashes in production:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BrokenMount.tsx</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">const</span> root = <span class="hook">createRoot</span>(document.<span class="fn">getElementById</span>(<span class="str">'root'</span>)!);</span></div>
+<div class="row"><span class="num">2</span><span class="src">root.<span class="fn">render</span>(&lt;App /&gt;);</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">const</span> headline = document.<span class="fn">getElementById</span>(<span class="str">'live-headline'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">DOM elements not rendered yet</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">headline.classList.<span class="fn">add</span>(<span class="str">'highlight'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> throws TypeError because headline is null</span></div></div></div></div></div></div>
+<p>Why does this fail? Because JavaScript executes code sequentially on a single thread. The synchronous lines following <code>root.render</code> execute in the current call stack frame. React's work loop has not even begun to evaluate <code>&lt;App /&gt;</code> yet.</p>
+<p>The browser engine has not created the DOM elements. It has not calculated layout positions or painted pixels on the screen. Searching for <code>#live-headline</code> finds nothing because the container is still completely empty.</p>
+<figure class="visual-aid">
+  <img src="images/04/03.jpeg" alt="Asynchronous Work Loop Timeline" class="raster-diagram">
+</figure>
+<aside class="callout callout-diagram">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><rect x="9" y="2" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="16" y="16" width="6" height="6" rx="1"></rect><path d="M5 16v-3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"></path><path d="M12 11V8"></path></svg>Diagram 4.2</p>
+  <p>On the <strong>Synchronous Script Thread</strong>, executing a DOM query immediately after calling render fails because the <strong>Concurrent Work Loop</strong> evaluates and commits DOM nodes asynchronously.</p>
+</aside>
+<p>If your application needs to interact with real DOM elements after they appear on screen, you must never write queries in your entry file. Instead, you must let React manage the lifecycle. Place your DOM operations inside an effect hook (<code>useEffect</code> or <code>useLayoutEffect</code>) inside the component that actually renders those nodes:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LiveHeadline.tsx</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useEffect</span>, <span class="hook">useRef</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">LiveHeadline</span>({ title }) {</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">const</span> headlineRef = <span class="hook">useRef</span>&lt;HTMLHeadingElement&gt;(<span class="kw">null</span>);</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">7</span><span class="src">    <span class="kw">if</span> (headlineRef.current) {</span></div>
+<div class="row"><span class="num">8</span><span class="src">      headlineRef.current.classList.<span class="fn">add</span>(<span class="str">'highlight'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 65px; max-width: calc(100% - 133px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> runs safely after commit phase</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">    }</span></div>
+<div class="row"><span class="num">10</span><span class="src">  }, []);</span></div>
+<div class="row"><span class="num">11</span><span class="src"></span></div>
+<div class="row"><span class="num">12</span><span class="src">  <span class="kw">return</span> &lt;h1 id=<span class="str">"live-headline"</span> ref={headlineRef}&gt;{title}&lt;/h1&gt;;</span></div>
+<div class="row"><span class="num">13</span><span class="src">}</span></div></div></div></div>
+<p>By using <code>useEffect</code>, you guarantee that your logic runs during the <strong>commit phase</strong>, the exact moment after React has created the native DOM elements and inserted them into the browser document.</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <p><strong>Never Race the Scheduler</strong>: Code written immediately after <code>root.render()</code> runs before React mounts your components. To touch real DOM elements, use a <code>ref</code> inside a <code>useEffect</code> hook, which runs only after the commit phase has placed elements in the document.</p>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Client Mounting versus Server Hydration: Why createRoot Wipes HTML</h3>
+<p>The first failure on <em>The National Times</em> news desk was the vanishing ticker. Why did <code>createRoot</code> wipe out the server-rendered fallback HTML?</p>
+<p>When you call <code>createRoot</code>, you explicitly declare: <em>"This container belongs entirely to a client-side Single-Page Application."</em></p>
+<p>Because client-side applications assume that all markup originates from client JavaScript, React clears whatever text or markup was sitting inside <code>container</code> prior to mounting. If you had static HTML or loading spinners inside <code>&lt;div id="root"&gt;</code>, React removes them so they do not conflict with the incoming virtual tree.</p>
+<p>The official React documentation explicitly documents this caveat:</p>
+<blockquote>The first time you call <code>root.render</code>, React will clear all the existing HTML content inside the React root before rendering the React component into it. If your root's DOM node contains HTML generated by React on the server or during the build, use <code>hydrateRoot()</code> instead, which attaches the event handlers to the existing HTML.</blockquote>
+<p><em>React Official Documentation (createRoot), <code>documentation official/React 19 Sept 2026/react.dev/src/content/reference/react-dom/client/createRoot.md</code></em></p>
+<p>If your application uses <strong>Server-Side Rendering (SSR)</strong> or <strong>Static Site Generation (SSG)</strong>, your server has already built complete, accessible HTML. The user is already reading the headline.</p>
+<p>Wiping that HTML and rebuilding it from scratch wastes CPU cycles and creates an unappealing white flash.</p>
+<p>In server-rendered applications, you must use <strong><code>hydrateRoot</code></strong> instead of <code>createRoot</code>.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">main.tsx</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">hydrateRoot</span> } <span class="kw">from</span> <span class="str">'react-dom/client'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> container = document.<span class="fn">getElementById</span>(<span class="str">'root'</span>)!;</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="hook">hydrateRoot</span>(container, &lt;App /&gt;); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> preserves existing server HTML and binds listeners</span></div></div></div></div></div></div>
+<p>When you call <code>hydrateRoot</code>, React adopts the existing browser DOM elements in place. It steps through each node and checks that the server markup matches your component output. Then it attaches interactive click and keyboard listeners directly to the existing elements. The user experiences zero layout shift, zero visual flicker, and instant interactivity.</p>
+<figure class="visual-aid">
+  <img src="images/04/02.jpeg" alt="Mounting Strategy Comparison" class="raster-diagram">
+</figure>
+<aside class="callout callout-diagram">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><rect x="9" y="2" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="16" y="16" width="6" height="6" rx="1"></rect><path d="M5 16v-3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"></path><path d="M12 11V8"></path></svg>Diagram 4.3</p>
+  <p>Comparing mounting strategies: <strong>Client Mount</strong> with <strong>createRoot</strong> clears pre-existing container markup to rebuild from scratch, while <strong>Server Hydration</strong> with <strong>hydrateRoot</strong> preserves existing DOM nodes and attaches event listeners in place.</p>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Senior Interview Masterclass: Multi-Root Architecture and Teardown</h3>
+<p>In technical interviews for senior and lead roles, interviewers often push beyond the standard single-page application setup:</p>
+<blockquote><em>"Can you have more than one <code>createRoot</code> call on a single webpage? When would you use multiple roots, and how do you clean them up?"</em></blockquote>
+<p>A junior developer often assumes that every webpage has exactly one root, because that is what starter templates provide.</p>
+<p>A senior engineer understands that React is a library, not an all-or-nothing framework.</p>
+<p>You can create as many independent roots on a single page as your architecture requires. This pattern is known as <strong>Multi-Root Architecture</strong> or "sprinkling React" into a larger system.</p>
+<p>Consider a large multi-page publication like <em>The National Times</em>. The core article pages may be generated by a traditional server framework like Ruby on Rails, Django, or WordPress. The vast majority of the page is plain, static HTML.</p>
+<p>However, the page might feature three isolated interactive widgets:</p>
+<ol>  <li>A live stock ticker in the top navigation bar: <code>&lt;div id="stock-ticker-root"&gt;&lt;/div&gt;</code>.</li>
+  <li>An interactive financial calculator embedded in the middle of an editorial piece: <code>&lt;div id="calculator-root"&gt;&lt;/div&gt;</code>.</li>
+  <li>A real-time weather widget in the sidebar: <code>&lt;div id="weather-root"&gt;&lt;/div&gt;</code>.</li></ol>
+<p>Instead of forcing the entire website into a monolithic Single-Page Application, you call <code>createRoot</code> three times:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">widgets.tsx</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">createRoot</span> } <span class="kw">from</span> <span class="str">'react-dom/client'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> StockTicker <span class="kw">from</span> <span class="str">'./StockTicker'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">import</span> Calculator <span class="kw">from</span> <span class="str">'./Calculator'</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">import</span> WeatherWidget <span class="kw">from</span> <span class="str">'./WeatherWidget'</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="kw">const</span> tickerEl = document.<span class="fn">getElementById</span>(<span class="str">'stock-ticker-root'</span>);</span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="kw">if</span> (tickerEl) <span class="hook">createRoot</span>(tickerEl).<span class="fn">render</span>(&lt;StockTicker /&gt;);</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="kw">const</span> calcEl = document.<span class="fn">getElementById</span>(<span class="str">'calculator-root'</span>);</span></div>
+<div class="row"><span class="num">10</span><span class="src"><span class="kw">if</span> (calcEl) <span class="hook">createRoot</span>(calcEl).<span class="fn">render</span>(&lt;Calculator /&gt;);</span></div>
+<div class="row"><span class="num">11</span><span class="src"></span></div>
+<div class="row"><span class="num">12</span><span class="src"><span class="kw">const</span> weatherEl = document.<span class="fn">getElementById</span>(<span class="str">'weather-root'</span>);</span></div>
+<div class="row"><span class="num">13</span><span class="src"><span class="kw">if</span> (weatherEl) <span class="hook">createRoot</span>(weatherEl).<span class="fn">render</span>(&lt;WeatherWidget /&gt;);</span></div></div></div></div>
+<p>Each root operates as its own independent React application with its own Fiber tree, its own state boundaries, and its own concurrent scheduler.</p>
+<figure class="visual-aid">
+  <img src="images/04/04.jpeg" alt="Multi-Root Architecture" class="raster-diagram">
+</figure>
+<aside class="callout callout-diagram">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><rect x="9" y="2" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="16" y="16" width="6" height="6" rx="1"></rect><path d="M5 16v-3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"></path><path d="M12 11V8"></path></svg>Diagram 4.4</p>
+  <p>In a <strong>Multi-Root Architecture</strong>, a single host webpage connects to multiple independent root containers, each running its own isolated <strong>Independent Fiber Tree</strong> and component lifecycle.</p>
+</aside>
+<p>However, senior engineers must manage the critical danger of multi-root setups: <strong>memory leaks</strong>.</p>
+<p>Suppose your page opens and closes pop-up windows, or navigates between tabs without a full refresh. If an outer script simply deletes the container from the DOM, React's internal Fiber trees and event listeners remain stuck in memory.</p>
+<p>To prevent memory leaks, always capture the root instance and call <strong><code>root.unmount()</code></strong> before destroying the host container:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">modal-manager.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">createRoot</span>, Root } <span class="kw">from</span> <span class="str">'react-dom/client'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> ModalWidget <span class="kw">from</span> <span class="str">'./ModalWidget'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">let</span> modalRoot: Root | <span class="kw">null</span> = <span class="kw">null</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">openModal</span>(container: HTMLElement) {</span></div>
+<div class="row"><span class="num">7</span><span class="src">  modalRoot = <span class="hook">createRoot</span>(container);</span></div>
+<div class="row"><span class="num">8</span><span class="src">  modalRoot.<span class="fn">render</span>(&lt;ModalWidget /&gt;);</span></div>
+<div class="row"><span class="num">9</span><span class="src">}</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">closeModal</span>() {</span></div>
+<div class="row"><span class="num">12</span><span class="src">  <span class="kw">if</span> (modalRoot) {</span></div>
+<div class="row"><span class="num">13</span><span class="src">    modalRoot.<span class="fn">unmount</span>(); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> destroys Fiber tree, detaches listeners, and frees memory</span></div></div></div>
+<div class="row"><span class="num">14</span><span class="src">    modalRoot = <span class="kw">null</span>;</span></div>
+<div class="row"><span class="num">15</span><span class="src">  }</span></div>
+<div class="row"><span class="num">16</span><span class="src">}</span></div></div></div></div>
+<p>Calling <code>root.unmount()</code> tells React to run all cleanup functions in <code>useEffect</code> hooks. It removes the entire component tree and detaches all event listeners from the DOM node.</p>
+<figure class="visual-aid">
+  <img src="images/04/05.jpeg" alt="Root Unmount and Memory Teardown" class="raster-diagram">
+</figure>
+<aside class="callout callout-diagram">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><rect x="9" y="2" width="6" height="6" rx="1"></rect><rect x="2" y="16" width="6" height="6" rx="1"></rect><rect x="16" y="16" width="6" height="6" rx="1"></rect><path d="M5 16v-3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"></path><path d="M12 11V8"></path></svg>Diagram 4.5</p>
+  <p>The teardown pipeline begins when <strong>root.unmount()</strong> is called, executing <strong>Run Effect Cleanups</strong>, dismantling the Fiber tree, and detaching DOM event listeners until memory is released.</p>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <p><strong>To impress the interviewer:</strong> Highlight how <strong><code>createRoot</code> empowers micro-frontend and multi-root architectures</strong>. Say: <em>"A page is not limited to one root. In multi-page apps or micro-frontends, we can instantiate multiple roots on distinct DOM nodes with unique <code>identifierPrefix</code> values to avoid <code>useId</code> collisions. Crucially, when an outer framework destroys a widget's DOM node, we must call <code>root.unmount()</code> to invoke effect cleanups and avoid detached DOM memory leaks."</em></p>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol>  <li><strong>Enterprise Portals</strong>: Embedding React-powered widgets into legacy server-rendered enterprise dashboards.</li>
+  <li><strong>E-Commerce Checkouts</strong>: Mounting an interactive payment and cart drawer into a static product catalog.</li>
+  <li><strong>Newsroom Graphics</strong>: Injecting dynamic weather maps, survey counters, and interactive charts into static newspaper articles.</li>
+  <li><strong>Micro-Frontend Layouts</strong>: Managing independent frontend applications owned by different teams on a unified page.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Glossary</h3>
+<ul>
+  <li><strong>React Root</strong>: The top-level management container that connects a browser DOM element to an in-memory React Fiber tree.</li>
+  <li><strong><code>createRoot</code></strong>: The client-side entry point in <code>react-dom/client</code> that initializes a root and enables concurrent rendering.</li>
+  <li><strong><code>hydrateRoot</code></strong>: The server-side companion entry point in <code>react-dom/client</code> that preserves pre-rendered server HTML and attaches event listeners.</li>
+  <li><strong>FiberRootNode</strong>: The internal engine data structure holding the scheduler queue, priority levels, and DOM container reference.</li>
+  <li><strong><code>root.unmount()</code></strong>: The method that dismantles a mounted React application, runs effect cleanups, and frees memory.</li>
+  <li><strong><code>identifierPrefix</code></strong>: A configuration option in <code>createRoot</code> that prepends a unique string to all IDs generated by <code>useId</code>.</li>
+</ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>The React Root Lifecycle</strong></p>
+<p>The React Root bridges platform-agnostic React components to the physical browser window, managing mounting, concurrent scheduling, and clean teardown.</p>
+<p>❒ The Mounting Protocol</p>
+<ol>  <li>Mounting connects host DOM containers to the React reconciler:</li></ol>
+<p><br>&nbsp;&nbsp;&nbsp;&nbsp;(a) <code>createRoot(domNode)</code> takes ownership of the host container element. <br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Client mounting clears existing HTML inside the container to prevent structural drift. <br>&nbsp;&nbsp;&nbsp;&nbsp;(c) <code>root.render(&lt;App /&gt;)</code> enqueues the component tree onto the concurrent work loop and returns <code>undefined</code>.</p>
+<ol>  <li>Principles to remember:</li></ol>
+<p>➔ NEVER expect <code>root.render()</code> to run synchronously or return a DOM element. ➔ ALWAYS query DOM nodes inside <code>useEffect</code> with a <code>ref</code> rather than writing synchronous DOM queries in your entry file.</p>
+<p>❒ The Hydration and Teardown Contracts</p>
+<ol>  <li>Choose the mounting method that matches your HTML source:</li></ol>
+<p><br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Use <code>createRoot</code> for pure client-side single-page applications and embedded widgets. <br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Use <code>hydrateRoot</code> for server-rendered HTML to prevent white flashes and preserve existing markup. <br>&nbsp;&nbsp;&nbsp;&nbsp;(c) Call <code>root.unmount()</code> whenever a dynamic container is removed from the page to prevent memory leaks.</p>
+<ol>  <li>Operational rule:</li></ol>
+<p>➔ IF the page already contains server-rendered HTML inside the container, THEN use <code>hydrateRoot</code> instead of <code>createRoot</code>. ➔ IF an embedded React widget container is discarded by an outer system, THEN call <code>root.unmount()</code> before removing the container.</p>
+<p><strong>DO NOT DO THIS:</strong> Call createRoot on server-rendered HTML or write synchronous DOM queries after render</p>
+<div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.tsx</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">const</span> container = document.<span class="fn">getElementById</span>(<span class="str">'root'</span>)!;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">const</span> root = <span class="hook">createRoot</span>(container);</span></div>
+<div class="row"><span class="num">3</span><span class="src">root.<span class="fn">render</span>(&lt;App /&gt;);</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> title = container.<span class="fn">querySelector</span>(<span class="str">'h1'</span>)!.textContent;</span></div></div></div></div>
+<p><strong>DO THIS:</strong> Configure createRoot cleanly and interact with DOM nodes through component lifecycle hooks</p>
+<div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.tsx</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">createRoot</span> } <span class="kw">from</span> <span class="str">'react-dom/client'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> container = document.<span class="fn">getElementById</span>(<span class="str">'root'</span>);</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">if</span> (container) {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="kw">const</span> root = <span class="hook">createRoot</span>(container);</span></div>
+<div class="row"><span class="num">7</span><span class="src">  root.<span class="fn">render</span>(&lt;App /&gt;);</span></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<table><thead><tr><th></th><th><strong>Client Mount: <code>createRoot</code></strong><br>(react-dom/client)</th><th><strong>Server Hydration: <code>hydrateRoot</code></strong><br>(react-dom/client)</th></tr></thead><tbody><tr><td><strong>Container Pre-Action</strong></td><td>Clears all pre-existing inner HTML inside the container element</td><td>Preserves existing inner HTML painted by the server engine</td></tr><tr><td><strong>Execution Model</strong></td><td>Builds DOM elements from scratch via client JavaScript work loop</td><td>Matches virtual elements against existing DOM nodes and binds handlers</td></tr><tr><td><strong>Layout Shift Risk</strong></td><td>Triggers visual flash if server-rendered content was already visible</td><td>Zero visual flash; content remains stable while becoming interactive</td></tr><tr><td><strong>Primary Use Case</strong></td><td>Pure client SPAs, private dashboards, and standalone canvas tools</td><td>Public content sites, news publications, and e-commerce stores</td></tr><tr><td><strong>Lifecycle Teardown</strong></td><td>Invoked via <code>root.unmount()</code> to destroy tree and free memory</td><td>Invoked via <code>root.unmount()</code> to detach listeners and release resources</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>
