@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CSS Interview Lectures — canvas-lab demo</title>
+<link rel="stylesheet" href="../lecture.css">
+</head>
+<body>
+<main>
+<article class="lecture"><h1>Lecture 8: The Box That Forgot Its Children</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How does the browser size a box, why do two margins that touch become one, and why does a parent full of floats end up with zero height?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Mira, the front-page editor of The National Times, drops three photo thumbnails into the Sunday teaser box.</li>
+<li>She floats them left so the headline text can sit beside them, exactly as the old print layout did.</li>
+<li>The lavender background of the teaser box vanishes; the thumbnails hang in white space as if the box had never existed.</li>
+<li>Where did the box go, and why does the browser insist it is still there?</li>
+<li>Five minutes before the front page goes live, the two story columns beneath the teaser also overflow their row by 64 pixels.</li>
+<li>Every fix she tries moves the problem somewhere else: a wider box, a shorter margin, a lost gap between headline and standfirst.</li>
+<li>Today you learn the three rules that explain all of it: how a box is measured, how touching margins merge, and how a parent decides which children count.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Box Model: One Declaration, Two Widths</h3>
+<p>Every element on the front page is a rectangle made of four nested bands: content, padding, border, and margin. The question the browser must answer is which of those bands the <code>width</code> property refers to, and the default answer, <code>content-box</code>, is the one that surprises everyone. The same five-line rule produces two different rendered widths depending on a single <code>box-sizing</code> value:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">story-column.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.story-column </span>{ <span class="prop">width</span>: <span class="nl">120px</span>; <span class="prop">height</span>: <span class="nl">56px</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text">The number Mira typed</span>
+      </div></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="sel">.story-column </span>{ <span class="prop">padding</span>: <span class="nl">16px</span>; <span class="prop">border</span>: <span class="nl">2px</span> <span class="kw">solid</span> <i class="swatch" style="background:#cbd5e1"></i><span class="clr">#cbd5e1</span>; <span class="prop">margin</span>: <span class="nl">20px</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text">Each band adds to the outside under content-box</span>
+      </div></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="sel">.story-column </span>{ <span class="prop">box-sizing</span>: <span class="kw">border-box</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> width now means the border edge, padding grows inward</span>
+      </div></div></div></div></div>
+<style>.css-figure { margin: 1.9rem 0 2.1rem; font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; break-inside: avoid; page-break-inside: avoid; }
+.css-figure.w-2-3 .cf-stage { max-width: 660px; margin: 0 auto; }
+.css-figure.w-full .cf-stage { max-width: 100%; }
+
+/* the master canvas: flat, rounded, 1px same-hue edge, generous padding */
+.cf-stage { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 26px 24px 22px; display: flex; justify-content: center; align-items: flex-start; gap: 20px; }
+.cf-stage.cf-compare { padding: 26px 18px 22px; }
+.cf-panel { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 0 1 auto; }
+.cf-compare .cf-panel { flex: 1 1 0; min-width: 0; }
+
+/* verdict pills: flat, small, no shadow; neutral pill for plain contrasts */
+.cf-pill { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 99px; border: 1px solid #CBD5E1; background: #fff; color: #64748B; white-space: nowrap; }
+.cf-pill.is-wrong { color: #BE123C; background: #FFE4E6; border-color: #FECDD3; }
+.cf-pill.is-right { color: #15803D; background: #DCFCE7; border-color: #86EFAC; }
+
+/* the scene: a fixed pixel canvas with absolutely placed boxes and one SVG overlay */
+.cf-scene { position: relative; flex: none; }
+.cf-scene-flow { display: flex; flex-direction: column; gap: 10px; }
+.cf-box { position: absolute; box-sizing: border-box; border: 1.5px solid; border-radius: 4px; }
+.cf-overlay { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.cf-overlay text { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 500; stroke: none; }
+.cf-overlay .cf-dim line { stroke-width: 1; }
+.cf-overlay .cf-force line { stroke-width: 1.5; }
+
+.cf-band-label { position: absolute; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.01em; white-space: nowrap; line-height: 1; }
+.cf-band-label.cf-center { display: flex; align-items: center; justify-content: center; font-size: 11px; }
+.cf-tag { position: absolute; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 700; white-space: nowrap; line-height: 1; }
+
+/* float mode: a live lavender parent with live floated children */
+.cf-parent { position: absolute; box-sizing: border-box; background: #F3E8FF; border: 2px solid #D8B4FE; border-radius: 6px; }
+.cf-parent.cf-contain::after { content: ""; display: block; clear: both; }
+.cf-float-item { box-sizing: border-box; background: #FFD6A5; border: 1.5px solid #F0A35E; border-radius: 4px; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #9A5B1E; display: flex; align-items: center; justify-content: center; }
+
+/* float-text mode: real text wrapping a real float */
+.cf-article { background: #fff; border: 1px solid #CBD5E1; border-radius: 6px; padding: 12px 14px; box-sizing: border-box; }
+.cf-article::after { content: ""; display: block; clear: both; }
+.cf-margin-band { background: #FFE8D1; border: 1px dashed #FDBA74; border-radius: 3px; box-sizing: border-box; }
+.cf-img { box-sizing: border-box; background: #FFD6A5; border: 1.5px solid #F0A35E; border-radius: 3px; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #9A5B1E; display: flex; align-items: center; justify-content: center; }
+.cf-text { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 11.5px; line-height: 1.45; color: #334155; text-align: left; }
+.cf-byline { margin: 8px 0 0; font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #64748B; }
+.cf-byline.is-cleared { border-top: 1.5px dashed #A855F7; padding-top: 6px; }
+.cf-legend { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #64748B; display: flex; align-items: center; gap: 6px; }
+.cf-legend i { display: inline-block; width: 12px; height: 9px; border: 1px dashed; border-radius: 2px; }
+.cf-legend .cf-legend-line { width: 14px; height: 0; border: none; border-top: 1.5px dashed #A855F7; margin-left: 8px; }
+
+/* caption: centered, mono, muted, numbered */
+.css-figure figcaption { margin-top: 10px; text-align: center; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 12px; line-height: 1.5; color: #64748B; }
+
+@media print {
+  .css-figure { break-inside: avoid; page-break-inside: avoid; }
+}</style>
+<figure class="css-figure w-2-3 mode-box is-compare">
+<div class="cf-stage cf-compare">
+<div class="cf-panel is-wrong"><span class="cf-pill is-wrong">WRONG · content-box</span><div class="cf-scene" style="width:224px;height:190px"><div class="cf-box" style="left:14px;top:14px;width:196px;height:132px;background:#FFE8D1;border-color:#FDBA74;border-style:dashed"></div><span class="cf-band-label" style="left:20px;top:17px;color:#C2410C;">margin 20</span><div class="cf-box" style="left:34px;top:34px;width:156px;height:92px;background:#F1E3B4;border-color:#E3C56D;"></div><div class="cf-box" style="left:36px;top:36px;width:152px;height:88px;background:#D9F2E3;border-color:#86EFAC;"></div><span class="cf-band-label" style="left:42px;top:39px;color:#15803D;">padding 16</span><span class="cf-band-label" style="right:42px;top:112px;color:#A16207">border 2</span><div class="cf-box" style="left:52px;top:52px;width:120px;height:56px;background:#D6E6FB;border-color:#93C5FD;"></div><span class="cf-band-label cf-center" style="left:52px;top:52px;width:120px;height:56px;color:#1D4ED8">120 × 56</span><span class="cf-tag" style="left:14px;top:2px;color:#64748B;background:transparent">.story-column</span><svg class="cf-overlay" width="224" height="190" viewBox="0 0 224 190" xmlns="http://www.w3.org/2000/svg"><g class="cf-dim" stroke="#6366F1" fill="#6366F1"><line x1="34" y1="162" x2="190" y2="162"/><line x1="34" y1="158" x2="34" y2="166"/><line x1="190" y1="158" x2="190" y2="166"/><text x="112" y="176" text-anchor="middle">rendered 156px</text></g></svg></div></div>
+<div class="cf-panel is-right"><span class="cf-pill is-right">RIGHT · border-box</span><div class="cf-scene" style="width:188px;height:154px"><div class="cf-box" style="left:14px;top:14px;width:160px;height:96px;background:#FFE8D1;border-color:#FDBA74;border-style:dashed"></div><span class="cf-band-label" style="left:20px;top:17px;color:#C2410C;">margin 20</span><div class="cf-box" style="left:34px;top:34px;width:120px;height:56px;background:#F1E3B4;border-color:#E3C56D;"></div><div class="cf-box" style="left:36px;top:36px;width:116px;height:52px;background:#D9F2E3;border-color:#86EFAC;"></div><span class="cf-band-label" style="left:42px;top:39px;color:#15803D;">padding 16</span><span class="cf-band-label" style="right:42px;top:76px;color:#A16207">border 2</span><div class="cf-box" style="left:52px;top:52px;width:84px;height:20px;background:#D6E6FB;border-color:#93C5FD;"></div><span class="cf-band-label cf-center" style="left:52px;top:52px;width:84px;height:20px;color:#1D4ED8">84 × 20</span><span class="cf-tag" style="left:14px;top:2px;color:#64748B;background:transparent">.story-column</span><svg class="cf-overlay" width="188" height="154" viewBox="0 0 188 154" xmlns="http://www.w3.org/2000/svg"><g class="cf-dim" stroke="#6366F1" fill="#6366F1"><line x1="34" y1="126" x2="154" y2="126"/><line x1="34" y1="122" x2="34" y2="130"/><line x1="154" y1="122" x2="154" y2="130"/><text x="94" y="140" text-anchor="middle">width 120px</text></g></svg></div></div>
+</div>
+<figcaption>Fig 8.1: One declaration, two widths. Under content-box the padding and border are added outside the 120px; under border-box they are carved out of it.</figcaption>
+</figure>
+<p>Read the two measurement lines under the figures. On the left the browser reports 156 pixels for a box declared at 120, because it added 32 pixels of padding and 4 pixels of border outside the content. On the right the border edge is exactly 120 and the content shrank to 84 to make room. Two 50 percent columns with 16 pixels of padding overflow their row under <code>content-box</code> for precisely this reason: each column is 50 percent plus 36 pixels, and the second one falls onto the next line. The margin band sits outside both models and is never part of the width; that is why it is drawn with a dashed edge, the browser paints nothing there.</p>
+</div>
+<div class="keep-together">
+<h3>Margins That Touch: Collapse in Normal Flow</h3>
+<p>Mira sets 24 pixels below the headline and 16 pixels above the standfirst and expects a 40 pixel gap. She gets 24. In normal block flow, two vertical margins that meet do not add; the larger one wins and the smaller one disappears inside it:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">headline-gap.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">h2.headline </span>{ <span class="prop">margin-bottom</span>: <span class="nl">24px</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text">The larger of the two</span>
+      </div></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="sel">p.dek </span>{ <span class="prop">margin-top</span>: <span class="nl">16px</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text">Swallowed inside the 24 in normal flow</span>
+      </div></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="sel">.story </span>{ <span class="prop">display</span>: <span class="kw">flex</span>; <span class="prop">flex-direction</span>: <span class="kw">column</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text">Inside a flex container the margins no longer collapse</span>
+      </div></div></div></div></div>
+<style>.css-figure { margin: 1.9rem 0 2.1rem; font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; break-inside: avoid; page-break-inside: avoid; }
+.css-figure.w-2-3 .cf-stage { max-width: 660px; margin: 0 auto; }
+.css-figure.w-full .cf-stage { max-width: 100%; }
+
+/* the master canvas: flat, rounded, 1px same-hue edge, generous padding */
+.cf-stage { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 26px 24px 22px; display: flex; justify-content: center; align-items: flex-start; gap: 20px; }
+.cf-stage.cf-compare { padding: 26px 18px 22px; }
+.cf-panel { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 0 1 auto; }
+.cf-compare .cf-panel { flex: 1 1 0; min-width: 0; }
+
+/* verdict pills: flat, small, no shadow; neutral pill for plain contrasts */
+.cf-pill { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 99px; border: 1px solid #CBD5E1; background: #fff; color: #64748B; white-space: nowrap; }
+.cf-pill.is-wrong { color: #BE123C; background: #FFE4E6; border-color: #FECDD3; }
+.cf-pill.is-right { color: #15803D; background: #DCFCE7; border-color: #86EFAC; }
+
+/* the scene: a fixed pixel canvas with absolutely placed boxes and one SVG overlay */
+.cf-scene { position: relative; flex: none; }
+.cf-scene-flow { display: flex; flex-direction: column; gap: 10px; }
+.cf-box { position: absolute; box-sizing: border-box; border: 1.5px solid; border-radius: 4px; }
+.cf-overlay { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.cf-overlay text { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 500; stroke: none; }
+.cf-overlay .cf-dim line { stroke-width: 1; }
+.cf-overlay .cf-force line { stroke-width: 1.5; }
+
+.cf-band-label { position: absolute; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.01em; white-space: nowrap; line-height: 1; }
+.cf-band-label.cf-center { display: flex; align-items: center; justify-content: center; font-size: 11px; }
+.cf-tag { position: absolute; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 700; white-space: nowrap; line-height: 1; }
+
+/* float mode: a live lavender parent with live floated children */
+.cf-parent { position: absolute; box-sizing: border-box; background: #F3E8FF; border: 2px solid #D8B4FE; border-radius: 6px; }
+.cf-parent.cf-contain::after { content: ""; display: block; clear: both; }
+.cf-float-item { box-sizing: border-box; background: #FFD6A5; border: 1.5px solid #F0A35E; border-radius: 4px; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #9A5B1E; display: flex; align-items: center; justify-content: center; }
+
+/* float-text mode: real text wrapping a real float */
+.cf-article { background: #fff; border: 1px solid #CBD5E1; border-radius: 6px; padding: 12px 14px; box-sizing: border-box; }
+.cf-article::after { content: ""; display: block; clear: both; }
+.cf-margin-band { background: #FFE8D1; border: 1px dashed #FDBA74; border-radius: 3px; box-sizing: border-box; }
+.cf-img { box-sizing: border-box; background: #FFD6A5; border: 1.5px solid #F0A35E; border-radius: 3px; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #9A5B1E; display: flex; align-items: center; justify-content: center; }
+.cf-text { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 11.5px; line-height: 1.45; color: #334155; text-align: left; }
+.cf-byline { margin: 8px 0 0; font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #64748B; }
+.cf-byline.is-cleared { border-top: 1.5px dashed #A855F7; padding-top: 6px; }
+.cf-legend { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #64748B; display: flex; align-items: center; gap: 6px; }
+.cf-legend i { display: inline-block; width: 12px; height: 9px; border: 1px dashed; border-radius: 2px; }
+.cf-legend .cf-legend-line { width: 14px; height: 0; border: none; border-top: 1.5px dashed #A855F7; margin-left: 8px; }
+
+/* caption: centered, mono, muted, numbered */
+.css-figure figcaption { margin-top: 10px; text-align: center; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 12px; line-height: 1.5; color: #64748B; }
+
+@media print {
+  .css-figure { break-inside: avoid; page-break-inside: avoid; }
+}</style>
+<figure class="css-figure w-2-3 mode-margin is-compare">
+<div class="cf-stage cf-compare">
+<div class="cf-panel"><span class="cf-pill">block flow</span><div class="cf-scene" style="width:282px;height:132px"><div class="cf-box" style="left:14px;top:14px;width:188px;height:40px;background:#FFD6A5;border-color:#F0A35E;"></div><span class="cf-band-label cf-center" style="left:14px;top:14px;width:188px;height:40px;color:#9A5B1E">h2.headline</span><div class="cf-box" style="left:14px;top:54px;width:188px;height:24px;background:#FFE8D1;border-color:#FDBA74;border-style:dashed"></div><div class="cf-box" style="left:24px;top:62px;width:168px;height:16px;background:#FFE8D1;border-color:#FDBA74;border-style:dashed;background:rgba(255,232,209,0.85)"></div><span class="cf-band-label" style="left:20px;top:56px;color:#C2410C;background:#FFE8D1;padding:1px 3px;margin:-1px -3px;border-radius:2px;">margin-bottom 24</span><span class="cf-band-label" style="right:96px;top:66px;color:#C2410C;background:#FFE8D1;padding:1px 3px;margin:-1px -3px;border-radius:2px">margin-top 16</span><div class="cf-box" style="left:14px;top:78px;width:188px;height:40px;background:#FFD6A5;border-color:#F0A35E;"></div><span class="cf-band-label cf-center" style="left:14px;top:78px;width:188px;height:40px;color:#9A5B1E">p.dek</span><svg class="cf-overlay" width="282" height="132" viewBox="0 0 282 132" xmlns="http://www.w3.org/2000/svg"><g class="cf-dim" stroke="#6366F1" fill="#6366F1"><line x1="224" y1="54" x2="224" y2="78"/><line x1="220" y1="54" x2="228" y2="54"/><line x1="220" y1="78" x2="228" y2="78"/><text x="232" y="70" text-anchor="start">24px</text></g></svg></div></div>
+<div class="cf-panel"><span class="cf-pill">flex column</span><div class="cf-scene" style="width:282px;height:148px"><div class="cf-box" style="left:14px;top:14px;width:188px;height:40px;background:#FFD6A5;border-color:#F0A35E;"></div><span class="cf-band-label cf-center" style="left:14px;top:14px;width:188px;height:40px;color:#9A5B1E">h2.headline</span><div class="cf-box" style="left:14px;top:54px;width:188px;height:24px;background:#FFE8D1;border-color:#FDBA74;border-style:dashed"></div><div class="cf-box" style="left:14px;top:78px;width:188px;height:16px;background:#FFE8D1;border-color:#FDBA74;border-style:dashed;background:rgba(255,232,209,0.85)"></div><span class="cf-band-label" style="left:20px;top:56px;color:#C2410C;background:#FFE8D1;padding:1px 3px;margin:-1px -3px;border-radius:2px;">margin-bottom 24</span><span class="cf-band-label" style="left:20px;top:80px;color:#C2410C;background:#FFE8D1;padding:1px 3px;margin:-1px -3px;border-radius:2px;">margin-top 16</span><div class="cf-box" style="left:14px;top:94px;width:188px;height:40px;background:#FFD6A5;border-color:#F0A35E;"></div><span class="cf-band-label cf-center" style="left:14px;top:94px;width:188px;height:40px;color:#9A5B1E">p.dek</span><svg class="cf-overlay" width="282" height="148" viewBox="0 0 282 148" xmlns="http://www.w3.org/2000/svg"><g class="cf-dim" stroke="#6366F1" fill="#6366F1"><line x1="224" y1="54" x2="224" y2="94"/><line x1="220" y1="54" x2="228" y2="54"/><line x1="220" y1="94" x2="228" y2="94"/><text x="232" y="78" text-anchor="start">40px</text></g></svg></div></div>
+</div>
+<figcaption>Fig 8.2: The same two margins in normal flow and inside a flex column. In flow the smaller margin is drawn inside the larger one and the gap is 24; in the flex column both survive and the gap is 40.</figcaption>
+</figure>
+<p>The left figure draws the 16 pixel band inside the 24 pixel band, because that is where the browser puts it: the two margins occupy the same space and the gap measures 24. The right figure is the same markup inside a flex column, and now the bands stack and the gap measures 40. MDN states the rule in one sentence:</p>
+<blockquote>The top and bottom margins of blocks are sometimes combined (collapsed) into a single margin whose size is the largest of the individual margins (or just one of them, if they are equal), a behavior known as margin collapsing. Note that the margins of floating and absolutely positioned elements never collapse.</blockquote>
+<p><em>MDN Web Docs, Mastering margin collapsing, resources/web-performance/mdn/files/en-us/web/css/guides/box_model/margin_collapsing/index.md</em></p>
+<p>Collapse happens only in the vertical direction, only in normal flow, and never inside a flex or grid container. When the gap you measure is smaller than the sum you wrote, collapse is the first suspect.</p>
+</div>
+<div class="keep-together">
+<h3>Floating Boxes: The Parent That Forgot Its Children</h3>
+<p>A floated element is pulled to one side of its container and taken out of the normal flow. Its parent stops counting it when computing height. Float every child of the teaser box and the box has nothing left to measure, so its height falls to the padding alone and the lavender background shrinks to a stripe:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">teaser.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.teaser img </span>{ <span class="prop">float</span>: <span class="kw">left</span>; <span class="prop">margin-right</span>: <span class="nl">8px</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-wrong">WRONG:</b> every child leaves the flow, the parent measures nothing</span>
+      </div></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="sel">.teaser </span>{ <span class="prop">display</span>: <span class="kw">flow-root</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> a new block formatting context contains the floats again</span>
+      </div></div></div></div></div>
+<style>.css-figure { margin: 1.9rem 0 2.1rem; font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; break-inside: avoid; page-break-inside: avoid; }
+.css-figure.w-2-3 .cf-stage { max-width: 660px; margin: 0 auto; }
+.css-figure.w-full .cf-stage { max-width: 100%; }
+
+/* the master canvas: flat, rounded, 1px same-hue edge, generous padding */
+.cf-stage { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 26px 24px 22px; display: flex; justify-content: center; align-items: flex-start; gap: 20px; }
+.cf-stage.cf-compare { padding: 26px 18px 22px; }
+.cf-panel { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 0 1 auto; }
+.cf-compare .cf-panel { flex: 1 1 0; min-width: 0; }
+
+/* verdict pills: flat, small, no shadow; neutral pill for plain contrasts */
+.cf-pill { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 99px; border: 1px solid #CBD5E1; background: #fff; color: #64748B; white-space: nowrap; }
+.cf-pill.is-wrong { color: #BE123C; background: #FFE4E6; border-color: #FECDD3; }
+.cf-pill.is-right { color: #15803D; background: #DCFCE7; border-color: #86EFAC; }
+
+/* the scene: a fixed pixel canvas with absolutely placed boxes and one SVG overlay */
+.cf-scene { position: relative; flex: none; }
+.cf-scene-flow { display: flex; flex-direction: column; gap: 10px; }
+.cf-box { position: absolute; box-sizing: border-box; border: 1.5px solid; border-radius: 4px; }
+.cf-overlay { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.cf-overlay text { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 500; stroke: none; }
+.cf-overlay .cf-dim line { stroke-width: 1; }
+.cf-overlay .cf-force line { stroke-width: 1.5; }
+
+.cf-band-label { position: absolute; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.01em; white-space: nowrap; line-height: 1; }
+.cf-band-label.cf-center { display: flex; align-items: center; justify-content: center; font-size: 11px; }
+.cf-tag { position: absolute; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 700; white-space: nowrap; line-height: 1; }
+
+/* float mode: a live lavender parent with live floated children */
+.cf-parent { position: absolute; box-sizing: border-box; background: #F3E8FF; border: 2px solid #D8B4FE; border-radius: 6px; }
+.cf-parent.cf-contain::after { content: ""; display: block; clear: both; }
+.cf-float-item { box-sizing: border-box; background: #FFD6A5; border: 1.5px solid #F0A35E; border-radius: 4px; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #9A5B1E; display: flex; align-items: center; justify-content: center; }
+
+/* float-text mode: real text wrapping a real float */
+.cf-article { background: #fff; border: 1px solid #CBD5E1; border-radius: 6px; padding: 12px 14px; box-sizing: border-box; }
+.cf-article::after { content: ""; display: block; clear: both; }
+.cf-margin-band { background: #FFE8D1; border: 1px dashed #FDBA74; border-radius: 3px; box-sizing: border-box; }
+.cf-img { box-sizing: border-box; background: #FFD6A5; border: 1.5px solid #F0A35E; border-radius: 3px; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #9A5B1E; display: flex; align-items: center; justify-content: center; }
+.cf-text { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 11.5px; line-height: 1.45; color: #334155; text-align: left; }
+.cf-byline { margin: 8px 0 0; font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #64748B; }
+.cf-byline.is-cleared { border-top: 1.5px dashed #A855F7; padding-top: 6px; }
+.cf-legend { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #64748B; display: flex; align-items: center; gap: 6px; }
+.cf-legend i { display: inline-block; width: 12px; height: 9px; border: 1px dashed; border-radius: 2px; }
+.cf-legend .cf-legend-line { width: 14px; height: 0; border: none; border-top: 1.5px dashed #A855F7; margin-left: 8px; }
+
+/* caption: centered, mono, muted, numbered */
+.css-figure figcaption { margin-top: 10px; text-align: center; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 12px; line-height: 1.5; color: #64748B; }
+
+@media print {
+  .css-figure { break-inside: avoid; page-break-inside: avoid; }
+}</style>
+<figure class="css-figure w-2-3 mode-float is-compare">
+<div class="cf-stage cf-compare">
+<div class="cf-panel is-wrong"><span class="cf-pill is-wrong">WRONG · collapsed parent</span><div class="cf-scene" style="width:276px;height:120px"><span class="cf-tag" style="left:10px;top:37px;color:#7E22CE;background:transparent">.teaser</span><div class="cf-parent" style="left:10px;top:50px;width:212px;padding:10px;border-width:2px"><div class="cf-float-item" style="float:left;width:52px;height:40px;margin-right:6px">img</div><div class="cf-float-item" style="float:left;width:52px;height:40px;margin-right:6px">img</div><div class="cf-float-item" style="float:left;width:52px;height:40px;margin-right:0px">img</div></div><svg class="cf-overlay" width="276" height="120" viewBox="0 0 276 120" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah-4v6-A855F7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#A855F7"/></marker></defs><g class="cf-arrow" stroke="#A855F7" fill="#A855F7"><line x1="182" y1="26" x2="28" y2="26" stroke-width="2" marker-end="url(#ah-4v6-A855F7)"/><text x="105" y="19" text-anchor="middle">float: left</text></g><g class="cf-dim" stroke="#6366F1" fill="#6366F1"><line x1="240" y1="50" x2="240" y2="74"/><line x1="236" y1="50" x2="244" y2="50"/><line x1="236" y1="74" x2="244" y2="74"/><text x="252" y="62" text-anchor="middle" transform="rotate(-90 252 62)">height 24px</text></g></svg></div></div>
+<div class="cf-panel is-right"><span class="cf-pill is-right">RIGHT · flow-root</span><div class="cf-scene" style="width:276px;height:132px"><span class="cf-tag" style="left:10px;top:37px;color:#7E22CE;background:transparent">.teaser</span><div class="cf-parent cf-contain" style="left:10px;top:50px;width:212px;padding:10px;border-width:2px"><div class="cf-float-item" style="float:left;width:52px;height:40px;margin-right:6px">img</div><div class="cf-float-item" style="float:left;width:52px;height:40px;margin-right:6px">img</div><div class="cf-float-item" style="float:left;width:52px;height:40px;margin-right:0px">img</div></div><svg class="cf-overlay" width="276" height="132" viewBox="0 0 276 132" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah-4v6-A855F7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9 z" fill="#A855F7"/></marker></defs><g class="cf-arrow" stroke="#A855F7" fill="#A855F7"><line x1="182" y1="26" x2="28" y2="26" stroke-width="2" marker-end="url(#ah-4v6-A855F7)"/><text x="105" y="19" text-anchor="middle">float: left</text></g><g class="cf-dim" stroke="#6366F1" fill="#6366F1"><line x1="240" y1="50" x2="240" y2="114"/><line x1="236" y1="50" x2="244" y2="50"/><line x1="236" y1="114" x2="244" y2="114"/><text x="252" y="82" text-anchor="middle" transform="rotate(-90 252 82)">height 64px</text></g></svg></div></div>
+</div>
+<figcaption>Fig 8.3: Three floated thumbnails inside the teaser. Without a formatting context the parent&#39;s height is only its padding; with flow-root the parent contains its floats and measures the full 64 pixels.</figcaption>
+</figure>
+<p>Look at the height measurement on the right side of each figure. The collapsed parent measures 24 pixels, which is its top and bottom padding and border with nothing between them; the thumbnails hang below its bottom edge. With <code>display: flow-root</code> the parent establishes a block formatting context, floats are included in its height again, and the box measures 64. MDN describes the mechanism that causes the escape:</p>
+<blockquote>When an element is floated, it is taken out of the normal flow of the document (though still remaining part of it). It is shifted to the left, or right, until it touches the edge of its containing box, or another floated element.</blockquote>
+<p><em>MDN Web Docs, float, resources/web-performance/mdn/files/en-us/web/css/reference/properties/float/index.md</em></p>
+<p>The older fixes, <code>overflow: hidden</code> on the parent or a clearfix pseudo-element, work by the same principle: each one creates a block formatting context. <code>flow-root</code> is the modern spelling of that intent with no side effects.</p>
+</div>
+<div class="keep-together">
+<h3>Float in Running Text: The Margin Is the Gutter</h3>
+<p>Floats were invented for exactly one thing that still matters: wrapping text around an image. The words wrap around the float's margin edge, not its border, so the margin is the gutter between picture and prose. The byline, however, must never sit beside the picture, and that is what <code>clear</code> is for:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">lede-image.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">img.lede </span>{ <span class="prop">float</span>: <span class="kw">left</span>; <span class="prop">margin</span>: <span class="nl">0</span> <span class="nl">16px</span> <span class="nl">8px</span> <span class="nl">0</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text">The margin is the gutter the words respect</span>
+      </div></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="sel">.byline </span>{ <span class="prop">clear</span>: <span class="kw">left</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> the byline drops below the bottom of every left float</span>
+      </div></div></div></div></div>
+<style>.css-figure { margin: 1.9rem 0 2.1rem; font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; break-inside: avoid; page-break-inside: avoid; }
+.css-figure.w-2-3 .cf-stage { max-width: 660px; margin: 0 auto; }
+.css-figure.w-full .cf-stage { max-width: 100%; }
+
+/* the master canvas: flat, rounded, 1px same-hue edge, generous padding */
+.cf-stage { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 26px 24px 22px; display: flex; justify-content: center; align-items: flex-start; gap: 20px; }
+.cf-stage.cf-compare { padding: 26px 18px 22px; }
+.cf-panel { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 0 1 auto; }
+.cf-compare .cf-panel { flex: 1 1 0; min-width: 0; }
+
+/* verdict pills: flat, small, no shadow; neutral pill for plain contrasts */
+.cf-pill { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 99px; border: 1px solid #CBD5E1; background: #fff; color: #64748B; white-space: nowrap; }
+.cf-pill.is-wrong { color: #BE123C; background: #FFE4E6; border-color: #FECDD3; }
+.cf-pill.is-right { color: #15803D; background: #DCFCE7; border-color: #86EFAC; }
+
+/* the scene: a fixed pixel canvas with absolutely placed boxes and one SVG overlay */
+.cf-scene { position: relative; flex: none; }
+.cf-scene-flow { display: flex; flex-direction: column; gap: 10px; }
+.cf-box { position: absolute; box-sizing: border-box; border: 1.5px solid; border-radius: 4px; }
+.cf-overlay { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.cf-overlay text { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 500; stroke: none; }
+.cf-overlay .cf-dim line { stroke-width: 1; }
+.cf-overlay .cf-force line { stroke-width: 1.5; }
+
+.cf-band-label { position: absolute; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.01em; white-space: nowrap; line-height: 1; }
+.cf-band-label.cf-center { display: flex; align-items: center; justify-content: center; font-size: 11px; }
+.cf-tag { position: absolute; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 700; white-space: nowrap; line-height: 1; }
+
+/* float mode: a live lavender parent with live floated children */
+.cf-parent { position: absolute; box-sizing: border-box; background: #F3E8FF; border: 2px solid #D8B4FE; border-radius: 6px; }
+.cf-parent.cf-contain::after { content: ""; display: block; clear: both; }
+.cf-float-item { box-sizing: border-box; background: #FFD6A5; border: 1.5px solid #F0A35E; border-radius: 4px; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #9A5B1E; display: flex; align-items: center; justify-content: center; }
+
+/* float-text mode: real text wrapping a real float */
+.cf-article { background: #fff; border: 1px solid #CBD5E1; border-radius: 6px; padding: 12px 14px; box-sizing: border-box; }
+.cf-article::after { content: ""; display: block; clear: both; }
+.cf-margin-band { background: #FFE8D1; border: 1px dashed #FDBA74; border-radius: 3px; box-sizing: border-box; }
+.cf-img { box-sizing: border-box; background: #FFD6A5; border: 1.5px solid #F0A35E; border-radius: 3px; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #9A5B1E; display: flex; align-items: center; justify-content: center; }
+.cf-text { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 11.5px; line-height: 1.45; color: #334155; text-align: left; }
+.cf-byline { margin: 8px 0 0; font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #64748B; }
+.cf-byline.is-cleared { border-top: 1.5px dashed #A855F7; padding-top: 6px; }
+.cf-legend { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #64748B; display: flex; align-items: center; gap: 6px; }
+.cf-legend i { display: inline-block; width: 12px; height: 9px; border: 1px dashed; border-radius: 2px; }
+.cf-legend .cf-legend-line { width: 14px; height: 0; border: none; border-top: 1.5px dashed #A855F7; margin-left: 8px; }
+
+/* caption: centered, mono, muted, numbered */
+.css-figure figcaption { margin-top: 10px; text-align: center; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 12px; line-height: 1.5; color: #64748B; }
+
+@media print {
+  .css-figure { break-inside: avoid; page-break-inside: avoid; }
+}</style>
+<figure class="css-figure w-2-3 mode-float-text is-compare">
+<div class="cf-stage cf-compare">
+<div class="cf-panel is-wrong"><span class="cf-pill is-wrong">WRONG · no clear</span><div class="cf-scene cf-scene-flow" style="width:262px"><div class="cf-article" style="width:262px"><div class="cf-margin-band" style="float:left;border-width:1px;padding:0px 15px 7px 0px"><div class="cf-img" style="width:84px;height:62px">img.lede</div></div><p class="cf-text">The council voted 7 to 2 to extend the tram line past the harbour after a four hour hearing.</p><p class="cf-byline" style="">By Arthur Vane, City Desk</p></div><span class="cf-legend"><i style="background:#FFE8D1;border-color:#FDBA74"></i>margin 0 16 8 0</span></div></div>
+<div class="cf-panel is-right"><span class="cf-pill is-right">RIGHT · clear left</span><div class="cf-scene cf-scene-flow" style="width:262px"><div class="cf-article" style="width:262px"><div class="cf-margin-band" style="float:left;border-width:1px;padding:0px 15px 7px 0px"><div class="cf-img" style="width:84px;height:62px">img.lede</div></div><p class="cf-text">The council voted 7 to 2 to extend the tram line past the harbour after a four hour hearing.</p><p class="cf-byline is-cleared" style="clear:left">By Arthur Vane, City Desk</p></div><span class="cf-legend"><i style="background:#FFE8D1;border-color:#FDBA74"></i>margin 0 16 8 0<i class="cf-legend-line"></i>clear: left</span></div></div>
+</div>
+<figcaption>Fig 8.4: Text wraps around the float&#39;s margin edge. Without clear the short byline is wedged beside the image; with clear left it moves below the float&#39;s bottom margin edge.</figcaption>
+</figure>
+<p>The peach band around the image is the margin; the first line of text starts at its right edge, never at the image's border. In the left figure the paragraph is too short to pass the float, so the byline is laid beside the image like any other line. In the right figure <code>clear: left</code> gives the byline clearance: the browser pushes it down until its top edge is below the bottom margin edge of every left float, drawn here as the dashed line above the byline.</p>
+</div>
+<div class="keep-together">
+<h3>Centering a Box: Auto Margins Split the Free Space</h3>
+<p>The interview classic has a trap in it. <code>text-align: center</code> centers inline content inside a box; it never moves the box itself. A block with a fixed width is centered by giving both horizontal margins the value <code>auto</code>, which tells the browser to split the remaining free space equally:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">cta.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.cta </span>{ <span class="prop">width</span>: <span class="nl">120px</span>; <span class="prop">text-align</span>: <span class="kw">center</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-wrong">WRONG:</b> the words move, the box stays at the left edge</span>
+      </div></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="sel">.cta </span>{ <span class="prop">width</span>: <span class="nl">120px</span>; <span class="prop">margin</span>: <span class="nl">0</span> <span class="kw">auto</span>; } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> two auto margins share the free space equally</span>
+      </div></div></div></div></div>
+<style>.css-figure { margin: 1.9rem 0 2.1rem; font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155; break-inside: avoid; page-break-inside: avoid; }
+.css-figure.w-2-3 .cf-stage { max-width: 660px; margin: 0 auto; }
+.css-figure.w-full .cf-stage { max-width: 100%; }
+
+/* the master canvas: flat, rounded, 1px same-hue edge, generous padding */
+.cf-stage { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 26px 24px 22px; display: flex; justify-content: center; align-items: flex-start; gap: 20px; }
+.cf-stage.cf-compare { padding: 26px 18px 22px; }
+.cf-panel { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 0 1 auto; }
+.cf-compare .cf-panel { flex: 1 1 0; min-width: 0; }
+
+/* verdict pills: flat, small, no shadow; neutral pill for plain contrasts */
+.cf-pill { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 99px; border: 1px solid #CBD5E1; background: #fff; color: #64748B; white-space: nowrap; }
+.cf-pill.is-wrong { color: #BE123C; background: #FFE4E6; border-color: #FECDD3; }
+.cf-pill.is-right { color: #15803D; background: #DCFCE7; border-color: #86EFAC; }
+
+/* the scene: a fixed pixel canvas with absolutely placed boxes and one SVG overlay */
+.cf-scene { position: relative; flex: none; }
+.cf-scene-flow { display: flex; flex-direction: column; gap: 10px; }
+.cf-box { position: absolute; box-sizing: border-box; border: 1.5px solid; border-radius: 4px; }
+.cf-overlay { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.cf-overlay text { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 500; stroke: none; }
+.cf-overlay .cf-dim line { stroke-width: 1; }
+.cf-overlay .cf-force line { stroke-width: 1.5; }
+
+.cf-band-label { position: absolute; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.01em; white-space: nowrap; line-height: 1; }
+.cf-band-label.cf-center { display: flex; align-items: center; justify-content: center; font-size: 11px; }
+.cf-tag { position: absolute; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10.5px; font-weight: 700; white-space: nowrap; line-height: 1; }
+
+/* float mode: a live lavender parent with live floated children */
+.cf-parent { position: absolute; box-sizing: border-box; background: #F3E8FF; border: 2px solid #D8B4FE; border-radius: 6px; }
+.cf-parent.cf-contain::after { content: ""; display: block; clear: both; }
+.cf-float-item { box-sizing: border-box; background: #FFD6A5; border: 1.5px solid #F0A35E; border-radius: 4px; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #9A5B1E; display: flex; align-items: center; justify-content: center; }
+
+/* float-text mode: real text wrapping a real float */
+.cf-article { background: #fff; border: 1px solid #CBD5E1; border-radius: 6px; padding: 12px 14px; box-sizing: border-box; }
+.cf-article::after { content: ""; display: block; clear: both; }
+.cf-margin-band { background: #FFE8D1; border: 1px dashed #FDBA74; border-radius: 3px; box-sizing: border-box; }
+.cf-img { box-sizing: border-box; background: #FFD6A5; border: 1.5px solid #F0A35E; border-radius: 3px; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #9A5B1E; display: flex; align-items: center; justify-content: center; }
+.cf-text { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 11.5px; line-height: 1.45; color: #334155; text-align: left; }
+.cf-byline { margin: 8px 0 0; font-family: Inter, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #64748B; }
+.cf-byline.is-cleared { border-top: 1.5px dashed #A855F7; padding-top: 6px; }
+.cf-legend { font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 10px; color: #64748B; display: flex; align-items: center; gap: 6px; }
+.cf-legend i { display: inline-block; width: 12px; height: 9px; border: 1px dashed; border-radius: 2px; }
+.cf-legend .cf-legend-line { width: 14px; height: 0; border: none; border-top: 1.5px dashed #A855F7; margin-left: 8px; }
+
+/* caption: centered, mono, muted, numbered */
+.css-figure figcaption { margin-top: 10px; text-align: center; font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace; font-size: 12px; line-height: 1.5; color: #64748B; }
+
+@media print {
+  .css-figure { break-inside: avoid; page-break-inside: avoid; }
+}</style>
+<figure class="css-figure w-2-3 mode-center is-compare">
+<div class="cf-stage cf-compare">
+<div class="cf-panel is-wrong"><span class="cf-pill is-wrong">WRONG · text-align: center</span><div class="cf-scene" style="width:304px;height:96px"><div class="cf-box" style="left:10px;top:18px;width:284px;height:68px;background:#FFFFFF;border-color:#CBD5E1;"></div><span class="cf-tag" style="left:10px;top:5px;color:#64748B;background:transparent">.hero</span><div class="cf-box" style="left:22px;top:30px;width:120px;height:44px;background:#FFD6A5;border-color:#F0A35E;"></div><span class="cf-band-label cf-center" style="left:22px;top:30px;width:120px;height:44px;color:#9A5B1E">div.cta</span><svg class="cf-overlay" width="304" height="96" viewBox="0 0 304 96" xmlns="http://www.w3.org/2000/svg"><g class="cf-force" stroke="#A855F7" fill="#A855F7"><line x1="142" y1="52" x2="282" y2="52" stroke-dasharray="5 4"/><circle cx="212" cy="52" r="4" stroke="none"/><text x="212" y="44" text-anchor="middle">free 140px</text></g></svg></div></div>
+<div class="cf-panel is-right"><span class="cf-pill is-right">RIGHT · margin: 0 auto</span><div class="cf-scene" style="width:304px;height:96px"><div class="cf-box" style="left:10px;top:18px;width:284px;height:68px;background:#FFFFFF;border-color:#CBD5E1;"></div><span class="cf-tag" style="left:10px;top:5px;color:#64748B;background:transparent">.hero</span><div class="cf-box" style="left:92px;top:30px;width:120px;height:44px;background:#FFD6A5;border-color:#F0A35E;"></div><span class="cf-band-label cf-center" style="left:92px;top:30px;width:120px;height:44px;color:#9A5B1E">div.cta</span><svg class="cf-overlay" width="304" height="96" viewBox="0 0 304 96" xmlns="http://www.w3.org/2000/svg"><g class="cf-force" stroke="#A855F7" fill="#A855F7"><line x1="22" y1="52" x2="92" y2="52" stroke-dasharray="5 4"/><circle cx="57" cy="52" r="4" stroke="none"/><text x="57" y="44" text-anchor="middle">auto 70px</text></g><g class="cf-force" stroke="#A855F7" fill="#A855F7"><line x1="212" y1="52" x2="282" y2="52" stroke-dasharray="5 4"/><circle cx="247" cy="52" r="4" stroke="none"/><text x="247" y="44" text-anchor="middle">auto 70px</text></g></svg></div></div>
+</div>
+<figcaption>Fig 8.5: A 120px box inside a parent whose content box is 260px wide. text-align leaves 140px of free space on one side; margin auto splits it into two equal 70px margins.</figcaption>
+</figure>
+<p>The dashed purple lines are free space, the invisible quantity the browser distributes; the dot marks each segment's midpoint. On the left all 140 pixels of free space pile up on the right of the box because a left-aligned block keeps its left margin at zero. On the right the two <code>auto</code> margins resolve to 70 pixels each. The same rule explains why <code>margin: auto</code> does nothing on a block without a width: with no fixed width there is no free space to divide.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> name the three mechanisms as one family. Sizing decides how wide a box is (<code>box-sizing</code>), collapsing decides how far apart two blocks are (largest vertical margin wins in normal flow), and the block formatting context decides which children a parent measures (<code>display: flow-root</code> brings floats back in). Then add the modern verdict: floats are for wrapping text around images and nothing else; every column layout that once used floats is flexbox or grid today, where margins do not collapse and children are never lost.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Story grids: two 50 percent columns with padding overflow their row until <code>box-sizing: border-box</code> is set globally.</li>
+<li>Article headers: a headline and standfirst whose gap is smaller than the two margins you wrote, because they collapsed.</li>
+<li>Teaser and card components: a container with a background that disappears the moment its children float.</li>
+<li>Long-form articles: a lede image floated left with a margin that acts as the gutter, and a byline that needs <code>clear</code>.</li>
+<li>Call-to-action blocks: a fixed-width subscribe box that stays glued to the left until both margins are <code>auto</code>.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Box model</strong>: The four nested rectangles of every element: content, padding, border, and margin.</li>
+<li><strong>box-sizing</strong>: The property that decides whether <code>width</code> measures the content edge (<code>content-box</code>, the default) or the border edge (<code>border-box</code>).</li>
+<li><strong>Margin collapsing</strong>: The merging of two touching vertical margins in normal flow into a single margin equal to the larger one.</li>
+<li><strong>Float</strong>: A box shifted to the left or right of its container, removed from normal flow, around which inline content wraps.</li>
+<li><strong>Block formatting context</strong>: A layout region whose parent contains its floats and whose margins do not collapse with the outside; created by <code>display: flow-root</code>, among others.</li>
+<li><strong>Clearance</strong>: The extra space <code>clear</code> adds above an element so that its top edge sits below the floats on the named side.</li>
+<li><strong>Auto margin</strong>: A margin the browser resolves by taking a share of the free space in the containing block.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Three Rules of the Box</strong></p>
+<p>Every layout defect in the front-page incident traces back to one of three rules: how the browser measures a box, how touching margins merge, and which children a parent counts. Learn the three as one family and the floats, the gaps, and the overflow stop being mysteries. Here is your streetwise review.</p>
+<p>❒ Sizing and Spacing</p>
+<ol><li>Set <code>box-sizing: border-box</code> once, globally, and width means the border edge everywhere.</li>
+<li>In normal flow, two touching vertical margins collapse to the larger one; in flex and grid they do not.</li></ol>
+<p>❒ Floats and Containment</p>
+<ol><li>A parent does not count floated children in its height.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Float every child and leave the parent in normal flow.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.teaser img </span>{ <span class="prop">float</span>: <span class="kw">left</span>; }</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;">&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Give the parent a block formatting context so it contains the floats again.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.teaser </span>{ <span class="prop">display</span>: <span class="kw">flow-root</span>; }</span></div></div></div></div>
+</div>
+<ol><li>Center a fixed-width block with auto margins, not with text alignment.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Expect text-align to move the box.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.cta </span>{ <span class="prop">width</span>: <span class="nl">120px</span>; <span class="prop">text-align</span>: <span class="kw">center</span>; }</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;">&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Let two auto margins split the free space.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.cta </span>{ <span class="prop">width</span>: <span class="nl">120px</span>; <span class="prop">margin</span>: <span class="nl">0</span> <span class="kw">auto</span>; }</span></div></div></div></div>
+</div>
+<p>➔ NEVER build a column layout with floats in 2026; use flexbox or grid, where children are never lost.</p>
+<p>➔ ALWAYS suspect margin collapse when a vertical gap measures less than the sum you wrote.</p>
+<p>➔ IF a container's background vanishes THEN check whether every child is floated or absolutely positioned.</p>
+<table><thead><tr><th></th><th><strong>NORMAL FLOW</strong><br>(default block layout)</th><th><strong>FORMATTING CONTEXT</strong><br>(flow-root, flex, grid)</th></tr></thead><tbody><tr><td><strong>Width of a box</strong></td><td><code>width</code> measures the<br>content edge by default</td><td>Same rule; set<br><code>box-sizing</code><br><code>: border-box</code></td></tr><tr><td><strong>Touching margins</strong></td><td>Collapse to the<br>larger of the two</td><td>Never collapse<br>inside flex or grid</td></tr><tr><td><strong>Floated children</strong></td><td>Escape the parent;<br>height drops to padding</td><td>Contained; the parent<br>measures them again</td></tr><tr><td><strong>Centering a block</strong></td><td><code>margin: 0 auto</code><br>on a fixed width</td><td><code>justify-content</code><br>or <code>place-items</code></td></tr></tbody></table>
+</div>
+</article>
+</main>
+</body>
+</html>
