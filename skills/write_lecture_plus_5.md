@@ -258,3 +258,11 @@ Section length breathes with the material. Whole mechanisms and a built world ru
 **8. The three ear tests.** First, the *listen-back test*: imagine hearing only the second half, having forgotten every name and every entity from the first — the re-anchors, term and entity alike, should carry you. Second, the *cold-tune-in test*: drop into any section's opening as a stranger — the scene must stand on its own. Third, the *desk test*: read three paragraphs aloud in a flat voice — any sentence you would not say, in that tone, to a respected colleague across the desk gets rewritten.
 
 Real words, plainly explained, used until they are familiar tools. Whole mechanisms beneath every rule. A world built before anything is asked of it. An equal across the desk. That is the entire skill.
+---
+
+## RESEARCH AND AUTHORITATIVE QUOTES
+
+Before drafting, consult official documentation and provided books (e.g., EPUBs in `documentation official/`). You may include verbatim quotes from these sources, but exercise strict reserve. A quote must make a genuine, standalone contribution to the lesson:
+- It must be highly pertinent, insightful, or counter-intuitive.
+- It must be properly cited as a formal publication to the reader (e.g., "In *Practical Web Accessibility*, Ashley Firth notes...").
+- Never cite a GitHub repository or internal workspace path as the source to the reader. Treat all provided books as canonical industry literature.
