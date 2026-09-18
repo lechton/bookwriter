@@ -1,0 +1,872 @@
+# Svelte Lecture Series: Project Instructions
+
+This document is the single source of truth for the workflow of the `svelte-lecture-03` project inside `diagram-lab/output/`. The project mirrors the structure and the authoring logic of the sibling `react-lecture-01`, with one essential difference: this project runs **one pipeline only** — **lectures**. Every question is taught as a long-form lecture; there are no card or data-flow pipelines here. The lecture is the single source of truth for depth.
+
+> **The demo project (structure-only policy).** `../react-lecture-01/` is the demo. Before writing any lecture, open one of its `md-lectures/` files (for example `01.md`) and study it as the model for **STRUCTURE ONLY**: the order of sections, the shape of the opening ladder, where the `components` panel sits, how code comments are disciplined, how the Summary and closing table are built, and how deep a lecture goes. **NEVER take content from it, in any shape or form:** do not copy, adapt, or echo its scenarios, its code examples, its metaphors, its interview tips, its tables, or its technical explanations. The technical content of your lecture comes from exactly two sources: the question row and the local Svelte documentation. The demo teaches form, never substance. It is also the **only** project you may consult: do not open, imitate, or cite **any other project folder** — not `svelte-lecture-01`, not `svelte-lecture-02`, not `online-demo-01`, not anything else inside or outside `diagram-lab/output/`. When a question about style or structure comes up, the answer lives in this document; when a question about content comes up, the answer lives in the Svelte docs.
+
+> **Project Architecture note.** This project runs a single content pipeline — **lectures** (comprehensive, long-form) — with its own source folder, build step, and HTML/PDF output folders. The pipeline draws from the 210-question Svelte curriculum (Svelte 5 Q1–Q100, SvelteKit Q101–Q210) at `../../questions/` and the same-numbered question set as the sibling `react-lecture-01` (which covers React Q1–Q100 and React Server Q101–Q180). The lecture teaches *how* a Svelte mechanism works, grounded in the running National Times newsroom world.
+
+## File structure and logic
+
+> THE LECTURES: this is the main source of truth, we start from md-lectures
+
+When user asks "write the lecture for 09 question" then you start with the md-lecture.
+
+### Authoring workflow (no plan phase, no approval gate)
+
+The question bank is the plan: the Question column fixes the topic, the Hook column is the lecture's opening scenario, and the Topic tag fixes the scope. Read the row, then write the lecture directly. **ADVANCED questions only:** if the mechanism has many moving parts (for example deep state proxies under the hood), you may first save a five-line outline to `md-lectures-plan/{n}.md` as your own working note: the scenario, the three to five section shifts, and where `components` panels will sit. An outline is optional, is never reviewed, and never blocks writing; do not stop or wait for approval.
+
+For lectures that must be written across several small-context sessions, see **Writing with small-context models** at the end of this document: parts are optional, they live in `md-lectures-plan/{n}-part1.md` and following, and a polish pass by a second model follows assembly.
+
+---
+➔ md-lectures: The comprehensive lecture source markdown files (the source of truth)
+❯ md-lectures-html: The html files of the lectures, from the md files (`/md-lectures`)
+❯ md-lectures-pdf: The pdf files of the lectures, from the html files (`/md-lectures-html`), from the md files (`/md-lectures`)
+
+---
+src: The build script (`build-lectures.mjs`, `component-explorer.mjs`) and shared stylesheet (`lecture.css`)
+
+## Source of Content
+
+- **Question bank:** `../../questions/questions.md` — the 210-question curriculum (Svelte 5 Q1–Q100, SvelteKit Q101–Q210), each row carrying `# | Tier | Topic | Question | Hook`. This is the single source of truth for every question, and it is the same set of questions (same numbering, parallel topics) as the sibling `react-lecture-01`. The controlled topic vocabulary lives in `../../questions/topics.md`, and the design rationale in `../../questions/README.md`.
+- **Local Svelte documentation (primary source for lectures):** `documentation official/svelte 2026 June/svelte-docs/` — 106 Markdown files covering runes (`02-runes/`), template syntax (`03-template-syntax/`), styling, special elements, runtime, and reference material. Use these as the authoritative technical source for lecture content; cite them by relative path (for example `documentation official/svelte 2026 June/svelte-docs/02-runes/02-$state.md`).
+- **Supplementary research:** when the local docs do not fully answer a question, expand with online research, but always anchor claims back to the local docs when possible.
+
+## Folder Layout
+
+| Folder | Purpose | Author here? |
+| --- | --- | --- |
+| `md-lectures/{n}.md` | **Lecture source for question `n`.** Long-form Markdown, written FIRST per question. Full formatting (headings, bold, bullets, code fences). One lecture per question, same numbering as the question bank. | Yes |
+| `md-lectures-html/` | Build output: per-lecture `{n}.html` plus a combined `deck.html` (the course reader). Never edit by hand. | No |
+| `md-lectures-pdf/` | Build output rendered by Prince: per-lecture `{n}.pdf` plus `deck.pdf`. Never edit by hand. | No |
+| `src/build-lectures.mjs` | **Lecture build script.** Reads `md-lectures/`, writes `md-lectures-html/` + `md-lectures-pdf/`. | Rarely |
+| `src/component-explorer.mjs` | **Component explorer parser and renderer.** Converts `components` Markdown blocks into the generated Finder-style panel. | Rarely |
+| `src/lecture.css` | Long-form article stylesheet used by the lecture HTML/PDF pipeline. | Rarely |
+
+## Component Explorer Panels and the Intro Component-Tree Gate
+
+Every lecture must actively consider whether its core logic needs a generated **component explorer panel**, the project's properly designed component-tree visual, as an introductory reference. Use the panel whenever understanding the mechanism depends on seeing where something lives, which component owns it, what is nested or repeated, what crosses a boundary, or which rendered element a component-local reference identifies. A graph with several components is an obvious case, but it is not the only case: a single component that owns an important DOM node, conditional subtree, bound element, or lifecycle-sensitive browser resource can also require the panel. The panel is the lecture equivalent of a Finder-style reference: a project title bar across the top, a connected file hierarchy on the left, and the visual component or rendered surface on the right. It is generated HTML, not a screenshot and not hand-authored markup.
+
+### The intro component-tree visual-reference gate
+
+Before writing the first code fence for the lecture's central mechanism, answer these questions in the working plan:
+
+1. Does the learner need to know which component owns the state, binding, or behavior?
+2. Does the mechanism depend on component nesting, repeated instances, a conditional branch, a component boundary, or the identity and lifetime of a rendered DOM element?
+3. Would seeing the relevant component and rendered target before the code remove ambiguity that prose alone leaves behind?
+
+Every lecture MUST include at least one `components` panel, no exceptions: the questions above decide what the panel must show, never whether one exists. Place it after the visceral opening and a short prose description of what the learner is looking at, but before the first Svelte code fence that implements the mechanism. The panel is the learner's visual map, not an optional recap after the implementation. The generated component explorer is the required proper design; an ASCII tree, prose-only description, comparison table, or diagram placed after the code does not satisfy this gate.
+
+A single `.svelte` file is not an automatic reason to omit the panel. A bound element (`bind:value`) is the canonical example: the learner benefits from first seeing the owning component, its rendered form or element, and the component-local variable that receives that exact node. Use a single-root panel with the appropriate visual kind and a concise annotation naming the binding and its target.
+
+There is no omission path: no lecture ships without a `components` panel. If a mechanism looks ownership-free, use a single-root panel naming the owning component and its rendered target. The build prints a warning for any lecture with zero panels, and a clean build requires at least one.
+
+### When to use a panel
+
+Use one panel when the surrounding lecture example contains one coherent structural model and the reader benefits from seeing both ownership and the rendered result. Good cases include a parent importing a child, a parent passing props or callbacks to a child, a conditional branch that selects between child components, a prop value crossing a component boundary, content rendered inside a layout component, multiple instances with independent state, or a component-local bound element whose exact target and lifetime are central to the lesson.
+
+Do not merge unrelated code fences into one panel merely because they use more than one `.svelte` filename. Independent examples stay independent. A separate multiple-instance case is different again: one component definition rendered several times is not a parent-child file tree, so use the `instances` visual kind described below.
+
+### The visual-first presentation rule
+
+The component relationship or ownership model is the learner's destination, so show that destination before showing the code that builds it. Whenever a lecture introduces a multi-component relationship, a multiple-instance arrangement, or component-scoped DOM logic that passes the intro component-tree visual-reference gate, use this order:
+
+1. **Name the intended visual arrangement in prose.** State what the page should contain, which component owns the logic, which component or DOM target appears inside it, and what data, callback, condition, or reference connects them. Use the real example's names and stakes so the panel is an explanation, not decoration.
+2. **Place the `components` block immediately after that visual explanation.** The generated panel is the first visual representation of the relationship and must appear before the first Svelte code fence that implements that relationship. Do not place a panel after the code as a recap.
+3. **Read the panel as a model.** Explain the left file tree as the source relationship and the right canvas as the rendered relationship. For a single-root DOM case, name the owning component, the rendered target, the local binding, and the relevant mount or removal timing. For a repeated definition, explain the independent instances and their independent state. For branches, explain which child is present under each condition. For props or callbacks, explain the direction and meaning of the annotation.
+4. **Show the code in dependency order.** Start with the parent or repeated component arrangement, then show the child or shared definition, then show the interaction or variant that completes the visual model. The code should match the panel's filenames, instances, annotations, and nesting.
+5. **Derive the mechanism after the code.** Once the learner has the visual target and its implementation in view, explain why Svelte produces that relationship and what changes when the relevant state or data changes.
+
+This rule applies to every component panel. A lecture may still show an earlier standalone code example when that example establishes a prerequisite, but the first code for the structural relationship itself must follow its visual panel.
+
+### Markdown authoring syntax
+
+Place a `components` fenced block immediately after the prose that explains the intended visual relationship and before the first Svelte code fence that implements it. The fence is consumed by `src/build-lectures.mjs` and becomes the complete explorer panel in the generated lecture HTML.
+
+````
+```components title="national-times — Component Explorer"
+Masthead.svelte | readerName="Morgan" | shell
+  ReaderGreeting.svelte | readerName="Morgan" | badge | Welcome back, **Morgan**
+  AccountBadge.svelte | readerName="Morgan" | profile | Subscriber: **Morgan**;; Plan: All-Access
+```
+````
+
+For a component-local DOM identity mechanism, use a single-root panel rather than inventing unrelated components. The visual kind should match the rendered target, and the annotation should identify the exact local relationship:
+
+````
+```components title="national-times — Component Explorer"
+CorrectionDesk.svelte | draftText receives the rendered input node | form
+```
+````
+
+The syntax has one entry per line:
+
+- **File name:** The first field is a bare filename: `App.svelte`, `Header.svelte`, `cart.svelte.js`. Never write path prefixes such as `components/Header.svelte`; the build assigns every `.svelte` file to the `components/` folder and every plain module (`.js`/`.ts`) or shared-state module (`.svelte.js`/`.svelte.ts`) to the `state/` folder automatically, so the left tree is always the canonical top-level shape.
+- **Indentation:** Use exactly two spaces per nesting level. The first entry is the single root. A nested `.svelte` entry is rendered inside its parent on the right canvas; module entries (`.js`, `.ts`, `.svelte.js`, `.svelte.ts`) are listed in the left file tree only and never render on the canvas.
+- **Displayed context:** The optional second field, after the first `|`, is a short prop, callback, condition, or state annotation. It appears in italic text beside the component label.
+- **Visual kind:** The optional third field selects a small deterministic mock surface. Supported kinds are `shell`, `header`, `navigation`, `profile`, `badge`, `counter`, `card`, `form`, `table`, `button`, `branch`, `instances`, and `generic`. If omitted, the builder infers a kind from the filename.
+- **Rendered lines (the fourth field):** The optional fourth field is the component's real UI on screen: the actual text and numbers the lecture's code produces, written by the author, individual lines separated by `;;`, with `**bold**` allowed for the load-bearing value. When present, it replaces the kind's mock surface on the canvas (the kind still sets the frame color and label). This field is mandatory for every new panel; see the rendered-content rule below.
+- **Window title:** The `title="..."` attribute is the project title shown in the panel's top bar. Use a short project name followed by `— Component Explorer`.
+
+**The rendered-content rule (no empty surfaces).** The deterministic mock surfaces (grey bars, STATUS, ACTION) are placeholders of last resort, never a design choice. Every new panel must show what the learner would actually see on screen, through the fourth field, and that means the author must ALWAYS compute the final UI before writing the panel: run the lecture's code in your head with the real values from the snippet and write down what lands on the page. A template expression in braces is invisible to the learner until you evaluate it; `{totalPayout}` with tonight's three stories (800 + 1200 + 950 words at rate 0.5) is `1475`, and the panel must say so. The numbers in the panel are arithmetic performed on the numbers in the fence: if the code changes, the panel changes with it. An empty box or a row of grey bars where a computed result should be reads as broken and teaches nothing — it is the panel equivalent of a floating comment bubble, a shape pointing at no content.
+
+**When emptiness is legitimate (the fill decision procedure).** A filled surface is always preferred, but filling everything would be its own absurdity: a wrapper decorated with invented chrome is out of context. Decide per entry, in this order:
+- **An end component, one that renders markup of its own, always gets rendered lines**, computed from the code block's markup and its starting values. This is the default and covers nearly every entry: a `<p>`, a button label, a list, a `{count}` expression are all knowable, and so is a literal string. If the code block shows it, the panel shows it, evaluated.
+- **An end component whose code block shows no markup** gets its observable outcome: the one thing the learner would see happen, taken from the lecture prose ("prints Status: idle on mount"), and flagged to the owner as inferred. Never invent visible chrome the lecture never establishes.
+- **A container whose children render inside it stays unfilled, on purpose.** Its UI is the nested children, and the build already draws them inside its box; adding invented titles or bars would be decoration, not content. This is the only legitimate emptiness on the canvas, and it is not really emptiness: the box is filled by its children.
+- **A state module never renders.** It lives in the left file tree only; the build filters it off the canvas. Giving it lines would lie about what modules do.
+
+**The traceability test (the guard against absurd fills).** Every word in a rendered-lines field must be traceable to one of three sources: the code block's markup, the code block's starting values, or the prose's explicit description of the screen. A line whose content cannot be traced to one of those is invented filler; delete it. This is what keeps "prefer filled" from becoming "make things up": the fill always comes from the lecture, never from the author's imagination of a plausible app.
+
+**Worked example (a payout lecture).** The code block ends with `<p>Total payout tonight: {totalPayout}</p>`, and the panel entry must carry that line, evaluated:
+
+````
+```components title="national-times — Component Explorer"
+PayoutBoard.svelte | totalPayout recomputed over every story | table | Harbor strike · 800 words;; Election night · 1200 words;; City budget · 950 words;; Total payout tonight: **1475**
+```
+````
+
+The right canvas now shows the story list and, bolded under it, the total the learner's code will actually print: `Total payout tonight: 1475`. The same entry written without the fourth field (`PayoutBoard.svelte | totalPayout recomputed over every story | table`) renders three empty grey bars — the exact failure this rule exists to prevent.
+
+The same file may appear more than once in the right-hand tree when the example renders multiple instances with different props:
+
+````
+```components title="dashboard-app — Props Explorer"
+Dashboard.svelte | | shell
+  Button.svelte | label="Save" | button
+  Button.svelte | label="Delete" | button
+  Button.svelte | label="Submit" | button
+```
+````
+
+For one component definition rendered repeatedly, use the `instances` kind instead of inventing a parent component. Include the count as a number in the second field so the renderer can calculate the instance chips:
+
+````
+```components title="audio-player — Component Instances"
+AudioPlayer.svelte | 5 independent instances each with own $state | instances
+```
+````
+
+For mutually exclusive conditional children, keep both branches under the parent and put the condition in the second field:
+
+````
+```components title="account-app — Conditional Components"
+App.svelte | isLoggedIn | shell
+  Dashboard.svelte | when isLoggedIn | branch
+  LoginForm.svelte | when !isLoggedIn | branch
+```
+````
+
+### What the builder calculates
+
+The author supplies only the component model. The builder validates the indentation, requires one root, normalizes paths, deduplicates repeated files in the left tree, derives the `components` and `state` folders, marks the feature child as active, renders the nested component boundaries, escapes labels and props, chooses the deterministic mock surface for each visual kind, and renders the author-supplied fourth-field lines in place of the mock surface whenever they are present. The CSS in `src/lecture.css` owns the panel's dimensions, colors, tree connectors, responsive stacking, and print behavior.
+
+The explorer is a visual explanation of the relationship; it does not execute Svelte code. Keep the ordinary titled code fences as the technical source of truth, and keep the explorer metadata short enough that a reader can compare the panel with the code immediately beside it.
+
+### The canonical example scaffold (top-level folders, files one level deep)
+
+The left tree has one fixed shape, built for minimal visual real estate: **top-level folders, each holding bare filenames directly. Nothing nests deeper than one level.**
+
+- **`components/`** holds every `.svelte` file: `App.svelte`, `Header.svelte`, `Sidebar.svelte`.
+- **`state/`** holds every shared-logic or shared-state module (`cart.svelte.js`, `api.js`, a store module), and appears only when the lecture actually has one.
+- Authors write **bare filenames** in `components` blocks (`App.svelte`, `cart.svelte.js`) — never path prefixes such as `components/Header.svelte`, never nested folders. The build computes the grouping from the file type, so the tree is always the canonical shape however the entry was written.
+- **Imports must reflect this structure:** within `components/`, `import Header from './Header.svelte'`; from a component to a logic module, `import { cart } from '../state/cart.svelte.js'`.
+- **Exception:** when a question's subject IS a folder structure (SvelteKit questions from Q101 on: the `src/routes/` tree, `+page.svelte` and `+layout.svelte` files, server-only versus client-only code), the tree may show those real folders, because the folders are the lesson. For Svelte 5 core lectures there is no exception.
+
+**The completeness law:** every file the lecture shows, as a fence `title="..."` or as an import target, MUST appear as an entry in the lecture's `components` panel tree; the tree in turn shows no file the lecture never mentions. The tree is the contract between prose, fences, and panel. The build warns on any shown or imported file that is missing from the tree. (Non-`.svelte` entries such as `cart.svelte.js` are valid entries; they appear in the **left file tree only**, under `state/`, with the module icon. The right canvas shows the **rendered visual hierarchy only** — a logic module is never rendered, so it never draws a box there; the builder filters module entries out of the canvas automatically.)
+
+**The prose-actor law (no invisible owners).** The completeness law binds the tree to files the lecture fences or imports, but prose often invokes an actor that is never fenced at all: "the page stamps out three copies", "the parent passes each copy its own headline". When such an actor owns the mechanism — it decides how many instances exist, it passes the props, it triggers the change — leaving it out of every fence and panel leaves the mechanism ownerless on screen: three instance chips floating with no stamper and no visible source of the headlines. That floating is the reader's "what is going on?" moment, the exact question the panel exists to prevent. Either fence the actor (show the page rendering its three cards, which gives the tree a real parent), or rewrite the prose so it stops leaning on the invisible actor. The rule extends to names: a compound component name (`PriceBlock`, `StoryHeader`) must have its parts grounded in prose at its first appearance — one sentence saying what each noun of the name means — so the name reads as one explained idea instead of two missing components.
+
+### Placement and quality rules
+
+- Add the panel at the smallest useful scope, immediately before the parent and child code blocks that form the graph.
+- For a single-root ownership or DOM-identity panel, place it in the introduction to the mechanism, immediately before the first code block that creates or uses the relationship.
+- Use the actual filenames and actual prop or callback names from the example. Do not add decorative files that the lecture never mentions.
+- Use one panel for one relationship. If a lecture moves from a parent-child example to an unrelated standalone component, start a new panel or omit the panel.
+- Use `branch` for conditional alternatives, `instances` for repeated copies of one definition, and ordinary nesting for parent-child composition.
+- The left tree and right canvas are generated together; never hand-write a second HTML version of the panel in a lecture file or in `md-lectures-html/`.
+- A malformed `components` block should be fixed in the Markdown source rather than hidden with custom HTML or a special-case CSS patch.
+
+This convention applies to every pertinent lecture example. The generated HTML remains build output and must be refreshed with `node src/build-lectures.mjs --no-pdf`. When the source or layout changes are ready for delivery, run `node src/build-lectures.mjs` to regenerate both the HTML and PDF outputs.
+
+## Build Commands
+
+This project uses **one local builder**, invoked from inside the project folder.
+
+```sh
+# Lecture pipeline:
+node src/build-lectures.mjs            # build lecture html + pdf
+node src/build-lectures.mjs --no-pdf   # build lecture html only
+```
+
+The pipeline produces per-file HTML/PDF plus a combined `deck.html`/`deck.pdf` (the course reader for lectures). The build script gracefully reports `no markdown files in md-lectures/` and exits cleanly when the source folder is empty — so it is safe to run the pipeline before any content exists.
+
+## The Lecture-First Workflow
+
+For every new question processed in this project, the following steps are executed in exact order. There is no card or data-flow step in this project; the lecture is the whole deliverable.
+
+### Step 1: Write the lecture (`md-lectures/{n}.md`)
+
+- Extract question `n` from the source document.
+- **Search the deck before teaching a term.** Concepts repeat across the 210 questions, and the reader meets them in order. Before baptizing any term, scan the earlier lectures for it (search `md-lectures/` for the hook name, the API name, or the concept phrase). If an earlier lecture already taught it, this lecture re-anchors instead of re-teaching: the term, its one-line reminder, and `(see Lecture N)` — then it may deepen, contrast, or extend, but never start from zero with a fresh metaphor. Two lectures teaching one concept with two metaphors and no cross-reference ("signal" in one, "live wire" in the other) double the reader's vocabulary for a single idea and leave neither lecture the term's home.
+- Read the relevant local Svelte documentation under `documentation official/svelte 2026 June/svelte-docs/`. Anchor every technical claim to the docs when possible; expand with research when the docs are insufficient.
+- Write a **pedagogically clear, extended, comprehensive lecture** that teaches the concept as if to someone who needs to genuinely understand it, not just memorize it.
+- The first line is `# Lecture {n}: {Short Title}`.
+- Apply the **Lecture format spec** below.
+- Run the **intro component-tree visual-reference gate** before drafting the first code example for the central mechanism. If ownership, nesting, element identity, lifetime, or boundary flow matters, introduce the logic with a `components` panel before that code. Do not exempt a lesson merely because its main example uses one `.svelte` file.
+- In the lecture, always add code snippets that are clear, concise, representative of the idea
+
+Example of snippet (add the file name on title)
+
+```svelte title="App.svelte"
+<script>
+  let count = $state(0); // assigning to it is the whole reactivity story
+  let double = $derived(count * 2); // recomputed whenever count changes
+</script>
+
+<button onclick={() => count++}>
+  Clicks: {count} (double: {double})
+</button>
+```
+
+Important: notice that "change" arrives through assignment. The variable in the markup always shows the current value because the compiler wired them together; reassignment is the only door.
+
+### Step 1b: The Organic Lexical Audit (OLA)
+
+Before finishing any lecture, you MUST run the OLA to ensure no jargon is introduced superficially.
+1. **Scan the text** to find lexical terms a newbie would not be familiar with (e.g., *compiler, reactive, proxy, rune, hydration, tree, template*).
+2. For each term, you must write a **Specific Organic Intervention** that follows this exact 5-step progression:
+   * **Step 1: The Context.** State what the user is trying to achieve. **CRITICAL RULE: The example must be a *truly practical* problem the developer actually faces in modern workflows, not a theoretical or imaginary one.** Do not artificially make up a scenario that modern scaffolding (like Vite or SvelteKit) solves automatically just to check this box. If the boilerplate handles the basics, find the *real* situation where they hit the wall. For example, instead of a vague "Why is my component not mounting?" (which SvelteKit does for them), use "How do I embed a Svelte widget into a legacy PHP CMS article?" or "Why does my `let` variable update in the console but the page stays frozen?". Find the real-world, high-stakes scenario where the newbie physically hits a wall.
+   * **Step 2: The Naïve Alternatives.** Pose highly specific, tangible, and simple alternatives for how this could be done. **The first alternative posed must be the strongest one the course itself has equipped the reader to think of.** Ask: what tool from an earlier lecture partially solves this scenario? If props were taught and passing a value down would plausibly work, raise that alternative and answer it — why it fails here, or what it cannot do — before any weaker strawman such as a separate file or "shouting up to the page". A lecture that dismisses only weak alternatives, while the reader's actual first thought ("why not just recompute it in the handler?") goes unasked, has a motivation hole: the tool never becomes necessary and the scenario reads as contrived.
+   * **Step 3: The Architectural Need.** Frame this explicitly as an architectural decision or mechanical requirement. (e.g., *"This is a decision about the architecture of our app. We have to make sure that when the data changes, every place on screen that shows that data changes with it, without us writing the update by hand."*)
+   * **Step 4: Naming the Term.** Now, and only now, introduce the lexical term as the name for this mechanism. (e.g., *"This mechanism is called reactivity."*)
+   * **Step 5: The Summary.** Summarize what the term does using the context just built. (e.g., *"Reactivity means the markup follows the variable: assign a new value and every dependent spot on screen updates itself."*)
+3. **Integrate** this specific 5-step intervention into the text, replacing the original superficial use of the term.
+
+## The Audit Phase (on-demand, runs only when the user asks)
+
+The steps above are the standard authoring flow for one question. The audit is **not** part of that flow — it is a separate, on-demand phase that runs only when the user explicitly asks for it (for example, "audit lecture 47"). Treat the audit as a second pass performed by a fresh, critical reader whose only job is to find what the original lecture missed. The point of running it as a separate phase, after the lecture is finished and only on request, is to simulate an independent review: the author is done, the lecture exists, and now a different perspective asks "what did this leave out that a student will actually need?"
+
+### When to run the audit
+
+- **Only when the user asks.** Never run the audit automatically as part of the authoring flow. The audit is a deliberate, requested review, not a default step.
+- **Only on a finished lecture.** The audit makes no sense on a draft or a half-written lecture; it assumes the lecture is complete and has been built to HTML/PDF at least once.
+- **One lecture at a time.** The user will name the lecture (e.g. "audit lecture 47"). Do not audit multiple lectures unless explicitly asked.
+
+### How to run the audit
+
+- **Read the lecture end to end** in `md-lectures/{n}.md`. Note every concept, term, and example it covers.
+- **Cross-check against the authoritative local docs.** Open the relevant files under `documentation official/svelte 2026 June/svelte-docs/` for the lecture's topic. The audit's authority comes from comparing what the lecture says against what the docs say — not from the auditor's prior knowledge. If a doc section exists that the lecture did not draw on, that is a candidate gap.
+- **Look for genuinely missing material, not stylistic preferences.** The audit is not a rewrite. It looks for: related API surfaces the lecture did not mention (e.g. `$derived.by` when the lecture covered `$derived`), alternative patterns for the same problem (e.g. a `.svelte.js` state module when only local `$state` was shown), common pitfalls the lecture did not flag, and adjacent concepts a student would naturally need next.
+- **Do not duplicate what the lecture already says.** If the lecture covered it, even briefly, do not include it in the audit. The audit's value is net-new information.
+
+### How to write the audit findings
+
+- **Append a single new section at the end of the lecture** titled exactly `## Beyond the basics`. Do not modify or rewrite any existing section of the lecture — the audit adds, it does not edit.
+- **The section is a bulleted list.** Each bullet follows the format: `- **Bold lead phrase**: explanation ...`. The bold lead phrase names the missing topic in 3–7 words; the rest of the bullet explains it in plain English with the relevant API name, code identifier, or cross-reference inline.
+- **Each bullet is self-contained.** A student reading only the bullets (skipping the lecture body) should still understand what each missing topic is and why it matters. Define every technical term inline, the same jargon rule as the rest of the project.
+- **Cross-reference other lectures and the docs by path or number** when relevant (`see Lecture 50`, `see Lecture 21`, `documentation official/svelte 2026 June/svelte-docs/02-runes/04-$effect.md`). The audit is a hub for "where to go next," and explicit pointers are part of its value.
+- **Order the bullets by relevance**, not by source-doc order. The most commonly needed missing topic goes first; the most niche goes last. A reasonable size is 4–8 bullets — enough to be useful, short enough to read in one sitting.
+- **Do not add new code blocks to the audit section.** The audit is high-density prose. If a code example is genuinely necessary to explain the missing topic, that is a signal the topic belongs in the lecture body, not the audit — flag it in the response to the user instead of adding it inline.
+
+### After writing the audit
+
+- **Rebuild the lecture** with `node src/build-lectures.mjs` so the HTML and PDF reflect the new `## Beyond the basics` section.
+- **Verify the section rendered correctly**: confirm the `## Beyond the basics` heading is present, the bullet count matches what was written, and the section sits at the very end of the lecture (after Summary, if one exists).
+- **In the response to the user, list the specific gaps the audit found** and why each was added. The user asked for an audit; they should see the audit's reasoning, not just its output. Cite the doc section that surfaced each gap.
+
+## Lecture Format Spec
+
+The lecture pipeline uses a full Markdown renderer (`src/build-lectures.mjs`). There are no card-specific constraints in this project — you may use any combination of standard Markdown.
+
+- **Plain markdown with full formatting.** **bold**, *italic*, bullet lists, numbered lists, inline `` `code` ``, fenced code blocks with optional `title=""`, blockquotes, and inline `[text](url)` links are all supported and render correctly to HTML and PDF. (See the **heading rules** below for the specific roles of `#`, `##`, and `###`.)
+- **The interview question is embedded in the lecture source** — it is the second line of every lecture file, immediately after the title, as a blockquote with the exact pattern `> INTERVIEW QUESTION | ❱ [TYPOLOGY] | <question text>`. The typology is `❱ CORE`, `❱❱ MORE`, or `❱❱❱ ADVANCED`, with the suffix ` (Kit)` on SvelteKit questions (Q101–Q210), copied verbatim from the Tier column of `../../questions/questions.md`. The build script parses this line and renders it as a pull-quote callout **directly below the title** (an `<aside class="interview-question">` styled by `src/lecture.css`), including a premium badge for the typology (e.g. `❱ CORE (Kit)`). The visual order matches the source order: title first, then the question, then the lecture body. The author copies the **Question** column verbatim from `../../questions/questions.md` (row `n`) when creating the lecture and may edit it inline afterward. The build does not read `questions.md` — the lecture file is the single source of truth for its own question.
+- **Long-form, not summary.** Aim for comprehensive coverage of the concept. The lecture is the source of depth for the whole project.
+- **Lead with critical questions and visceral pain points (Organic Lexical Audit - OLA).** Always introduce new lexical terms using visceral, real-world, high-stakes contexts. Don't just explain a feature theoretically—create a scenario where a newbie would physically hit a wall without it (e.g., "if you assign to a plain `let` variable, the screen keeps the old headline and you lose the sale"). Open each lecture by surfacing this real-world failure or confusion that motivates the concept. Build tension before revealing the solution.
+- **Give structural logic an introductory visual reference.** Immediately after the opening establishes the pain and before the first code that implements the central mechanism, run the **intro component-tree visual-reference gate** from "Component Explorer Panels and the Intro Component-Tree Gate." If the learner must understand component ownership, nesting, repetition, a conditional subtree, boundary flow, or the identity and lifetime of a rendered element, place the matching `components` panel there and explain how to read it. This is mandatory even for a single-component example when the component-to-DOM relationship is the mechanism; a `bind:value` input is the canonical case.
+- **Combine theory, technical definitions, and practical examples.** Every lecture should braid three threads: (1) the formal definition of the mechanism, (2) why it exists and what pain it removes, and (3) at least one concrete code example drawn from realistic Svelte code.
+- **Earn a new technical term before you name it.** When a concept is about to land — especially one that looks imposing at first glance — do NOT rush straight into the jargon. If a reader is still wondering *why this thing even needs to exist*, hitting them with the formal vocabulary (the named runes, the compile step, the update pipeline) feels estranging rather than enlightening; the term arrives before its necessity does, and complexity reads as overwhelm. The fix is a short orienting paragraph that first establishes the human problem the machinery solves, and only then introduces the term as the name for that solution. The term should feel like a relief — "oh, *that's* what this is called" — not a wall.
+
+  **Worked example — introducing the runes.** Do NOT open by listing `$state`, `$derived`, and `$effect` cold. A reader who has never thought about reactivity will not yet see why those names matter. Instead, earn the vocabulary with an intro paragraph like this:
+
+  > Every component has data that changes while the page is open. A reader types, a story lands, a counter grows. Something must watch that data and repaint the screen whenever it moves. Why does this matter? Because in Svelte the watching is not a library you call; it is a mark you put on the variable itself. A plain variable holds its value once and never looks at the screen again. A marked variable is wired to every place in the markup that reads it, and assignment alone is enough to update the page.
+
+  Only after that grounding does the term arrive as the name for what the reader already understands: those marks are called **runes**, function-like words starting with a dollar sign that the Svelte compiler turns into live wiring. The named vocabulary now labels a concept the reader already holds; it does not introduce one they do not.
+
+  This rule is the **front half** of the jargon rule directly below. First earn the term (this rule); then, once named, define it immediately in plain English (the next rule).
+- **Explain every difficult term inline.** The same jargon rule applies: keep the technical term, then immediately define it in plain English in the same sentence. Pattern: `the **compiler** — the program that reads your `.svelte` file at build time and outputs plain JavaScript`.
+- **Ground every new term in what the reader has already done or seen, never only in another term.** A definition built from other technical words defines one unknown with more unknowns. Find what the reader has already done or seen in this course that *is* the term, and define the term from there. The full standard, with the pattern, is **The experience standard** below.
+- **These instructions supply method, never wording.** No phrase from this document — a rule name, a worked case, an analogy, an example sentence — may appear in a lecture. When a rule shows you a sentence, that sentence shows the move; write your own sentence for your own case.
+- **Teach a structural surprise before the fence that shows it.** Lecture by lecture, the reader builds a model of what a Svelte file can contain — whatever the course has shown them so far. When a lecture introduces a construct that breaks this model, the surprise itself is content, and it must be taught in prose ahead of the first fence that shows it. The prose does four things: it names the model the reader holds; it tells the reader, in the lecture's own words, that the construct is allowed and normal; it places the construct against the familiar one (where it sits, and what marks the difference — an extra line in the script block, a dollar-sign word, a markup block they have never seen); and it anchors to the form the reader has already used in earlier lessons. Structural surprises in this course include: a script block that runs only once while the markup lives forever, a dollar-sign word where a plain declaration was expected, template logic like `{#if}` sitting inside the markup, an event attribute like `onclick` holding braces where HTML holds a string, a `.svelte.js` file that holds no markup, or a prop destructuring line that reads like function parameters. Worked case, told as the cooking analogy: every recipe in the course so far has used milk, so the reader's model of a recipe is "ingredients plus milk". One day a recipe quietly shows butter going into the same pan, and the reader stalls: wait, butter and milk, together in one recipe? Is that even allowed? The prose above the recipe must answer before the question forms. In code the shape is identical whenever a fence contains a construct in a place the reader's model says is impossible; the four prose duties are the same. A fence that breaks the model silently forces the reader to rebuild it mid-code — the exact moment they stop following.
+- **Numbering.** Lecture file `{n}.md` corresponds to question `{n}` in the source bank, so any artifact can be cross-referenced by number.
+- **Every lecture has a `### Where you will meet this` section, right before `### Summary`.** The mechanism is taught first; this section then answers the reader's natural next question: where does this show up in real apps? It is a list of 3 to 5 uses, one line each. The first line may be tonight's own case; the rest are other apps the reader knows. Every line is one pictureable moment plus what the concept does there (shape: "the cart total changes the moment you add an item: the total is derived from the cart it watches"). Each line passes the experience standard — a concrete situation, never an abstract category. No more than five lines. This section is the one sanctioned widening of the lecture's world: the story never switches worlds; this list surveys other places on purpose.
+- **Every lecture closes with `### Summary` plus a comparison table.** This is a hard structural rule, not an optional flourish — the lecture is incomplete without both. The closing has two parts, in this order:
+  1. **`### Summary`** — **The Streetwise Review**. The body of text under `### Summary` MUST begin with an authoritative **Technical Title** formatted in bold (`**Technical Title**`) that encapsulates the architectural mechanism, followed by an empty line, before the opening review paragraph begins. Instead of a dry academic recap, adopt the perspective of an experienced developer giving streetwise advice to a junior colleague. Tell them *when* they will actually write this code (Once per app? In every component? Never?) and *why* it matters in daily practice. **NEVER open the summary with conversational filler or verbal tics such as "Look," or "Look, in practice...".** State the practical reality or daily developer frequency directly (for example: "In daily production, you configure this entry point exactly once per app...", or "Every interactive feature in your codebase eventually relies on...").
+     - **Structure**: Break the summary into logical sections starting with `❒ {Subtitle}`.
+     - **Bullets**: Use numbered lists (`1.`, `2.`) for points under each subtitle. For sub-points, use indented letters with HTML breaks: `<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) ...` so they remain on one continuous line without hard-wrapping.
+     - **Principles**: Start important principles with the `➔` arrow symbol (e.g., `➔ NEVER do this...`, `➔ ALWAYS do this...`, `➔ IF you want to **do this** THEN **do that**`).
+     - **Emphasis**: ALWAYS bold key words or phrases in every bullet to make it skimmable. Keep it to roughly one page.
+  2. **A comparison table** — a markdown table immediately below the Summary that contrasts the lecture's mechanism against its nearest alternative (e.g. plain `let` versus `$state`, `$state` versus `$derived`, event attributes versus legacy `on:` directives, Svelte versus React, build tool versus SvelteKit). Two or three columns: the dimension on the left, the alternatives across the top.
+  **Table Alignment Formatting:** You MUST right-align the first column (the row headers) and left-align the remaining columns. Use the exact markdown syntax `| ---: | :--- | :--- |` for the divider row. This is the visual anchor that lands the "what makes this different" point, and it is what the audit phase and the reader all lean on. If the lecture genuinely has no meaningful contrast (rare), substitute a "what to remember" two-column table of term → one-line definition, using the same `| ---: | :--- |` alignment.
+  **Table Code Formatting (CRITICAL — No Auto-Wrapping of Code):** Table columns in the PDF are narrow (~240px). If an inline code string is long or contains slashes, dots, or parentheses, Prince will wrap it mid-token (e.g. `svelte-js/` on one line and `plugin` on the next, or `bind:value` on one line and `={draft}` on the next), producing ugly broken grey boxes with dangling padding. To completely prevent this:
+  - ALWAYS separate explanatory prose from code with `<br>`: `Imported from<br>`documentation official/svelte 2026 June/svelte-docs/`` instead of `Imported from `documentation official/svelte 2026 June/svelte-docs/``.
+  - ALWAYS split multi-part expressions or method chains across separate backtick spans with `<br>`: `let { label }`<br>`= $props()`, or `let count =`<br>`$state(0)`.
+  - ALWAYS split long identifiers across separate backtick spans with `<br>`: `let others =`<br>`...rest`.
+  - Never put `<br>` inside the backticks (`foo<br>bar`); put `<br>` between separate backtick spans (`foo`<br>`bar`).
+
+  This rule exists because the Summary + table pair was an *unwritten convention* in earlier projects and got dropped under context pressure, as did the cleaner right-aligned first column styling. Making the streetwise format explicit here prevents dry recaps and anchors the lesson in reality.
+
+### The experience standard: how a new concept is defined
+
+A new concept can be defined in two ways. Only one of them teaches.
+
+- **Definition through other words.** The concept is explained with other concepts. "It is a function that returns markup." Nothing can be pointed at. The reader memorizes words.
+- **Definition through experience.** The concept is explained through what the reader can see, open, or has already done. "In your files you have files whose names end in `.svelte`, each holding a script block, markup, and a style block. Open one: the markup renders to the page, the script holds its data, the styles apply only to it. Those files are Svelte components." The reader can point at the thing.
+
+Five rules follow:
+
+- **Experience first.** The first definition of a concept always goes through experience. A definition through other words may follow, as a short summary. It never leads.
+- **Start from the closest known action.** Find the nearest thing the reader has already done in this course. The new concept is that action plus one change. "You already write a variable in a script block and print it in the markup. Write it again, and wrap the declaration in `$state`. That is the new concept." Teach the change, never the whole idea from zero.
+- **If the concept is visible in code, the definition is its shape.** Some concepts appear as a visible part of a file: a rune call, a template block, an attribute with braces, a file ending. Define them by comparison. Your files so far contained A. This file also contains B, one extra thing, placed there. Without it: the problem you just watched. With it: what changes. The before-and-after shape of the file is the definition.
+- **When the new part is the topic, it is the headline.** Some lectures exist to add one new part to the reader's model of the file. The headline of such a lecture is: your file grows a new part today. Say it plainly in the first section. The story and the example demonstrate the part; they are not the headline. The opening ladder ends by promising the new part, not only the story's outcome.
+- **The check.** After every definition ask: can the reader point at a file, a folder, a line of code, or a thing on the screen, and say what it does? If yes, the definition passes. If it only connects words to words, rewrite it.
+
+### The one thing, and the question the reader is already asking
+
+**Every lecture has one thing.** One concrete change carries the whole concept. One line, written differently. One prop, added. One file, created. One call, made. Find it before writing anything. It is the smallest complete form of the concept: the thing the reader could rebuild from memory when every other sentence is gone.
+
+- **The one thing is the center.** Show it early. Show it alone, clean, with nothing competing beside it. Then let everything else — mechanism, contrast, story — explain what stands around it. If the reader keeps one item from the lecture, it is this one.
+- **Every concept has a concrete form, even the invisible ones.** A rune call is a thing in a file. A template block is a thing in the markup. An external module is a thing in a folder. Even a concept with no shape of its own is created by one line, called by one line, or kept in one file. Find that line, that place, that file. That concrete something stands at the center of the presentation, in its clearest form. The abstract is explained from it, never instead of it.
+- **The test for the one thing.** Say it as one visible change. If you need a paragraph, you have not found it yet. Keep cutting until one line is left.
+
+**Move from concrete to abstract through the reader's own question.** The reader is not empty. They already know a way — the old way, taught in earlier lessons. The moment they see the one thing, that knowledge fires a question: Why this? We already have a way to do this. Why here, in this file, in this form? Ask that question out loud, in the reader's words, at the exact moment the reader thinks it. Then answer it. Every step toward the abstract is the answer to a question the reader is already asking. An abstraction that answers no live question teaches nothing — cut it, or find the question it should answer.
+
+### Comparison table format (the title row is the markdown header)
+
+Every Summary table follows **one fixed shape**. The title row is the markdown header — it renders as a real `<thead>` and is visible. The leftmost header cell is left **empty**, so the top-left corner of the table is blank by design: there is no title over the leftmost "dimension" column. The column titles go in the remaining header cells, formatted as `**TITLE**<br>(subtitle)`.
+
+**Exact markdown skeleton** (three columns; adapt the count for your contrast):
+
+```
+| | **COLUMN B TITLE**<br>(subtitle) | **COLUMN C TITLE**<br>(subtitle) |
+| ---: | :--- | :--- |
+| **Dimension one** | value | value |
+| **Dimension two** | value | value |
+```
+
+**Canonical example** (a Svelte lecture's closing table):
+
+```
+| | **VANILLA JS**<br>(Manual DOM) | **SVELTE**<br>(Compiled Declarative) |
+| ---: | :--- | :--- |
+| **Who updates the DOM** | You, node by node, by hand | The compiled code, from the state your markup reads |
+| **Screen and data** | Drift apart the moment you forget an update | One source of truth: state renders to screen |
+| **Reuse** | Copy-paste with different IDs | Components carry their own logic everywhere |
+| **Cost** | Nothing extra at runtime | A compile step, but no framework runtime shipped |
+```
+
+**Rules, in order of importance:**
+
+1. **The first header cell is always empty** — `| |` at the start of the title row. This blanks the top-left corner: no title over the leftmost "dimension" column. The empty cell is structurally still a normal title cell (it keeps its borders and padding so the top line runs the full width of the table), it just has no text. The CSS keys off `thead th:empty` only to neutralize any stray background — leave the cell empty in the markdown and the rest is automatic.
+2. **Column titles live in the header row**, formatted as `**TITLE**<br>(subtitle)`. The build runs header cells through the inline formatter, so `**bold**`, `<br>`, and inline `` `code` `` all work. The title is the short name (e.g. `VANILLA JS`); the parenthetical is the one-word gloss of what kind of thing it is (e.g. `Manual DOM`).
+3. **Prevent awkward code wrapping (CRITICAL RULE FOR PDF TABLES)**. Table columns in the PDF are narrow (~240px). Never let inline code strings wrap naturally across lines—doing so causes Prince to break the grey background padding into awkward, ugly fragmented chips across lines (e.g. splitting `cart.svelte.js` into `cart.svelte/` and `js`, or splitting `onclick={() => save()}` mid-expression).
+   - **Separate prose from code:** Put `<br>` between leading prose and the code span, e.g. `Declared with<br>`let total = $derived(...)``, `Two-step:<br>`let claps`<br>`= $state(0)``.
+   - **Split long code strings:** Break multi-part code across `<br>` using separate backticks: `let { label }`<br>`= $props()`, `onclick={() =>`<br>`  count++`, or `let { size =`<br>`'md', ...rest }`<br>`= $props()`.
+   - Never put `<br>` inside the same backtick pair (e.g. `foo<br>bar`); always put `<br>` between distinct backtick spans (`foo`<br>`bar`).
+4. **The divider row is `| ---: | :--- | :--- |`** — right-align the first (dimension) column, left-align the rest. This is load-bearing for the rendered look.
+5. **Body rows start with a bold dimension** in the leftmost cell: `**Architecture**`, `**Runtime cost**`, etc. The CSS sizes `td:first-child strong` larger, so the dimension reads as a sub-heading inside its row.
+6. **Never put titles in a body row.** The markdown header is the real title row; putting titles in a body row produces a duplicate, unstyled title strip.
+
+### Heading rules (load-bearing)
+
+The three markdown heading levels have distinct, non-interchangeable roles. Using the wrong level changes both the rendered HTML and the PDF pagination.
+
+- **`# ` (h1) — the lecture title.** Used exactly once per lecture, as the first line. Pattern: `# Lecture {n}: {Short Title}` — for example, `# Lecture 52: Keys in Each Blocks and Why Index Fails`. The renderer uses this line as the page title and the entry heading in the course reader.
+- **`## ` (h2) — page break.** Every `## ` heading forces the PDF to start a new page (and the deck HTML to insert a lecture-break rule). Use `## ` sparingly: only when a section genuinely needs its own page — for example `## Beyond the basics` (the audit section) or a major part boundary inside a long lecture. Most lectures should have at most one or two `## ` headings.
+- **`### ` (h3) — the default section heading.** Every normal section inside a lecture uses `### ` — the "Problem," the "Mechanism," the "Worked example," and so on. `### ` does NOT trigger a page break; the section flows inline. If you catch yourself reaching for `## ` for a regular section, switch to `### `.
+
+Quick test: if the heading introduces a new subsection of the current lecture and you do NOT want a page break, it is `### `. If you want the next page to start here, it is `## `. The title at the top is always `# `.
+
+### The interview-question line (exact pattern)
+
+- **Position**: line 2 of the lecture file, immediately after `# Lecture {n}: ...`. No blank line between them.
+- **Format**: a markdown blockquote, prefixed with `> `, then the literal token `INTERVIEW QUESTION`, then a space, a vertical bar, a space, then the curriculum typology (`❱ CORE`, `❱❱ MORE`, `❱❱❱ ADVANCED`, each optionally followed by ` (Kit)` for Q101–Q210), a vertical bar, a space, then the question text.
+- **Example** (verbatim, including the `>` and the `|`):
+  ```
+  > INTERVIEW QUESTION | ❱ CORE | How do you create reactive variables in Svelte?
+  ```
+  and for the SvelteKit course:
+  ```
+  > INTERVIEW QUESTION | ❱ CORE (Kit) | What does the load function in +page.ts do?
+  ```
+- **A blank line follows** before the rest of the lecture body begins.
+- **Editing**: to change the question, edit this single line. Do not edit `../../questions/questions.md` and do not edit the build script — the build reads only from this line.
+- **If the line is missing**, the build renders the lecture without a callout (no error, but the visual anchor is gone — always include it).
+
+### The Opening Ladder (opening pattern)
+
+> **Naming note.** The author-facing name of this pattern is the **Opening Ladder**, the same name used in the demo project `react-lecture-01`. The build's internal CSS class `hook-ladder` is a historical artifact; authors never see or write it.
+
+Every lecture opens with two parts: nothing, then the **Opening Ladder**. The pattern exists for the tired, low-attention reader: one beat at a time, each beat numbered, forward pull from number to number, and the mystery held back until the body earns it.
+
+**Part 1 — nothing.** The Interview Question box shows the question and its tier badge only. There is no hook line in the ladder format: never write a leading scene line between the question line and the ladder, and never write the ladder's "Imagine this scenario:" lead yourself — the build generates it. (The build keeps pulling a legacy prose opening into the box for lectures written before this rule, but it never treats a list line as a hook.)
+
+**Part 2 — the Opening Ladder.** Immediately after the question line (and its blank line), the body opens with 5–7 numbered beats, in this order: the scene, the code moment, the question (a clear, direct question stating the visible conflict without cryptic brevity), the danger, the mystery, the promise. Each beat is one continuous markdown line, one idea per line, no sentence over 20 words. The objective is absolute clarity, never cryptic telegraphic riddles. The ladder ends on the mystery or the promise, never on the answer.
+
+**Part 3 — the first section after the ladder.** Immediately after the ladder, the teaching begins under a `### ` heading with a catchy title that names the chapter's idea. A bare paragraph must never sit between the ladder and the first heading: after the scenario, a properly titled section opens the explanation, carries the naming of the mechanism, and leads into the first code. Every later block of teaching gets the same treatment — prose lives inside titled sections, not loose between them.
+
+**The lead sentence and the wrapper are the build's job.** The build detects the ladder structurally — the first numbered list of the body, before any section heading — wraps it in its own styled section (never split across pages), and generates the lead line `Imagine this scenario:` above the beats. Authors write ONLY the numbered beats: never write the lead sentence, and never wrap anything in a div by hand. Any numbered list appearing after the first section heading renders as an ordinary list.
+
+**Rules:**
+- **Never name the mechanism term in the ladder.** No rune names, no API doing the reveal, no "the answer is". The ladder poses; the body answers. The term is earned where the lecture body builds it (the OLA and jargon rules apply from there). (The words "component", "markup", "script", "file" are course vocabulary, not automatically the mechanism: if the lecture's mechanism IS one of them, do not name it.)
+- **The last beat promises, it never explains.** The closing beat may promise what today brings, in plain words. It may not answer the question the ladder posed; the explanation belongs to the body's first section. A ladder that ends by explaining the mystery has spent its tension one beat early.
+- **Numbers, not bullets.** The beats are an ordered escalation; bullets are reserved for unordered lists (Summary takeaways, feature lists). A number promises a next one; that forward pull is the whole point.
+- **No label on the page.** The ladder is presented bare, directly under the Interview Question box; no "Intro" heading, no extra chrome. The internal name lives only in these instructions and in conversation with writing models.
+- **Consistency of world.** The ladder's scene is the same world the hook column of the question bank seeds, and the same world the lecture body keeps; no context switching. The course's running world is the National Times newsroom.
+- **Mechanism vocabulary in disguise is still naming.** Words like "reactive", "re-render", "compile", "proxy", "hydrate", "template" are the mechanism by another door. Write the visible behavior instead: "the page keeps showing the old headline", "the list prints the wrong rows".
+
+**Who you are writing for: the tired-reader standard.** Before writing one beat, fix the reader in your mind: a person reading English at B2 level (comfortable with everyday words, lost in idioms and rare vocabulary), at the end of the day, tired, with a mild headache, giving the page one chance. The ladder is the reader's first contact with the topic, so its beats must be the clearest sentences in the entire lecture, clearer than the body and clearer than the summary. If a beat can be read two ways, a tired reader takes the wrong way, and the lecture loses them in its first ten seconds. Write every beat so it survives that reader.
+
+**The identity test: one noun, one thing.** Every noun in every beat must be exactly one of four things, and only one: (a) a person, (b) something visible on the screen, (c) something in the code (a file, a variable, a line), (d) a machine event (the browser, the network, the server). A noun that can be read as two of these fails the beat. Name each thing so only one reading survives: a person gets an unambiguous human role ("a journalist types a new headline", never write unnatural boilerplate like "a real person"), the program gets its full name ("your code editor, the program, like VS Code"), the screen gets its place ("the headline at the top of the page"), the code gets its shape ("one line of your code", "the variable that holds the headline"), the machine gets its name ("the browser").
+
+**The overloaded-word list.** Web work reuses ordinary words as technical terms, and a beat has no room to carry both meanings. Never write these bare in a ladder beat; replace each with the concrete, observable thing:
+- **"editor"** — the worst offender: it can be the human editing the site, the site visitor, or the code editor program. Write "the journalist" or "the visitor" for the person; write "your code editor, the program" for VS Code.
+- **"live"** — broadcast-live? deployed? running? reactive? Say the observable fact instead: "the site is open in the reader's browser right now".
+- **"script"** — in a coding lecture it reads as a code file or the `<script>` block. If the scenario world means a broadcast script, name it in full ("the broadcast script, the text of tonight's show") or cut it.
+- **"log"** — as a verb it collides with `console.log`; as a noun it is a file or firewood. Write "print it to the console".
+- **"state", "props", "rune", "reactive", "render", "mount", "hydrate", "compile", "trigger", "store"** — mechanism vocabulary wearing everyday clothes; the ladder never names the mechanism, and these words are the mechanism by another door. Write the visible behavior: "the page keeps showing the old headline", "the number on the button never moves".
+- **World furniture** ("the newsroom desk", "the studio", "the bullpen") — the reader has never seen your scenario's office. Keep it only when the beat itself says what the thing is, or drop it.
+
+**The logic-first rule (no unexplained value on screen).** Every value the ladder turns into a problem — a total, a count, a badge, a price — must have its logic stated on the ladder, in plain words, before it breaks. The reader must be told what the number computes, from what inputs, and why anyone cares. A value that merely appears ("The payout total under the story list sits frozen at its old number") is a cipher: the reader cannot fear the loss of a number whose meaning was never given.
+
+The pattern is two beats, and both are required:
+- **Beat one carries the explanation.** The beat that introduces the actor or event adds a second sentence stating the business rule: "The paper pays by the word."
+- **Beat two carries the repetition.** The very next beat repeats that rule attached to the on-screen value: "That total counts the words of every story, because the paper pays by the word."
+
+The explanation gives the rule; the repetition welds the rule to the value that is about to break. This rule overrides beat brevity: a beat may run to two short sentences when the second sentence carries the logic. The 20-word-per-sentence limit still holds.
+
+**The cause-before-symptom rule.** Show the change before the break. The event that should have moved the number — a new story lands on the list, a name is typed, a save happens — gets its own beat or sentence ahead of the stale screen. Only then may the "why" beat fire, because only then does it point at a cause the reader just watched. A freeze with no shown change is trivia; and a change the reader cannot connect to the value (because the value's logic was never stated, per the logic-first rule) is invisible.
+
+**No assumed previous knowledge (unpack the technical shorthand).** Banning the mechanism's name is not enough: the ladder may not use technical shorthand as a substitute for logic either. A phrase like "needs a loop over every story, plus a safety check for broken records" silently assumes the reader already knows why a total needs a loop, what a safety check is, and what a broken record is. The ladder may assume none of this. Three requirements follow:
+- **Unpack technical phrases into operations the reader can picture.** Not "a loop over every story, plus a safety check for broken records" but "visit every story, add its words, skip any story with no word count."
+- **Restate taught terms in the beat where they appear.** "A computed value, a number computed from other data" is admissible; a bare "computed value" is not.
+- **Earn every "does not fit" wall as a chain.** When the lecture's point is that something does not fit the form already taught, the ladder walks the chain in order: the kind of value, named in taught words; then what makes this one harder than the easy case, meaning the steps; and only then the wall, that one line cannot hold steps. A wall stated as an assertion, with the chain compressed into a noun phrase, assumes the reader already knows the taxonomy — previous knowledge the ladder may not assume.
+
+**B2 vocabulary.** Every word in a beat is either everyday English or a word the course has already taught. Prefer "change" over "mutate", "show" over "render", "save" over "persist", "old" over "stale", "follow" over "propagate". No idioms, no unusual phrasal verbs, no word that makes a tired reader stop and reread. One concrete picture per beat.
+
+**The Global Newsroom Rule (No Journalism Jargon).** While every scenario takes place at "The National Times," the vocabulary used to describe the app must strictly be globally understood web or business terms. Never use journalism-specific jargon. A global B2 reader will not know what a "byline," "lede," "masthead," "copy," "wire," or "dispatch desk" is. You must translate these into their universal, structural equivalents: use "author profile" (not byline), "intro" (not lede), "site header" (not masthead), "text" (not copy), and "live feed" (not wire). If a word requires a dictionary of news jargon to understand, it is banned. This applies strictly to component names (`<AuthorProfile />`, never `<AuthorByline />`) and prose alike.
+
+**The Proper-Scenario Checklist (run on every ladder before the lecture is finished):**
+- [ ] Every noun in every beat is exactly one thing — a person, a thing on the screen, a thing in the code, or a machine event — and cannot be read as two.
+- [ ] No overloaded word appears bare: "editor", "live", "script", "log", and every mechanism word in disguise ("state", "rune", "reactive", "compile", "trigger"), replaced by observable behavior.
+- [ ] Every person is named with a human word, never with a bare ambiguous role.
+- [ ] Every word is B2: everyday vocabulary, no idioms, no rare words, nothing a tired reader must reread. **Crucially: No journalism jargon** ("byline", "masthead", "copy") even though the setting is a newsroom; always use global structural terms ("author profile", "site header", "text").
+- [ ] Each beat makes sense read alone and out of order — no pronoun with two possible owners.
+- [ ] No beat names the mechanism term or hints at it with jargon.
+- [ ] The world of the scene matches the hook's world and the lecture body's world.
+- [ ] Every value the ladder turns into a problem has its logic stated before it breaks: the explanatory sentence with the business rule in the introducing beat, then the repetition beat attaching that rule to the on-screen value.
+- [ ] The change event is shown before the stale screen: the "why" beat points at an input the reader just watched move.
+- [ ] No technical shorthand ("a loop over every story", "a safety check for broken records") stands in for logic — every such phrase is unpacked into operations the reader can picture, taught terms carry their plain re-definition in the beat, and a "does not fit" wall is earned by first classifying the value (it needs steps, not one formula).
+
+**Worked example: a failing ladder, then the same ladder fixed.** This ladder (an early draft) fails the gate; read each beat and count how many things every noun could be:
+
+1. The newsroom desk is live.
+2. An editor rewrites the breaking headline.
+3. You log the headline at the top of the script.
+4. Why only one print?
+5. A frozen badge ships the wrong headline.
+6. The value is moving, but the log is dead.
+7. We will watch the value as it actually changes.
+
+What a tired B2 reader stumbles on: **"byline" (a line? a person? an author profile?)**, "the newsroom desk" (a desk? a team? a component named Desk?), "is live" (on air? deployed? running?), "an editor" (a person editing the site? the visitor? the IDE?), "log" (a verb? a file? firewood?), "the script" (a news script? a code file? a `<script>` block?), "print" (a printer? the console?), "frozen" (the browser froze? the value cannot change?), "ships" (deploys? delivers?), "the log is dead" (which log? what does dead mean?). Every beat carries at least one double reading.
+
+The same scenario, rebuilt so each noun has exactly one identity:
+
+1. You built a news website called The National Times, and real readers are using it right now.
+2. A journalist types a new headline into the page and saves it.
+3. Your code has one job: print the headline to the console every time it changes.
+4. Why does the code print only once?
+5. Readers keep seeing the wrong headline.
+6. Something in your code read the headline once, then stopped looking.
+7. Today, the print will follow every change.
+
+Same world, same mystery, same promise, but now every beat paints one picture a tired reader cannot misread. Note what disappeared: "editor", "live", "script", "log", "frozen", "ships", all replaced by people, screens, code lines, and observable behavior.
+
+**Second worked example: the ladder with the missing logic.** This ladder (an early draft of a payout lecture) passes the identity test — every noun is one thing — and still fails, because the value at the center of the story is a cipher and the reasoning is compressed into shorthand:
+
+1. A journalist files the last story of the night in the National Times newsroom.
+2. The payout total under the story list sits frozen at its old number.
+3. Why is it frozen?
+4. The correct total needs a loop over every story, plus a safety check for broken records.
+5. One line cannot hold a loop.
+6. Svelte ships a second form of the same tool, one that takes a whole function.
+7. Inside it, loops and safety checks are just normal JavaScript.
+
+Read it as a tired B2 reader. What is a "payout total", why does it exist, what does it compute, and why would filing a story change it? The ladder never says. Why is the number "frozen" — what moved that it should have followed? Nothing is shown changing. What is "a loop over every story", why would a total need one, what is a "safety check", what is a "broken record"? All assumed previous knowledge. The same ladder, rebuilt by the logic rules:
+
+1. A journalist files one more story at the end of the night at the National Times. The paper pays by the word.
+2. The page shows one payout total under the story list. That total counts the words of every story, because the paper pays by the word.
+3. The new story lands on the list.
+4. But the payout total still shows the old number. Why does it not move?
+5. The correct total is a computed value, a number calculated from other data. This one needs steps: visit every story, add its words, skip any story with no word count.
+6. One line cannot hold those steps.
+7. Svelte has a place for steps like these. Inside it, loops and safety checks are just normal JavaScript.
+
+Note what appeared and what changed. The business rule ("pays by the word") arrives as the explanatory sentence in the first beat and is repeated, attached to the on-screen value, in the second. The change (the story lands on the list) now precedes the stale number, so "Why does it not move?" points at a watched event. The shorthand of the old beat four ("a loop over every story, plus a safety check for broken records") became "visit every story, add its words, skip any story with no word count" — the same logic, stated as operations a tired reader can picture. And the wall ("one line cannot hold a loop") now stands on an earned chain: the value is classified first (a computed value that needs steps, not one formula), so the wall lands as a conclusion instead of an assertion. One banned word from the old draft ("ships") left with it.
+
+**Primary Mandate — Role Rotation, Phantom Routines, and Cryptic Questions.** This case study demonstrates why clarity must always defeat artificial word-count constraints, synonym rotation, and phantom background routines.
+
+*The Flawed Draft (REJECTED):*
+1. A reporter opens the bureau directory to update a foreign correspondent's assignment record.
+2. A background routine receives fresh coordinates and updates reporter.location.city = 'Geneva' in the profile data.
+3. Why did nothing move?
+4. Readers see the journalist stationed in London while their breaking dispatch publishes from Switzerland.
+5. The nested city text changed inside computer memory, but the badge on screen stayed frozen on London.
+6. Today you learn the exact boundary where deep updates stop, and how to keep nested values linked to the screen.
+7. (The same beat structure continues.)
+
+Why it failed: Rotating between "reporter", "foreign correspondent", and "journalist" confuses international B2 readers (sounds like three people or three technical roles); "A background routine receives fresh coordinates" introduces novel technical jargon ("routine") that distracts from Svelte; and "Why did nothing move?" is a cryptic, metaphorical question forced into an artificial 4-word rule. On a screen, "move" means CSS animation.
+
+*The Corrected Standard (MANDATED), in the Svelte version of the scenario (deep state objects):*
+1. A journalist opens their profile page on the National Times website to update their current city.
+2. The profile displays a location badge on screen, showing London from reporter.location.city.
+3. The journalist selects Geneva, writing reporter.location.city = 'Geneva' on the profile object.
+4. Why did London stay as the registered location, even after the update?
+5. Readers still see London on the published website while the journalist reports breaking news from Geneva.
+6. The city text changed inside the data object, but the badge on screen never received the update.
+7. Today you learn how a plain object freezes on screen, and how Svelte keeps nested data connected to the screen.
+
+Why it succeeds: One actor throughout ("a journalist"); direct user action (selects Geneva); and Beat 4 asks a natural, complete, non-cryptic question stating the exact observable paradox ("Why did London stay as the registered location, even after the update?").
+
+**Second Mandate — The Jargon Trap and Inside-Out Engine Trap.**
+
+*Stage 1 — The Jargon and Abstraction Trap (FAILED):*
+1. A news reporter reviews three breaking wire reports on the National Times dispatch desk.
+2. The dispatch desk requires every published report to be manually verified by its unique bulletin number.
+3. The developer adds a verify button that passes bulletin number 402 directly to the click handler.
+4. Why did it run?
+5. Every bulletin verifies itself the instant the page loads, publishing unread reports before the reporter touches the mouse.
+6. Writing parentheses directly in the template attribute executes the action immediately during rendering instead of waiting for clicks.
+7. Today your handlers learn to wait for user interaction, receive custom values, and read native browser events.
+
+Why Stage 1 fails: "Wire reports" and "dispatch desk" sound like hardware or network libraries; "bulletin 402" looks like HTTP 402; and "template attribute" is vague academic jargon hiding `onclick={...}`.
+
+*Stage 2 — The Inside-Out Engine and Broken Causality Trap (FAILED):*
+1. A writer opens a dashboard showing three draft articles on a news website.
+2. Each draft article has a simple identification number, such as article 5 or article 12.
+3. Next to article 12, the developer writes onclick={deleteArticle(12)} on the delete button.
+4. Why did it run?
+5. All three articles delete themselves the second the page loads, wiping out the work before any click.
+6. Writing parentheses directly inside the onclick attribute calls the function immediately during page rendering.
+7. Today your buttons learn to wait for user clicks, pass custom values safely, and inspect browser events.
+
+Why Stage 2 fails: "Why did it run?" is programmer shorthand from inside the engine. To a screen observer, no one clicked, and articles do not "run". Causality was broken by asking the question before showing the empty screen.
+
+*Stage 3 — The Outside-In Screen Truth (MANDATED):*
+1. A writer opens a dashboard to edit three draft articles on a website.
+2. Each article has a delete button written as onclick={deleteArticle(id)} to remove that draft.
+3. The writer loads the page without touching the mouse or clicking any button.
+4. Where did they go?
+5. The list is completely empty because the delete function executed during page load, erasing all drafts.
+6. Writing parentheses (id) after the function name executes the code during setup instead of waiting for clicks.
+7. Today you learn how to pass arguments safely and inspect browser events when users click buttons.
+
+Why Stage 3 succeeds: Universal nouns; user inaction is explicit (did not touch the mouse); Beat 4 asks the natural human reaction to a blank screen; and Beat 6 identifies the exact characters: writing parentheses `(id)` after the function name.
+
+**Third Mandate — The Mismatch Law (the invisible contradiction).**
+
+*The Flawed Draft (REJECTED):*
+1. A journalist loads a directory of ten thousand global news bureaus on the National Times editorial portal.
+2. The page stores the article list so the display updates as the journalist searches.
+3. The journalist types a word into the search box to find an old article.
+4. Why does the search box lag on every keystroke, even though no article ever changes?
+5. Letters appear seconds late on screen, locking up the page while the journalist types.
+6. The page rebuilds ten thousand article rows on every keystroke for data that never changes.
+7. Today you learn how to display massive datasets without losing fast updates.
+
+Why it failed: First, "global news bureaus" and "editorial portal" use specialized, confusing institutional jargon. A newspaper publishes articles; an archive of 10,000 published articles is the only sane, universal domain entity. Second, Beat 2 missed the fundamental architectural contradiction (The Mismatch Law): writing *"The page stores the article list so the display updates as the journalist searches"* sounds harmonious and correct, hiding the clash. The reader's screen shows twenty rows; the code rebuilds ten thousand. The mismatch must be stated, not smoothed over.
+
+*The Corrected Standard (MANDATED):*
+1. A journalist opens the search archive on the National Times website to browse 10,000 published articles.
+2. The code displays all ten thousand article rows into the page, but the reader's screen shows only twenty rows at a time.
+3. The journalist types a single letter into the search box to find a story.
+4. Why does typing in the search box freeze the screen, even though no article ever changes?
+5. Letters appear seconds late on screen, locking up the interface while the journalist types.
+6. Every keystroke rebuilds the work for all ten thousand rows, and most of them sit below the screen, where nobody reads them.
+7. Today you learn how to show only the rows the reader can actually see.
+
+Why it succeeds: Universal nouns; single actor; and Beat 2 explicitly exposes the architectural contradiction between what the code does (displays all 10,000 rows) and what the screen needs (twenty visible rows).
+
+**Status of existing lectures.** The first lectures written for this project start from a clean slate; there is no legacy-prose retrofit burden. Keep it that way.
+
+### Alert callouts (`> [!TIP]`)
+
+Lectures support GitHub-style **alert callouts** — a blockquote whose first line is `> [!TYPE]`, rendered as a styled box with an eyebrow label and a tinted accent border. The project uses these to deliver *interview-strategy guidance* (how to frame an answer, what to emphasize, what interviewers want to hear) alongside the technical content.
+
+**Syntax.** Open with `> [!TYPE]` on its own line, then the body on the following `>` lines:
+
+```
+> [!TIP]
+> **To impress the interviewer:** Most candidates will say "Svelte makes variables reactive." If you want to show deep understanding, explain the compiler's role: `$state` is a mark the compiler reads at build time to wire the variable to every place in the markup that reads it — and that distinction explains why destructuring a state proxy loses the reactivity.
+```
+
+**Supported types and their eyebrows** (the build parses exactly these five; anything else falls back to a plain blockquote so the typo is visible):
+
+- `[!TIP]` → **Interview Tip** (the project's signature callout; accent-teal border). Use this for "here is how to win this answer in an interview" guidance.
+- `[!NOTE]` → **Note** (neutral informational aside; accent-teal border).
+- `[!KEY]` → **Key Takeaway** (warm amber). This is the callout for **insider allegories and key takeaways** — the one-line distillation that separates a framework user from someone who grasps the underlying idea. Reach for it when you have a single sentence that reframes the concept as a memorable comparison, analogy, or load-bearing truth. A good KEY callout reads like something a senior engineer would murmur after years with the tool — not a summary of the section, but the *why-it-matters* the section is building toward.
+- `[!WARNING]` → **Warning** (amber; a real pitfall to avoid).
+- `[!CAUTION]` → **Caution** (red; a destructive or breaking action).
+
+**Authoring rules:**
+
+- **The marker line is `> [!TYPE]`** — uppercase type in square brackets, immediately after `> `. A blank `>` line may precede the body but is not required; the body lines are everything from the next `>` line until a non-`>` line.
+- **Use `> [!TIP]` as the default** in this project. The eyebrow renders as "Interview Tip" precisely because every lecture is interview prep; reaching for NOTE/WARNING/CAUTION is fine when the content genuinely fits one of those tones, but TIP is the on-brand choice for framing advice.
+- **Reach for `> [!KEY]` for allegories and insider takeaways.** These are the highest-value lines in the whole lecture — the comparisons and compressed truths that show deep understanding and that interviewers and insiders recognize. Do not waste the KEY box on a routine "remember to..." note; reserve it for the kind of sentence that earns its own box.
+- **One callout per point.** A callout carries a single, self-contained tip. If you have three tips, write three callouts — do not cram a bulleted list of tips into one box.
+- **Body formatting is full markdown.** Bold (`**...**`), italic (`*...*`), and inline code (`` `...` ``) all work inside the callout body. Keep the body to a short paragraph; if it needs a code example, the example belongs in a fenced block adjacent to the callout, not inside it.
+- **Lead the body with a bold lead-in.** Pattern: `> **To impress the interviewer:** ...` or `> **Common mistake:** ...`. The bold lead-in names what kind of tip it is before the reader reaches the explanation. The KEY allegory is the one exception: its body is often a single bare sentence with no lead-in, because the sentence *is* the takeaway.
+- **Place callouts inline, at the moment the tip matters.** A callout that teaches how to answer the *current* concept goes right after the section that establishes it. Do not bank all tips at the end of the lecture; their value is contextual.
+- **Never substitute a callout for the lecture's actual content.** The callout is framing advice — how to talk about the concept. The mechanism itself belongs in the lecture prose and code blocks. A lecture full of callouts and thin on explanation has failed its job.
+
+### Repeat and emphasize the important statements
+
+A key statement does not earn its place by being said once. The project's convention is that an **important allegory or insider takeaway is stated twice, in two registers**: first as the punchy `[!KEY]` callout (the compressed form a reader can quote), then again, expanded, in the prose immediately following (the unpacked form that explains *why* the allegory holds). The compressed line earns the box; the prose earns understanding.
+
+The model:
+
+```
+> [!KEY]
+> The script runs once; the markup lives forever.
+
+When Svelte creates your component, the code inside the `<script>` block runs one
+time, top to bottom, and then it is finished. The markup it set up stays on screen
+for the whole life of the page. That is why a plain variable freezes: the line that
+computed it already ran, and nothing will ever run it again. The fix is never to
+rerun the script; it is to mark the variable so the compiler wires it to the markup.
+```
+
+The callout and the paragraph say the *same thing* deliberately. The callout is the hook (a reader can carry it away in one read); the paragraph is the proof (it walks the analogy through so the reader sees the mapping). Do not put the callout in without the unpacking, and do not unpack an idea in prose without giving its load-bearing line a `[!KEY]` callout to live in. If a takeaway is worth the reader's long-term memory, it is worth stating in both registers.
+
+**What counts as an insider takeaway worth this treatment.** Allegories that map the unfamiliar onto the familiar ("the script is a birth certificate, not a heartbeat"), naming the exact mechanism a senior engineer would point to ("`$state` is not a function call at runtime, it is a compile-time mark the compiler replaces with wiring"), and the one sentence that, once heard, makes the rest of the lecture click into place. These are the lines a student repeats to themselves before the interview; surface them, box them, and unpack them.
+
+## Code Block Format (auto-highlighted)
+
+Every fenced code block in a lecture is automatically transformed by `src/build-lectures.mjs` into an editor-style display: a thin-bordered window with a filename tab, three traffic-light dots, numbered lines, zebra striping, and syntax-highlighted tokens. A `//` comment renders as a **speech bubble hung directly below its code line**, with a small tail pointing up at that line. The author writes plain Markdown; the build script produces the styled HTML. **Never hand-write `<span>` tags, CSS classes, or bubble markup in lecture Markdown** — the highlighter will double-encode them and the output will be wrong.
+
+### How to author a code block
+
+- **Open with a fenced block**: ` ```svelte ` for component files (script + markup + style in one fence), or ` ```js ` / ` ```ts ` for plain module files, ` ```html ` for host pages, ` ```bash ` for terminal commands.
+- **Filename tab is always shown.** The editor chrome (three dots + filename pill) renders for every fenced block. If you omit `title=`, the highlighter derives a default filename from the fence language: `svelte` → `App.svelte`, `js` → `App.svelte.js`, `javascript` → `App.js`, `ts`/`typescript` → `App.ts`, `html` → `index.html`, anything else → `code.txt`. To override, write ` ```svelte title="ReaderGreeting.svelte" `.
+- **Blank lines render as ordinary numbered rows.** Every source line inside the fence gets a row and a line number, and blank lines show as empty numbered rows. To keep the editor dense, write snippets without blank lines where you can. Keep top-level code flush against the left margin; indentation inside fences is rendered literally.
+- **Keep every line inside a fence under about 80 characters.** Longer lines wrap in the built output (the row grows taller, the number column stays left) — that wrap is a safety net, not the style. Break long object literals and template attributes across rows yourself, one attribute per row, so the break lands where the code reads best. Svelte markup especially wants one attribute per line in lectures.
+- **Close with ` ``` `** on its own line. Every fence opener must have a matching closer.
+- **Write comments normally**: use `//` followed by a space and the comment text. The highlighter renders the `//` as `→` in the output. Example source: `let count = $state(0); // the pair every component starts from`. Inside markup (outside the script block), an end-of-line `//` also works because Svelte markup lines rarely end in `//`; prefer annotating the script line that owns the behavior, or the opening tag line.
+- **Bold inside comments**: wrap key terms in `**double asterisks**`. The highlighter renders these as bold inside the comment span. Example source: `// adds an **OWN** reactive variable`.
+- **No other comment formatting**: italic, inline code, and links are not supported inside comments. Use `**bold**` only.
+- **`{/* */}` and `<!-- -->` comments**: not supported as bubbles. Annotate the neighboring line with a `//` comment placed on a line with code (for example on the attribute line), or explain in prose.
+
+### The `//` comment rule (exact behavior)
+
+- The first `//` on a line that is **followed by a space or end-of-line** is treated as the comment start.
+- Everything from that `//` to the end of the line becomes the text of a comment bubble rendered below the code line (white box, grey border, small upward tail, Georgia serif italic). The first letter is auto-capitalized, and `**bold**` runs render as tag-styled bold inside the bubble.
+- **`✔️` / `✖️` glyphs are stripped from comments on purpose.** The owner decided verdict icons do not belong in the rendered output. Signal do/don't verdicts with words instead: `// **WRONG:** reads the prop once`, `// **RIGHT:** stays reactive`.
+- **`//` inside URLs is preserved.** A string like `'https://example.com'` is untouched because the `//` is followed by `example`, not a space. The same protection applies to `file://`, `http://`, and regex literals.
+- **Empty trailing `//` is dropped.** A line ending in bare `//` with no comment text renders without any arrow — clean output, no dangling `→`.
+- **`//` at the very start of a line** (a comment-only line, flush-left or indented) is auto-repaired by the build: its text is merged into the bubble of the next code line (the previous one if the block ends first), no empty row is rendered for it, and the build log prints a note naming the source line. **Authors must still never write comments this way.** End-of-line comments remain the rule; the merge is a safety net that guarantees no comment bubble ever floats beside an empty row, not permission to park comments on their own lines (see **Comment placement** below).
+
+### Comment placement (load-bearing)
+
+Comments in this project are **always attached to the code line they annotate**: they are written at the end of that line, after a `//`, never on their own line above the code. This is non-negotiable. The reason is that a comment renders on screen as a speech bubble hung directly **below** its code line, with a small tail pointing up at it. Its entire job is to deliver clear, short visual information about that one line. A comment with no code on its line is a bubble pointing at nothing — the reader cannot tell which line it belongs to. (If a comment-only line slips into a fence anyway, the build folds it into the next code line's bubble and logs a note in the build output — a safety net, not an excuse.)
+
+**The rule, stated plainly:** write `count += 1; // annotation`, never `// annotation` on its own line followed by `count += 1;`. If you find yourself wanting to introduce a block of code with a comment, write the introduction in the prose above the snippet instead — do not park it as a comment-only line inside the fence.
+
+**Exception for extremely wide lines:** If the line of code itself is exceptionally long (e.g., a wide template attribute row), attaching a comment to the end will cause it to hit the right edge of the editor container and wrap into two lines, breaking the parallel visual layout. In this specific scenario, place the comment on its own line *inside the block* (e.g., on the very next line) instead of trailing the wide line.
+
+**The canonical reference for comment discipline is `../react-lecture-01/md-lectures/01.md`** (the sibling project this one mirrors): every comment sits at the end of its code line. The models of the discipline, adapted to Svelte:
+
+1. **The trap verdict, end-of-line:** `let count = 0; // **WRONG:** a plain variable never updates the **SCREEN**` — a wrong-pattern line, the verdict word leading the comment, the load-bearing word in caps, at the end of the line it warns about.
+
+2. **The correct-pattern verdict, end-of-line:** `let count = $state(0); // **RIGHT:** assigning to it repaints every **READER**` — the recommended pattern, takeaway word in caps.
+
+3. **The numbered-step sequence across three lines:**
+   ```
+   likes += 1;        // 1. optimistic override: increment **LOCALLY** immediately
+   await saveLike();  // 2. tell the server to **SAVE** the change
+   likes -= 1;        // 3. rollback: if the request failed, **REVERT** the override
+   ```
+   — a three-step narrative told as three aligned comments; the reader's eye tracks down the bubbles and reads the story.
+
+4. **The one-line gotcha:** `let { title } = $props(); // **RIGHT:** the prop itself, which follows the parent` — the comment names the exact consequence beside the offending line.
+
+5. **The three-way contrast block:**
+   ```
+   const a = value;                 // **WRONG:** copied **ONCE** at setup, never again
+   const b = $state(value);         // **RIGHT:** assignment updates the **SCREEN**
+   const c = $derived(compute(b));  // **WARNING:** never assign to a **DERIVED** value
+   ```
+   — three lines, three contrasting caps words; the comparison lives in the bubbles, not in prose.
+
+**What makes a good comment.** Because the bubble hangs directly under its code line, it must be short and self-contained — a verdict word, a step number, or a one-phrase gloss, plus one caps load-bearing word. It is a *label* for the line, not an explanation of the line; explanations belong in the prose around the snippet. If a comment needs more than roughly one short sentence, it is too long for the bubble — move that material into prose and leave a shorter label on the line.
+
+**The anti-pattern (do not do this).** The following is exactly wrong — every comment is a comment-only line parked above the code it describes:
+
+```
+// 1. the element is created through Svelte
+<h1>Hello</h1>
+```
+
+On screen this renders as a `➔`-prefixed annotation with no code beside it, followed on the next row by code with no annotation. The reader cannot pair them. The correct form attaches the comment to the line it labels:
+
+```
+<h1>Hello</h1> // 1. Svelte turns this markup into the page's **ELEMENT**
+```
+
+### Comment appearance and conventions
+
+Comments in lecture code blocks are not styled like ordinary code. They have their own visual treatment designed to make the *meaning* of a line jump out, separate from the *mechanics*.
+
+**Visual treatment of every comment:**
+
+- **A bubble, not an arrow.** Every comment renders as a white speech bubble with a grey border and a small tail, pointing up at the code line it annotates. The bubble sits directly below that line, indented to line up under the code.
+- **Serif italic text.** Bubble text uses Georgia (Times fallback), italic, at roughly the code's size — a typographic shift that signals "annotation, not code" without a color change.
+- **`**bold**` renders as a tag chip.** Bold runs in comments render as monospace, tag-styled bold, used for the caps load-bearing word.
+- **Multi-line bubbles.** A comment containing `<br>` renders as a taller bubble with the lines stacked; the build also merges consecutive comment-only lines into one bubble joined by `<br>`.
+
+**Comment content conventions (the author's job):**
+
+Comments in this project are not neutral developer notes. They are **pedagogical annotations** that teach the reader what the line *does* or *means* in the context of the lecture. Three patterns are the model for new lectures:
+
+- **Verdict comments with a leading word**: start the comment with `**RIGHT:**` (recommended pattern) or `**WRONG:**` (trap) so the reader instantly knows whether the line is a pattern to copy or a trap to avoid. Do not write `✔️`/`✖️` glyphs: the build strips them, so they cost effort and render nothing. Examples:
+  - `// **WRONG:** copies the prop **ONCE** into a plain variable` — a trap; the line is shown to warn against it.
+  - `// **RIGHT:** recomputes only when the inputs change` — the recommended pattern.
+  - `// **WRONG:** assigning to a derived value is **FORBIDDEN**` — a trap with the specific consequence called out.
+- **`**CAPS**` for the single load-bearing word.** Wrap the one keyword that carries the lesson in bold-uppercase. The highlighter renders `**REACTIVE**` as `<b>REACTIVE</b>` — bold, in a darker grey (`#374151`) than the surrounding comment text. Use this for the term the reader must take away from the line: **RUNES**, **ONCE**, **REPAINT**, **DEEP**, **READ-ONLY**, **PROXY**, **NEW-OBJECT**, **LOCALLY**, **SAVE**, **REVERT**, **SOURCE**, **KEY**, **COMPILE**. One per comment, occasionally two — never a whole sentence in caps.
+- **Numbered steps inside a single snippet.** When a code block shows a sequence of operations, prefix each comment with its step number: `// 1. optimistic override: increment **LOCALLY** immediately`, then `// 2. tell the server to **SAVE** the change`, then `// 3. rollback: ...`. The numbers survive into the rendered comments, giving the reader a clear path through the snippet.
+
+**Long bubbles wrap by themselves.** A bubble that would overflow the editor width wraps internally onto additional bubble lines. The author does not control this — it happens in the build. If a comment is so long that the wrapped bubble looks awkward, shorten the comment; the code block is not the place for paragraphs.
+
+**What comments are NOT in this project:**
+
+- **Not collapsible.** Every comment always renders. If a comment is not pedagogically necessary, delete it; do not leave it "for completeness."
+- **Not links or code.** Inline `` `code` ``, `[links](url)`, and `*italic*` are not parsed inside comments. Only `**bold**` is supported. If you need to reference an identifier inside a comment, write it as plain text (optionally in CAPS if it is the load-bearing word).
+- **Not for section narration.** If a comment needs more than one short sentence, the explanation belongs in the prose around the code block, not inside the code. Comments annotate lines; prose explains snippets.
+
+### Token classes produced by the highlighter
+
+The highlighter classifies code tokens into five color classes. The author does not control these — they are derived from the source. Listed so the author knows what to expect:
+
+- **`.kw`** (deep magenta `#93275a`) — JavaScript keywords: `let`, `const`, `var`, `function`, `return`, `if`, `else`, `for`, `while`, `new`, `class`, `extends`, `this`, `await`, `async`, `import`, `export`, `from`, `default`, `try`, `catch`, `throw`, `typeof`, `instanceof`, `in`, `of`, `true`, `false`, `null`, `undefined`, `break`, `continue`, `switch`, `case`, and the rest of the standard keyword set.
+- **`.fn`** (teal `#156a64`) — identifier followed by `(` (with optional whitespace between), e.g. `$props()`, `console.log(`, `addEventListener(`.
+- **`.nl`** (magenta `#93275a`) — number literals: `0`, `42`, `3.14`.
+- **`.str`** (green `#1a7d2e`) — string literals in `"double"`, `'single'`, or `` `template` `` quotes. Note: module directives imported as strings render green.
+- **`.rune`** (orange `#c2410c`) — Svelte 5 runes: identifiers starting with `$` that begin a rune name — the built-ins (`$state`, `$state.raw`, `$derived`, `$derived.by`, `$effect`, `$effect.pre`, `$props`, `$bindable`, `$inspect`, `$host`) and store-style prefixed identifiers that happen to start with `$` followed by one of these names. Every rune renders orange and bold.
+
+Plain identifiers (variable names, property accesses, component names) are rendered in the default ink color with no span. Template braces `{...}`, block tags `{#if}`/`{/if}`/`{:else}`, and markup are rendered as plain characters; the expressions inside the braces are tokenized as ordinary JavaScript when they are part of a script line.
+
+### Example (source and result)
+
+**Source Markdown** in `md-lectures/NN.md`:
+
+````markdown
+```svelte title="App.svelte"
+<script>
+  let count = $state(0); // the variable the whole page follows
+</script>
+<button onclick={() => count++}>
+  Clicks: {count}
+</button>
+```
+````
+
+**Rendered HTML** (what the build script produces, simplified):
+
+- A `<div class="editor">` block
+- An editor chrome bar with three dots and an `App.svelte` filename tab
+- Six numbered rows with zebra striping
+- `let`, `script` markers, `return`-style keywords styled magenta (keywords); `$state` styled orange (rune); `'...'` strings styled green; `count++` left plain inside the arrow function
+- The `//` comment rendered as a speech bubble below its line — `The variable the whole page follows` — in the italic serif bubble style
+
+The bubble markup and all `<span>` tags are produced by the build script. The author wrote only `//` comments and plain code.
+
+### Supported languages
+
+`svelte`, `js`, `javascript`, `ts`, and `typescript` all use the same JS tokenizer (the `svelte` fence simply defaults the filename tab to `App.svelte`). `html` and `bash` are rendered through the same tokenizer without language-specific branching; if you need CSS tokenized differently, that requires extending the highlighter in `src/build-lectures.mjs` (add a new tokenizer branch keyed on the fence language).
+
+### Known limitations
+
+- **Template literals with `${}`**: a template string like `` `Hello ${name}` `` is treated as one string token. The `${name}` part is not separately highlighted as an identifier. Acceptable for typical lecture snippets; document long template literals in prose if the interpolation matters.
+- **Markup expressions `{count}`**: braces and their contents inside markup lines are tokenized as plain text plus ordinary identifiers; they are not colored as expressions. The pedagogical weight belongs to the prose and the comment bubbles anyway.
+- **Regex literals containing `//`**: rare in Svelte teaching material. The "followed by space or EOL" rule protects most cases, but a regex like `/foo//bar/` would mis-tokenize. Avoid regex literals with `//` in lecture code.
+- **Block comments `/* ... */`**: not currently supported. Multi-line block comments are rendered as plain code (no bubble styling). Use `//` per-line comments in lectures — they produce the bubble aesthetic and align with the rest of the design system.
+
+## Why the lecture-only shape exists
+
+This project deliberately runs a single pipeline. The lecture is the comprehensive source for a question; it is written once, driven from the local Svelte documentation and supplementary research, and it is the whole deliverable. There is no downstream card or data-flow artifact to distill, so the lecture must carry the full depth itself: the OLA unpacking, the component panel, the worked examples, and the streetwise summary all live in this one file. A thin lecture has no second artifact to rescue it.
+
+## Where to look for related context
+
+- `../react-lecture-01/` — **the demo project, the only sibling you may open, and only for structure.** Its `md-lectures/` files are the model for section order, ladder shape, panel placement, comment discipline, Summary and table shape, and depth calibration — never for content: no scenarios, no examples, no metaphors, no code, no phrasing may be copied or adapted from it. Its `instructions.md` is the model this document was adapted from.
+- **Every other project folder is off limits.** Do not open, imitate, or cite `svelte-lecture-01`, `svelte-lecture-02`, `online-demo-01`, or any other folder in `diagram-lab/output/`. When a question about style or structure comes up, the answer comes from `../react-lecture-01/` or from this document, never from another project.
+- `documentation official/svelte 2026 June/svelte-docs/` — the primary source for lecture content.
+- `../../questions/` — the question bank: `questions.md` (the 210 rows), `topics.md` (the controlled tag vocabulary), `README.md` (the design rationale and reading paths).
+- **No screenshots, no photos of the result — unless the user explicitly asks.** By default do not capture or examine images of the built HTML or PDF at any point; see the **no-screenshot rule** in "Visual reference for the Pencil book design" below.
+
+## Visual reference for the Pencil book design
+
+The lecture pipeline's code-block presentation is meant to mimic the visual style of the Pencil book at `/Users/techton/lechton/research-code/svelte dev 2026/Pencil/`. The canonical references are:
+
+- `Pencil/styles/figure-03.css` — the source-of-truth stylesheet for the editor code-block look.
+- `Pencil/cards 05/04_extra_javascript_1/01-prototype/card.html` — a hand-curated example of the editor HTML structure.
+- `Pencil/book/out/04_extra_javascript_1.pdf` — the full reference chapter in PDF form.
+
+These files are **reference only** — never modify them. When matching the look, copy values inline into `src/lecture.css`; do not link to or import the Pencil CSS. (The Pencil book itself is a Svelte course; only its code-block aesthetic is the reference here, not its content.)
+
+**Important limitation — the no-screenshot rule.** **NEVER take screenshots of the built HTML or PDF, and NEVER examine photos of the result, at any point of writing, polishing, or verifying a lecture — UNLESS the user explicitly asks for a screenshot or an image check in that specific request.** The default authoring loop is text-only. The reason is structural: the ZCode client cannot display images to its model, so a screenshot teaches the author nothing while costing a full build cycle. The only mechanical gate is the build log: `node src/build-lectures.mjs` with zero warnings. When the rendered output looks wrong, diagnose it by reading the generated HTML in `md-lectures-html/` and the CSS values in `src/lecture.css` and comparing them against the format rules in this document — never by capturing or inspecting images of the page. If a visual judgment genuinely requires human eyes, say so in plain language to the owner and let the owner decide; do not attempt the judgment yourself from images. When the user does explicitly ask, follow that instruction for that task only, then return to the text-only default.
+
+### The Comprehensive Lecture Checklist (MANDATORY FINAL GATE)
+
+Before generating or finishing any `.md` lecture file, you MUST verify every single item on this list. Do not output the lecture until it passes this entire audit:
+
+**1. The Header & Hook**
+- [ ] **Typology Tagging:** Does the lecture start exactly with `> INTERVIEW QUESTION | ❱ [LEVEL] | [Question]` (with ` (Kit)` appended to the level for Q101–Q210)?
+- [ ] **The Hook (OLA):** Does the opening establish a visceral, real-world, high-stakes scenario?
+- [ ] **The Opening Ladder:** Does the body open directly with 5–7 numbered beats (no leading scene line, no hand-written lead) ending on the mystery, with the mechanism term never named, followed immediately by a titled `### ` section that opens the teaching?
+- [ ] **The Proper-Scenario Checklist:** Does every ladder beat pass the scenario-clarity gate in the Opening Ladder section — B2 vocabulary for a tired reader, every noun exactly one thing (a person, a thing on the screen, a thing in the code, or a machine event), no bare overloaded word ("editor", "live", "script", "log", "state", "rune", "reactive"), every beat readable alone and out of order, the problem value's logic explained then repeated (logic-first), the change event shown before the stale screen, and no technical shorthand left unpacked?
+- [ ] **The Last Beat:** Does the ladder close on a plain promise of what today brings, never on the explanation of the mystery it posed?
+- [ ] **Experience-First Definitions:** Does every new concept pass the experience standard — defined through what the reader can point at, starting from their closest known action, or by the visible before-and-after shape when the concept appears in code — and never only through other words?
+- [ ] **The One Thing:** Is the lecture built around one visible change (one line, one prop, one file), shown early and alone? Does every abstraction answer a question the reader is already asking, voiced aloud at the moment it arises?
+- [ ] **The Headline:** When the lecture's topic is a new part of the file, do the first section and the ladder's promise beat headline that growth, with the story as the demonstration?
+- [ ] **Structural Surprises:** Is every construct that breaks the reader's accumulated model of a Svelte file (a rune where a plain declaration was expected, template logic inside markup, braces where HTML holds a string, a `.svelte.js` module) taught in prose BEFORE the first fence that shows it — naming the old model, saying the new construct is allowed, and marking what distinguishes it?
+- [ ] **Strongest Naive Alternative:** Does the lecture raise and answer the strongest alternative the course has equipped the reader to think of (a prop, a plain variable, a handler), not only weak strawmen?
+- [ ] **Deck Cross-Reference:** Did the lecture search earlier lectures for its concepts, re-anchoring and citing `(see Lecture N)` for every term an earlier lecture already baptized, instead of re-teaching it with a fresh metaphor?
+- [ ] **Narrative Continuity:** Does the entire lecture stick strictly to this single domain without abrupt context switching? (One exception: the `Where you will meet this` list widens to other apps on purpose.)
+
+**2. The Visual Scaffold**
+- [ ] **Component Architecture:** Is there a ` ```components ` explorer panel? (MANDATORY in every lecture, no exceptions. State implies ownership; ownership must be mapped. The build warns on any lecture with zero panels.)
+- [ ] **Rendered Content:** Does every end component carry rendered lines computed by hand from the code block's real values (e.g. `<p>Total payout tonight: {totalPayout}</p>` becomes `Total payout tonight: **1475**`) — never empty grey bars, STATUS/ACTION placeholders, or a bare `{value}` token — with only two legitimate exceptions: containers whose children render inside them (unfilled on purpose) and logic modules (never render)? See the fill decision procedure and the traceability test.
+- [ ] **No Invisible Owners:** Does every prose actor that owns the mechanism (the page that stamps out the copies, the parent that passes the props) appear in a fence or the panel — or has the prose been rewritten to stop leaning on it? Do compound component names have their parts grounded at first appearance?
+
+**3. The Code Executions**
+- [ ] **Fenced Code:** Are all code blocks labeled with `title="..."`?
+- [ ] **Comment Formatting:** Are all `//` comments strictly at the *end* of the line (no floating bubbles on empty lines)?
+- [ ] **Validation Marks:** Do verdict comments lead with `**RIGHT:**` / `**WRONG:**` words? (Never `✔️`/`✖️` glyphs: the build strips them.)
+- [ ] **Table Code Wrapping (CRITICAL):** Are ALL code strings in table cells manually wrapped with `<br>` (separating prose from code with `<br>`, and splitting multi-part expressions across separate backtick spans like `let { label }`<br>`= $props()`) so Prince never breaks grey-box padding mid-token or mid-string?
+
+**4. The Conclusion**
+- [ ] **Use Cases:** Is there a `### Where you will meet this` section right before the Summary — 3 to 5 one-line, pictureable real-app uses of today's concept, each line a concrete moment plus what the concept does there?
+- [ ] **Streetwise Summary:** Is there a `### Summary` section opened with a bold **Technical Title** on its own line, followed by an empty line and a streetwise review from an experienced coder's daily perspective (using `❒` subtitles, numbered bullets with `(a)`/`(b)` sub-points, and `➔` principles)?
+- [ ] **Comparison Table:** Does the lecture end with a markdown table comparing the Svelte mechanic against its nearest alternative, with the first column right-aligned (`| ---: | :--- | :--- |`) and all inline code manually wrapped with `<br>`?
+
+**5. The Format Safety**
+- [ ] **No Em-Dashes:** Are all em-dashes completely removed or replaced with commas/colons?
+- [ ] **Paragraph Flow:** Is every paragraph, bullet, and table row on one continuous line without hard wraps?
+- [ ] **No Screenshots:** Did you verify the lecture through the build log and the generated HTML only, with no screenshots taken and no photos of the result examined at any point — unless the user explicitly asked for an image check in this specific task?
+
+## Writing with small-context models (the phased workflow)
+
+- **Length standard:** a completed lecture targets **800 to 1,200 words, about 1,000 on average**. ADVANCED questions may run to 1,500. Most lectures fit one writing session.
+- **Parts are optional.** Split a lecture into parts only when one session cannot write it well (typically long ADVANCED lectures). Write parts to `md-lectures-plan/{n}-part1.md`, `{n}-part2.md`, and so on; start every part session by re-reading the outline (if any) and the previous part's last paragraph, which is how a forgetful model stays continuous. Never leave part files anywhere else.
+- **Assemble and build.** Concatenate the parts into `md-lectures/{n}.md`, then run `node src/build-lectures.mjs`. The build prints `note` lines for anything it auto-repaired (for example comment-only lines merged into the next code line) and `warn` lines for format violations: title shape, interview-question line, missing callout, missing `components` panel, missing `### Summary`, closing-table shape. Fix every warning and rebuild. A clean build is the mechanical definition of done.
+- **The polish pass (second model, full edit authority).** After assembly, a different model or a fresh session may edit the finished lecture: add at least one interview `[!TIP]` callout, add or sharpen `[!KEY]` takeaways, tighten the Summary and closing table, and fix every warning the build printed. The polish model ends by running the build; zero warnings is its exit condition. This pass is where interview voice and principles are added deliberately, rather than being demanded from the writer.
+- **The audit phase stays as defined above** (on demand, append-only `## Beyond the basics`); it is a content-gap review, not the polish pass.

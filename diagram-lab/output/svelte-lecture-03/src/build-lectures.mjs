@@ -14,12 +14,12 @@
      # Title                           h1
      ## Section                        h2
      ### Subsection                    h3
-     **bold** / *italic*               inline emphasis
+     **bold** / *italic**               inline emphasis
      `code`                            inline code
     ```lang title="File.svelte"       fenced code block with optional title
     ```components title="..."         generated component explorer panel
      - item                            bullet list
-     1. item                           numbered list
+     1. item                          numbered list
      > quote                           blockquote
      [text](url)                       inline link
      everything else                   paragraphs (one line each, never hard-wrapped)
@@ -39,21 +39,13 @@ const dirs = {
 	mdLectures: join(ROOT, 'md-lectures'),
 	html: join(ROOT, 'md-lectures-html'),
 	pdf: join(ROOT, 'md-lectures-pdf'),
-	// Review experiment directories
-	mdLecturesReview: join(ROOT, 'md-lectures-review'),
-	htmlReview: join(ROOT, 'md-lectures-review-html'),
-	pdfReview: join(ROOT, 'md-lectures-review-pdf'),
-	// Data-flow pipeline directories (ElectroShop architectural placement)
-	mdDataFlow: join(ROOT, 'md-data-flow'),
-	htmlDataFlow: join(ROOT, 'md-data-flow-html'),
-	pdfDataFlow: join(ROOT, 'md-data-flow-pdf'),
 };
 
 /* ---------------- interview question (parsed from lecture source) ---------------- */
 
 // The interview question is embedded in the lecture markdown as line 2, immediately
 // after the `# Lecture N: Title` line, in the exact form:
-//   > INTERVIEW QUESTION | <question text>
+//   > INTERVIEW QUESTION | <typology> | <question text>
 // This function extracts the question text from that line and returns the pull-quote
 // callout HTML. If the line is missing or malformed, returns '' (no callout).
 function calloutHTML(mdSource) {
@@ -61,15 +53,15 @@ function calloutHTML(mdSource) {
 	// Line 0 is the title (# Lecture N: ...). Line 1 is the question blockquote.
 	// Allow a small tolerance: scan the first 5 lines for the pattern.
 	for (let i = 0; i < Math.min(lines.length, 5); i++) {
-		const m = lines[i].match(/^>\s*INTERVIEW QUESTION\s*\|\s*(?:(❱+\s*[A-Z]+)\s*\|\s*)?(.+?)\s*$/i);
+		const m = lines[i].match(/^>\s*INTERVIEW QUESTION\s*\|\s*(?:(❱+\s*[A-Z]+(?:\s*\(Kit\))?)\s*\|\s*)?(.+?)\s*$/i);
 		if (m) {
 			const typology = m[1];
 			const question = m[2];
-			
+
 			let hook = '';
 			for (let j = i + 1; j < lines.length; j++) {
 				if (lines[j].trim() === '') continue; // skip blank lines
-				// A Hook Ladder beat is never the box hook: in the ladder format
+				// An Opening Ladder beat is never the box hook: in the ladder format
 				// there is no hook line, the box shows the question alone.
 				if (/^\d+\.\s/.test(lines[j].trim()) || lines[j].trim().startsWith('- ')) break;
 				// If it's a heading or blockquote or code block, we probably went too far.
@@ -77,7 +69,7 @@ function calloutHTML(mdSource) {
 				hook = lines[j];
 				break;
 			}
-			
+
 			let html = `<aside class="interview-question">\n  <div class="iq-header">\n    <p class="iq-eyebrow">Interview Question</p>\n`;
 			if (typology) {
 				// Replace the ❱ character with a clean inline SVG so PrinceXML doesn't drop the glyph
@@ -86,7 +78,7 @@ function calloutHTML(mdSource) {
 				html += `    <span class="iq-typology">${safeTypology}</span>\n`;
 			}
 			html += `  </div>\n  <p class="iq-text">${inline(question)}</p>\n`;
-			
+
 			if (hook) {
 				html += `  <div class="iq-hook">${inline(hook)}</div>\n`;
 			}
@@ -104,7 +96,7 @@ function stripQuestionLine(mdSource) {
 	let out = [];
 	let foundQ = false;
 	let strippedHook = false;
-	
+
 	for (let i = 0; i < lines.length; i++) {
 		if (!foundQ && /^>\s*INTERVIEW QUESTION\s*\|/i.test(lines[i])) {
 			foundQ = true;
@@ -115,7 +107,7 @@ function stripQuestionLine(mdSource) {
 				// keep blank lines
 			} else {
 				strippedHook = true;
-				// Strip only a prose hook. A numbered or bulleted line is a Hook
+				// Strip only a prose hook. A numbered or bulleted line is an Opening
 				// Ladder beat and must stay in the body.
 				const t = lines[i].trim();
 				if (!/^\d+\.\s/.test(t) && !t.startsWith('- ')) continue;
@@ -148,13 +140,17 @@ function inline(s) {
 	out = out.replace(/\u0000CODE(\d+)\u0000/g, (_, i) => `<code>${codeStash[Number(i)]}</code>`);
 	// Restore <br> and <br/> tags
 	out = out.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+	// Restore &nbsp;
+	out = out.replace(/&amp;nbsp;/gi, '&nbsp;');
 	return out;
 }
 
 /* ---------------- code highlighter (editor-style, // -> arrow) ---------------- */
 
 // Svelte 5 runes — checked first so $state wins over the generic identifier rule.
-const RUNES = '\\$(state(?:\\.raw|\\.snapshot|\\.eager)?|derived(?:\\.by)?|effect(?:\\.pre)?|props|bindable|inspect|host)\\b';
+// Covers $state (with .raw / .snapshot / .eager), $derived (with .by),
+// $effect (with .pre), $props, $bindable, $inspect, and $host.
+const RUNE_RE = /^\$(state(?:\.raw|\.snapshot|\.eager)?|derived(?:\.by)?|effect(?:\.pre)?|props|bindable|inspect|host)/;
 
 // JS keyword set — colored as .kw (deep magenta).
 const KEYWORDS = new Set([
@@ -213,8 +209,8 @@ function tokenizeLine(line) {
 			while (j < n && isIdent(line[j])) j++;
 			const word = line.slice(i, j);
 
-			// Rune check first: $state, $derived.by, etc.
-			if (word.startsWith('$') && new RegExp('^' + RUNES).test(word)) {
+			// Rune check first: $state, $derived, $props, etc.
+			if (RUNE_RE.test(word)) {
 				out += `<span class="rune">${escCode(word)}</span>`;
 			} else if (KEYWORDS.has(word)) {
 				out += `<span class="kw">${escCode(word)}</span>`;
@@ -252,14 +248,14 @@ function highlightLine(raw) {
 		text = text.charAt(0).toUpperCase() + text.slice(1);
 		return { code: '', comment: text };
 	}
-	
+
 	// Match an inline comment: either // or <!--
 	const idx = raw.search(/(?:\/\/|<!--)(\s|$)/);
 	if (idx > 0 && raw[idx - 1] !== ':') {
 		const codePart = raw.slice(0, idx);
 		const matchToken = raw.substr(idx).startsWith('<!--') ? '<!--' : '//';
 		let commentText = raw.slice(idx + matchToken.length).replace(/^\s?/, '').replace(/\s?-->\s*$/, '');
-		
+
 		const code = tokenizeLine(codePart);
 		if (!commentText.trim()) return { code, comment: null }; // drop empty trailing //
 
@@ -274,15 +270,15 @@ function highlightLine(raw) {
 }
 
 // Build the editor-style HTML for one fenced code block.
-// Lines that are purely Svelte boilerplate wrappers — never shown in the editor.
-// Matches the bare tag or the tag with attributes (e.g. <script lang="ts">).
-const WRAPPER_RE = /^\s*<\/?(script|style|template)(\s[^>]*)?\s*>\s*$/;
 
 // Default filename shown in the editor tab when the author did not set title=.
 function defaultFilename(lang) {
-	if (lang === 'svelte') return 'App.svelte';
-	if (lang === 'js' || lang === 'javascript') return 'App.js';
+	if (lang === 'svelte' || lang === 'svelte-html') return 'App.svelte';
+	if (lang === 'js' || lang === 'svelte-js') return 'App.svelte.js';
+	if (lang === 'javascript') return 'App.js';
 	if (lang === 'ts' || lang === 'typescript') return 'App.ts';
+	if (lang === 'html') return 'index.html';
+	if (lang === 'css') return 'app.css';
 	return 'code.txt';
 }
 
@@ -345,9 +341,37 @@ function highlightCode(code, title, lang) {
 	return `<div class="editor">${bar}<div class="code">${rows}</div></div>`;
 }
 
+function highlightMiniCode(code, lang) {
+	const isWrong = lang && lang.includes('wrong');
+	const isRight = lang && lang.includes('right');
+	const cls = isWrong ? 'mini-code wrong' : (isRight ? 'mini-code right' : 'mini-code');
+
+	const svgRight = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg>`;
+	const svgWrong = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 0 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 0 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg>`;
+
+	const icon = isWrong ? svgWrong : (isRight ? svgRight : '');
+
+	const rawLines = code.trim().split('\n');
+	const srcHtml = rawLines.map((raw) => {
+		return `<div>${tokenizeLine(raw)}</div>`;
+	}).join('');
+
+	if (icon) {
+		return `<div class="${cls}">
+  <div class="mini-code-icon">${icon}</div>
+  <div class="mini-code-content"><code>${srcHtml}</code></div>
+</div>`;
+	} else {
+		return `<div class="${cls}">
+  <div class="mini-code-content"><code>${srcHtml}</code></div>
+</div>`;
+	}
+}
+
 /* ---------------- markdown block parser ---------------- */
 
 function parseBlocks(md) {
+	const starters = (l) => l.startsWith('```') || l.startsWith('#') || l.startsWith('- ') || /^\d+\.\s/.test(l) || l.startsWith('> ');
 	const lines = md.split('\n');
 	const out = [];
 	let i = 0;
@@ -356,13 +380,13 @@ function parseBlocks(md) {
 		if (!line.trim()) { i++; continue; }
 
 		// Fenced code block.
-		const fence = line.match(/^```(\w+)?\s*(?:title="([^"]*)")?\s*$/);
+		const fence = line.match(/^```([\w\s-]+)?\s*(?:title="([^"]*)")?\s*$/);
 		if (fence) {
 			const buf = [];
 			i++;
 			while (i < lines.length && !lines[i].startsWith('```')) { buf.push(lines[i]); i++; }
 			i++;
-			const lang = fence[1] || '';
+			const lang = (fence[1] || '').trim();
 			if (lang === 'components') {
 				out.push({ t: 'components', title: fence[2] || '', source: buf.join('\n') });
 			} else {
@@ -410,7 +434,62 @@ function parseBlocks(md) {
 		// Ordered list.
 		if (/^\d+\.\s/.test(line)) {
 			const items = [];
-			while (i < lines.length && /^\d+\.\s/.test(lines[i])) { items.push(lines[i].replace(/^\d+\.\s/, '')); i++; }
+			while (i < lines.length) {
+				if (!lines[i].trim()) {
+					let k = i;
+					while (k < lines.length && !lines[k].trim()) k++;
+					if (k < lines.length && /^\d+\.\s/.test(lines[k])) {
+						i = k;
+					} else {
+						break;
+					}
+				}
+				if (!/^\d+\.\s/.test(lines[i])) break;
+
+				const parts = [{ type: 'text', content: lines[i].replace(/^\d+\.\s/, '') }];
+				i++;
+
+				while (i < lines.length) {
+					const next = lines[i];
+					if (!next.trim()) {
+						let k = i + 1;
+						while (k < lines.length && !lines[k].trim()) k++;
+						if (k < lines.length && (lines[k].startsWith('```') || lines[k].startsWith('<br>') || lines[k].startsWith('&nbsp;'))) {
+							i++;
+							continue;
+						}
+						break;
+					}
+
+					const fenceMatch = next.match(/^```([\w\s-]+)?\s*(?:title="([^"]*)")?\s*$/);
+					if (fenceMatch) {
+						const codeBuf = [];
+						i++;
+						while (i < lines.length && !lines[i].startsWith('```')) {
+							codeBuf.push(lines[i]);
+							i++;
+						}
+						i++;
+						parts.push({ type: 'code', content: highlightMiniCode(codeBuf.join('\n'), fenceMatch[1]) });
+						continue;
+					}
+
+					if (next.startsWith('<br>') || next.startsWith('&nbsp;')) {
+						parts.push({ type: 'text', content: next });
+						i++;
+						continue;
+					}
+
+					if (/^\d+\.\s/.test(next) || starters(next) || (next.includes('|') && i + 1 < lines.length && lines[i + 1].includes('-'))) {
+						break;
+					}
+
+					parts.push({ type: 'text', content: next });
+					i++;
+				}
+
+				items.push(parts);
+			}
 			out.push({ t: 'ol', items });
 			continue;
 		}
@@ -431,7 +510,6 @@ function parseBlocks(md) {
 		}
 
 		// Paragraph (consume consecutive non-blank, non-starter lines).
-		const starters = (l) => l.startsWith('```') || l.startsWith('#') || l.startsWith('- ') || /^\d+\.\s/.test(l) || l.startsWith('> ');
 		const buf = [];
 		while (i < lines.length && lines[i].trim() && !starters(lines[i])) { buf.push(lines[i]); i++; }
 		out.push({ t: 'p', text: buf.join(' ') });
@@ -442,28 +520,28 @@ function parseBlocks(md) {
 function render(blocks) {
 	let html = '';
 	let inH3 = false;
-	// The opening numbered list (before any section heading) is the Hook Ladder.
+	// The opening numbered list (before any section heading) is the Opening Ladder.
 	let seenHeading = false;
-	
+
 	for (const b of blocks) {
 		// If we encounter any heading, close the previous h3 section
 		if (b.t === 'h1' || b.t === 'h2' || b.t === 'h3' || b.t === 'h4') {
 			// The h1 is the lecture title, not a section: only real section
 			// headings (h2/h3/h4) end the opening region that may hold the
-			// Hook Ladder.
+			// Opening Ladder.
 			if (b.t !== 'h1') seenHeading = true;
 			if (inH3) {
 				html += '</div>\n';
 				inH3 = false;
 			}
 		}
-		
+
 		// If this is an h3, start a new wrapper
 		if (b.t === 'h3') {
 			html += '<div class="keep-together">\n';
 			inH3 = true;
 		}
-		
+
 		switch (b.t) {
 			case 'h1': html += `<h1>${inline(b.text)}</h1>\n`; break;
 			// h2 = page break. Wrap the heading in a div that forces a new page
@@ -490,9 +568,27 @@ function render(blocks) {
 			}
 			case 'ul': html += `<ul>${b.items.map((x) => `<li>${inline(x)}</li>`).join('\n')}</ul>\n`; break;
 			case 'ol': {
-				const items = b.items.map((x) => `<li>${inline(x)}</li>`).join('\n');
+				const items = b.items.map((item) => {
+					if (Array.isArray(item)) {
+						let prevType = null;
+						const itemHtml = item.map((p) => {
+							if (p.type === 'code') {
+								prevType = 'code';
+								return p.content;
+							}
+							let txt = p.content;
+							if (prevType === 'code') {
+								txt = txt.replace(/^<br\s*\/?>\s*/i, '');
+							}
+							prevType = 'text';
+							return inline(txt);
+						}).join('\n');
+						return `<li>${itemHtml}</li>`;
+					}
+					return `<li>${inline(item)}</li>`;
+				}).join('\n');
 				if (!seenHeading) {
-					// The Hook Ladder: the build owns the lead sentence and the
+					// The Opening Ladder: the build owns the lead sentence and the
 					// wrapper div so every lecture's ladder is styled and worded
 					// identically. Authors write only the numbered beats.
 					html += `<div class="hook-ladder">\n<p class="hook-ladder-lead">Imagine this scenario:</p>\n<ol>${items}</ol>\n</div>\n`;
@@ -503,82 +599,9 @@ function render(blocks) {
 			}
 			case 'p': html += `<p>${inline(b.text)}</p>\n`; break;
 			case 'table': {
-				const isReviewTable = b.header && b.header[0] && b.header[0].includes('You need to do this');
-				
-				if (isReviewTable) {
-					// We'll generate a custom <div> structure instead of a standard table
-					html += `<div class="review-table">\n`;
-					
-					// Optional header row
-					html += `<div class="review-header-row">
-						<div class="review-header-left">Scenario / Objective</div>
-						<div class="review-header-right">Implementation Rules</div>
-					</div>\n`;
-					
-					for (const row of b.rows) {
-						let leftCol = row[0] || '';
-						let rightCol = row[1] || '';
-						
-						// Parse Left Column: "**Question**<br>Context"
-						let leftHtml = inline(leftCol);
-						const leftParts = leftCol.split('<br>');
-						if (leftParts.length >= 2 && leftParts[0].trim().startsWith('**') && leftParts[0].trim().endsWith('**')) {
-							const q = leftParts[0].trim().slice(2, -2);
-							const ctx = leftParts.slice(1).join('<br>');
-							leftHtml = `<h4 class="review-question">${inline(q)}</h4><p class="review-context">${inline(ctx)}</p>`;
-						}
-						
-						// Parse Right Column: "✔️ Do<br><br>`code`<br><br>✖️ Dont<br><br>`code`"
-						let rightHtml = '';
-						if (rightCol.includes('✔️') || rightCol.includes('✖️')) {
-							const parts = rightCol.split('✖️');
-							const doPart = parts[0] ? parts[0].replace('✔️', '').trim() : '';
-							const dontPart = parts[1] ? parts[1].trim() : '';
-							
-							const renderBlock = (text, type) => {
-								if (!text) return '';
-								const lines = text.split('<br><br>');
-								const pText = lines[0];
-								let codeHtml = '';
-								if (lines.length > 1) {
-									const rest = lines.slice(1).join('<br><br>');
-									codeHtml = `<div class="review-code">${inline(rest)}</div>`;
-								}
-								
-								const icon = type === 'do' 
-									? `<svg class="review-icon do-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`
-									: `<svg class="review-icon dont-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
-								const label = type === 'do' ? 'Correct:' : 'Warning:';
-								
-								return `<div class="review-block ${type}-block">
-									<div class="review-flex">
-										${icon}
-										<div class="review-content">
-											<p><span class="review-label ${type}-label">${label}</span> ${inline(pText)}</p>
-											${codeHtml}
-										</div>
-									</div>
-								</div>`;
-							};
-							
-							rightHtml = renderBlock(doPart, 'do') + renderBlock(dontPart, 'dont');
-						} else {
-							rightHtml = inline(rightCol);
-						}
-						
-						html += `<div class="review-row">
-							<div class="review-col-left">${leftHtml}</div>
-							<div class="review-col-right">${rightHtml}</div>
-						</div>\n`;
-					}
-					
-					html += `</div>\n`;
-					
-				} else {
-					const head = `<thead><tr>${b.header.map((h) => `<th>${inline(h)}</th>`).join('')}</tr></thead>`;
-					const body = `<tbody>${b.rows.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody>`;
-					html += `<table>${head}${body}</table>\n`;
-				}
+				const head = `<thead><tr>${b.header.map((h) => `<th>${inline(h)}</th>`).join('')}</tr></thead>`;
+				const body = `<tbody>${b.rows.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody>`;
+				html += `<table>${head}${body}</table>\n`;
 				break;
 			}
 		}
@@ -621,7 +644,7 @@ function checkLecture(file, md) {
 	const lines = md.split('\n');
 
 	if (!/^# Lecture \d+: \S/.test(lines[0] || '')) warns.push(`title line is not "# Lecture {n}: {Short Title}"`);
-	if (!/^>\s*INTERVIEW QUESTION\s*\|\s*❱+\s*[A-Z]+\s*\|/.test(lines[1] || '')) warns.push(`line 2 is not the "> INTERVIEW QUESTION | ❱ TIER |" callout`);
+	if (!/^>\s*INTERVIEW QUESTION\s*\|\s*❱+\s*[A-Z]+(\s*\(Kit\))?\s*\|/.test(lines[1] || '')) warns.push(`line 2 is not the "> INTERVIEW QUESTION | ❱ TIER |" callout`);
 	if (!/\[!(TIP|NOTE|KEY|WARNING|CAUTION)\]/.test(md)) warns.push(`no alert callout ([!TIP] etc.) anywhere in the lecture`);
 	if (!/```components/.test(md)) warns.push(`no "components" explorer panel (mandatory in every lecture; place one before the first code fence of the central mechanism)`);
 
@@ -636,7 +659,7 @@ function checkLecture(file, md) {
 	}
 	const shownFiles = new Set();
 	for (const m of md.matchAll(/title="([^"]+)"/g)) {
-		if (/\.(svelte|js|ts)$/.test(m[1])) shownFiles.add(m[1].split('/').pop());
+		if (/\.(svelte|js|ts|html|css)$/.test(m[1])) shownFiles.add(m[1].split('/').pop());
 	}
 	for (const m of md.matchAll(/from\s+['"](\.[^'"]+)['"]/g)) {
 		shownFiles.add(m[1].split('/').pop());
@@ -644,7 +667,14 @@ function checkLecture(file, md) {
 	for (const f of shownFiles) {
 		if (!treeFiles.has(f)) warns.push(`file "${f}" is fenced or imported but missing from the components panel tree`);
 	}
-	if (!/^### Summary\s*$/m.test(md)) warns.push(`no "### Summary" section`);
+	if (!/^### Summary\s*$/m.test(md)) {
+		warns.push(`no "### Summary" section`);
+	} else {
+		const summaryMatch = md.match(/^### Summary\s*\n+([^\n]+)/m);
+		if (summaryMatch && /^\s*Look\b/i.test(summaryMatch[1])) {
+			warns.push(`summary starts with conversational filler "${summaryMatch[1].slice(0, 20)}..."; start directly with practical context`);
+		}
+	}
 
 	// The closing comparison table: the last pipe-block in the file.
 	const pipeIdx = lines.map((l, i) => l.trim().startsWith('|') ? i : -1).filter((i) => i >= 0);
@@ -659,6 +689,18 @@ function checkLecture(file, md) {
 		if (!/^\|\s*---:\s*\|(\s*:?---\s*\|)+$/.test(divider)) warns.push(`closing table's divider row is not "| ---: | :--- | ..."`);
 		const lastNonBlank = [...lines].reverse().find((l) => l.trim() !== '') || '';
 		if (!lastNonBlank.trim().startsWith('|')) warns.push(`lecture does not end with the comparison table`);
+
+		// Check for un-split long code strings in table rows that cause PDF padding breaks
+		for (let r = start; r < lines.length; r++) {
+			const l = lines[r].trim();
+			if (!l.startsWith('|')) break;
+			for (const m of l.matchAll(/`([^`]+)`/g)) {
+				const codeStr = m[1];
+				if (codeStr.length > 20) {
+					warns.push(`table row ${r + 1} has long code string "\`${codeStr}\`" (${codeStr.length} chars); split with <br> across separate backticks to prevent ugly PDF padding breaks`);
+				}
+			}
+		}
 	}
 	return warns;
 }
@@ -678,10 +720,10 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 		console.log(`skipping ${inputDir}: directory does not exist.`);
 		return;
 	}
-	
-	if (!files.length) { 
-		console.log(`no markdown files in ${inputDir}`); 
-		return; 
+
+	if (!files.length) {
+		console.log(`no markdown files in ${inputDir}`);
+		return;
 	}
 
 	const lectures = [];
@@ -724,11 +766,5 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 
 // Build standard lectures (format checks on: this is the lectures pipeline)
 buildDirectory(dirs.mdLectures, dirs.html, dirs.pdf, 'Svelte 5 Lecture Series', true);
-
-// Build review experiment
-buildDirectory(dirs.mdLecturesReview, dirs.htmlReview, dirs.pdfReview, 'Svelte 5 Review Series');
-
-// Build data-flow pipeline (architectural placement on the ElectroShop tree)
-buildDirectory(dirs.mdDataFlow, dirs.htmlDataFlow, dirs.pdfDataFlow, 'Svelte 5 Data Flow Atlas');
 
 console.log('done.');
