@@ -18,9 +18,8 @@ Digests: skills/old-instructions/instructions.md (rendered UI canvas, file explo
 
 ## Rendered UI Canvas | 02 | Place the canvas at the opening of Stage A
 
-[ ] Place the ` ```components ` canvas directly under the practical example heading in Stage A, immediately following a brief prose sentence that introduces the application layout.
-[ ] Frame the canvas in prose as the authentic rendered interface on screen, letting the visual elements speak for themselves before introducing the file tree and assembly steps.
-[ ] Use the canvas to clarify component boundaries, nesting, and interactive controls so the learner pictures the complete running widget before building its parts.
+[ ] Place the ` ```components ` canvas under the practical example heading in Stage A, following the scenario introduction.
+[ ] Use the canvas to show component boundaries, nesting, and interactive controls so the learner pictures the running widget before building its parts.
 [ ] Remember that a multi-component layout is the typical case, but a single component owning native inputs or interactive buttons also earns a clean canvas.
 
 ## Rendered UI Canvas | 03 | Single-component and multi-component layouts
@@ -39,8 +38,7 @@ Notes: the learner sees the owning component and its interactive controls in one
 
 ## Rendered UI Canvas | 04 | Show the visual destination before the code that builds it
 
-[ ] Name the intended visual arrangement in prose first, stating what the application contains, which component owns the layout, and what interactive elements appear inside it.
-[ ] Place the ` ```components ` block immediately after that brief prose lead-in and before the ` ```files ` disk hierarchy, so the visual destination precedes the disk structure.
+[ ] Introduce the practical scenario in prose, then place the ` ```components ` canvas before the ` ```files ` disk hierarchy, so the visual destination precedes the disk structure.
 [ ] Let the visual canvas speak for itself without cluttering the cards with JSX syntax or hook calls; code implementation belongs in subsequent editor blocks.
 [ ] Follow the canvas with the ` ```files ` panel and the progressive assembly pipeline figure in Stage B, so the learner transitions smoothly from UI destination to construction steps.
 
@@ -102,7 +100,6 @@ Notes: each control renders as a clean native widget, matching the finished inte
 
 [ ] Use the ` ```components ` panel titled `{project} - Rendered UI Canvas` to open Stage A of a practical example: snippet-free entries showing only the finished interface, placed before the files scaffold and before Step 1, so the reader sees the destination before the road.
 [ ] Keep the canvas free of `[code: ...]` snippets entirely, with the props column carrying `none` or the real props and the rendered-lines field showing the authentic UI the user will see, because the canvas exists to remove code distractions, not to carry them.
-[ ] Frame the canvas in prose exactly as the shipped standard does, telling the reader that the panel represents the authentic rendered user interface on screen, without code distractions, before any code appears.
 
 [ ] PROPER EXAMPLE: make sure you follow this example, the canvas panel opening a practical example, from Lecture 40:
 

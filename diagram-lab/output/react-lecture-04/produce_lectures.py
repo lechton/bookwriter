@@ -140,6 +140,20 @@ def build_prompt(n, row):
                 f"only then expand it into the production lecture. Do not discard it wholesale."
                 if pre_path.is_file() else
                 f"No blueprint exists yet: author md-pre-lectures/{bn(n)}.md from scratch.")
+    # Mandatory bootstrapping: the agy CLI session starts outside the project (its command
+    # tool begins in the scratch workspace), so the agent must cd into the project as its
+    # first action. Added after Q16: that session spent its whole turn on `find` commands,
+    # exited 0 with zero deliverables, and only the verification floors caught it.
+    bootstrap = (f"Your working directory is this project: {PROJECT}. "
+                 f"Your FIRST command must be `cd {PROJECT} && pwd && ls`: verify that "
+                 f"questions/, skills/, md-pre-lectures/, md-lectures/, and "
+                 f"src/build-lectures.mjs are visible before reading anything else. "
+                 f"The project path is given to you: locating the project or questions.md "
+                 f"with `find` is forbidden and wastes the turn. Never finish the session "
+                 f"while a background task is still running. Finish only after "
+                 f"md-pre-lectures/{bn(n)}.md, md-lectures/{bn(n)}.md, and "
+                 f"md-lectures-pdf/{bn(n)}.pdf exist on disk, verified by you with "
+                 f"`ls -la` on those exact paths.")
 
     return f"""ppp — proceed immediately, execute everything, ask no confirmation questions.
 
@@ -161,6 +175,8 @@ Read, in this order, before writing anything:
 4. For the lecture: skills/lecture-structure/SKILL.md, skills/lecture-voice/SKILL.md, skills/code-blocks/SKILL.md, skills/ui-panels/SKILL.md, skills/figures/SKILL.md
 5. For calling it done: skills/verification/SKILL.md and skills/build/SKILL.md
 6. {prev_ref}
+
+{bootstrap}
 
 The shipped standard to match is md-lectures/40.md (with its blueprint md-pre-lectures/40.md): the Rendered UI Canvas opening the practical example, the files scaffold, the assembly pipeline figure, top-down Step 1-4 construction where Step 1 builds the parent and establishes every child contract, the calm professor narration (notice-moves with line addresses, per-step recaps, no template questions), CODE LOGIC / DATA FLOW end-of-line annotations in the assembly fences, the Direct Lessons section with its Component Role panel, the Architecture Audit table, the closing summary family and comparison table.
 
@@ -239,6 +255,7 @@ def run_agy(agy, model, effort, timeout_min, skip_permissions, prompt, log_path,
     with an elapsed timestamp the moment it arrives, the raw event line goes to the log
     verbatim, and a heartbeat prints every HEARTBEAT_SEC seconds of silence. Returns exit code."""
     cmd = [agy, "--prompt", prompt, "--model", model,
+           "--add-dir", str(PROJECT),
            "--output-format", "stream-json"]
     if effort:
         cmd += ["--effort", effort]
@@ -264,6 +281,9 @@ def run_agy(agy, model, effort, timeout_min, skip_permissions, prompt, log_path,
         # Reader thread: pushes each output line onto a queue, then None at EOF, so the
         # main loop can wait with a timeout and print heartbeats during silent stretches.
         lines = queue.Queue()
+        wrote_anything = []   # non-empty when the session performed a file-writing tool event
+        WRITE_TOOLS = {"write_to_file", "replace_file_content",
+                       "multi_replace_file_content", "sed_file"}
 
         def _reader():
             try:
@@ -294,6 +314,17 @@ def run_agy(agy, model, effort, timeout_min, skip_permissions, prompt, log_path,
                 log.write(line)
                 log.flush()
                 print(f"    [{mins:4.1f}m] {summarize_event(line)}", flush=True)
+                try:
+                    ev = json.loads(line).get("step_update") or {}
+                    tname = ev.get("tool_name", "")
+                    tinfo = ev.get("tool_info") or {}
+                    if tname in WRITE_TOOLS:
+                        wrote_anything.append(1)
+                    elif tname == "run_command" and \
+                            "build-lectures" in str(tinfo.get("parameters") or ""):
+                        wrote_anything.append(1)
+                except (ValueError, TypeError):
+                    pass
             proc.wait(timeout=watchdog)
         except KeyboardInterrupt:
             print("\n    interrupted by user — terminating agy process", flush=True)
@@ -308,6 +339,10 @@ def run_agy(agy, model, effort, timeout_min, skip_permissions, prompt, log_path,
             proc.kill()
             proc.wait()
             return 124
+    if proc.returncode == 0 and not wrote_anything:
+        print("    note: agy exited 0 with zero file-writing tool events; "
+              "deliverables may be missing and the verification floors will confirm",
+              flush=True)
     return proc.returncode
 
 
@@ -459,6 +494,7 @@ def main():
         for k, v in row.items():
             print(f"  {k:8}: {v}")
         print(f"\nagy command: {args.agy} --prompt <see below> --model {args.model}"
+              f" --add-dir {PROJECT}"
               f"{' --effort ' + args.effort if args.effort else ''}"
               f"{' --dangerously-skip-permissions' if not args.no_skip_permissions else ''}"
               f" --print-timeout {args.timeout_min}m  (cwd: {PROJECT})")

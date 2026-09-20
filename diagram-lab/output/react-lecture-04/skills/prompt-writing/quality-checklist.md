@@ -12,6 +12,9 @@ These are the guiding standards a prompt needs to adhere to. Use your judgment t
 - [ ] Is the language used consistently within the prompt and with the environment around it?
 
 ## Language
+- [ ] **The Golden Rule of De-Prescription**: When fixing a problem or defect, did we first consider making subtle edits to existing rules to remove the prescriptions or conflicts creating the issue, rather than adding new rules?
+- [ ] Did we avoid the reflexive AI attitude of proposing bans and authoritarian negative language ("never do this", "never do that")?
+- [ ] Did we avoid the common fallacy of interpreting "do this" as "do not do the other"?
 - [ ] Have we preferred setting standards instead of giving prescriptive instructions?
 - [ ] Positive instructions ("do X") instead of negative ("don't do Y") where possible?
 - [ ] Flexible instructions ("avoid", "prefer", "instructions"...) instead of authoritarian orders ("never", "always", "law"...) where appropriate?

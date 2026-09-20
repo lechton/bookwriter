@@ -37,6 +37,9 @@ import { renderComponentCodeExplorer } from './component-code-explorer.mjs';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
 const withPdf = !args.includes('--no-pdf');
+const rangeIdx = args.indexOf('--range');
+const rangeArg = rangeIdx !== -1 ? args[rangeIdx + 1] : null;
+const deckOnly = args.includes('--deck-only');
 
 const dirs = {
 	mdLectures: join(ROOT, 'md-lectures'),
@@ -50,6 +53,10 @@ const dirs = {
 	mdDataFlow: join(ROOT, 'md-data-flow'),
 	htmlDataFlow: join(ROOT, 'md-data-flow-html'),
 	pdfDataFlow: join(ROOT, 'md-data-flow-pdf'),
+	// Revised lectures pipeline
+	mdLecturesRevised: join(ROOT, 'md-lectures-revised'),
+	htmlRevised: join(ROOT, 'md-lectures-revised-html'),
+	pdfRevised: join(ROOT, 'md-lectures-revised-pdf'),
 };
 
 // HTML figures are numbered Fig {lecture}.{n} per lecture; reset for each file.
@@ -1387,12 +1394,27 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 		mkdirSync(pdfDir, { recursive: true });
 	} catch (e) { /* ignore */ }
 
+	let rangeStart = null;
+	let rangeEnd = null;
+	if (rangeArg) {
+		const parts = rangeArg.split('-');
+		if (parts.length === 2) {
+			rangeStart = parseInt(parts[0], 10);
+			rangeEnd = parseInt(parts[1], 10);
+		}
+	}
+
 	let files;
 	try {
 		files = readdirSync(inputDir).filter((f) => f.endsWith('.md') && !f.endsWith('.thinking.md')).sort();
-		const filterArg = process.argv[2];
-		if (filterArg && /^[\w-]+$/.test(filterArg) && !filterArg.startsWith('--')) {
+		const filterArg = args.find((a) => /^[\w-]+$/.test(a) && !a.startsWith('--') && a !== rangeArg);
+		if (filterArg) {
 			files = files.filter((f) => basename(f, '.md') === filterArg);
+		} else if (rangeStart !== null && rangeEnd !== null) {
+			files = files.filter((f) => {
+				const num = parseInt(basename(f, '.md'), 10);
+				return !isNaN(num) && num >= rangeStart && num <= rangeEnd;
+			});
 		}
 	} catch (e) {
 		console.log(`skipping ${inputDir}: directory does not exist.`);
@@ -1404,15 +1426,17 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 		return; 
 	}
 
-	const filterArg = process.argv[2];
-	const isSingle = Boolean(filterArg && /^[\w-]+$/.test(filterArg) && !filterArg.startsWith('--'));
+	const filterArg = args.find((a) => /^[\w-]+$/.test(a) && !a.startsWith('--') && a !== rangeArg);
+	const isSingle = Boolean(filterArg);
+	const isCustomRange = Boolean(rangeArg);
 
-	// Dynamically compute the question range from all lecture markdown files
+	// Dynamically compute the question range from markdown files
 	let allNumFiles = [];
 	try {
-		allNumFiles = readdirSync(inputDir)
-			.filter((f) => f.endsWith('.md') && !f.endsWith('.thinking.md') && !f.includes('-old'))
-			.map((f) => basename(f, '.md'))
+		const sourceFiles = isCustomRange
+			? files.map((f) => basename(f, '.md'))
+			: readdirSync(inputDir).filter((f) => f.endsWith('.md') && !f.endsWith('.thinking.md') && !f.includes('-old')).map((f) => basename(f, '.md'));
+		allNumFiles = sourceFiles
 			.filter((n) => /^\d+$/.test(n))
 			.sort((a, b) => Number(a) - Number(b));
 	} catch (e) { /* ignore */ }
@@ -1452,19 +1476,23 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 		lectures.push({ name, body });
 
 		const title = (md.match(/^#\s+(.*)$/m) || [, `Lecture ${name}`])[1];
-		writeFileSync(join(htmlDir, `${name}.html`), page(title, body));
-		console.log(`html  ${name}.html`);
+		if (!deckOnly) {
+			writeFileSync(join(htmlDir, `${name}.html`), page(title, body));
+			console.log(`html  ${name}.html`);
+		}
 	}
 
 	if (!isSingle) {
-		// Purge stale ranged deck HTML files
-		try {
-			for (const f of readdirSync(htmlDir)) {
-				if (/^React 19 Q\d+-Q\d+.*\.html$/.test(f) && !f.startsWith(resolvedDeckFileName)) {
-					unlinkSync(join(htmlDir, f));
+		// Purge stale ranged deck HTML files (skip during custom range build; preserve custom subdecks like Q01-Q10, Q01-Q11, Q01-Q12)
+		if (!isCustomRange) {
+			try {
+				for (const f of readdirSync(htmlDir)) {
+					if (/^React 19 Q\d+-Q\d+.*\.html$/.test(f) && !f.startsWith(resolvedDeckFileName) && !f.startsWith('React 19 Q01-Q1')) {
+						unlinkSync(join(htmlDir, f));
+					}
 				}
-			}
-		} catch (e) { /* ignore */ }
+			} catch (e) { /* ignore */ }
+		}
 
 		// Course reader: all lectures stitched, with a page break between each.
 		const readerBody = lectures
@@ -1493,21 +1521,25 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 	}
 
 	if (withPdf) {
-		const targets = isSingle ? files.map((f) => basename(f, '.md')) : [...files.map((f) => basename(f, '.md')), resolvedDeckFileName];
+		const targets = isSingle
+			? files.map((f) => basename(f, '.md'))
+			: (deckOnly ? [resolvedDeckFileName] : [...files.map((f) => basename(f, '.md')), resolvedDeckFileName]);
 		for (const name of targets) {
 			execFileSync('prince', [join(htmlDir, `${name}.html`), '-o', join(pdfDir, `${name}.pdf`)], { stdio: ['ignore', 'ignore', 'inherit'] });
 			console.log(`pdf   ${name}.pdf`);
 		}
 
 		if (!isSingle) {
-			// Purge stale ranged deck PDF files
-			try {
-				for (const f of readdirSync(pdfDir)) {
-					if (/^React 19 Q\d+-Q\d+.*\.pdf$/.test(f) && !f.startsWith(resolvedDeckFileName)) {
-						unlinkSync(join(pdfDir, f));
+			// Purge stale ranged deck PDF files (skip during custom range build; preserve custom subdecks like Q01-Q10, Q01-Q11)
+			if (!isCustomRange) {
+				try {
+					for (const f of readdirSync(pdfDir)) {
+						if (/^React 19 Q\d+-Q\d+.*\.pdf$/.test(f) && !f.startsWith(resolvedDeckFileName) && !f.startsWith('React 19 Q01-Q1')) {
+							unlinkSync(join(pdfDir, f));
+						}
 					}
-				}
-			} catch (e) { /* ignore */ }
+				} catch (e) { /* ignore */ }
+			}
 
 			// Compile multi-theme reader PDFs: <deckFileName>-teal.pdf, -black.pdf, -old.pdf
 			const themes = [
@@ -1527,10 +1559,15 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 // Build standard lectures (format checks on: this is the lectures pipeline)
 buildDirectory(dirs.mdLectures, dirs.html, dirs.pdf, 'auto', true, 'auto');
 
-// Build review experiment
-buildDirectory(dirs.mdLecturesReview, dirs.htmlReview, dirs.pdfReview, 'React Review Series');
+// Build revised lectures pipeline
+buildDirectory(dirs.mdLecturesRevised, dirs.htmlRevised, dirs.pdfRevised, 'auto', true, 'auto');
 
-// Build data-flow pipeline (architectural placement on the ElectroShop tree)
-buildDirectory(dirs.mdDataFlow, dirs.htmlDataFlow, dirs.pdfDataFlow, 'React Data Flow Atlas');
+if (!rangeArg) {
+	// Build review experiment
+	buildDirectory(dirs.mdLecturesReview, dirs.htmlReview, dirs.pdfReview, 'React Review Series');
+
+	// Build data-flow pipeline (architectural placement on the ElectroShop tree)
+	buildDirectory(dirs.mdDataFlow, dirs.htmlDataFlow, dirs.pdfDataFlow, 'React Data Flow Atlas');
+}
 
 console.log('done.');

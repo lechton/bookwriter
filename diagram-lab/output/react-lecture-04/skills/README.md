@@ -12,6 +12,7 @@ The instruction system of the react-lecture-04 project. Each skill is one folder
 | code-blocks | code windows, 10-line ceiling, continuation attributes, comments | any code block is written or reviewed |
 | ui-panels | component explorer, files, component-code panels | any UI panel is added or reviewed |
 | figures | standalone HTML figures and the design system | a figure is designed, cloned, or revised |
+| lecture-revision | polishing completed lectures into effortless B2 reading using the 3-Beat Relay and Zero Syntax Smuggling while preserving figures and comments | an existing lecture is being revised for readability |
 | verification | quality gates and the screenshot protocol | a lecture is claimed complete, or an audit is requested |
 | build | pipeline, theme publishing, orchestrator | lectures are compiled, or a production session is launched |
 
@@ -19,6 +20,7 @@ The instruction system of the react-lecture-04 project. Each skill is one folder
 
 writing a pre-lecture → load pre-lecture, lecture-voice, lecture-structure, and ui-panels
 writing a lecture → load lecture-structure, lecture-voice, code-blocks, ui-panels, and figures
+revising a lecture → load lecture-revision, lecture-voice, code-blocks, figures, and verification
 calling a lecture done → load verification and build
 
 The pre-lecture row carries lecture-structure and ui-panels because the blueprint must plan the practical example stages and the panel elements before Phase 2 begins; a blueprint written without the structure laws in the room produces clean prose with no planned guided build, and the production lecture inherits that omission. #2026_09_20_01_group_1

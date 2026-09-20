@@ -39,6 +39,8 @@ Notes: Every clause is something the developer types, deletes, or sees on screen
 
 [ ] Write for a person reading plain upper-intermediate English (CEFR B2), at the end of the day, tired, with a mild headache, giving the page one chance.
 [ ] Aim for short active sentences that average 12 to 18 words, so each sentence lands before attention slips.
+[ ] Cap individual sentences at 20 words and ban clause chaining: express exactly one main idea per sentence, and avoid chaining contrast clauses, participial phrases, and subordinate clauses into breathless run-ons. #2026_09_20_21_group_1
+[ ] Verbally qualify every entity with its architectural role ("the component `ComponentName`" vs "the component `<ComponentName />`", "the prop `propName`", "the `<span>` element", "the property `author.name`"); never drop bare, unqualified tokens that force the reader to calculate what is what, and strictly ban splitting compound identifiers with spaces (`avatar Url`). #2026_09_20_23_group_1
 [ ] Keep paragraphs to 2 to 4 sentences, so the reader gets a rest and a fresh starting point often.
 [ ] Bold key terms on their first introduction, but only when they represent real, standard React or web platform concepts, so the tired eye can find the load-bearing words again later.
 [ ] Serve zero content degradation: the tired reader still expects thorough, complete, interview-winning technical depth, so simplify the language, never the substance.
@@ -377,7 +379,7 @@ Notes: "Prop drilling" is standard vocabulary from react.dev and everyday engine
 
 [ ] PROPER EXAMPLE: make sure you follow this example, a notice-move with an address, a contract, and a forward link, from Lecture 40 Step 1:
 
-> Now look at line 6: `<LiveSearchInput query={query} onChange={setQuery} />`. We have not coded `LiveSearchInput` yet. But right here in the parent, we establish its contract. The parent owns the search text, and passes a callback so the child can report keypresses. We will build that child next in step 2.
+> Now look at line 6: `<LiveSearchInput query={query} onChange={setQuery} />`. We have not coded the child component `LiveSearchInput` yet. But right here in the parent, we establish its contract. The parent owns the search text in the variable `query`, and passes the callback function `setQuery` to the prop `onChange` so the child component can report keypresses. We will build the component `LiveSearchInput` next in Step 2.
 
 Notes: Direct instruction with a line address, the contract named in plain words, and the forward link to step 2. The reader is being taught, not entertained.
 
@@ -440,9 +442,9 @@ Notes: One sentence holding two systems, two engines, and a verdict. The reader 
 > Where does `onSelect` come from? Look back at Step 1 in `ChatWorkspace.jsx`. The parent declared `const [roomId, setRoomId] = useState('general')`, and then rendered:
 > `<ChannelSelector activeRoom={roomId} onSelect={setRoomId} />`.
 > 
-> Notice what happened: the parent handed its private updater function `setRoomId` to the child under the prop name `onSelect`. `ChannelSelector` does not own state, and it does not know what `roomId` is used for. It only holds a telephone line called `onSelect`.
+> Notice what happened: the parent handed its private updater function `setRoomId` to the child under the prop `onSelect`. The component `ChannelSelector` does not own state, and it does not know what `roomId` is used for. It only holds a telephone line called `onSelect`.
 > 
-> When the reporter clicks a button, the native browser `onClick` fires and calls `onSelect(room)`. Because `onSelect` points directly to `setRoomId`, that call immediately executes `setRoomId('politics')` back in `ChatWorkspace`.
+> When the reporter clicks a button, the native browser `onClick` fires and calls `onSelect(room)`. Because `onSelect` points directly to `setRoomId`, that call immediately executes `setRoomId('politics')` back in the parent component `ChatWorkspace`.
 > 
 > This is standard **inverse data flow**: data flows down through props (`activeRoom`), and user actions flow up through callbacks (`onSelect`).
 
@@ -495,4 +497,20 @@ Every architectural boundary must be justified using **The 4-Part Negative Count
 > This separation gives you two concrete superpowers:
 > 1. If tomorrow you replace the button pills with a dropdown `<select>` menu, you touch zero lines of websocket code.
 > 2. If you swap the websocket protocol in `ChatRoom` for a mock test service, you touch zero lines of button code.
+
+## Guided Build | 31 | Explicit Architectural Relations #2026_09_20_13_group_1
+
+[ ] Make relations between entities explicit rather than cryptic whenever code connects two files, components, or props: state the exact count and names of all components involved, explain why the syntax differs (such as named exports requiring curly braces), and clarify why one part is imported while another remains internal, avoiding shorthand that merely names a technical category. #2026_09_20_13_group_1
+
+[ ] COUNTER-EXAMPLE: do not follow this bad example:
+
+> Notice line 2: `import { ArticleList } from './ArticleComponents.jsx'`. Here we use curly braces because `ArticleList` is a named export from a shared module.
+
+Notes: It leaves an unexplained mismatch between a plural file name and a singular import, never mentions `ArticleCard`, and treats curly braces as an arbitrary syntax rule rather than a consequence of multiple components sharing one file.
+
+[ ] PROPER EXAMPLE: make sure you follow this example:
+
+> Notice line 2: `import { ArticleList } from './ArticleComponents.jsx'`. The file name is `ArticleComponents.jsx` in the plural because it encodes two components, not one (`ArticleList` and `ArticleCard`). Because multiple components share this file, they cannot use a single default export and must be declared as named exports, which is why this import requires curly braces: `{ ArticleList }`. The parent imports only `ArticleList` as the feed container; `ArticleCard` is composed internally inside that file and does not need to be imported here.
+
+Notes: It states the count and names upfront, explains that curly braces exist because multiple components share the file, and clarifies why only `ArticleList` is imported by the parent.
 

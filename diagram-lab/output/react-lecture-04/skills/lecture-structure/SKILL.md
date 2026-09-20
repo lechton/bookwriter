@@ -108,6 +108,37 @@ Notes: the tier keeps its server suffix and the question text is copied verbatim
 [ ] Dedicate every lecture strictly to its own interview question from the question bank, growing the hook it was given rather than replacing it, so each lecture earns its own number.
 [ ] Avoid cloning code setups, components, or diagrams from adjacent lectures, so two lectures never answer their questions with the same example.
 
+## Skeleton | 15B | Pre-Example Mechanism Section (The Mechanism Bridge) #2026_09_20_24_group_1
+
+[ ] Never jump directly from high-level problem motivation or philosophical contrast into `### Let's Design a Practical Example...`.
+[ ] Immediately before the practical example, provide a dedicated conceptual section (such as `### Components as Reusable Blueprints` or `### JSX as Compiled JavaScript`) that teaches the core React mechanism **dedicated to this particular lecture**.
+[ ] In 3 to 4 natural paragraphs, answer what the reader needs to know before opening code:
+    - What limitation in plain HTML/JS does this specific feature solve?
+    - What is the React mechanism, and how does it work under the hood?
+    - What is the non-negotiable rule or syntax trap dedicated to this topic (such as Capitalization for components, single-root return for Fragments, or expression-only rules for curlies)?
+    - Which files in our practical scenario will demonstrate it?
+
+[ ] PROPER EXAMPLE: follow this natural, grounded bridge from Lecture 1:
+
+> ### Components as Reusable Blueprints
+> 
+> In plain HTML, you structure documents using native tags like the `<header>`, `<article>`, and `<button>` elements. 
+> 
+> However, native HTML tags know nothing about your application logic or subscriber data. Traditionally, developers had to copy and paste HTML markup across separate templates. Then, they attached external JavaScript scripts to add interactive behavior. This separation split structure from logic, creating fragmented and fragile codebases.
+> 
+> To solve this fragmentation, React unifies markup, style, and logic into a single cohesive structure. This mechanism is called a **component**. A component is a self-contained, reusable JavaScript function. It accepts input data called **props** and returns markup describing a piece of the user interface.
+> 
+> In React, every component function name must start with a capital letter. **Capitalization** is a strict compiler requirement. It tells React that `<SiteHeader />` is your custom component, while `<header>` is a built-in browser DOM tag. Components can be **nested** inside one another. This allows you to assemble complex pages out of small, focused building blocks.
+> 
+> To see this in action on The National Times, we organize our site header into three distinct files:
+> 1. The **parent component** `SiteHeader.jsx` acts as the orchestrating container.
+> 2. The **child component** `ReaderGreeting.jsx` renders the personalized welcome message.
+> 3. The **child component** `SubscriberInfo.jsx` displays the subscriber tier details.
+> 
+> Both child components receive the subscriber's name through the prop `readerName` passed directly from their parent.
+
+Notes: Natural, grounded, and unstiff. It teaches the specific mechanism dedicated to Lecture 1 (components, capitalization, props, nesting) and smoothly sets up the three files before Stage A begins.
+
 ## Practical Example | 16 | Section title format
 
 [ ] Title the implementation section exactly `### Let's Design a Practical Example <Component1> <Component2>`, naming the actual components of this lecture's example in the title.
@@ -131,8 +162,7 @@ Notes: it names a process instead of the components, and it reads like a slide d
 
 ## Practical Example | 17 | Stage A scaffold and file explorer
 
-[ ] Open the practical example with the Rendered UI Canvas: a snippet-free `components` panel in canvas mode showing the finished interface before any code appears, so the reader sees the destination before the road (panel modes owned by the ui-panels skill). #2026_09_20_04_group_4
-[ ] Follow with the Stage A scaffold: introduce the component roles and the disk hierarchy via the `files` panel tailored to this specific lesson, with the panel syntax owned by the ui-panels skill.
+[ ] Open the practical example with the Rendered UI Canvas: a snippet-free `components` panel showing the finished interface before any code appears, followed directly by the `files` panel introducing the disk hierarchy. #2026_09_20_04_group_4
 [ ] Keep the scaffold specific to the lesson, so the reader meets exactly the files the upcoming steps will create.
 
 ## Practical Example | 18 | Stage B assembly pipeline figure
@@ -159,7 +189,7 @@ Notes: Step 1 constructs the parent and dictates the data architecture; steps 2 
 
 [ ] PROPER EXAMPLE: make sure you follow this example, the contract established inside Step 1 for a child that does not exist yet, from Lecture 40:
 
-> Now look at line 6: `<LiveSearchInput query={query} onChange={setQuery} />`. We have not coded `LiveSearchInput` yet. But right here in the parent, we establish its contract. The parent owns the search text, and passes a callback so the child can report keypresses. We will build that child next in step 2.
+> Now look at line 6: `<LiveSearchInput query={query} onChange={setQuery} />`. We have not coded the child component `LiveSearchInput` yet. But right here in the parent, we establish its contract. The parent owns the search text in the variable `query`, and passes the callback function `setQuery` to the prop `onChange` so the child component can report keypresses. We will build the component `LiveSearchInput` next in Step 2.
 
 Notes: the child's file comes later, but its contract is fully established in the parent's JSX in Step 1, and the forward link names exactly where it will be fulfilled. This is what top-down means: the parent dictates, the children comply.
 
@@ -171,9 +201,9 @@ Notes: the child's file comes later, but its contract is fully established in th
 > 
 > Where does `onSelect` come from? Look back at Step 1 in `ChatWorkspace.jsx`. The parent declared `const [roomId, setRoomId] = useState('general')`, and then rendered: `<ChannelSelector activeRoom={roomId} onSelect={setRoomId} />`.
 > 
-> Notice what happened: the parent handed its private updater function `setRoomId` to the child under the prop name `onSelect`. `ChannelSelector` does not own state, and it does not know what `roomId` is used for. It only holds a telephone line called `onSelect`.
+> Notice what happened: the parent handed its private updater function `setRoomId` to the child under the prop `onSelect`. The component `ChannelSelector` does not own state, and it does not know what `roomId` is used for. It only holds a telephone line called `onSelect`.
 > 
-> When the reporter clicks a button, the native browser `onClick` fires and calls `onSelect(room)`. Because `onSelect` points directly to `setRoomId`, that call immediately executes `setRoomId('politics')` back in `ChatWorkspace`.
+> When the reporter clicks a button, the native browser `onClick` fires and calls `onSelect(room)`. Because `onSelect` points directly to `setRoomId`, that call immediately executes `setRoomId('politics')` back in the parent component `ChatWorkspace`.
 > 
 > This is standard **inverse data flow**: data flows down through props (`activeRoom`), and user actions flow up through callbacks (`onSelect`).
 
@@ -183,17 +213,19 @@ Notes: Step 1 established the contract (`onSelect={setRoomId}`); Step 2 fulfills
 
 [ ] PROPER EXAMPLE: make sure you follow this example, justifying architectural separation in Step 2, from Lecture 38: #2026_09_20_07_group_1
 
-> What would happen if `ChannelSelector` opened the websocket connection itself?
+> What would happen if the component `ChannelSelector` opened the websocket connection itself?
 > 
-> If you put the `useEffect` or socket connection inside `ChannelSelector`, the navigation buttons would be trapped managing network sockets, reconnection timers, and message buffers. Worse, the chat message area in `ChatRoom` would have no way to access that socket without messy prop-drilling or global state hacks. You would have buttons and network protocols tangled in a single file.
+> If you put the `useEffect` hook or socket connection inside the component `ChannelSelector`, the navigation buttons would be trapped managing network sockets, reconnection timers, and message buffers. Worse, the chat message area in the component `ChatRoom` would have no way to access that socket without messy prop-drilling or global state hacks. You would have buttons and network protocols tangled in a single file.
 > 
-> By separating them, `ChannelSelector` owns zero `useState` and zero `useEffect`. It is a pure presenter: given the same `activeRoom` string and `onSelect` callback, it will always render the exact same three buttons.
+> By separating them, the component `ChannelSelector` owns zero `useState` and zero `useEffect`. It is a pure presenter: given the same prop `activeRoom` string and callback function `onSelect`, it will always render the exact same three buttons.
 > 
 > This separation gives you two concrete superpowers:
 > 1. If tomorrow you replace the button pills with a dropdown `<select>` menu, you touch zero lines of websocket code.
 > 2. If you swap the websocket protocol in `ChatRoom` for a mock test service, you touch zero lines of button code.
 
 Notes: Instead of vague praise, the text poses the obvious merge question, details the concrete disaster (trapped socket, unreachable chat area), defines the presenter by physical code absence (zero useState, zero useEffect), and proves decoupling with symmetric refactoring scenarios.
+
+- [ ] Explain code relations between files, components, or props explicitly using the Explicit Architectural Relations standard: when a step imports or mounts a component, state the count and names of all components in the source module, explain syntax differences (such as curly braces for named exports), and clarify why one component is imported while its companion remains internal, avoiding shorthand that merely names a technical category (see the lecture-voice skill, Explicit Architectural Relations). #2026_09_20_13_group_1
 
 [ ] COUNTER-EXAMPLE: do not follow this bad example, the bottom-up shape where the parent arrives last:
 

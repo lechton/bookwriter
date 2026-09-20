@@ -1,5 +1,20 @@
 # AGENTS.md — Global Workspace Rules & Lecture Production
 
+## Rules for Editing Rules & The Golden Rule of De-Prescription
+
+When any AI agent accesses this project to create, review, or modify instructions, prompts, or skills, it MUST first directly consult the meta-rules governing rule authoring:
+- **Meta-Skill**: [`diagram-lab/output/react-lecture-04/skills/prompt-writing/SKILL.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-04/skills/prompt-writing/SKILL.md)
+- **Quality Checklist & Guiding Standards**: [`diagram-lab/output/react-lecture-04/skills/prompt-writing/quality-checklist.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-04/skills/prompt-writing/quality-checklist.md)
+- **Skills Architecture & Load Order**: [`diagram-lab/output/react-lecture-04/skills/README.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-04/skills/README.md)
+- **Rule Tags Registry**: [`diagram-lab/output/react-lecture-04/skills/RULE-TAGS.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-04/skills/RULE-TAGS.md)
+
+### The Golden Rule: De-Prescribe Before Adding Rules
+- **The Common AI Fallacies**:
+  1. *The Reflexive Ban Fallacy*: AI models commonly default to proposing bans, inventing negative prohibitions, and brandishing authoritarian language like *"never do this"* and *"never do that"*.
+  2. *The Exclusionary Fallacy*: Models also commonly interpret positive guidance (*"do this"*) as a strict commandment that *"anything other than this is forbidden"*.
+- **The Golden Rule**: The FIRST thing to consider when fixing an unwanted model behavior or addressing a defect is **how to make a subtle edit in existing rules to remove the prescriptions or conflicts that created the problem**, rather than stacking new rules, bans, or prohibitions on top.
+- **Root-Cause Pruning over Rule Accumulation**: Before proposing or writing any new rule, determine what existing instruction forced or encouraged the bad output. Remove the offending prescription, resolve the conflict, or soften the over-specified constraint. Keep the instruction system lean, flexible, and grounded in clear standards rather than micro-managing behavior through endless negative prohibitions.
+
 ## Default Operational Root & Project Resolution Law (Hardcore Expectation)
 - **Default Operational Root**: All operations, shell commands, file inspections, and project workflows are rooted by default at: `/Users/techton/lechton/research-code/bookwriter/diagram-lab/output` (workspace relative: `diagram-lab/output/`). Unless explicitly directed elsewhere (such as `Pencil/` for legacy Svelte 5 materials), assume and resolve all relative paths and execution contexts from `diagram-lab/output/`.
 - **Mandatory Project Shorthand Mappings**: When the user references a project shorthand, immediately and without asking clarifying questions map it directly to its designated folder under `diagram-lab/output/`:

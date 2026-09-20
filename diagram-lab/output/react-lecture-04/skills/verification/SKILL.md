@@ -49,6 +49,7 @@ Notes: it works because the bold lead phrase names the missing topic in a few wo
 
 [ ] The pre-lecture gate passes before the production lecture is written, so the blueprint is verified while it can still be cheaply fixed rather than after the lecture has grown on top of it.
 [ ] The traceability and pedagogy gates pass before the lecture is called done, so quality is checked while the work is being shaped rather than reconstructed afterwards.
+[ ] In lecture revisions, the revision gate runs in a single-lecture cycle: revise Markdown for Lecture N, build immediate PDF, inspect layout and 8 gates, and only proceed to Lecture N+1 once Lecture N passes 100%; batching all Markdown files before building PDFs fails this gate. #2026_09_20_22_group_1
 [ ] A clean build alone never means done, because zero warnings certifies format, not teaching quality.
 [ ] The deep audit that writes findings stays on-demand: it runs only when the user asks, so the gates inside the workflow and the audit after it keep their separate jobs.
 
@@ -74,6 +75,8 @@ Notes: it works because the bold lead phrase names the missing topic in a few wo
 [ ] The vocabulary stays at plain upper-intermediate English (CEFR B2) level, written for a reader who is tired with a short attention span, while the depth remains complete and interview-winning.
 [ ] Every concept passes the three-part explanation (what you write, what manual work it removes, what the browser does): (1) what the developer writes, (2) what tedious boilerplate it eliminates, contrasted with painful patterns like manual `useState` keystroke tracking, `e.preventDefault()`, and `try / finally` loading flags, and (3) what concrete behavior happens in the browser (see the lecture-voice skill).
 [ ] Sentences stay free of comma-separated run-ons that pack multiple conceptual stages into one line, so the prose flows like clear water: it reminds the physical basics (the form, the inputs, the `name` attributes), then what happens when the user interacts or submits, then the data aggregation into `FormData`, then where that data arrives.
+[ ] Individual sentences are capped at 20 words, express exactly one main idea, and avoid chained participial clauses (*"adhering to... while doing..."*). #2026_09_20_21_group_1
+[ ] Every entity is verbally qualified with its architectural role ("the component `ComponentName`" vs "the component `<ComponentName />`", "the prop `propName`", "the `<span>` element", "the property `author.name`"); bare, unqualified tokens that force the reader to calculate what is what and split compound identifiers (`avatar Url`) fail this gate. #2026_09_20_23_group_1
 
 [ ] COUNTER-EXAMPLE: do not follow this bad example:
 
@@ -94,6 +97,10 @@ Notes: it fails because one sentence carries four conceptual stages at once, whi
 > Lecture 41 opens with a SubmitButton component that reads useFormStatus to disable itself while pending.
 
 Notes: it fails because SubmitButton and useFormStatus are the hero mechanism of the adjacent lecture; reusing them here clones the neighbor and starves this lecture's own topic of its demonstration.
+
+## Pedagogy Gates | 09B | The Pre-Example Mechanism Bridge Gate #2026_09_20_24_group_1
+
+[ ] Every lecture contains a dedicated conceptual section immediately before `### Let's Design a Practical Example...` that teaches the core React mechanism **dedicated to this particular lecture** (such as `### Components as Reusable Blueprints` or `### Fragments as Invisible Containers`), answering the plain platform limitation, defining the React primitive, stating the non-negotiable rule or syntax trap, and bridging to the practical scenario files; jumping directly from problem motivation into code fails this gate (see the lecture-structure and lecture-revision skills). #2026_09_20_24_group_1
 
 ## Pedagogy Gates | 10 | Typology tagging and the numbered opening beats
 
@@ -156,7 +163,12 @@ Notes: it fails because "keystroke tracking fatigue" is an invented term that ex
     (c) Defines the boundary by physical code invariants (*"zero useState and zero useEffect"* / *"zero network awareness"*).
     (d) Provides the Decoupling Proof showing how modifying UI touches zero backend code, and modifying backend touches zero UI code.
 
-## Visual Gates | 17 | Archetype 09 Color Fidelity and Template Cloning Gate #2026_09_20_08_group_1
+## Pedagogy Gates | 17 | The Explicit Architectural Relations Gate #2026_09_20_13_group_1
+
+[ ] Every code step that connects two files, components, or props makes the relationship explicit rather than relying on shorthand labels like "imported from a shared module" or "passes a callback down" (see the lecture-voice and lecture-structure skills).
+[ ] Any relation with an asymmetry—such as a file containing multiple components, or a prop name differing from a state variable—states the exact count and names of all components involved, explains why the syntax differs (such as named exports requiring curly braces), and clarifies why one part is imported while another remains internal.
+
+## Visual Gates | 18 | Archetype 09 Color Fidelity and Template Cloning Gate #2026_09_20_08_group_1
 
 [ ] Every introductory code assembly figure (`figures/{NN}-01-code-assembly-pipeline.html` or Archetype 09) clones `templates/09-progressive-assembly-step-cards.html` 1:1 and adheres strictly to its CSS classes and color tokens (see the figures skill).
 [ ] The four step cards use classes `.step-card.step-1`, `.step-card.step-2`, `.step-card.step-3`, and `.step-card.step-4` rather than ad-hoc inline styles.
