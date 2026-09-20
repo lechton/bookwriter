@@ -239,14 +239,19 @@ Notes: zero code snippets, the tree mirrors the nesting the steps will build, an
 ## Two Panel Modes | 21 | The component-code panel has two modes: code fidelity and role #2026_09_20_04_group_5
 
 [ ] Use the component-code panel in code-fidelity mode, per the Files and Component Code sections above, when the reader needs the connecting code itself on a full-width canvas.
-[ ] Use the component-code panel in role mode, placed at the head of the Direct Lessons stage, when the reader needs what each component is and how it relates to its neighbors, with zero code and serif prose in place of snippets.
+[ ] Use the component-code panel in role mode, placed at the head of the Lessons from the Experiment stage, when the reader needs what each component is and how it relates to its neighbors, with zero code and serif prose in place of snippets. #2026_09_20_09_group_1
+[ ] Give the role-mode panel a meaningful domain title reflecting the logic of the component hierarchy, such as `Summary: The Logic of Nested Components` (e.g. `title="Summary: The Logic of Nested Components"`), strictly banning generic corporate labels like `Component Role & Relationship Architecture` and removing project prefixes like `national-times:`. #2026_09_20_09_group_1
+[ ] Role-Mode 4-Field Syntax Law: Every role-mode entry MUST use all 4 pipe-separated fields: `file | props | kind | [role: ...]`. Placing `[role: ...]` in field 2 or 3 is strictly forbidden because field 2 is parsed as props and field 3 as kind tab; the parser only triggers the serif summary card (`.surface-ui-role`) when `[role: ...]` occupies field 4 (`renders`). #2026_09_20_10_group_1
+[ ] 2-Space Indentation Law for Child Components: All nested child components in the tree MUST be indented by exactly 2 spaces per tree level (`  Child.jsx`). Zero indentation causes the parser to treat children as orphan root components, which triggers a fatal multi-root build error. #2026_09_20_10_group_1
 [ ] Write each role-mode entry as a `[role: ...]` payload in the fourth field, following the four-beat rhythm: what the component is, what it owns or receives, the relational contrast against its siblings, and the Why? question answered directly inside the same entry.
 [ ] Keep the role entries synchronized with the lecture's real architecture, naming the exact props and state the code uses, so the panel stays a window into this lecture's code even while showing none of it.
 
-[ ] PROPER EXAMPLE: make sure you follow this example, a role-mode entry in the four-beat rhythm, from Lecture 40:
+[ ] PROPER EXAMPLE: make sure you follow this example, a multi-component role-mode panel with 4 fields, 2-space child indentation, and the four-beat rhythm with a meaningful title, from Lecture 40: #2026_09_20_09_group_1, #2026_09_20_10_group_1
 
-> ```component-code
+> ```component-code title="Summary: The Logic of Nested Components"
 > FeedbackPortal.jsx | none | parent | [role: The **parent component** orchestrates the overall portal layout. It owns the **live search state**. Also, it actively provides two things: the **state (props)** and **updater functions** downward to **LiveSearchInput**. Notice it deliberately passes **zero props** to **ArticleCorrectionForm**. Why? To isolate the parent from typing re-renders.]
+>   LiveSearchInput.jsx | query={query} onChange={setQuery} | form | [role: This is the **controlled child component**. It receives two things from the parent: the **state (`query`)** and the **updater function (`onChange`)**. Notice it locks the input's displayed value directly to React state. Why? To filter published headlines in real time on every single keystroke.]
+>   ArticleCorrectionForm.jsx | none | form | [role: This is the **uncontrolled child component**. Notice it receives **zero props** and **zero callbacks** from the parent. The browser stores all text in its native C++ buffer. When does React read the data? Only once, on submit, using **`FormData`**. This keeps typing at 60 FPS with zero parent re-renders.]
 > ```
 
-Notes: beat one names what it is, beat two what it owns and provides, beat three the deliberate contrast with the sibling, and the Why? is answered inside the entry. Zero code appears, and the prose still carries the exact prop names and the zero-props decision.
+Notes: beat one names what it is, beat two what it owns and provides, beat three the deliberate contrast with the sibling, and the Why? is answered inside the entry. Zero code appears, and the prose still carries the exact prop names and the zero-props decision. All 4 fields are present on every line, and child components are indented with 2 spaces.

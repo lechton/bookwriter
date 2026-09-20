@@ -1260,10 +1260,10 @@ function checkLecture(file, md) {
 		}
 	}
 
-	// Constructive Staging Gate (react-04 skills: lecture-structure Practical Example 21-26,
-	// pre-lecture Staging 34, verification Structure Gates 17): a lecture that builds an
+	// Constructive Staging Gate (react-04 skills: lecture-structure Practical Example 16-21,
+	// pre-lecture Staging 34, verification Structure Gates 16): a lecture that builds an
 	// example from 2 or more component files must stage the 5-stage practical example.
-	// Rule batch #2026_09_20_02_group_1 (registry: skills/RULE-TAGS.md, brief: brief/brief_2026_09_20_02.md).
+	// Rule batch #2026_09_20_02_group_1 (registry: skills/RULE-TAGS.md, brief: brief/brief_2026_09_20_02.md). The 4-phase flow check was removed by #2026_09_20_05_group_1.
 	const builtComponents = new Set();
 	for (const f of bodyFences) {
 		if (f.title && /\.(jsx|tsx)$/.test(f.title)) builtComponents.add(f.title.split('/').pop());
@@ -1271,7 +1271,7 @@ function checkLecture(file, md) {
 	const hasPracticalExample = /^### Let's Design a Practical Example\b/m.test(bodyContent);
 	if (builtComponents.size >= 2 && !hasPracticalExample) {
 		const names = [...builtComponents].slice(0, 4).join(', ') + (builtComponents.size > 4 ? ', ...' : '');
-		warns.push(`lecture builds ${builtComponents.size} component files (${names}) but has no "### Let's Design a Practical Example" 5-stage section (files panel, assembly pipeline figure, Step 1-4 build, Direct Lessons, Architecture Audit table); see lecture-structure skill Practical Example 21-26`);
+		warns.push(`lecture builds ${builtComponents.size} component files (${names}) but has no "### Let's Design a Practical Example" 5-stage section (files panel, assembly pipeline figure, Step 1-4 build, Lessons from the Experiment, Architecture Audit table); see lecture-structure skill Practical Example 16-21`);
 	}
 	if (hasPracticalExample) {
 		if (!/```files/.test(md)) {
@@ -1286,33 +1286,55 @@ function checkLecture(file, md) {
 		if (missingSteps.length) {
 			warns.push(`practical example Stage C is missing collaborative step headings: ${missingSteps.join('; ')}; see lecture-structure skill Practical Example 24`);
 		}
-		if (!/```(?:html-figure|figure)\b[^\n]*src=["'][^"']*code-assembly-pipeline/.test(bodyContent)) {
+		const pipelineMatch = bodyContent.match(/```(?:html-figure|figure)\b[^\n]*src=["']([^"']*code-assembly-pipeline[^"']*)["']/);
+		if (!pipelineMatch) {
 			warns.push(`practical example is missing its Stage B assembly pipeline figure (figures/{NN}-01-code-assembly-pipeline.html placed before Step 1); see lecture-structure skill Practical Example 23`);
+		} else {
+			const figureRelPath = pipelineMatch[1];
+			let figPath = join(ROOT, figureRelPath);
+			if (!existsSync(figPath)) {
+				figPath = join(dirs.mdLectures, figureRelPath);
+			}
+			if (existsSync(figPath)) {
+				const figHtml = readFileSync(figPath, 'utf8');
+				if (/background(?:-color)?:\s*(?:#f8fafc|#ffffff)\b/i.test(figHtml)) {
+					warns.push(`assembly pipeline figure "${figureRelPath}" uses banned bleached background (#f8fafc / #ffffff) on card containers; must use canonical Template 09 pastel palette on .card-main (see figures skill Section 26B)`);
+				}
+				const requiredPastels = [
+					['#d4e1f1', 'Step 1 blue (#d4e1f1)'],
+					['#d0e6e1', 'Step 2 teal (#d0e6e1)'],
+					['#f9e0c5', 'Step 3 amber (#f9e0c5)'],
+					['#d2ebc9', 'Step 4 green (#d2ebc9)'],
+				];
+				for (const [hex, label] of requiredPastels) {
+					if (!figHtml.toLowerCase().includes(hex)) {
+						warns.push(`assembly pipeline figure "${figureRelPath}" is missing canonical Template 09 pastel color ${label} on .card-main (see figures skill Section 26B)`);
+					}
+				}
+				if (/\.card-[1-4]\b/.test(figHtml)) {
+					warns.push(`assembly pipeline figure "${figureRelPath}" uses legacy mutated class names (.card-1..4); must use canonical .step-1, .step-2, .step-3, .step-4 (see figures skill Section 26B)`);
+				}
+			}
 		}
-		if (!/^### Direct Lessons from the Experiment\b/m.test(bodyContent)) {
-			warns.push(`practical example is missing its Stage D "### Direct Lessons from the Experiment: Naive Expectation vs Reality" section; see lecture-structure skill Practical Example 25`);
+		if (!/^### Lessons from the Experiment\b/m.test(bodyContent)) {
+			warns.push(`practical example is missing its Stage D "### Lessons from the Experiment: Naive Expectation vs Reality" section; see lecture-structure skill Practical Example 25`);
+		}
+		if (!/```component-code\b[^\n]*title=["']Summary: The Logic of Nested Components["']/.test(bodyContent)) {
+			warns.push(`practical example Stage D is missing its component-code role panel titled "Summary: The Logic of Nested Components"; see lecture-structure skill Section 20 and ui-panels skill Section 21`);
 		}
 		if (!/```(?:html-figure|figure)\b[^\n]*src=["'][^"']*architecture-audit/.test(bodyContent)) {
 			warns.push(`practical example is missing its Stage E Architecture Audit Table figure (figures/{NN}-02-architecture-audit.html); see lecture-structure skill Practical Example 26`);
 		}
 	}
 
-	// Strict 10-Line Ceiling (react-04 skills: code-blocks, verification Structure Gates 18):
+	// Strict 10-Line Ceiling (react-04 skills: code-blocks, verification Structure Gates 17):
 	// every body code fence holds at most 10 executable lines unless it is a slice of a
 	// validated continuation chain (slices carry continues/startLine markers).
 	for (const f of bodyFences) {
 		const { lineCount } = evaluateCodeComplexity(f.code);
 		if (lineCount > 10 && !f.continues) {
-			warns.push(`body code fence "${f.title || f.tag}" exceeds the 10-line ceiling (${lineCount} lines) without continuation markers; slice into progressive steps (verification Structure Gates 18)`);
+			warns.push(`body code fence "${f.title || f.tag}" exceeds the 10-line ceiling (${lineCount} lines) without continuation markers; slice into progressive steps (verification Structure Gates 17)`);
 		}
-	}
-
-	// 4-Phase Information Flow (react-04 skills: lecture-structure Information Flow 16-20,
-	// verification Structure Gates 16): data-flow and form-transition mechanisms must be
-	// narrated in a dedicated phased section beside any diagram.
-	const flowMechanism = /<form\s+action=\{|formAction=\{|useFormStatus|useActionState|createContext|useContext\(/.test(bodyContent);
-	if (flowMechanism && !/^#### Phase 1:/m.test(bodyContent)) {
-		warns.push(`lecture explains a data-flow or form-transition mechanism but has no 4-phase information flow section ("#### Phase 1:" through "#### Phase 4:" with bold micro-leads and inline parenthetical glosses); see lecture-structure skill Information Flow 16-20`);
 	}
 
 	if (summaryContent) {

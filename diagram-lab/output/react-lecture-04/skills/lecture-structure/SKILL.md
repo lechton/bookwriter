@@ -1,20 +1,20 @@
 ---
 name: lecture-structure
-description: Governs the section skeleton, information-flow sections, practical example staging, naming, and closing tables of a production lecture; use when assembling or revising lecture structure.
+description: Governs the section skeleton, practical example staging, naming, and closing tables of a production lecture; use when assembling or revising lecture structure.
 ---
 
 # Lecture Structure
 
-This skill governs how a production lecture is assembled: the two-phase workflow, the section skeleton in its exact order, the information-flow phased text, the staging of the practical example, component naming, and the closing comparison table. It covers structure and placement only; the wording inside each section belongs to the lecture-voice skill, code formatting to the code-blocks skill, and panel and figure syntax to the ui-panels skill.
+This skill governs how a production lecture is assembled: the two-phase workflow, the section skeleton in its exact order, the staging of the practical example, component naming, and the closing comparison table. It covers structure and placement only; the wording inside each section belongs to the lecture-voice skill, code formatting to the code-blocks skill, and panel and figure syntax to the ui-panels skill.
 
-Digests: skills/old-instructions/AUTHOR-BRIEF.md and instructions.md (phases, information flow, implementation sequence, format spec)
+Digests: skills/old-instructions/AUTHOR-BRIEF.md and instructions.md (phases, implementation sequence, format spec)
 
 ## Phases | 01 | Blueprint before lecture
 
 [ ] Author the Phase 1 pre-lecture blueprint in `md-pre-lectures/{nn}.md` before any production lecture work, so structure, vocabulary, and causal flow are locked before long-form writing begins.
 [ ] Have the pre-lecture blueprint mirror the final lecture headings and map every upcoming element into atomic bullets with in-situ pedagogical qualifications, so the production lecture expands a verified plan rather than improvising one.
 [ ] Treat the approved blueprint as the gate for Phase 2: prefer revising the blueprint over patching structure directly in the production lecture, so the two files stay in sync.
-[ ] Have the blueprint map the five practical example stages and the 4-phase information flow as concrete planned elements, so the staging crosses into the lecture as a planned build rather than being designed at lecture time (see the pre-lecture skill, Staging). #2026_09_20_01_group_1
+[ ] Have the blueprint map the five practical example stages as concrete planned elements, so the staging crosses into the lecture as a planned build rather than being designed at lecture time (see the pre-lecture skill, Staging). #2026_09_20_01_group_1 revised by #2026_09_20_05_group_1
 
 ## Phases | 02 | Production lecture expands the blueprint
 
@@ -83,7 +83,7 @@ Notes: the tier keeps its server suffix and the question text is copied verbatim
 
 ## Skeleton | 11 | Standard body progression
 
-[ ] Order the lecture body as: (1) component architecture and explorer introducing the application layout and the paradigm shift, (2) `### Let's Design a Practical Example` with its five stages, (3) the information flow lifecycle, (4) architectural comparison and review, so the reader builds the working system first and then reads the phased flow that explains it, with each stage building on the one before it. #2026_09_20_04_group_4
+[ ] Order the lecture body as: (1) component architecture and explorer introducing the application layout and the paradigm shift, (2) `### Let's Design a Practical Example` with its five stages, (3) architectural comparison and review, so the reader builds the working system first and then reads the comparative analysis, with each stage building on the one before it. #2026_09_20_04_group_4 revised by #2026_09_20_05_group_1
 [ ] When the lecture contrasts two paradigms that both modify one platform default, establish that shared default in plain prose before the first paradigm is defined, so the first paradigm reads as a departure from the default and the baseline never hides inside the second paradigm's section. #2026_09_20_03_group_1
 
 ## Skeleton | 12 | Where you will meet this placement
@@ -108,44 +108,7 @@ Notes: the tier keeps its server suffix and the question text is copied verbatim
 [ ] Dedicate every lecture strictly to its own interview question from the question bank, growing the hook it was given rather than replacing it, so each lecture earns its own number.
 [ ] Avoid cloning code setups, components, or diagrams from adjacent lectures, so two lectures never answer their questions with the same example.
 
-## Information Flow | 16 | Phased text beside the diagram
-
-[ ] Give every lecture that explains component data flow, async form transitions, or ambient state a dedicated phased text section following the 4-Phase Protocol, so the reader does not depend on an abstract diagram alone.
-[ ] Treat the phased section as the place where the runtime story is actually told, because boxes and arrows on their own tend to obscure the underlying mechanics.
-
-## Information Flow | 17 | Phase shape
-
-[ ] Organize the flow into distinct numbered phases, `#### Phase 1: ...` through `#### Phase 4: ...`, each containing exactly 3 to 4 concise bullet points.
-[ ] Open every bullet with a bold micro-lead that summarizes the takeaway, so a tired reader can reconstruct the whole flow by skimming the micro-leads alone.
-[ ] Avoid long dense prose paragraphs inside the phased section, because the format's value is its scannability.
-
-## Information Flow | 18 | Standard terminology only
-
-[ ] Use official React and web platform terminology in the phased section, for example `Context Provider`, `prop drilling`, `native browser event`, `event bubbling`, `server action`, `re-render`, `ancestor`, `descendant`, `FormData`, `Transition`, so the reader's vocabulary matches the docs and the interview table.
-[ ] Avoid creative metaphors such as radio tower, Wi-Fi bubble, or ambient receiver, so the reader is never taught a word they cannot use anywhere else.
-
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
-
-> The Context Provider acts like a radio tower broadcasting state to every receiver in range.
-
-Notes: the picture is vivid but the vocabulary is invented, so the reader can neither find it in official docs nor say it to an interviewer; the standard term plus an inline parenthetical gloss does the same job without the debt.
-
-## Information Flow | 19 | Inline parenthetical gloss
-
-[ ] Scan every technical term in the phased section and, on its introduction, follow it with a 4-to-10 word plain-English explanation enclosed in parentheses right next to it, so a tired reader is not forced to leave the page to look up jargon.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, the gloss shape placed directly next to its term:
-
-> `re-render (executing the component function again to compute updated visual HTML on screen)`
-
-Notes: the term stays standard, the gloss is short and physical, and the reader keeps reading without friction; the same shape applies to terms like `nested (placed inside multiple layers of components)` or `server action (an asynchronous background function running on the server to process form data)`.
-
-## Information Flow | 20 | Phases adapt to the mechanism
-
-[ ] Adapt the four phases to the physical and logical lifecycle of the specific mechanism being taught, so the phase titles describe that mechanism rather than a generic template.
-[ ] Use the topic cadences as the model: for form actions the phases run from the submit trigger, through FormData harvesting from named fields, into the background transition execution, and end with the automatic input reset; for `useFormStatus` they run from the native submit event bubbling upward, the form becoming an automatic Context Provider, the button consuming the form context, and the laser-focused component update.
-
-## Practical Example | 21 | Section title format
+## Practical Example | 16 | Section title format
 
 [ ] Title the implementation section exactly `### Let's Design a Practical Example <Component1> <Component2>`, naming the actual components of this lecture's example in the title.
 [ ] Avoid over-engineered corporate jargon headings for this section, so it reads as an invitation to build rather than a process document.
@@ -166,18 +129,18 @@ Notes: the heading names the two concrete components the steps will assemble, so
 
 Notes: it names a process instead of the components, and it reads like a slide deck rather than a pair-programming session.
 
-## Practical Example | 22 | Stage A scaffold and file explorer
+## Practical Example | 17 | Stage A scaffold and file explorer
 
 [ ] Open the practical example with the Rendered UI Canvas: a snippet-free `components` panel in canvas mode showing the finished interface before any code appears, so the reader sees the destination before the road (panel modes owned by the ui-panels skill). #2026_09_20_04_group_4
 [ ] Follow with the Stage A scaffold: introduce the component roles and the disk hierarchy via the `files` panel tailored to this specific lesson, with the panel syntax owned by the ui-panels skill.
 [ ] Keep the scaffold specific to the lesson, so the reader meets exactly the files the upcoming steps will create.
 
-## Practical Example | 23 | Stage B assembly pipeline figure
+## Practical Example | 18 | Stage B assembly pipeline figure
 
 [ ] Follow with Stage B: embed the introductory assembly pipeline figure, `figures/{NN}-01-code-assembly-pipeline.html`, with color-coded horizontal stage cards whose roles mirror this lesson's collaborative step sequence, authored per the ui-panels skill.
 [ ] Place the pipeline before any syntax appears, so the reader holds the roadmap while reading the steps.
 
-## Practical Example | 24 | Stage C sequential steps
+## Practical Example | 19 | Stage C sequential steps
 
 [ ] Walk the code assembly in Stage C using the collaborative 4-step pair-programming title sequence, so the reader feels guided rather than lectured.
 [ ] Assemble top-down: Step 1 constructs the parent container and establishes every child's contract in its JSX before any child exists, the middle steps fulfill those contracts one component at a time, and the final step seals the deepest boundary instead of mounting the parent, so the architecture is dictated before it is populated. #2026_09_20_04_group_4
@@ -200,6 +163,38 @@ Notes: Step 1 constructs the parent and dictates the data architecture; steps 2 
 
 Notes: the child's file comes later, but its contract is fully established in the parent's JSX in Step 1, and the forward link names exactly where it will be fulfilled. This is what top-down means: the parent dictates, the children comply.
 
+- [ ] Deconstruct callback invocations in child steps using the Upward Wire Standard: when a child component calls a function passed from its parent, the prose must not treat the call as self-evident; it must trace back to the parent's Step 1 JSX contract, name the parent setter being invoked, and explain the inverse data flow (see the lecture-voice skill, The Upward Wire Law). #2026_09_20_06_group_1
+
+[ ] PROPER EXAMPLE: make sure you follow this example, fulfilling and deconstructing a callback contract in Step 2, from Lecture 38: #2026_09_20_06_group_1
+
+> Look at the button click handler on line 6: `onClick={() => onSelect(room)}`.
+> 
+> Where does `onSelect` come from? Look back at Step 1 in `ChatWorkspace.jsx`. The parent declared `const [roomId, setRoomId] = useState('general')`, and then rendered: `<ChannelSelector activeRoom={roomId} onSelect={setRoomId} />`.
+> 
+> Notice what happened: the parent handed its private updater function `setRoomId` to the child under the prop name `onSelect`. `ChannelSelector` does not own state, and it does not know what `roomId` is used for. It only holds a telephone line called `onSelect`.
+> 
+> When the reporter clicks a button, the native browser `onClick` fires and calls `onSelect(room)`. Because `onSelect` points directly to `setRoomId`, that call immediately executes `setRoomId('politics')` back in `ChatWorkspace`.
+> 
+> This is standard **inverse data flow**: data flows down through props (`activeRoom`), and user actions flow up through callbacks (`onSelect`).
+
+Notes: Step 1 established the contract (`onSelect={setRoomId}`); Step 2 fulfills it by calling `onSelect(room)` and tracing the physical execution back to the parent's `setRoomId`. The circuit is complete in both directions.
+
+- [ ] Justify architectural separation in steps using The Negative Counterfactual Law: when explaining why two responsibilities are separated across components (e.g., UI controls vs. side-effects), the prose must not rely on vague praise (*"the cleanest architecture keeps X separate from Y"*); it must state what breaks if you merge them, define the boundary by physical code invariants (*"zero useState, zero useEffect"*), and prove decoupling by showing that modifying UI touches zero network code and modifying network touches zero UI code (see the lecture-voice skill, The Negative Counterfactual Law). #2026_09_20_07_group_1
+
+[ ] PROPER EXAMPLE: make sure you follow this example, justifying architectural separation in Step 2, from Lecture 38: #2026_09_20_07_group_1
+
+> What would happen if `ChannelSelector` opened the websocket connection itself?
+> 
+> If you put the `useEffect` or socket connection inside `ChannelSelector`, the navigation buttons would be trapped managing network sockets, reconnection timers, and message buffers. Worse, the chat message area in `ChatRoom` would have no way to access that socket without messy prop-drilling or global state hacks. You would have buttons and network protocols tangled in a single file.
+> 
+> By separating them, `ChannelSelector` owns zero `useState` and zero `useEffect`. It is a pure presenter: given the same `activeRoom` string and `onSelect` callback, it will always render the exact same three buttons.
+> 
+> This separation gives you two concrete superpowers:
+> 1. If tomorrow you replace the button pills with a dropdown `<select>` menu, you touch zero lines of websocket code.
+> 2. If you swap the websocket protocol in `ChatRoom` for a mock test service, you touch zero lines of button code.
+
+Notes: Instead of vague praise, the text poses the obvious merge question, details the concrete disaster (trapped socket, unreachable chat area), defines the presenter by physical code absence (zero useState, zero useEffect), and proves decoupling with symmetric refactoring scenarios.
+
 [ ] COUNTER-EXAMPLE: do not follow this bad example, the bottom-up shape where the parent arrives last:
 
 > ```markdown
@@ -214,21 +209,21 @@ Notes: the children are built with no contract to fulfill, and the parent is red
 [ ] Keep each step's runnable snippet within the 10-line ceiling with zero leading empty lines, per the code-blocks skill.
 [ ] Phrase step titles as natural, active, practical developer actions rather than stiff pseudo-compiler phrasing, per the lecture-voice skill.
 
-## Practical Example | 25 | Stage D direct lessons
+## Practical Example | 20 | Stage D lessons from the experiment
 
-[ ] Conclude the experiment with Stage D under the heading `### Direct Lessons from the Experiment: Naive Expectation vs Reality`.
-[ ] Carry the Component Role panel at the head of Stage D: a `component-code` panel in role mode explaining each component's responsibilities in serif prose without code distractions, so the lessons that follow have the hierarchy on record (panel modes owned by the ui-panels skill). #2026_09_20_04_group_4
+[ ] Conclude the experiment with Stage D under the heading `### Lessons from the Experiment: Naive Expectation vs Reality`. #2026_09_20_09_group_1
+[ ] Carry the Component Role panel at the head of Stage D: a `component-code` panel in role mode with a meaningful domain title (e.g. `Summary: The Logic of Nested Components`) explaining each component's responsibilities in serif prose without code distractions, so the lessons that follow have the hierarchy on record (panel modes owned by the ui-panels skill). #2026_09_20_04_group_4 revised by #2026_09_20_09_group_1
 [ ] Detail what the naive expectation would have been, meaning the classical mental model, manual state hooks, or imperative event-interception routines developers instinctively assume are required.
 [ ] Contrast it against what the experiment showed, meaning the modern React 19 engine reality, platform alignment, and clean modularity proven by the working code, so the lesson lands as a before and after rather than a verdict from nowhere.
 
-## Practical Example | 26 | Stage E concluding lessons comparison table
+## Practical Example | 21 | Stage E concluding lessons comparison table
 
 [ ] Close the practical example with Stage E: the dedicated Architecture Audit Table, `figures/{NN}-02-architecture-audit.html`, as the definitive final step of the code showcase, authored per the ui-panels skill.
 [ ] Build it with the uppercase eyebrow `LESSONS FROM THE CODE`, a title naming this lecture's concrete domain challenge, and a three-column comparative matrix of `Component Layer`, `Naive Expectation (Legacy Approach)`, and `What Happened (React 19 Reality)` with subtle shading on the reality column.
 [ ] Deconstruct the hierarchy across the layers relevant to this lesson, meaning the parent, intermediate boundaries, and terminal UI control, using the genealogical naming from this skill.
 [ ] End the table with a final verdict row contrasting fragile coupling in red uppercase against bulletproof modularity in teal uppercase, and calibrate padding and font sizes so the table and its caption fit on a single PDF page.
 
-## Naming | 27 | The everyday-words naming rule
+## Naming | 22 | The everyday-words naming rule
 
 [ ] Choose component names from the simplest, universally understood everyday vocabulary, words any reader knows, so the name carries the mental picture by itself.
 [ ] Treat a failed everyday-words check, meaning a reader has no clue what the word refers to, as a signal the name is wrong even if it sounds precise to an engineer.
@@ -239,7 +234,7 @@ Notes: the children are built with no contract to fulfill, and the parent is red
 
 Notes: each name is one everyday idea any reader immediately pictures, so the reader decodes the component before reading a line of its code.
 
-## Naming | 28 | Avoid pileups and visual-shape names
+## Naming | 23 | Avoid pileups and visual-shape names
 
 [ ] Avoid combining three nouns into one component name, so the reader is not forced to decode a compound before understanding the code.
 [ ] Avoid CSS visual shapes and insider slang as component identities, names like `Badge`, `Ticker`, `Prompter`, or `WireCategory`, because the reader has to translate them into a real thing first.
@@ -250,7 +245,7 @@ Notes: each name is one everyday idea any reader immediately pictures, so the re
 
 Notes: each name either piles up nouns, names a visual shape, or reaches for jargon the reader does not own, and the decoded meaning arrives too late to help.
 
-## Naming | 29 | Name by role, not by HTML tag
+## Naming | 24 | Name by role, not by HTML tag
 
 [ ] Avoid naming a component after an HTML tag or a spreadsheet coordinate, patterns like `...Row`, `...Cell`, `...Div`, or `...Span`, because the tag is presentation and the name should say what the thing is.
 [ ] Prefer `...Item` for individual entries, for example `ArticleItem` or `CartItem`, and `...Header` for section dividers, for example `CategoryHeader`, so the name describes the thing's role in the interface rather than its markup.
@@ -261,17 +256,17 @@ Notes: each name either piles up nouns, names a visual shape, or reaches for jar
 
 Notes: each corrected name describes the thing's role in the interface, not the HTML tag it happens to render as, so the name survives a markup refactor.
 
-## Naming | 30 | Genealogical terms, not leaf
+## Naming | 25 | Genealogical terms, not leaf
 
 [ ] Name components and describe component relationships with the official family terms: parent, child, nested child, grandchild, ancestor, descendant, terminal UI control (the full vocabulary law lives in the ui-panels skill).
 
-## Tables | 31 | Closing table as the last block
+## Tables | 26 | Closing table as the last block
 
 [ ] End every lecture with `### Summary` followed by the comparison table as the last block of the file, so the "what makes this different" point is the visual anchor the reader leaves with.
 [ ] Contrast the lecture's mechanism against its nearest alternative, for example `useState` vs `useRef`, controlled vs uncontrolled inputs, or Server vs Client Components, so the table has a genuine tension to resolve.
 [ ] When the lecture genuinely has no meaningful contrast, substitute a "what to remember" two-column table of term to one-line definition, keeping the same alignment as the standard shape.
 
-## Tables | 32 | Exact table shape
+## Tables | 27 | Exact table shape
 
 [ ] Build the closing table in the fixed three-column shape: the first header cell always empty, column titles formatted as `**CAPS**` plus `<br>` plus a one-word subtitle, the divider row exactly `| ---: | :--- | :--- |`, and every body row starting with a bold dimension.
 [ ] Keep titles in the markdown header row only, because the header renders as the real table head and a title placed in a body row produces a duplicate unstyled strip.
@@ -287,7 +282,7 @@ Notes: each corrected name describes the thing's role in the interface, not the 
 
 Notes: the empty first header cell blanks the top-left corner by design, each column title pairs a caps title with a one-word subtitle, the divider right-aligns the dimension column so dimensions read as sub-headings, and the shape renders identically in every lecture.
 
-## Tables | 33 | Code wrapping inside table cells
+## Tables | 28 | Code wrapping inside table cells
 
 [ ] Separate explanatory prose from an inline code string with `<br>` placed after the prose, because table columns in the PDF are narrow and a code chip left attached to prose wraps mid-token into fragmented grey boxes.
 [ ] Split long or multi-part code across separate inline code spans joined by `<br>`, for example `createRoot(node)` and `.render(<App />)` as two spans, and place `<br>` between distinct spans rather than inside any span.

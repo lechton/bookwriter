@@ -31,6 +31,8 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 import { renderComponentExplorer } from './component-explorer.mjs';
+import { renderFileExplorer } from './file-explorer.mjs';
+import { renderComponentCodeExplorer } from './component-code-explorer.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -542,6 +544,10 @@ function parseBlocks(md) {
 			const title = attrs.title || '';
 			if (lang === 'components') {
 				out.push({ t: 'components', title, source: buf.join('\n') });
+			} else if (lang === 'files') {
+				out.push({ t: 'files', title, source: buf.join('\n') });
+			} else if (lang === 'component-code') {
+				out.push({ t: 'component-code', title, source: buf.join('\n') });
 			} else {
 				const isWrong = /\bwrong\b/i.test(lang) || /\bwrong\b/i.test(rest) || (out.length > 0 && out[out.length - 1].t === 'p' && /DO NOT DO THIS/i.test(out[out.length - 1].text));
 				const isRight = /\bright\b/i.test(lang) || /\bright\b/i.test(rest) || (out.length > 0 && out[out.length - 1].t === 'p' && /(?:^|\s)DO THIS/i.test(out[out.length - 1].text));
@@ -769,7 +775,9 @@ function render(blocks) {
 		if (b.t === 'h3') {
 			const isGlossary = /^glossary\b/i.test(b.text.trim());
 			const isSummary = /^summary\b/i.test(b.text.trim());
-			let extra = isGlossary ? ' glossary-section' : (isSummary ? ' summary-section' : '');
+			const isStep = /^Step\s+(\d+)/i.test(b.text.trim());
+			const isExample = /^(?:LET'S DESIGN A PRACTICAL EXAMPLE|Let's Design a Practical Example|Practical Example)/i.test(b.text.trim());
+			let extra = isGlossary ? ' glossary-section' : (isSummary ? ' summary-section' : (isStep ? ' step-section' : (isExample ? ' example-section' : '')));
 			html += `<div class="keep-together${extra}">\n`;
 			inH3 = true;
 		}
@@ -787,10 +795,71 @@ function render(blocks) {
 			// h2 = page break. Wrap the heading in a div that forces a new page
 			// in PDF (Prince) and a visual break in the deck HTML.
 			case 'h2': html += `<div class="page-break"><h2>${inline(b.text)}</h2></div>\n`; break;
-			case 'h3': html += `<h3>${inline(b.text)}</h3>\n`; break;
+			case 'h3': {
+				const stepMatch = b.text.match(/^Step\s+(\d+)[:\s]+(.*?)(?:\s+((?:`?<[^>]+>`?\s*)+))?$/i);
+				const isExample = /^(?:LET'S DESIGN A PRACTICAL EXAMPLE|Let's Design a Practical Example|Practical Example)/i.test(b.text.trim());
+				if (stepMatch) {
+					const stepNum = stepMatch[1];
+					const title = stepMatch[2].trim();
+					const compsRaw = stepMatch[3] ? stepMatch[3].trim() : '';
+					const compTags = compsRaw ? (compsRaw.match(/<[^>]+>/g) || []) : [];
+					const compsHtml = compTags.length > 0 
+						? `<div class="card-components">${compTags.map(c => `<span class="component-tag">${esc(c)}</span>`).join(' ')}</div>` 
+						: '';
+					html += `<div class="step-header-card step-${stepNum}">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">${stepNum}</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step ${stepNum}: ${title.replace(/'/g, "\\'")}';">${inline(title)}</div>
+      ${compsHtml}
+    </div>
+  </div>
+</div>\n`;
+				} else if (isExample) {
+					const compMatch = b.text.match(/((?:`?<[^>]+>`?\s*)+)$/);
+					const compsRaw = compMatch ? compMatch[1].trim() : '';
+					const withoutComps = compMatch ? b.text.slice(0, compMatch.index).trim() : b.text.trim();
+					let title = withoutComps;
+					if (/^let's design a practical example$/i.test(withoutComps.trim())) {
+						title = "Let's Design a Practical Example";
+					}
+					const compTags = compsRaw ? (compsRaw.match(/<[^>]+>/g) || []) : [];
+					const compsHtml = compTags.length > 0 
+						? `<div class="card-components">${compTags.map(c => `<span class="component-tag">${esc(c)}</span>`).join(' ')}</div>` 
+						: '';
+					html += `<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: '${title.replace(/'/g, "\\'")}';">${inline(title)}</div>
+      ${compsHtml}
+    </div>
+  </div>
+</div>\n`;
+				} else {
+					html += `<h3>${inline(b.text)}</h3>\n`;
+				}
+				break;
+			}
 			case 'h4': html += `<h4>${inline(b.text)}</h4>\n`; break;
 			case 'code': html += highlightCode(b.code, b.title, b.lang, b.attrs) + '\n'; break;
 			case 'components': html += renderComponentExplorer(b.source, b.title) + '\n'; break;
+			case 'files': html += renderFileExplorer(b.source, b.title) + '\n'; break;
+			case 'component-code': html += renderComponentCodeExplorer(b.source, b.title) + '\n'; break;
 			case 'html-figure': {
 				// Standalone HTML figure (React Component Explorer card): the src
 				// attribute points at a file in md-lectures/figures/; its content is
@@ -1031,13 +1100,13 @@ function checkLecture(file, md) {
 	if (!/^# Lecture \d+: \S/.test(lines[0] || '')) warns.push(`title line is not "# Lecture {n}: {Short Title}"`);
 	if (!/^>\s*INTERVIEW QUESTION\s*\|\s*❱+\s*[A-Z]+(\s*\(Server\))?\s*\|/.test(lines[1] || '')) warns.push(`line 2 is not the "> INTERVIEW QUESTION | ❱ TIER |" callout`);
 	if (!/\[!(TIP|NOTE|KEY|WARNING|CAUTION|WILD|GROUNDING)\]/.test(md)) warns.push(`no alert callout ([!TIP] etc.) anywhere in the lecture`);
-	if (!/```components/.test(md)) warns.push(`no "components" explorer panel (mandatory in every lecture; place one before the first code fence of the central mechanism)`);
+	if (!/```(?:components|component-code)/.test(md)) warns.push(`no "components" or "component-code" explorer panel (mandatory in every lecture; place one before the first code fence of the central mechanism)`);
 	if (!/```(?:figure|html-figure)/.test(md)) warns.push(`no "html-figure" HTML figure panel (mandatory in every lecture; embed at least one md-lectures/figures/ RCE panel)`);
 
 	// The completeness law: every file the lecture shows (fence title) or
 	// imports must appear as an entry in a components panel tree.
 	const treeFiles = new Set();
-	for (const block of md.matchAll(/```components[^\n]*\n([\s\S]*?)```/g)) {
+	for (const block of md.matchAll(/```(?:components|component-code|files)[^\n]*\n([\s\S]*?)```/g)) {
 		for (const line of block[1].split('\n')) {
 			const first = line.split('|')[0].trim();
 			if (first) treeFiles.add(first.replace(/^\.\//, '').split('/').pop());
@@ -1087,7 +1156,7 @@ function checkLecture(file, md) {
 	const [bodyContent, summaryContent] = md.split(/^### Summary\s*$/m);
 	for (const m of bodyContent.matchAll(/```([a-z0-9_\-]+)?([^\n]*)\n([\s\S]*?)```/g)) {
 		const tag = ((m[1] || '') + m[2]).trim();
-		if (tag.startsWith('components') || tag.startsWith('html-figure')) continue;
+		if (tag.startsWith('components') || tag.startsWith('files') || tag.startsWith('component-code') || tag.startsWith('html-figure')) continue;
 		const code = m[3];
 		const { lineCount, score } = evaluateCodeComplexity(code);
 		if (lineCount > 30 || (lineCount > 20 && score >= 35)) {
@@ -1103,7 +1172,7 @@ function checkLecture(file, md) {
 	const bodyFences = [];
 	for (const m of bodyContent.matchAll(/```([a-z0-9_\-]+)?([^\n]*)\n([\s\S]*?)```/g)) {
 		const tag = ((m[1] || '') + m[2]).trim();
-		if (tag.startsWith('components') || tag.startsWith('html-figure')) continue;
+		if (tag.startsWith('components') || tag.startsWith('files') || tag.startsWith('component-code') || tag.startsWith('html-figure')) continue;
 		const code = m[3];
 		const titleMatch = tag.match(/title=["']([^"']+)["']/);
 		const title = titleMatch ? titleMatch[1] : null;

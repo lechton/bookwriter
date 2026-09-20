@@ -61,3 +61,17 @@ State: Non-Mutating Recipes and
 Array Transforms
 
 what a title?!
+
+---
+
+41
+
+wooden wedge: what sloppy metaphore, makes little sense 
+
+React to
+handle submission natively without reloading. The
+browser does not navigate, React automatically
+manages uncontrolled inputs 
+
+uncontrolled inputs??
+??

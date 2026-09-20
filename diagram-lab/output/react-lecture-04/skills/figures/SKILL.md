@@ -273,9 +273,75 @@ Notes: these are diagnostic meta-descriptors, not UI; the student should see a r
 
 [ ] Use template 08 (`08-progressive-assembly-pipeline.html`) for the progressive code assembly pipeline: an ice-slate panel (`#f4f6f9`) with dark slate header bar (`#344154`, custom-made uppercase topic title such as `EXAMPLE OF FORM HANDLING`), sequential cards (`#fcfcfb`) with 10px teal left accent (`#0e7490`) and centered vertical SVG connectors with bold directional arrowheads (zero bullet dots), each card defining Step N, title, code token, and a centered italic role statement with bold action verbs.
 
-[ ] Use template 09 (`09-progressive-assembly-step-cards.html`) as the alternative visual roadmap for multi-step progressive architecture: an ice-slate panel (`#f4f6f9`) with dark slate header bar (`#344154`) and floating step cards with top badges, step indicators, code tokens, and bold action verbs.
+[ ] Use template 09 (`09-progressive-assembly-step-cards.html`) as the mandatory visual roadmap for multi-step progressive code assembly: 4 horizontal step cards (`.step-card`) featuring muted left edge bars, prominent step badges with uppercase `STEP` and bold numbers `1` to `4`, and a unified soft pastel background across the entire card body (`.card-main`), strictly matching the collaborative sequence (`First, we...`, `Next, we...`, `Then, we...`, `Finally, we...`).
 
 [ ] Use template 10 (`10-architecture-audit-vtable.html`) as the mandatory concluding step of practical code examples: a clean editorial substrate sitting directly on the page without outer card borders or drop shadows, bounded by heavy 3px black top and bottom rules, with the eyebrow `LESSONS FROM THE CODE` in uppercase tracking-widest typography, a three-column comparative matrix (Component Layer, Naive Expectation such as manual prop drilling, What Happened such as the React 19 reality), a layer breakdown from parent container through intermediaries down to the terminal UI control, a final verdict row contrasting `FRAGILE COUPLING` (red) with `BULLETPROOF MODULARITY` (teal), and calibrated font sizes (`0.86rem` body, `0.92rem` titles) for a single-page PDF budget.
+
+## Templates | 26B | Archetype 09 (Progressive Assembly Step Cards) Canonical Color & Surface Law
+
+[ ] When authoring or cloning Archetype 09 (`figures/{NN}-01-code-assembly-pipeline.html`), authors MUST clone `templates/09-progressive-assembly-step-cards.html` 1:1 and NEVER invent, inline, or alter the color system. `#2026_09_20_08_group_1`
+
+[ ] Enforce the canonical 4-tone pastel color palette via CSS classes on `.step-card`: `#2026_09_20_08_group_1`
+- **Step 1 (Blue)**: `.step-1 .card-edge { background: #7495be; }`, `.step-1 .card-main { background: #d4e1f1; }`, `.step-1 .card-divider { background: #b0c4dd; }`
+- **Step 2 (Teal)**: `.step-2 .card-edge { background: #66a49b; }`, `.step-2 .card-main { background: #d0e6e1; }`, `.step-2 .card-divider { background: #aed1cb; }`
+- **Step 3 (Warm Amber)**: `.step-3 .card-edge { background: #e09f67; }`, `.step-3 .card-main { background: #f9e0c5; }`, `.step-3 .card-divider { background: #eac4a1; }`
+- **Step 4 (Soft Green)**: `.step-4 .card-edge { background: #74ad68; }`, `.step-4 .card-main { background: #d2ebc9; }`, `.step-4 .card-divider { background: #b2d5a5; }`
+
+[ ] Class-Name Integrity Law: The step cards MUST be classed as `.step-1`, `.step-2`, `.step-3`, `.step-4`. Mutated class names such as `.card-1`, `.card-2`, or `.pipeline-step-1` are strictly forbidden. `#2026_09_20_11_group_1`
+
+[ ] Enforce Surface Continuity & Anti-Bleaching Law: The pastel background belongs exclusively on `.card-main` so that both `.step-badge` and `.card-content` sit on the exact same tinted surface. NEVER set `background: #f8fafc` or `background: #ffffff` on `.step-card`, `.card-main`, or `.card-content`: bleaching the card into stark white or grey-slate is strictly prohibited. `#2026_09_20_08_group_1`, `#2026_09_20_11_group_1`
+
+[ ] Strict Ban on Inline Styles: NEVER use inline `style="background: ..."` on `.card-edge`, `.step-badge`, `.card-divider-wrap`, or `.card-content`. All styling must flow through the scoped `.step-1`, `.step-2`, `.step-3`, `.step-4` CSS classes. `#2026_09_20_08_group_1`
+
+[ ] Mechanical Compiler Validation: Every assembly pipeline figure is validated at build time by `src/build-lectures.mjs`. The build script checks the HTML file directly on disk, verifying the 4 canonical pastels, banning `#f8fafc` / `#ffffff` card backgrounds, and enforcing `.step-1..4` class names. A defect in any of these checks triggers a build warning. `#2026_09_20_11_group_1`
+
+[ ] PROPER EXAMPLE: make sure you follow this example, the canonical Archetype 09 card markup with scoped classes and unified pastel surfaces: `#2026_09_20_08_group_1`
+
+> ```html
+> <!-- Step 1 -->
+> <div class="step-card step-1">
+>   <div class="card-edge"></div>
+>   <div class="card-main">
+>     <div class="step-badge">
+>       <span class="step-text">Step</span>
+>       <span class="step-num">1</span>
+>     </div>
+>     <div class="card-divider-wrap">
+>       <div class="card-divider"></div>
+>     </div>
+>     <div class="card-content">
+>       <div class="card-title">First, we construct the parent container EditorialDesk.jsx</div>
+>       <div class="card-components">
+>         <span class="component-tag">&lt;EditorialDesk /&gt;</span>
+>       </div>
+>     </div>
+>   </div>
+> </div>
+> ```
+
+[ ] FLAWED EXAMPLE: never do this, using inline styles, harsh saturated primaries, and bleaching the content box with stark white or #f8fafc: `#2026_09_20_08_group_1`
+
+> ```html
+> <!-- DO NOT DO THIS: inline styles and bleached white content box -->
+> <div class="step-card">
+>   <div class="card-edge" style="background: #2563eb;"></div>
+>   <div class="card-main">
+>     <div class="step-badge" style="background: #eff6ff;">
+>       <span class="step-text">STEP</span>
+>       <span class="step-num">1</span>
+>     </div>
+>     <div class="card-divider-wrap" style="background: #eff6ff;">
+>       <div class="card-divider" style="background: #93c5fd;"></div>
+>     </div>
+>     <div class="card-content" style="background: #f8fafc;">
+>       <div class="card-title">First, we construct the parent container EditorialDesk.jsx</div>
+>       <div class="card-components">
+>         <span class="component-tag">&lt;EditorialDesk /&gt;</span>
+>       </div>
+>     </div>
+>   </div>
+> </div>
+> ```
 
 ## Authoring | 27 | One Figure, One File
 

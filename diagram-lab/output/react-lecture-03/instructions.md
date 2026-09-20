@@ -1,20 +1,46 @@
 # React Lecture + Card Series: Project Instructions
 
-## General Operational Directives: `ppp` and `nnn`
+## Foundational Stance: The Developer-at-the-Keyboard Law (The Anti-Internal-Engine Trap & Tired Reader Standard)
+Authors must NEVER fall into the trap of writing from the perspective of the React internal engine, treating technical terms as disembodied, ideal Platonic forms communicating in the abstract (e.g. *"When a Promise settles, the Transition wraps the Execution Boundary inside the Priority Lane"*), reciting internal engine compiler specifications, or using corporate brochure bureaucrat-speak (e.g. *"React fundamentally alters its submission runtime across four core guarantees"*). The author MUST write strictly from the perspective of the **developer sitting at the keyboard**, feeling instructed and guided personally, step by step, using clear **CEFR B2 vocabulary**—as if the reader is tired and has a short attention span, yet expects thorough, complete, interview-winning technical depth. Technical terms are tools, not Platonic ideals: never explain a feature by naming an internal API (like `startTransition`) that does not physically appear in the reader's code. Every runtime concept must be anchored in the **Utilitarian Three-Anchor Formula**: (1) **What the developer writes** (the concrete keystrokes typed into the file), (2) **What tedious code is eliminated** (the manual boilerplate they get to delete, explicitly contrasting with painful patterns like manual `useState` keystroke tracking, `e.preventDefault()`, and `try / finally` loading flags), and (3) **What physical behavior happens in the browser** (e.g. the UI stays clickable during network requests, inputs reset automatically, or buttons read submission state without prop drilling).
+
+## General Operational Directives: `ppp`, `ppi`, and `nnn`
 - **`ppp` (Please Proceed)**: General execution trigger. When the user prompt contains `ppp`, it means "proceed" — immediately execute the approved plan, author or edit files, and run builds without requesting further confirmation.
+- **`ppi` (Proceed with Instructions Only)**: Instructions-only execution trigger. When the user prompt contains `ppi`, you are allowed to proceed and edit the instructions, but **ONLY the instructions** and **NOT any particular lecture or other file to adapt from the instructions**. You MUST stop the moment you finish polishing and fixing the instructions.
 - **`nnn` (Chat-Only Constraint)**: General chat-only constraint. When the user prompt contains `nnn`, do NOT make any edits or create any files in the workspace, and do not run modifying commands. Strictly discuss, brainstorm, analyze, and refine ideas in the chat until explicitly ordered to proceed.
-- **Bold Key Terms Law**: Key terms in any paragraph MUST be in **bold** (e.g. `**imperative DOM scripting**`, `**state drift**`, `**component**`). Every concept introduced must be visually anchored with bold formatting.
+- **Explain Key Terms on First Introduction & Strict Ban on Invented Vocabulary**: Always explain key terms on their first introduction. Authors are STRICTLY FORBIDDEN from ever inventing new technical vocabulary that does not exist and MUST ONLY use standard React and web platform vocabulary (as established in official specifications and `react.dev`). When describing developer habits, common mistakes, or runtime problems, describe the plain reality in clear English—NEVER reify descriptive situations into fake proper nouns or pseudo-academic buzzwords:
+  - *Plain reality*: "Developers often fall into the habit of controlling every input." ➔ **DO NOT USE fake term**: `**controlled form illusion**`.
+  - *Plain reality*: "Typing triggers a render on every keypress, which gets slow." ➔ **DO NOT USE fake term**: `**keystroke tracking fatigue**`.
+  - *Plain reality*: "Passing props through intermediate wrappers that do not need them." ➔ Use standard vocabulary: `**prop drilling**`.
+  - *Plain reality*: "Inputs that read DOM values on submit without React state." ➔ Use standard vocabulary: `**uncontrolled components**` / `**uncontrolled inputs**`.
+  Key terms in any paragraph MUST be in **bold** on their first introduction, but ONLY when they represent real, standard React or web platform concepts.
+- **The Lucid Step-by-Step Sentence Law (Strict Ban on Comma-Separated Multi-Clause Run-On Sentences)**: Authors are STRICTLY FORBIDDEN from compressing multiple conceptual stages (user intent, DOM event firing, element gathering, data structure packaging, and function dispatch) into a single, breathless, comma-spliced run-on sentence. Every explanation of a mechanism must proceed through short, lucid sentences that read like clear water:
+  - *Sentence 1 (Remind the physical basics)*: State the physical HTML elements, input fields, and the attributes that name them (e.g. `name`).
+  - *Sentence 2 (Explain the trigger)*: State what happens when the user interacts or submits, and what React intercepts.
+  - *Sentence 3 (Explain the data collection)*: State how those named fields get assembled into a data structure (such as `FormData`).
+  - *Sentence 4 (Explain the destination)*: State where that data arrives and what function receives it.
+  - *AWFUL & DEFECTIVE (BANNED comma-separated run-on)*:
+    "When a user submits the form, React intercepts the native submit event automatically, gathers all contained inputs that declare a name attribute into a native browser FormData instance, and passes that dictionary directly to the action function."
+  - *LUCID, STEP-BY-STEP, CLEAR LIKE WATER (MANDATORY)*:
+    "A form may consist of one or more input fields receiving data from the user, assigning the content of each input text in an attribute named `name`. When a user submits the form, React intercepts the native submit event automatically. The named fields from the various inputs all get collected into a native browser `FormData` dictionary. This dictionary then gets passed directly to the action function."
+  One idea per sentence. Remind the basics first, explain the runtime event second, explain the data transformation third, and name the final handoff fourth.
+- **The Practical Developer Reality Law (Strict Ban on Normative "Universe Laws" / Stiff Author Decrees)**: Authors must NEVER write grandiose, arrogant decrees about universal physical laws (e.g. *"Developers never author `e.preventDefault()`"* or *"Developers must never..."*). You are not writing normative laws of the universe. Authors must write from the practical developer's lived experience, asking natural human questions (*"Why?"*) and grounding the explanation in concrete browser and keyboard reality:
+  - *AWFUL & DEFECTIVE (BANNED arrogant universe law)*:
+    "Developers never author `e.preventDefault()`. React prevents full-page document reloads natively while preserving standard keyboard interactions like pressing Enter to submit."
+  - *PRACTICAL DEVELOPER REALITY (MANDATORY)*:
+    "Developers never need to write `e.preventDefault()` anymore. Why? React now prevents full-page document reloads automatically when handling form actions. At the same time, standard keyboard interactions are preserved: the user, for example, can press Enter to submit without any problem."
 - **The Complete Nomenclature Law (Classic & Modern Dual-Canon Mandate)**: Whenever you dedicate a paragraph or section to describing a runtime phenomenon, architectural pattern, or data structure, withholding its formal name is strictly prohibited (The Anti-"Voldemort" Law). You must provide the **Dual-Canon**: (1) the **Classic Industry Term** (what 95% of senior interviewers call it across the table, e.g. `**virtual DOM**`), (2) the **Modern Official Term** (what modern framework specifications call it, e.g. `**UI descriptor tree**`), and (3) its physical reality (e.g. *lightweight JavaScript objects in memory*). If the relationship or transition between terms causes student confusion, dedicate an `⚡ IN THE WILD` grounding card to discharge that confusion.
 - **Zero-Unexplained-Syntax Law**: Every parameter, keyword, attribute, method, or symbol appearing in a code snippet MUST be explicitly audited and line-by-line deconstructed in the surrounding prose. Consecutive back-to-back code blocks without intervening deconstructive prose are strictly forbidden.
 - **The Anti-Robotic Code Recitation & Natural Dot-Connecting Law**: Deconstructing code by reading visible syntax line-by-line or acting as a passive screen reader is strictly prohibited. You do NOT need to cite or explain line numbers each time: opening or peppering every sentence with line numbers is robotic, autistic, and disturbing to read. However, pointing to a specific line number *sometimes* is a great idea when pinpointing a critical expression, subtle parameter, or early return. The author must definitely point to the element, function, or construct in question in a natural way of conversation, **connecting the dots** between the syntax, the runtime engine, and the surrounding architecture. Obey the **Strict Locality Law**: every statement must map directly to code physically present in that specific snippet; never attribute framework-level mechanics (like page reload suppression) to an unrelated local setter or guard clause. Banish formulaic conveyor-belt handoffs (e.g. *"Next, we render..."*). Every post-code deconstruction paragraph MUST instead deliver: (a) **Inversion of Focus & Architectural Contrast** (directing attention to what is deliberately omitted or avoided compared to legacy patterns, such as zero `value` props, zero `onChange` listeners, and zero per-keystroke re-renders), (b) **Runtime Engine & Browser Mechanics** (grounding the code in physical DOM buffers, memory allocation, and React fiber work loop execution), and (c) **Engineering Rationale & Causal Transitions** (explaining what real-world bugs, stale closures, or latency bottlenecks are eliminated, and connecting sequential steps by engineering causality rather than UI checklists).
 - **The Strict 10-Line Hard Ceiling & Progressive Code Assembly Law**: Monolithic code dumps exceeding 10 lines of executable code are strictly prohibited in any pre-lecture blueprint or production lecture. If a component or snippet contains line 11, it is a defect. Large or multi-step components must be progressively sliced across sequential micro-steps (max 10 lines per block) using Option A continuation attributes (`continues="bottom"`, `continues="both"`, `continues="top"`), each accompanied by focused line-by-line explanatory prose. Furthermore, when introducing a multi-step code construction sequence, the section should be preceded by an HTML pipeline schematic diagram inspired by the modular schematic design language from React 02 (compact modular cards, directional dashed purple connector lines `#8a5af7` with 10px circular waypoint dots, floating pill badges, and clean 2D orthogonal layout) to visually map the assembly pipeline before syntax appears. **Zero Leading Empty Lines Law**: No code snippet should ever start with an empty line. Any empty line at the start of a code block in the source file must be skipped, and `startLine` must begin immediately on the first line of executable code.
+- **The Host Element & Hero Prop Visibility Law (The "Never Headless" Mandate)**: Whenever prose introduces or explains a JSX prop, HTML attribute, or element-level binding (such as `<form action={...}>`, `<button formAction={...}>`, or a ref), the immediate code snippet MUST physically render the host element with that exact prop bound. Showing a "headless" function definition or isolated hook call without the host JSX element it attaches to is strictly forbidden. The snippet must pair the concise handler or hook definition and its host JSX binding together in the same code window (strictly obeying the 10-line hard ceiling), ensuring the reader physically sees the exact connection promised by the text. Prose must never claim *"The action prop on a form accepts..."* while the code snippet beneath it only shows an isolated JavaScript function with no `<form>` tag.
+- **The Code Showcase Architecture & Concluding Lessons Table Law (The 5-Stage Practical Example Standard)**: When showcasing and presenting runnable code in a practical example (`### Let's Design a Practical Example ...`), code is never dumped into disconnected snippets or abandoned after the final step. Code presentation is an orchestrated 5-stage pedagogical architecture: (1) **Stage A (Scaffold & File Explorer)**: Establish component roles and disk structure via the ` ```files ` panel; (2) **Stage B (Assembly Pipeline Roadmap)**: Visually orient the reader using the introductory Progressive Assembly Step Cards figure (`*-code-assembly-pipeline.html`, Template 09 `templates/09-progressive-assembly-step-cards.html`, as established in Lecture 40); (3) **Stage C (Sequential Implementation Steps)**: Walk through runnable code using the collaborative pair-programming sequence (`### Step 1: First, we...`, `### Step 2: Next, we...`, `### Step 3: Then, we...`, `### Step 4: Finally, we...`) with runnable code under the 10-line ceiling and deconstructive prose; (4) **Stage D (Direct Lessons Lead-in)**: Conclude the experiment with `### Direct Lessons from the Experiment: Naive Expectation vs Reality`, contrasting what developers instinctively assume against what modern React actually does; and (5) **Stage E (The Mandatory Concluding Lessons Comparison Table)**: The definitive, non-negotiable final step of any code example is the dedicated Architecture Audit Comparison Table (`*-architecture-audit.html`, Archetype 10). It sits directly on the page substrate without outer card borders or drop shadows, anchored by heavy 3px rules, with the uppercase eyebrow `LESSONS FROM THE CODE`, evaluating each tier (Parent, Intermediary, and Terminal UI Control: strictly banning the academic term "leaf") to contrast fragile coupling against bulletproof modularity on a single-page height budget.
 - **The Pre-Lecture First Protocol Law**: Always author, audit, and validate the pre-lecture blueprint in `md-pre-lectures/{NN}.md` first under the 10-line ceiling rule and Option A continuation attributes. Only once the pre-lecture's progressive micro-steps, line budgets, and self-audits are verified do we generate the production lecture in `md-lectures/{NN}.md`. Never touch `md-lectures/` before `md-pre-lectures/` is approved.
 - **The Continuous Code Block Architecture & Continuation Tab Law**: Progressive code snippets across multiple steps or sections must use literal continuation attributes:
   - **Top Block**: ` ```jsx title="Filename.jsx" startLine="1" continues="bottom" ` (renders macOS window bar with dots, tab, and flat bottom).
   - **Middle Block**: ` ```jsx startLine="NN" continues="both" ` (flat top, flat bottom, resumes line numbering from `NN`).
   - **Bottom Block**: ` ```jsx startLine="NN" continues="top" ` (flat top, rounded bottom, seals the file cleanly).
   - **Continuation Sticky Note Tab**: Whenever a continued block opens a new section (`h3`/`h4`), the compiler automatically renders the continuation tab: `<div class="sticky-note"><span class="note-filename">Filename.jsx</span> <span class="note-tag">(continued)</span></div>`. It uses a neutral `#f8fafc` background, subtle hairline border `#cbd5e1`, zero shadow, unified slate `#334155` for both filename (13.5px, bold 700) and `(continued)` tag (12.5px, semibold 600), and generous padding `padding: 8px 22px 14px;`. Positioned at `top: -37px; left: 32px;` (indented from the left to align with code indentation and avoid card corner collisions). The parent `.editor.has-sticky-note` applies `margin-top: 4.4rem` and `padding-top: 22px` for comfortable ~30px+ clearance above the tab and below preceding prose. The compiler enforces a placement gate: the first continued block in a new section gets `show-sticky-note = 'true'`; subsequent continuation blocks within the same section set `show-sticky-note = 'false'` to eliminate redundant tabs and visual clutter while preserving continuous line numbers.
-- **The Opening Section Syntax Pairing Law**: In introductory sections (*The Anatomy of...*), do NOT dump multiple disconnected standalone code windows with repetitive dots and tabs for the same file. Pair the hook declaration and its action reducer signature:
+- **The Opening Section Syntax Pairing Law**: In introductory sections (*The Anatomy of...*), do NOT dump multiple disconnected standalone code windows with repetitive dots and tabs for the same file. Furthermore, strictly obey **The Host Element & Hero Prop Visibility Law**: when introducing element attributes or props (such as `<form action={...}>` or `<button formAction={...}>`), pair the action function definition directly with its host JSX tag (`<form action={...}>`) in the same code window. For hooks with separate reducers or actions (such as `useActionState`), pair the hook declaration and its action reducer signature:
   - Hook declaration: ` ```jsx title="App.jsx" startLine="1" continues="bottom" `
   - Reducer signature: ` ```jsx startLine="2" continues="top" `
   - For legacy or pre-React 19 comparisons, use an explicit conceptual title without a `.jsx` extension (e.g. `title="Historical Pattern"`). Never use fictitious `.jsx` filenames that are not registered in the Component Explorer, preventing compiler completeness warnings.
@@ -48,7 +74,10 @@
   2. `React 19 Q{first}-Q{last}-black.pdf` (**Monochrome Black Theme**, e.g. `React 19 Q01-Q39-black.pdf`): Solid black (`#000000`) applied to the main title `h1`, left-margin headings (`main h3, main h4`), summary subtitles, and all bold keywords (`p strong, p b`) inside narrative paragraphs, paired with neutral slate inline code pills and slate borders.
   3. `React 19 Q{first}-Q{last}-old.pdf` (**Old Theme**, the react-lecture-01 look, e.g. `React 19 Q01-Q39-old.pdf`): The same teal accent (`#0e7490`) on callout borders, but the -01 typography: system font stack instead of Avenir Next, weight-700 black `h1` and left-margin headings, plain black bold keywords, default-size bullets, the plain grey inline code chip (no pill border), left-aligned paragraphs (no justification), and the roomier comparison tables (`padding: 1.8rem`, 40% dimension column).
   The untagged `React 19 Q{first}-Q{last}.pdf` (and `.html`, e.g. `React 19 Q01-Q39.pdf`) is the teal alias. No separate `deck-*` reader files are produced for the lectures pipeline; the generic `deck.html`/`deck.pdf` names are used only by pipelines that have no dedicated reader name (review, data-flow).
-- **Cautious Visual Verification Law (Anti-Screenshot-Waste Gate)**: Be cautious and do NOT scan screenshots or render pages (`pdftoppm`) of the build result during routine prose authoring, text revisions, or copy editing. Scanning screenshots is strictly reserved ONLY for when you have made an actual change to the visual design, layout CSS, component template geometry, or visual styling of the page/figure, OR if there is a serious grounded suspicion of an actual visual layout collision. Clean up any inspection PNGs immediately.
+- **The Law of Visual Verification (The Surgical Trigger-Action Mandate & Pretext Ban)**: Screenshots via `pdftoppm` are not a generic validation receipt. They are a high-precision microscope reserved exclusively for visual graphics.
+  1. *The Absolute Ban on Routine / Prose Screenshots (Text Needs No Camera)*: When authoring, editing, or auditing markdown text, pre-lectures, summaries, tables, or narrative prose, TAKING SCREENSHOTS IS STRICTLY FORBIDDEN. Blanket multi-page dumps (e.g. `pdftoppm -f 1 -l 10`) are PERMANENTLY BANNED. Prose and document structure are verified strictly via compiler output (`node src/build-lectures.mjs`) and git diffs.
+  2. *The Mandatory Surgical Inspection Gate for Figures & Visual Assets (No Blind Art)*: Whenever you create or modify an HTML figure (`md-lectures/figures/*.html`), a visual layout panel (`files`, `component-code`), or stylesheet CSS (`lecture.css`), YOU MUST NOT RELY ON COMPILER SUCCESS ALONE. A compiler checks syntax; it cannot see clipped text, overlapping badges, or confusing diagrams. You MUST determine the exact page number of that figure in the compiled PDF, render ONLY that single page via `pdftoppm -png -r 150 -f <page> -l <page> md-lectures-pdf/{n}.pdf /tmp/fig-audit`, inspect it via `view_file`, verify 1:1 code synchronization and zero visual collisions, and immediately delete the inspection PNG.
+  3. *The "Zero Pagination Defects" Pretext Ban (Consult Whole Instructions First)*: Fabricating ad-hoc excuses such as "checking pagination", "verifying page breaks", "inspecting text flow", or checking for "zero pagination defects" to run `pdftoppm` on text, code, or markdown pages is STRICTLY FORBIDDEN. Agents must NOT take any screenshot UNLESS the whole instructions are consulted first to confirm an authorized visual graphic trigger. If no HTML figure, component explorer visual panel, or stylesheet asset was modified, the camera stays off.
 
 This document is the single source of truth for the workflow of the `react-lecture-03` project inside `diagram-lab/output/`. The project is a fully self-contained silo with one essential rule: **every question is taught first as a long-form lecture, and only afterwards distilled into a review card**. The lecture is the source of truth for depth; the card is the review artifact.
 
@@ -177,17 +206,28 @@ The syntax has one entry per line:
 - **Rendered lines (the fourth field):** The optional fourth field is the component's real UI on screen and connecting code snippets, written by the author, individual lines separated by `;;`, with `**bold**` allowed for the load-bearing value. When present, it replaces the kind's mock surface on the canvas (the kind still sets the frame color and label). This field is mandatory for every new panel; see the Component Explorer Code-Connection Standard below.
 - **Window title:** The `title="..."` attribute is the project title shown in the panel's top bar. Use a short project name followed by `— Component Explorer`.
 
-### The Component Explorer Code-Connection Standard (The 4 Canonical Rules)
+### The Component Explorer Code-Connection Standard (The 7 Canonical Rules)
 
-Modern Component Explorer panels in React 19 lectures bridge the gap between the static file tree on the left and the rendered UI on the right by making the actual JSX glue and hook calls visible. Every panel must follow the 4 Canonical Rules:
+Modern Component Explorer panels in React 19 lectures bridge the gap between the static file tree on the left and the rendered UI on the right by making the actual JSX glue and hook calls visible. Every panel must follow the 7 Canonical Rules:
 
-1. **Rule 1 (The Ghost Prop Rule / Zero "none")**: The second column is strictly reserved for meaningful passed props (e.g. `onSubmit={handleSubmit}` or `title="Whistleblower"`). When no props are passed, write `none` (or leave it empty). The parser suppresses the literal string `"none"` entirely so it never clutters the component title.
-2. **Rule 2 (Connecting JSX & Hook Snippets via `[code: ...]`)**: Every parent component in the explorer must declare the exact connecting JSX snippet that mounts its child: root container (`[code: return <Child />]`), enclosing wrapper/form (`[code: <form action={handleFeedback}>] ;; [code:   <SubmitButton />] ;; [code: </form>]`). Nested consumers declare the load-bearing hook or state connecting them to the parent context (`[code: const { pending } = useFormStatus();] ;; [code: <button disabled={pending}>]`). Leading spaces in `[code:   <Child />]` are preserved to render natural JSX indentation.
-3. **Rule 3 (Strict Top-Retention Rule / No Bottom Fragments)**: All code snippets stay **at the top** of the component card before nested children. Even wrapping tags (like `<form>` and `</form>`) stay together at the top, indented to show what is being mounted. The nested child card sits directly below the code block inside the dashed perimeter. Nothing is ever placed at the bottom below the child.
-4. **Rule 4 (Leaf Element & Multi-Line Element Wrapping)**: Leaf components (buttons, input fields, badges, status banners) culminate in the **rendered UI element** (`[button: ...]`, `[input: ...]`, `[badge: ...]`). Monospace code uses transparent, unformatted styling embedded directly into the card background. Crucially, all code and JSX elements MUST word-wrap (`white-space: pre-wrap; word-wrap: break-word;`): never crush a multi-token JSX element (such as `<button disabled={pending}>Submit</button>`) into a single horizontal line that collides with the card's dashed border. Break the element cleanly across separate lines with indentation:
-   `[code: <button type="submit" disabled={pending} className="submit-btn">] ;; [code:   {pending ? "Transmitting..." : "Submit Feedback"}] ;; [code: </button>]`
+1. **Rule 1 (The Ghost Prop Rule / Zero "none")**: The second column is strictly reserved for meaningful passed props (e.g. `onSubmit={handleSubmit}` or `theme="dark"`). When no props are passed, write `none` (or leave it empty). The parser suppresses the literal string `"none"` entirely so it never clutters the component title.
+2. **Rule 2 (Connecting JSX & Hook Snippets via `[code: ...]`)**: Every parent component in the explorer must declare the exact connecting JSX snippet that mounts its child: root container (`[code: return (] ;; [code:   <UserProvider>] ;; [code:     <ProfileCard />] ;; [code:   </UserProvider>] ;; [code: );]`). Nested consumers declare the load-bearing hook or state connecting them to the parent context (`[code: const { user } = useContext(UserContext);] ;; [code: return (] ;; [code:   <h2>{user.name}</h2>] ;; [code: );]`). Leading spaces in `[code:   <Child />]` are preserved to render natural JSX indentation.
+3. **Rule 3 (Strict Top-Retention Rule / No Bottom Fragments)**: All code snippets stay **at the top** of the component card before nested children. Even wrapping tags (like `<div>` and `</div>`) stay together at the top, indented to show what is being mounted. The nested child card sits directly below the code block inside the dashed perimeter. Nothing is ever placed at the bottom below the child.
+4. **Rule 4 (Terminal UI Control & Multi-Line Element Wrapping)**: Terminal child components (buttons, input fields, badges, status banners) culminate in the **rendered UI element** (`[button: ...]`, `[input: ...]`, `[badge: ...]`). Monospace code uses transparent, unformatted styling embedded directly into the card background. Crucially, all code and JSX elements MUST word-wrap (`white-space: pre-wrap; word-wrap: break-word;`): never crush a multi-token JSX element (such as `<button disabled={loading}>Save</button>`) into a single horizontal line that collides with the card's dashed border. Break the element cleanly across separate lines with indentation:
+   `[code: return (] ;; [code:   <button type="submit" disabled={loading} className="btn">] ;; [code:     {loading ? "Saving..." : "Save Profile"}] ;; [code:   </button>] ;; [code: );]`
 5. **Rule 5 (The Code Truth & Existence Law / Zero Fictional Code)**: Every code snippet, prop, variable name, hook invocation, and JSX tag rendered in Component Explorer panels, pipeline figures, or diagrams **MUST ALWAYS ACTUALLY EXIST** in the lecture's runnable script blocks. Never display fictional props, mock hooks, or simplified variants that do not exist in the code (for example, showing a single boolean `useOptimistic(isSaved)` in the Explorer while the lecture code actually defines `{ isSaved, count }` with a reducer). The visual tools must be a direct, faithful window into the real code.
-6. **Rule 6 (The Crisp Exactness & Redaction Law / Crisp Partial Syntax)**: Even when code snippets in Component Explorers or visual cards are redacted, condensed, or multi-line, they **MUST ALWAYS BE PRESENTED WITH CRISP EXACTNESS**. Props must use exact casing and values matching the code, tags must close cleanly, multi-line elements must wrap cleanly with proper indentation, and there must be zero ambiguous, naked, or broken fragments (such as naked unparenthesized returns or mismatched closing tags). When rendering JSX elements, use clean, pure markup tags matching the parent hierarchy.
+6. **Rule 6 (The Crisp Exactness & Redaction Law / Crisp Partial Syntax)**: Even when code snippets in Component Explorers or visual cards are redacted, condensed, or multi-line, they **MUST ALWAYS BE PRESENTED WITH CRISP EXACTNESS**. Props must use exact casing and values matching the code, tags must close cleanly, multi-line elements must wrap cleanly with proper indentation, and there must be zero ambiguous, naked, or broken fragments (such as naked unparenthesized returns or mismatched closing tags). When returning JSX elements, ALWAYS use properly parenthesized block returns (`return (`).
+7. **Rule 7 (The Traceability & Declaration Law / No Magic Variables)**: Every variable, prop, or hook consumed in the Component Explorer panel MUST have a visible declaration or explicit origin. The reader must be able to trace the complete data flow. If a function is passed to an `action` or `onClick`, its `const handleAction = ...` declaration MUST be shown in the panel. If state is used, the `useState` declaration MUST be shown. Magic variables appearing out of thin air are strictly forbidden.
+
+### Strict Ban on the Term "Leaf" (Idiomatic React Genealogical Nomenclature Law)
+Authors are **STRICTLY FORBIDDEN** from ever using the academic computer science term **"leaf"** (or "leaf node", "leaf component", "leaf control"). "Leaf" is not standard React terminology and creates academic distance. In official React documentation (`react.dev`) and idiomatic engineering discussions, component relationships use natural genealogical terminology:
+- **`parent`** (the enclosing container component)
+- **`child`** (the directly rendered nested component)
+- **`nested child`** / **`grandchild`** (deeply placed descendants)
+- **`ancestor`** (components higher up the tree)
+- **`descendant`** (components lower down the tree)
+- **`terminal UI control`** (buttons, inputs, or badges that render native DOM elements)
+Never write "leaf component" or "leaf button". Always use **`child component`**, **`nested child`**, **`grandchild`**, or **`terminal button`**.
 
 ### The Principle of Full Coherence & Two-Way Traceability
 
@@ -199,20 +239,159 @@ The Component Explorer is designed to provide full two-way traceability so that 
    - The child card's code snippet shows `{prop}` being projected into its own markup or local expressions.
 
 2. **Tracing Upwards (Hooks & Form / Context Flow)**:
-   - When a child consumes status or context from an ancestor, the parent card's JSX snippet shows the enclosing boundary (`[code: <form action={handleFeedback} className="feedback-form">] ;; [code:   <SubmitButton />] ;; [code: </form>]`).
+   - When a child consumes status or context from an ancestor, the parent card's JSX snippet shows the enclosing boundary (`[code: <UserProvider value={session}>] ;; [code:   <ProfileCard />] ;; [code: </UserProvider>]`).
    - The child card's top pill shows a clean component name without clutter (zero props).
-   - The child card's code snippet declares the upward hook connection (`[code: const { pending } = useFormStatus();]`).
+   - The child card's code snippet declares the upward hook connection (`[code: const { session } = useContext(UserContext);]`).
 
-3. **Tracing to Physical UI (The Leaf & Multi-Line Tags)**:
-   - The child card concludes its code with its complete JSX element wrapped cleanly across lines (e.g. `[code: <button type="submit" disabled={pending} className="submit-btn">] ;; [code:   {pending ? "Transmitting..." : "Submit Feedback"}] ;; [code: </button>]`), showing how the state or prop directly controls the element without horizontal cramping.
-   - Directly beneath that code line sits the real rendered UI element matching the idle state of the code (e.g. `[button: Submit Feedback]`).
+3. **Tracing to Physical UI (Terminal UI Controls & Multi-Line Tags)**:
+   - The child card concludes its code with its complete JSX element wrapped cleanly across lines (e.g. `[code: return (] ;; [code:   <div className="avatar">] ;; [code:     <img src={session.avatarUrl} />] ;; [code:   </div>] ;; [code: );]`), showing how the state or prop directly controls the element without horizontal cramping.
+   - Directly beneath that code line sits the real rendered UI element matching the idle state of the code (e.g. `[badge: 👤 User Profile]`).
 
-#### Canonical Benchmark Example (useFormStatus Form Architecture):
-```components title="national-times — Component Explorer"
-App.jsx | none | generic | [code: <main className="feedback-app">] ;; [code:   <ArticleFeedbackForm />] ;; [code: </main>]
-  ArticleFeedbackForm.jsx | none | form | [code: <form action={handleFeedback} className="feedback-form">] ;; [code:   <SubmitButton />] ;; [code: </form>]
-    SubmitButton.jsx | none | button | [code: const { pending } = useFormStatus();] ;; [code: <button type="submit" disabled={pending} className="submit-btn">] ;; [code:   {pending ? "Transmitting..." : "Submit Feedback"}] ;; [code: </button>] ;; [button: Submit Feedback]
+#### Canonical Benchmark Example (Proper Declarations and Parentheses):
+```components title="dashboard-app — Component Explorer"
+App.jsx | none | generic | [code: const session = useSession();] ;; [code: return (] ;; [code:   <UserProvider value={session}>] ;; [code:     <ProfileCard />] ;; [code:   </UserProvider>] ;; [code: );]
+  ProfileCard.jsx | none | card | [code: const { session } = useContext(UserContext);] ;; [code: return (] ;; [code:   <div className="card">] ;; [code:     <h2>{session.name}</h2>] ;; [code:     <LogoutButton />] ;; [code:   </div>] ;; [code: );]
+    LogoutButton.jsx | none | button | [code: const handleLogout = async () => {] ;; [code:   await api.logout();] ;; [code: };] ;; [code: return (] ;; [code:   <button onClick={handleLogout} className="btn-logout">] ;; [code:     Sign Out] ;; [code:   </button>] ;; [code: );] ;; [button: Sign Out]
 ```
+
+### The File Explorer (`files`) and Component Code Architecture (`component-code`) Panels
+
+To maximize readability and pedagogical clarity across complex multi-file architectures, the course supports two specialized visual explorer panels in addition to the standard Finder-style `components` panel:
+
+1. **The File Explorer (` ```files title="... — File Explorer" `)**:
+   - Dedicated strictly to showing the **file and folder hierarchy on disk**.
+   - Features clean macOS window chrome, authentic file and folder icons, and a tidy row layout (`File / Directory | Role | Description`).
+   - Every file is tagged with its architectural role (`parent`, `boundary`, `consumer`, `button`, `state`, `child`) and an immediate physical description of its responsibility.
+   - Tailor the file tree directly to the specific topic under study. Never copy filenames from an adjacent lecture.
+   - Example syntax (Topic A: Declarative Form Actions):
+     ```text
+     ```files title="national-times: File Explorer"
+     src/
+       App.jsx | parent | Top-level layout container mounting the newsroom workspace
+       components/
+         ArticleEditor.jsx | boundary | Renders declarative form with action and formAction overrides
+     ```
+     ```
+   - Example syntax (Topic B: Ambient Status Hooks):
+     ```text
+     ```files title="national-times: File Explorer"
+     src/
+       App.jsx | parent | Top-level container mounting page layout
+       components/
+         ArticleFeedbackForm.jsx | boundary | Declares action handler and form boundary
+         SubmitButton.jsx | consumer / child | Reads pending status and renders submit button
+     ```
+     ```
+
+2. **The Component Code Architecture Explorer (` ```component-code title="... — Component Code Architecture" `)**:
+   - Breaks out into a **full-width canvas** to display component hierarchy with full code fidelity.
+   - Restores the signature aesthetic: top-left colored kind badge tabs (`.component-explorer-label`), dashed perimeters matching component kinds, tokenized syntax highlighting (`.cce-hl-*`), and rendered terminal UI controls.
+   - Eliminates horizontal cramping, allowing multi-line connecting JSX tags (`<form action={...}>`, `</form>`), action definitions, hook invocations (`const { pending } = useFormStatus();` or `const [state, formAction] = useActionState(...)`), and rendered buttons (`[button: Publish Story]` or `[button: Submit Feedback]`) to breathe naturally.
+   - The contents of the panel must be 100% faithful to the components, props, and actions physically present in that specific lecture.
+
+3. **The Architectural Curation Law for Component Panels (Anti-Full-Code-Dump Law)**:
+   - The ` ```component-code ` and ` ```components ` panels are **Architectural Skeletons**, NOT complete file listings or copy-pasted component implementations.
+   - **Strict Prohibition on Dumping Full Code**: Never copy-paste entire component bodies, local feedback states (`useState`), error banners, validation guards, or multi-line fetch operations into the component panel.
+   - **The Curation Filter (What is Allowed vs Banned)**:
+     - **ALLOWED (Load-Bearing Architectural Primitives Only)**:
+       1. The parent mounting tag (e.g. `[code: return <main><ArticleEditor /></main>]`).
+       2. The enclosing container boundary and its connecting action/prop (e.g. `[code: <form action={publishStory} className="...">]`).
+       3. The primary inputs or child components participating in the interaction (e.g. `[code:   <input name="headline" />]`).
+       4. The load-bearing hook, action prop, or override attribute that participates in the cross-component circuit (e.g. `[code: const { pending } = useFormStatus();]` or `[code:   <button formAction={saveDraft}>Save Draft</button>]`).
+       5. The terminal return tag and rendered UI control (e.g. `[button: Publish Story]`).
+     - **BANNED (Incidental Local Noise)**:
+       1. Unrelated local state hooks (e.g. `const [notice, setNotice] = useState("")`).
+       2. Imperative function bodies, validation loops, and multi-line fetch calls (`await fetch(...)`, `setNotice(...)`).
+       3. Incidental wrapper divs, secondary paragraph tags, or feedback alerts that clutter the visual hierarchy.
+   - **The 5-Second Scan Standard**: The entire panel must read like an elegant architectural schematic that a reader can scan in 5 seconds to understand the data, event, and boundary relationships across the tree without reading local component logic.
+
+### Put Yourself in the Student's Shoes (The Invisible Empathy Standard)
+
+When introducing component hierarchies, ambient context hooks (such as `useFormStatus`), and information flow traces, authors must never write from the perspective of an expert who already knows how the engine works. Write for a developer who is tired, has a short attention span, and is seeing this feature for the first time. Never dump raw internal implementation symbols (such as slapping `FormStatusContext.Provider!` onto an HTML form tag) and pretend the concept is taught: dropping "provider" without definition creates instant confusion for students who do not know what a provider is.
+
+Before writing, keep three natural questions in your mind:
+
+1. **What is changing for the developer?**: Don't dump new API methods out of nowhere. Remind the reader how we used to solve the problem, and show what the new feature makes easier. In classic React, managing an interactive form meant juggling three separate `useState` hooks for data, loading, and errors. In React 19, `useActionState` handles all three in one place.
+2. **What will surprise them or look weird?**: If something looks strange compared to what they are used to, address it directly in the prose before they get confused. If there is no `e.preventDefault()`, explain: "You might notice something missing: we never wrote `e.preventDefault()`. Why? React now stops the browser from reloading the page automatically." If a button knows the form is submitting without receiving any props, explain: "Notice that we did not pass any props to the button. The button reads the submission status directly from the parent form."
+3. **What words might confuse them?**: Never drop complex terms into the text without explaining them in plain English first. Never say "Pass an asynchronous reducer function to the hook." That sounds intimidating. Instead, say: "We give the hook an async function that receives the current state and form data, does the work (like saving to a server), and returns the new state." Strict ban on fantasy metaphors: never invent metaphors like "radio towers," "Wi-Fi bubbles," or "antennas." Just describe what physically happens in the browser.
+
+#### The Golden Rule: Keep Your Thinking Invisible
+These three questions are for you, the author, to think about while planning. They are strictly internal thinking tools and NOT headers, labels, or checklist items to print on the page. Authors are STRICTLY FORBIDDEN from ever writing labels like `1. Novelty:`, `2. Weirdness:`, `Cognitive Inference:`, or `Part (a/b/c)` into the lecture text. Speak naturally and directly to the reader about their code, their screen, and what happens when they click or type.
+
+#### Topic Fidelity & Architectural Independence
+Every single lecture must be 100% dedicated to its own distinct interview question from `questions.md`. It is strictly forbidden to carry over or clone the code examples, components, or diagrams from an adjacent lecture. Specifically, when authoring Lecture 41 (`#form_actions`), the hero mechanism is the `action` and `formAction` attributes, native `FormData` harvesting, background React Transitions, and automated input resetting; it must not be hijacked by or turned into a duplicate of Lecture 40 (`useFormStatus`). Each lecture must feature its own distinct application scenario, custom components, and specialized code assembly pipeline tailored to prove that question's specific mechanism.
+
+### The Information Flow Phased-Text Specification (The 4-Phase Protocol & Inline Parenthetical Gloss Law)
+
+Never rely on an abstract diagram alone to explain information flow. Visual diagrams often become confusing collections of boxes and arrows that obscure underlying mechanics. Every lecture explaining component data flow, async form transitions, or ambient state MUST include a dedicated phased text section adhering to the 4-Phase Protocol:
+
+1. **Short Pedagogical Phases with Concise Bullets**:
+   - Organize the flow into distinct, numbered phases (`#### Phase 1: ...`, `#### Phase 2: ...`, `#### Phase 3: ...`, `#### Phase 4: ...`).
+   - Each phase must contain exactly 3 to 4 concise bullet points.
+   - Every bullet MUST open with a bold micro-lead summarizing the takeaway (`* **Micro-lead**: ...`).
+   - Long, dense paragraphs of prose are strictly prohibited in this section.
+
+2. **Standard Terminology Only (Zero Invented Metaphors)**:
+   - Strictly use official, standard React and web platform terminology (`Context Provider`, `prop drilling`, `native browser event`, `event bubbling`, `server action`, `re-render`, `ancestor`, `descendant`, `FormData`, `Transition`).
+   - Creative analogies and unofficial metaphors (`radio tower`, `Wi-Fi bubble`, `ambient receiver`) are permanently banned.
+
+3. **Mandatory Inline Parenthetical Gloss Law**:
+   - The author must scan every single technical term.
+   - On its introduction, every technical concept MUST be immediately followed by a concise 4-to-10 word plain-English explanation enclosed in parentheses right next to it.
+   - Standard gloss examples:
+     - `nested (placed inside multiple layers of components)`
+     - `bubbling (a browser event traveling upward through ancestor elements toward the top of the page)`
+     - `server action (an asynchronous background function running on the server to process form data)`
+     - `Context Provider (a built-in component that shares data downward to all nested components without passing props)`
+     - `prop drilling (the tedious requirement of passing data down through intermediate components that do not need it just to reach a child that does)`
+     - `re-render (executing the component function again to compute updated visual HTML on screen)`
+     - `props (input arguments passed from a parent component down to a child)`
+     - `FormData (the browser's built-in key-value container for form inputs)`
+     - `Transition (a background execution lane tracking pending work without freezing the screen)`
+   - Never assume the reader already knows the term. A tired developer with a headache must never be forced to leave the page to look up external jargon.
+
+4. **Topic-Adaptive 4-Phase Cadences**:
+   The 4 phases must match the physical and logical lifecycle of the *specific mechanism* being taught:
+   - **For Form Actions (`<form action>` & `formAction`)**:
+     - *Phase 1: Form Submission Trigger and Button Action Resolution* (the submit event fires, and React resolves whether to execute the form's default `action` or a button's specific `formAction`).
+     - *Phase 2: Native FormData Harvesting from Named Fields* (the browser extracts key-value pairs from named inputs into a native `FormData` dictionary without controlled state).
+     - *Phase 3: Background Asynchronous React Transition Execution* (React invokes the action function inside a non-blocking transition, keeping the UI responsive while network operations run).
+     - *Phase 4: Automated Uncontrolled Input Reset & State Settlement* (upon successful promise resolution, React automatically resets uncontrolled fields and updates UI state).
+   - **For Form Status (`useFormStatus`)**:
+     - *Phase 1: The Native Submit Event Bubbles Upward (No Props Needed!)*
+     - *Phase 2: The Form Becomes an Automatic Context Provider*
+     - *Phase 3: The Button Consumes the Form Context*
+     - *Phase 4: Laser-Focused Component Updates (Optimized Performance!)*
+   - **For Action State (`useActionState`)**:
+     - *Phase 1: Action Dispatch with Previous State*
+     - *Phase 2: Reducer Execution Inside an Asynchronous Transition*
+     - *Phase 3: Atomic State and Pending Synchronization*
+     - *Phase 4: Isolated Component Re-render with Action Results*
+
+### The Standard Implementation Sequence Law ("Let's Design a Practical Example" Standard)
+
+Immediately following the Information Flow section, the code implementation section MUST be titled:
+`### Let's Design a Practical Example <Component1> <Component2>`
+
+The standard progression of the lecture body is clean, direct, and unpretentious:
+1. **Component Architecture & Explorer**: Introduces the application layout, component tree, and the mystery or paradigm shift of the feature.
+2. **Information Flow Lifecycle**: Deconstructs the data flow across the 4-Phase Protocol with mandatory inline parenthetical glosses.
+3. **`### Let's Design a Practical Example <Component1> <Component2>`**: Showcases and presents the working code implementation across a strict 5-stage architecture:
+   - **Stage A (Scaffold & File Explorer)**: Introduces the component roles and disk hierarchy via the ` ```files ` panel tailored to that specific lesson.
+   - **Stage B (Assembly Pipeline Diagram)**: Embeds the introductory multi-step Progressive Assembly Step Cards figure (`figures/{NN}-01-code-assembly-pipeline.html`, Template 09 `templates/09-progressive-assembly-step-cards.html`, as established in Lecture 40) with color-coded horizontal stage cards reflecting the collaborative step sequence (`First, we...`, `Next, we...`, `Then, we...`, `Finally, we...`).
+   - **Stage C (Sequential Implementation Steps)**: Walks through code assembly using the collaborative 4-step pair-programming title sequence: `### Step 1: First, we...`, `### Step 2: Next, we...`, `### Step 3: Then, we...`, `### Step 4: Finally, we...` with runnable snippets adhering to the 10-line ceiling and zero leading empty lines.
+   - **Stage D (Direct Lessons Lead-in)**: Concludes the experiment with `### Direct Lessons from the Experiment: Naive Expectation vs Reality`, explicitly detailing:
+     - **What would be the naive expectation**: The classical mental model, manual state hooks, or imperative event-interception routines developers instinctively assume are required.
+     - **What we learned from the experiment**: The modern React 19 engine reality, platform alignment, and modularity proven by our working code.
+   - **Stage E (The "Lessons from the Code" Comparison Table)**: The final step of the code example MUST be the dedicated Architecture Audit Table (`figures/{NN}-02-architecture-audit.html`, Archetype 10 `templates/10-architecture-audit-vtable.html`):
+     - *Eyebrow*: Strictly labeled **`LESSONS FROM THE CODE`** in uppercase tracking-widest typography.
+     - *Title & Subtitle*: The concrete domain challenge of this specific lecture (e.g. `The Declarative Form Submission Challenge` for Form Actions; `The Nested Form Button Challenge` for useFormStatus) and an architectural comparison subtitle.
+     - *Three-Column Comparative Matrix*: `Component Layer` | `Naive Expectation (Legacy Approach)` | `What Happened (React 19 Reality)` with subtle slate shading for the reality column.
+     - *Layer-by-Layer Deconstruction*: Deconstructs the hierarchy across the layers relevant to that lesson (Origin/Parent, Intermediate Boundaries, and Terminal UI Controls; strictly obeying the **Anti-Leaf Law**).
+     - *Final Verdict Row*: Directly contrasts `FRAGILE COUPLING` in red uppercase against `BULLETPROOF MODULARITY` in teal uppercase.
+     - *Clean Editorial Substrate*: The table sits directly on the page without outer card borders, rounded corners, or drop shadows, framed only by heavy 3px black top and bottom rules.
+     - *Single-Page Budget*: Calibrate cell padding (`padding: 8px 12px`) and font sizing (`0.86rem` body, `0.92rem` titles, `0.80rem` code tokens) so the entire table and caption fit on a single PDF page without spilling over.
+4. **Architectural Comparison & Review**: Deep 4-pillar comparison, Where You Will Meet This, Glossary, and Summary.
 
 **The rendered-content rule (no empty surfaces).** The deterministic mock surfaces (grey bars, STATUS, ACTION) are placeholders of last resort, never a design choice. Every new panel must show what the learner would actually see on screen, through the fourth field, and that means the author must ALWAYS compute the final UI before writing the panel: run the lecture's code in your head with the real values from the snippet and write down what lands on the page. A JSX expression in braces is invisible to the learner until you evaluate it; `{totalPayout}` with tonight's three stories (800 + 1200 + 950 words at rate 0.5) is `1475`, and the panel must say so. The numbers in the panel are arithmetic performed on the numbers in the code block: if the code changes, the panel changes with it. An empty box or a row of grey bars where a computed result should be reads as broken and teaches nothing — it is the panel equivalent of a floating comment bubble, a shape pointing at no content.
 
@@ -319,7 +498,7 @@ For every new question processed in this project, the following steps are execut
 ### Step 1: Write the lecture (`md-lectures/{n}.md`)
 
 - Extract question `n` from the source document.
-- **Search the deck before teaching a term.** Concepts repeat across the 180 questions, and the reader meets them in order. Before baptizing any term, scan the earlier lectures for it (search `md-lectures/` for the hook name, the API name, or the concept phrase). If an earlier lecture already taught it, this lecture re-anchors instead of re-teaching: the term, its one-line reminder, and `(see Lecture N)` — then it may deepen, contrast, or extend, but never start from zero with a fresh metaphor. Two lectures teaching one concept with two metaphors and no cross-reference ("snapshot" in one, "photocopy" in the other) double the reader's vocabulary for a single idea and leave neither lecture the term's home.
+- **Search the deck before teaching a term.** Concepts repeat across the 180 questions, and the reader meets them in order. Before introducing and explaining any term, scan the earlier lectures for it (search `md-lectures/` for the hook name, the API name, or the concept phrase). If an earlier lecture already taught it, this lecture re-anchors instead of re-teaching: the term, its one-line reminder, and `(see Lecture N)` — then it may deepen, contrast, or extend, but never start from zero with a fresh metaphor. Two lectures teaching one concept with two metaphors and no cross-reference ("snapshot" in one, "photocopy" in the other) double the reader's vocabulary for a single idea and leave neither lecture the term's home.
 - Read the relevant local React documentation under `documentation official/React 19 Sept 2026/react.dev/src/content/`. Anchor every technical claim to the docs when possible; expand with research when the docs are insufficient.
 - Write a **pedagogically clear, extended, comprehensive lecture** that teaches the concept as if to someone who needs to genuinely understand it, not just memorize it.
 - The first line is `# Lecture {n}: {Short Title}`.
@@ -1084,11 +1263,11 @@ Before generating or finishing any `.md` lecture file, you MUST verify every sin
 - [ ] **The Headline:** When the lecture's topic is a new part of the file, do the first section and the ladder's promise beat headline that growth, with the story as the demonstration?
 - [ ] **Structural Surprises:** Is every construct that breaks the reader's accumulated model of a React file (a hook at the top of a conditional flow, a `'use client'` line, an `async` component, children between tags, a fragment) taught in prose BEFORE the first code block that shows it — naming the old model, saying the new construct is allowed, and marking what distinguishes it?
 - [ ] **Strongest Naive Alternative:** Does the lecture raise and answer the strongest alternative the course has equipped the reader to think of (a prop, a plain variable, an effect), not only weak strawmen?
-- [ ] **Deck Cross-Reference:** Did the lecture search earlier lectures for its concepts, re-anchoring and citing `(see Lecture N)` for every term an earlier lecture already baptized, instead of re-teaching it with a fresh metaphor?
+- [ ] **Deck Cross-Reference:** Did the lecture search earlier lectures for its concepts, re-anchoring and citing `(see Lecture N)` for every term an earlier lecture already introduced, instead of re-teaching it with a fresh metaphor?
 - [ ] **Narrative Continuity:** Does the entire lecture stick strictly to this single domain without abrupt context switching? (One exception: the `Where you will meet this` list widens to other apps on purpose.)
-- [ ] **Bullet Decompression:** Does every bullet item introducing a file, configuration, or dependency deconstruct all named tools into their physical $A \to B$ transformations and developer benefits, without chaining unbaptized jargon?
+- [ ] **Bullet Decompression:** Does every bullet item introducing a file, configuration, or dependency deconstruct all named tools into their physical $A \to B$ transformations and developer benefits, without chaining unexplained jargon?
 - [ ] **Problem-Condition Headings:** Do all failure-state and bug-related callout cards and headings use "When" instead of "Why" (e.g. "When does client-side rendering show a white screen?")?
-- [ ] **Zero Tail-End Name Drops:** Does every paragraph and callout card conclude without dropping an unbaptized buzzword on the final line? If a named concept is introduced at the end, are its concrete physical mechanics immediately unpacked?
+- [ ] **Zero Tail-End Name Drops:** Does every paragraph and callout card conclude without dropping an unexplained buzzword on the final line? If a named concept is introduced at the end, are its concrete physical mechanics immediately unpacked?
 
 **2. The Visual Scaffold**
 - [ ] **Component Architecture:** Is there a ` ```components ` explorer panel? (MANDATORY in every lecture, no exceptions. State implies ownership; ownership must be mapped. The build warns on any lecture with zero panels.)

@@ -66,7 +66,7 @@ Notes: it works because the bold lead phrase names the missing topic in a few wo
 [ ] The ★/◇ mix is deliberate: at least one ★ paragraph per mechanism taught and at least one ◇ paragraph per new concept introduced, with ◇ as the conceptual tag because ◼ remains the in-bullet qualifier separator (see the pre-lecture skill).
 [ ] Every ◇ paragraph narrates in the three moves (known categories first, vague or problematic concepts next, the new category last with its proper name and an easily digestible definition), and every category carries the terminology the React community already uses, so no private vocabulary enters the lecture (see the pre-lecture skill).
 [ ] Every technical description in the blueprint (a file, a command, a config) plans its consequence, what the described thing changes for the developer or the user, so no X-ray passage is approved for the lecture (see the pre-lecture and lecture-voice skills).
-[ ] The blueprint plans the constructive staging before the production lecture begins: the five practical example stages (Stage A Rendered UI Canvas plus files panel, Stage B assembly pipeline figure, Stage C collaborative top-down Step 1-4 sequence sliced under the 10-line ceiling with continuation attributes, Stage D Direct Lessons with the role panel, Stage E Architecture Audit Table) and the 4-phase information flow for every mechanism involving component data flow, async form transitions, or ambient state, so a blueprint whose prose and grading pass while its guided build stays unplanned fails this gate (see the pre-lecture and lecture-structure skills). #2026_09_20_01_group_1 revised by #2026_09_20_04_group_8
+[ ] The blueprint plans the constructive staging before the production lecture begins: the five practical example stages (Stage A Rendered UI Canvas plus files panel, Stage B assembly pipeline figure, Stage C collaborative top-down Step 1-4 sequence sliced under the 10-line ceiling with continuation attributes, Stage D Lessons from the Experiment with the role panel, Stage E Architecture Audit Table), so a blueprint whose prose and grading pass while its guided build stays unplanned fails this gate (see the pre-lecture and lecture-structure skills). #2026_09_20_01_group_1 revised by #2026_09_20_04_group_8, #2026_09_20_05_group_1, and #2026_09_20_09_group_1
 
 ## Pedagogy Gates | 08 | The Developer-at-the-Keyboard gate
 
@@ -140,7 +140,32 @@ Notes: it fails because "keystroke tracking fatigue" is an invented term that ex
 [ ] All clarified key terms are bolded inside the card (`**imperative**`, `**declarative**`, `**physical DOM**`, `**virtual DOM**`, `**action prop**`).
 [ ] The card banishes technical minutiae and method names and cuts straight to the aha moment, so the reader feels the concept in daily life before meeting its API.
 
-## Structure Gates | 15 | Structural scaffold and visual panels
+## Pedagogy Gates | 15 | The Upward Wire Gate #2026_09_20_06_group_1
+
+[ ] Every child component that invokes a callback prop (`onSelect`, `onChange`, `onSubmit`, `onSave`) has its origin explicitly traced back to the parent's passed function in the accompanying prose (see the lecture-voice and lecture-structure skills).
+[ ] The phrase "simply invokes [callback]", "just calls [prop]", or any variation that presents the callback as self-evident or treats the parent update as telepathy is absent.
+[ ] The deconstruction explicitly answers "Where does [prop] come from?", points back to the Step 1 JSX binding, explains that the child holds only a telephone line, names the exact parent function that runs in memory, and names the mechanism as **inverse data flow**.
+
+## Pedagogy Gates | 16 | The Negative Counterfactual Gate #2026_09_20_07_group_1
+
+[ ] Every step that explains component separation or architectural boundaries (e.g., UI controls vs. side-effects, parent layout vs. child subscriptions) demonstrates the Negative Counterfactual rather than relying on abstract praise.
+[ ] Abstract platitudes like *"the cleanest architecture keeps X separate from Y"*, *"Component X is a pure presenter"*, or *"this promotes clean separation of concerns"* without negative proof are absent.
+[ ] The architectural justification explicitly executes the 4-part circuit:
+    (a) Asks *"What would happen if [Component A] handled [Responsibility B] directly?"*
+    (b) Describes the concrete disaster (trapped state/sockets, inaccessible data, re-render churn, untestable UI).
+    (c) Defines the boundary by physical code invariants (*"zero useState and zero useEffect"* / *"zero network awareness"*).
+    (d) Provides the Decoupling Proof showing how modifying UI touches zero backend code, and modifying backend touches zero UI code.
+
+## Visual Gates | 17 | Archetype 09 Color Fidelity and Template Cloning Gate #2026_09_20_08_group_1
+
+[ ] Every introductory code assembly figure (`figures/{NN}-01-code-assembly-pipeline.html` or Archetype 09) clones `templates/09-progressive-assembly-step-cards.html` 1:1 and adheres strictly to its CSS classes and color tokens (see the figures skill).
+[ ] The four step cards use classes `.step-card.step-1`, `.step-card.step-2`, `.step-card.step-3`, and `.step-card.step-4` rather than ad-hoc inline styles.
+[ ] The canonical pastel palette is present across `.card-main`: Step 1 `#d4e1f1` (blue), Step 2 `#d0e6e1` (teal), Step 3 `#f9e0c5` (amber), Step 4 `#d2ebc9` (green), with matching edge colors (`#7495be`, `#66a49b`, `#e09f67`, `#74ad68`) and divider colors (`#b0c4dd`, `#aed1cb`, `#eac4a1`, `#b2d5a5`).
+[ ] Zero inline `style="background:..."` attributes exist on `.card-edge`, `.step-badge`, `.card-divider-wrap`, or `.card-content`.
+[ ] The content area (`.card-content`) sits on the unified pastel surface of `.card-main` and is NEVER bleached with `background: #f8fafc` or `background: #ffffff`.
+[ ] Every assembly pipeline figure passes the mechanical compiler audit in `src/build-lectures.mjs`: zero `#f8fafc` / `#ffffff` bleached backgrounds, all 4 canonical pastels present (`#d4e1f1`, `#d0e6e1`, `#f9e0c5`, `#d2ebc9`), and zero `.card-[1-4]` mutated class names. #2026_09_20_11_group_1
+
+## Structure Gates | 18 | Structural scaffold and visual panels
 
 [ ] The `files` panel is dedicated strictly to disk hierarchy with clean macOS chrome (`File | Role | Description`), tagged with roles (`parent`, `boundary`, `consumer`, `button`, `state`, `child`) and matching the real code 1:1 (see the ui-panels skill).
 [ ] The `component-code` panel displays the component hierarchy as a full-width canvas with tokenized code, connecting JSX, hook subscriptions, colored kind tabs, and rendered terminal UI controls, scannable in under 5 seconds.
@@ -149,27 +174,19 @@ Notes: it fails because "keystroke tracking fatigue" is an invented term that ex
 [ ] Column 2 of the explorer carries meaningful props only, with `none` suppressed automatically rather than displayed.
 [ ] The academic term "leaf" is kept out of the prose, which uses `parent`, `child`, `nested child`, `grandchild`, `ancestor`, `descendant`, or `terminal UI control` instead, so the vocabulary matches official React genealogy (see the lecture-voice skill).
 [ ] The practical example opens with the Rendered UI Canvas: a snippet-free `components` panel in canvas mode titled `{project} - Rendered UI Canvas`, sitting before the `files` scaffold and before Step 1, so the reader sees the finished interface before the first line of code (see the ui-panels skill). #2026_09_20_04_group_8
-[ ] The Direct Lessons stage opens with the Component Role panel: a `component-code` panel in role mode with `[role:]` entries in the four-beat rhythm and zero code, so the hierarchy is on record in serif prose before the audit table (see the ui-panels skill). #2026_09_20_04_group_8
+[ ] The Lessons from the Experiment stage opens with the Component Role panel: a `component-code` panel in role mode titled `Summary: The Logic of Nested Components` with `[role:]` entries in the four-beat rhythm and zero code, so the hierarchy is on record in serif prose before the audit table. Every line must use all 4 pipe-separated fields (`file | props | kind | [role: ...]`) and every child component must be indented by 2 spaces per tree level (see the ui-panels skill). #2026_09_20_04_group_8 revised by #2026_09_20_09_group_1 and #2026_09_20_10_group_1
 
-## Structure Gates | 16 | The 4-phase information flow lifecycle
-
-[ ] A dedicated section deconstructs the topic's data flow across 4 sequential phases (`#### Phase 1: ...` through `#### Phase 4: ...`) instead of relying on an abstract diagram alone (see the lecture-structure skill).
-[ ] Each phase holds exactly 3 to 4 concise bullets, each opening with a bold micro-lead (`* **Micro-lead**: ...`), keeping long dense prose paragraphs out.
-[ ] The phases use standard React and web platform terms only (`FormData`, `Transition`, `Context Provider`, `prop drilling`, `native browser event`, `event bubbling`, `server action`, `re-render`).
-[ ] Every newly introduced technical term is immediately followed by a 4-to-10 word plain-English explanation enclosed in parentheses right next to it, so the reader never has to pause and look anything up.
-[ ] The 4 phases match the authentic lifecycle of the specific topic, for example Submission Trigger and Button Action Resolution, Native `FormData` Harvesting, Transition Execution, Uncontrolled Input Reset for form actions, or Native Event Bubbling, Automatic Context Provider Boundary, Nested Hook Subscription, Isolated Component Re-render for form status, so the phase structure follows the topic instead of forcing the topic into a fixed template (see the lecture-structure skill).
-
-## Structure Gates | 17 | The 5-stage practical example
+## Structure Gates | 19 | The 5-stage practical example
 
 [ ] The code implementation section is titled `### Let's Design a Practical Example <Component1> <Component2>`, free of corporate buzzword headings, and unfolds in 5 stages (see the lecture-structure skill).
 [ ] Stage A opens with the Rendered UI Canvas (a snippet-free `components` panel in canvas mode) followed by the `files` panel introducing component roles and disk hierarchy. #2026_09_20_04_group_8
 [ ] Stage B embeds the introductory Progressive Assembly Step Cards figure (`figures/{NN}-01-code-assembly-pipeline.html`) with color-coded horizontal stage cards mirroring the collaborative step sequence (see the figures skill).
 [ ] Stage C walks the code assembly through the collaborative pair-programming sequence: `### Step 1: First, we...`, `### Step 2: Next, we...`, `### Step 3: Then, we...`, `### Step 4: Finally, we...`, assembling top-down, with Step 1 constructing the parent container and establishing every child's contract in its JSX, and the final step sealing the deepest boundary instead of mounting the parent. #2026_09_20_04_group_8
 [ ] Each Step of Stage C carries the calm professor narration: at least one notice-move anchored to a concrete line or prop, a closing recap sentence (To recap this step: ...), and the mechanical template question (Are you curious how we build this?) absent (see the lecture-voice skill). #2026_09_20_04_group_8
-[ ] Stage D concludes with `### Direct Lessons from the Experiment: Naive Expectation vs Reality`, contrasting the naive expectation against what the experiment taught, and opening with the `component-code` role panel (`[role:]` entries, zero code) before the audit figure, so the lesson is drawn from the code the reader just watched. #2026_09_20_04_group_8
+[ ] Stage D concludes with `### Lessons from the Experiment: Naive Expectation vs Reality`, contrasting the naive expectation against what the experiment taught, and opening with the `component-code` role panel (`[role:]` entries, zero code, titled `Summary: The Logic of Nested Components`) before the audit figure, so the lesson is drawn from the code the reader just watched. #2026_09_20_04_group_8 revised by #2026_09_20_09_group_1
 [ ] Stage E closes with the Architecture Audit Table (`figures/{NN}-02-architecture-audit.html`): the eyebrow reads `LESSONS FROM THE CODE` in uppercase, the title reflects the lecture's domain challenge, the 3-column matrix reads `Component Layer` | `Naive Expectation (Legacy Approach)` | `What Happened (React 19 Reality)`, the layer rows are customized to this lecture's architecture, and the final verdict row contrasts `FRAGILE COUPLING` in red uppercase against `BULLETPROOF MODULARITY` in teal uppercase, with the table sitting directly on the page substrate with heavy 3px rules and fitting cleanly on a single PDF page with its caption (see the figures skill).
 
-## Structure Gates | 18 | The strict 10-line code ceiling and continuation attributes
+## Structure Gates | 20 | The strict 10-line code ceiling and continuation attributes
 
 [ ] Every code block in the pre-lecture and lecture holds at most 10 lines of executable code, so an 11th line counts as a defect and long components are sliced across micro-steps with intervening prose (see the code-blocks skill).
 [ ] No code snippet starts with an empty line, and `startLine` begins immediately on the first line of executable code.
@@ -197,20 +214,20 @@ Notes: it fails because "keystroke tracking fatigue" is an invented term that ex
 
 Notes: it works because the first block hands off downward with `continues="bottom"`, the second receives the handoff with `continues="top"`, each block stays within the 10-line ceiling, and each carries its own `title` and exact `startLine`, so the reader sees one continuous file sliced for teaching.
 
-## Structure Gates | 19 | The standalone glossary and real-world contexts
+## Structure Gates | 21 | The standalone glossary and real-world contexts
 
 [ ] A `### Where you will meet this` section sits right before the Glossary, holding 3 to 5 concrete one-line scenarios describing real-world application moments, each line a concrete moment plus what the concept does there (see the lecture-structure skill).
 [ ] A `### Glossary` section sits directly between `### Where you will meet this` and `### Summary`, holding 4 to 6 core terms introduced in the lecture, so the reader can rehearse the lecture's vocabulary in one place.
 [ ] Each glossary term is formatted as `- **Term**: Plain-English definition and concrete engineering role without em-dashes.` on a single continuous line, and the section renders on its own dedicated standalone page in the PDF (`page-break-before: always;`).
 
-## Structure Gates | 20 | The plain-talk summary and closing comparison table
+## Structure Gates | 22 | The plain-talk summary and closing comparison table
 
 [ ] The `### Summary` opens with an authoritative **Technical Title** in bold on its own line, followed by an empty line and a plain-talk review from an experienced coder's daily perspective, opening directly with practical context rather than conversational filler (see the lecture-structure skill).
 [ ] The summary uses `❒` section headers, numbered points (`1.`, `2.`) with indented sub-points as `<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) ...` on a single continuous line, and core principles highlighted with `➔ NEVER / ALWAYS / IF ... THEN ...`.
 [ ] Comparative examples use a `**DO THIS:**` header with a jsx code window tagged `right` and a `**DO NOT DO THIS:**` header with a jsx code window tagged `wrong`, both with zero comments inside the code, and stay limited to summary error avoidance and genuine in-body anti-pattern comparisons (see the code-blocks skill).
 [ ] The lecture ends with a comparison table against the nearest alternative: exactly 3 columns shaped `| | **COLUMN B**<br>(subtitle) | **COLUMN C**<br>(subtitle) |`, divider row `| ---: | :--- | :--- |`, bold dimensions in column 1, and long code strings split across separate backtick spans joined by `<br>`, so Prince never breaks grey-box padding mid-token or mid-string.
 
-## Mechanical Gates | 21 | The mechanical build gate
+## Mechanical Gates | 23 | The mechanical build gate
 
 [ ] The single-lecture build runs with `node src/build-lectures.mjs {n}` and exits at the zero warnings gate: zero warnings, because a warn counts as a defect.
 [ ] Warn versus note is applied correctly: a `warn` means the fix belongs in the source markdown followed by a rebuild, while a `note` means the build already repaired it, so a note needs no source fix.
@@ -224,7 +241,7 @@ Notes: it works because the first block hands off downward with `continues="bott
 
 Notes: it works because the command targets one lecture, so the compiler output stays small enough to catch every warn and note at a glance before the zero warnings gate is declared passed.
 
-## Visual Gates | 22 | The Law of Visual Verification keeps screenshots surgical
+## Visual Gates | 24 | The Law of Visual Verification keeps screenshots surgical
 
 [ ] Screenshots are treated as a high-precision microscope reserved exclusively for visual graphics, per the Law of Visual Verification and its surgical trigger-action mandate: a valid visual trigger is confirmed first, and exactly one surgical action follows it.
 [ ] The routine prose ban holds: text, pre-lectures, and markdown prose are verified strictly via compiler output and git diffs, so screenshots during prose authoring, text editing, or markdown revisions are kept out.
@@ -239,7 +256,7 @@ Notes: it works because the command targets one lecture, so the compiler output 
 
 Notes: it fails because it is a blanket multi-page dump with no visual trigger behind it; ten pages of PNG bought to check pagination verify nothing the compiler output would not have caught, and the broad action violates the surgical trigger-action mandate.
 
-## Visual Gates | 23 | Mandatory figure inspection under the surgical trigger-action mandate
+## Visual Gates | 25 | Mandatory figure inspection under the surgical trigger-action mandate
 
 [ ] Whenever an HTML figure (`md-lectures/figures/*.html`), a visual layout panel, or a stylesheet is created or modified, the exact single page where it lands in the compiled PDF is determined first.
 [ ] Only that single page is rendered via pdftoppm at 150 dpi and inspected via view_file, so compiler success alone is never relied on for visual aesthetics.
@@ -254,7 +271,7 @@ Notes: it fails because it is a blanket multi-page dump with no visual trigger b
 
 Notes: it works because it renders exactly one page at 150 dpi for one known figure, matching the surgical trigger-action mandate: the trigger (the figure was created or modified) leads to one action (inspect that single page via view_file), and the PNG in /tmp is deleted immediately after the inspection.
 
-## Final Gate | 24 | The Comprehensive Lecture Checklist before marking complete
+## Final Gate | 26 | The Comprehensive Lecture Checklist before marking complete
 
 [ ] Before any lecture is marked complete, the Comprehensive Lecture Checklist runs as the mandatory final gate, covering all five groups end to end: the Header and Hook, the Visual Scaffold, the Code Executions, the Conclusion, and the TTS and Format Safety, and the lecture is released only when every item passes.
 [ ] Header and Hook passes: the exact typology tag line, the new-terms check hook establishing a visceral real-world high-stakes scenario, the 5 to 7 numbered opening beats ending on the mystery with the mechanism never named, and every beat passing the proper-scenario clarity gate (plain upper-intermediate English vocabulary for a tired reader, every noun exactly one thing, no bare overloaded word like "editor", "live", "script", "log", "state", "hook", "render", every beat readable alone and out of order, the problem value's logic explained then repeated, the change event shown before the stale screen, and no technical shorthand left unpacked), with the last beat closing on a plain promise of what today brings rather than on the explanation of the mystery it posed (see the lecture-voice and lecture-structure skills).
@@ -268,3 +285,4 @@ Notes: it works because it renders exactly one page at 150 dpi for one known fig
 [ ] Code Executions passes: all code blocks are labeled with `title="..."`, all `//` comments sit strictly at the end of the line with no floating bubbles on empty lines, verdict comments lead with `**RIGHT:**` / `**WRONG:**` words rather than glyphs (the build strips the glyphs), inline code terms and commands render with the modern rounded pill aesthetic so code terms, attributes, and CLI formulas never split awkwardly across line breaks, and all code strings in table cells are manually wrapped with `<br>`, separating prose from code and splitting multi-part expressions across separate backtick spans, so Prince never breaks grey-box padding mid-token or mid-string (see the code-blocks skill).
 [ ] Conclusion and TTS safety pass: the four closing artifacts pass their gates (`### Where you will meet this`, the standalone `### Glossary`, the plain-talk `### Summary`, and the closing comparison table), all em-dashes are removed or replaced with commas or colons for synthetic voice safety, and every paragraph, bullet, and table row sits on one continuous line without hard wraps (see the lecture-structure skill).
 [ ] The ten out of ten perfection standard governs the final gate: the lecture is marked complete only at ten out of ten with zero compromises, because anything less surfaces later as a student's confusion.
+

@@ -422,3 +422,77 @@ Notes: Scene, scene, engine, punchline. Four sentences, each carrying exactly on
 > While the search bar has to react to every keypress, the correction form only needs its data on submit, making it the better choice for this workflow.
 
 Notes: One sentence holding two systems, two engines, and a verdict. The reader must parse the clause before they can picture either scene, and nothing in it is quotable.
+
+## Guided Build | 29 | The Upward Wire Law (Anti-Hand-Waving Callback Tracing) #2026_09_20_06_group_1
+
+[ ] Whenever prose deconstructs a child component invoking a callback prop (`onSelect`, `onChange`, `onSubmit`, `onSave`), strictly ban dismissive hand-waving phrasing such as "it simply invokes [callback]", "it just calls [prop]", or "the callback updates the parent", because hand-waving conceals the exact mechanical linkage the student is trying to learn.
+[ ] Mandate the 5-point Upward Wire circuit in the accompanying prose:
+    1. **The Question**: Ask the reader's question out loud ("Where does `onSelect` come from?").
+    2. **The Parent Origin**: Point explicitly back to Step 1 where the parent declared the state setter or handler (`const [roomId, setRoomId] = useState('general')`) and bound it in JSX (`onSelect={setRoomId}`).
+    3. **The Telephone Line**: Explain that the child owns no state and does not know what the value is used for; it only holds a telephone line.
+    4. **The Physical Execution**: Trace the exact call that runs in the parent's memory when the user clicks or types (`onSelect(room)` physically executes `setRoomId('politics')` in the parent).
+    5. **The Community Category**: Name the architectural mechanism as standard **inverse data flow** (data flows down through props, user actions flow up through callbacks).
+
+[ ] PROPER EXAMPLE: make sure you follow this example, the canonical Upward Wire deconstruction from Lecture 38:
+
+> Look at the button click handler on line 6: `onClick={() => onSelect(room)}`.
+> 
+> Where does `onSelect` come from? Look back at Step 1 in `ChatWorkspace.jsx`. The parent declared `const [roomId, setRoomId] = useState('general')`, and then rendered:
+> `<ChannelSelector activeRoom={roomId} onSelect={setRoomId} />`.
+> 
+> Notice what happened: the parent handed its private updater function `setRoomId` to the child under the prop name `onSelect`. `ChannelSelector` does not own state, and it does not know what `roomId` is used for. It only holds a telephone line called `onSelect`.
+> 
+> When the reporter clicks a button, the native browser `onClick` fires and calls `onSelect(room)`. Because `onSelect` points directly to `setRoomId`, that call immediately executes `setRoomId('politics')` back in `ChatWorkspace`.
+> 
+> This is standard **inverse data flow**: data flows down through props (`activeRoom`), and user actions flow up through callbacks (`onSelect`).
+
+Notes: The question asks what the reader is already thinking, the origin points back to Step 1's JSX binding, the telephone line metaphor clarifies state ownership, the physical function call in parent memory is named, and the community concept (inverse data flow) names the pattern.
+
+[ ] COUNTER-EXAMPLE: do not follow this bad example, dismissive hand-waving with an untraced prop:
+
+> Look at the button click handler on line 6: `onClick={() => onSelect(room)}`. When a reporter clicks a channel button, this handler does not connect to websockets, fetch messages, or touch DOM nodes. It simply invokes onSelect with the chosen room name. The parent updates roomId, and React handles the rest.
+
+Notes: It uses the forbidden hand-wave "simply invokes", never explains where `onSelect` came from, confuses the custom callback with native browser events, and treats the parent state update as telepathy.
+
+### 30. The Negative Counterfactual Law (Anti-Platitude Architectural Separation)
+Rule tag: `#2026_09_20_07_group_1`
+
+Whenever explaining why two responsibilities are separated across components (e.g., UI controls vs. side-effects, parent layout vs. child subscriptions, controlled inputs vs. uncontrolled forms), you are **strictly forbidden** from using empty architectural praise or unearned textbook platitudes.
+
+Phrases like *"the cleanest architecture keeps X separate from Y"*, *"Component X is a pure presenter"*, or *"this promotes clean separation of concerns"* are non-explanations. They tell the student what to admire, but fail to show them what breaks.
+
+Every architectural boundary must be justified using **The 4-Part Negative Counterfactual Circuit**:
+
+1. **The Provocation Question**: Ask directly what happens if the responsibilities are merged into a single component:
+   *`"What would happen if [Component A] handled [Responsibility B] directly?"`*
+2. **The Concrete Disaster**: Describe the tangible runtime, state, or maintenance breakdown that immediately occurs:
+   *Show how memory gets trapped, child views lose access, re-renders churn unrelated DOM trees, or testing becomes impossible.*
+3. **The Physical Invariant**: Define the architectural boundary not by abstract philosophy, but by what is physically absent in code:
+   *State explicitly: `"zero useState and zero useEffect"` or `"zero network awareness"`.*
+4. **The Decoupling Proof**: Prove the architectural benefit through two concrete, symmetric refactoring scenarios:
+   *`"1. If tomorrow you replace [UI element A] with [alternative UI], you touch zero lines of [backend/network code]."`*
+   *`"2. If you swap [backend/network service B] for [alternative service], you touch zero lines of [UI code]."`*
+
+---
+
+#### ✕ FORBIDDEN VAGUE PLATITUDE (DO NOT DO THIS)
+> "Mind you, the cleanest architecture keeps interactive controls separate from side-effect boundaries. ChannelSelector is a pure presenter: it renders three buttons, highlights the active one, and forwards clicks upward."
+
+*Why this fails:*
+- It uses unbaptized buzzwords (*"side-effect boundaries"*, *"pure presenter"*).
+- It offers unearned praise (*"the cleanest architecture"*).
+- It never explains *why* putting the socket in the buttons would be a disaster.
+
+---
+
+#### ✓ MANDATORY CRYSTALLINE COUNTERFACTUAL (DO THIS)
+> What would happen if `ChannelSelector` opened the websocket connection itself?
+>
+> If you put the `useEffect` or socket connection inside `ChannelSelector`, the navigation buttons would be trapped managing network sockets, reconnection timers, and message buffers. Worse, the chat message area in `ChatRoom` would have no way to access that socket without messy prop-drilling or global state hacks. You would have buttons and network protocols tangled in a single file.
+>
+> By separating them, `ChannelSelector` owns zero `useState` and zero `useEffect`. It is a pure presenter: given the same `activeRoom` string and `onSelect` callback, it will always render the exact same three buttons.
+>
+> This separation gives you two concrete superpowers:
+> 1. If tomorrow you replace the button pills with a dropdown `<select>` menu, you touch zero lines of websocket code.
+> 2. If you swap the websocket protocol in `ChatRoom` for a mock test service, you touch zero lines of button code.
+

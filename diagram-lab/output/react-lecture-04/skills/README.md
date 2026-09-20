@@ -6,9 +6,9 @@ The instruction system of the react-lecture-04 project. Each skill is one folder
 
 | skill | governs | load when |
 |---|---|---|
-| pre-lecture | the Phase 1 blueprint at md-pre-lectures/{nn}.md, with ★/◇ technical grading of every paragraph element and planning of the practical example stages and the 4-phase flow | a pre-lecture is about to be written or revised |
+| pre-lecture | the Phase 1 blueprint at md-pre-lectures/{nn}.md, with ★/◇ technical grading of every paragraph element and planning of the practical example stages | a pre-lecture is about to be written or revised |
 | lecture-voice | stance, plain upper-intermediate English, concept definitions (the default and the law), technical descriptions that end in a consequence, the numbered opening beats, callouts | lecture prose is written or revised |
-| lecture-structure | skeleton, information flow, practical example staging, naming, tables | a lecture is assembled or restructured, or a pre-lecture plans one |
+| lecture-structure | skeleton, practical example staging, naming, tables | a lecture is assembled or restructured, or a pre-lecture plans one |
 | code-blocks | code windows, 10-line ceiling, continuation attributes, comments | any code block is written or reviewed |
 | ui-panels | component explorer, files, component-code panels | any UI panel is added or reviewed |
 | figures | standalone HTML figures and the design system | a figure is designed, cloned, or revised |
@@ -21,7 +21,7 @@ writing a pre-lecture → load pre-lecture, lecture-voice, lecture-structure, an
 writing a lecture → load lecture-structure, lecture-voice, code-blocks, ui-panels, and figures
 calling a lecture done → load verification and build
 
-The pre-lecture row carries lecture-structure and ui-panels because the blueprint must plan the practical example stages, the 4-phase information flow, and the panel elements before Phase 2 begins; a blueprint written without the structure laws in the room produces clean prose with no planned guided build, and the production lecture inherits that omission. #2026_09_20_01_group_1
+The pre-lecture row carries lecture-structure and ui-panels because the blueprint must plan the practical example stages and the panel elements before Phase 2 begins; a blueprint written without the structure laws in the room produces clean prose with no planned guided build, and the production lecture inherits that omission. #2026_09_20_01_group_1
 
 ## The meta-skill
 

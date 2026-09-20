@@ -228,6 +228,13 @@ function parseEntry(rawLine, lineNumber) {
 		throw new Error(`component-code block line ${lineNumber}: "${parts[0]}" must be a .jsx, .tsx, .js, or .ts file path`);
 	}
 
+	if (parts[1] && /^\[(?:role|explain|desc):/i.test(parts[1])) {
+		throw new Error(`component-code block line ${lineNumber}: [role: ...] payload must be placed in field 4 (renders), not field 2 (props). Use format: file | props | kind | [role: ...]`);
+	}
+	if (parts[2] && /^\[(?:role|explain|desc):/i.test(parts[2])) {
+		throw new Error(`component-code block line ${lineNumber}: [role: ...] payload must be placed in field 4 (renders), not field 3 (kind). Use format: file | props | kind | [role: ...]`);
+	}
+
 	return {
 		file,
 		props: parts[1] || '',
@@ -262,6 +269,9 @@ export function parseComponentTree(source) {
 
 	if (roots.length === 0) {
 		throw new Error('component-code block must contain at least one entry');
+	}
+	if (roots.length > 1) {
+		throw new Error(`component-code block has multiple root components (${roots.map((r) => r.file).join(', ')}). A component tree must have exactly one root. If subsequent components are children, indent them with 2 spaces per level.`);
 	}
 
 	return roots[0];
