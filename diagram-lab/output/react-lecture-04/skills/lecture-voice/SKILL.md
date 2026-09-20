@@ -205,7 +205,7 @@ Notes: It reads as an arrogant universe law, and it skips the human question tha
 
 > Developers never need to write `e.preventDefault()` anymore. Why? React now prevents full-page document reloads automatically when handling form actions. At the same time, standard keyboard interactions are preserved: the user, for example, can press Enter to submit without any problem.
 
-Notes: The fact is grounded in a question the reader would actually ask, and the answer names the physical browser behavior.
+Notes: The fact is grounded in a question the reader would actually ask, and the answer names the physical browser behavior. The spoken Why? earns its place by following a claim the reader genuinely doubts; where several claims cluster, let all but one answer themselves as plain Because-clauses. #2026_09_20_12_group_1
 
 ## Sentences | 15 | Avoid self-narration
 

@@ -1100,7 +1100,7 @@ function checkLecture(file, md) {
 	if (!/^# Lecture \d+: \S/.test(lines[0] || '')) warns.push(`title line is not "# Lecture {n}: {Short Title}"`);
 	if (!/^>\s*INTERVIEW QUESTION\s*\|\s*❱+\s*[A-Z]+(\s*\(Server\))?\s*\|/.test(lines[1] || '')) warns.push(`line 2 is not the "> INTERVIEW QUESTION | ❱ TIER |" callout`);
 	if (!/\[!(TIP|NOTE|KEY|WARNING|CAUTION|WILD|GROUNDING)\]/.test(md)) warns.push(`no alert callout ([!TIP] etc.) anywhere in the lecture`);
-	if (!/```(?:components|component-code)/.test(md)) warns.push(`no "components" or "component-code" explorer panel (mandatory in every lecture; place one before the first code fence of the central mechanism)`);
+	if (!/```(?:components|component-code)/.test(md)) warns.push(`no "components" Rendered UI Canvas or "component-code" panel found in the lecture`);
 	if (!/```(?:figure|html-figure)/.test(md)) warns.push(`no "html-figure" HTML figure panel (mandatory in every lecture; embed at least one md-lectures/figures/ RCE panel)`);
 
 	// The completeness law: every file the lecture shows (fence title) or

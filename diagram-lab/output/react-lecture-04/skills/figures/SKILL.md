@@ -11,7 +11,7 @@ Digests: skills/old-instructions/docs/figure-design-system.md, docs/professional
 
 ## Philosophy | 01 | Opening Visual Anchor
 
-[ ] The opening code snippet of a lecture (Section 1) is the strict case: pair it immediately with an authentic visual panel, such as the side-by-side state comparison or the React Component Explorer, so the opening snippet never sits naked.
+[ ] The opening code snippet of a lecture (Section 1) is the strict case: pair it with clear conceptual framing and minimal code contrast, so the opening concept grounds the student immediately in physical reality.
 
 [ ] The opening section is where the student either engages or tunes out, so the first thing their eye catches is a tangible screen widget rather than dry, abstract syntax.
 

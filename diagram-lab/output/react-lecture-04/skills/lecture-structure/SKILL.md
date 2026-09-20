@@ -41,8 +41,8 @@ Digests: skills/old-instructions/AUTHOR-BRIEF.md and instructions.md (phases, im
 ## Skeleton | 06 | Exact skeleton order
 
 [ ] Assemble every production lecture in this exact order: the `#` title line, the interview question callout line, the numbered opening beats, the first `###` section, the body sections, `### Where you will meet this`, `### Glossary`, `### Summary`, and the closing comparison table as the last block of the file.
-[ ] Place the Component Explorer panel after the prose that names the visual arrangement and before the first code block that implements the mechanism, with its syntax and rules owned by the ui-panels skill.
-[ ] Embed at least one standalone HTML figure per lecture, authored and placed per the ui-panels skill.
+[ ] Open Stage A of the practical example with the Rendered UI Canvas and File Explorer panels, with their syntax and rules owned by the ui-panels skill.
+[ ] Embed at least one standalone HTML figure per lecture, authored and placed per the figures skill.
 [ ] Route the opening beats' wording and sentence rules to the lecture-voice skill; this skill only fixes where the beats sit and what follows them.
 
 ## Skeleton | 07 | Title line
@@ -83,7 +83,7 @@ Notes: the tier keeps its server suffix and the question text is copied verbatim
 
 ## Skeleton | 11 | Standard body progression
 
-[ ] Order the lecture body as: (1) component architecture and explorer introducing the application layout and the paradigm shift, (2) `### Let's Design a Practical Example` with its five stages, (3) architectural comparison and review, so the reader builds the working system first and then reads the comparative analysis, with each stage building on the one before it. #2026_09_20_04_group_4 revised by #2026_09_20_05_group_1
+[ ] Order the lecture body as: (1) foundational concept, load-bearing definition, and minimal code contrast introducing the core paradigm, (2) `### Let's Design a Practical Example` with its five stages, (3) architectural comparison and review, so the reader builds the working system first and then reads the comparative analysis, with each stage building on the one before it. #2026_09_20_04_group_4 revised by #2026_09_20_05_group_1
 [ ] When the lecture contrasts two paradigms that both modify one platform default, establish that shared default in plain prose before the first paradigm is defined, so the first paradigm reads as a departure from the default and the baseline never hides inside the second paradigm's section. #2026_09_20_03_group_1
 
 ## Skeleton | 12 | Where you will meet this placement
