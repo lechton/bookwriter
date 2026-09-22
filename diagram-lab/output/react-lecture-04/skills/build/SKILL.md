@@ -35,7 +35,7 @@ Notes: Each command carries a comment stating exactly what it produces, so the b
 [ ] Treat a `note` line as something the build already repaired (for example a comment-only code line merged into the next code line), so it is safe to leave in place.
 [ ] Aim for zero warnings on every build: zero warnings is the mechanical gate, and a clean build is the mechanical definition of done.
 [ ] Expect warnings to name the block to fix: title shape, the interview-question line, a missing callout, a missing `### Summary`, and the closing-table shape.
-[ ] Take visual checks beyond the log (screenshots of figures and visual assets) to the verification skill, since the log certifies format, not appearance.
+[ ] Clean compiler output with zero warnings certifies mechanical completion for routine production; visual inspection via pdftoppm is reserved strictly for brand-new experimental templates or explicit user command (see the verification skill). #2026_09_20_28_group_1
 
 [ ] COUNTER-EXAMPLE: do not follow this bad example:
 

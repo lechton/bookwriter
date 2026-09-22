@@ -5,15 +5,16 @@ description: Governs code windows, line ceilings, continuation attributes, and c
 
 # Code Blocks
 
-This skill governs how code blocks are authored in lecture Markdown: the code window and its `title` attribute, the 10-line hard ceiling, the continuation attributes that stitch a long file across micro-steps, and the `//` comment conventions that drive the speech-bubble rendering. The build script (`src/build-lectures.mjs`) transforms every code block into an editor-style window, so the author writes plain Markdown and the builder produces the styled HTML. Digests: skills/old-instructions/instructions.md (code block format) and AUTHOR-BRIEF.md (hard format rules).
+This skill governs how code blocks are authored in lecture Markdown: editor windows and filename tabs, the 10-line hard ceiling, continuation attributes that stitch long files across progressive steps, end-of-line `//` comment bubbles, tag-free natural English comments, and right/wrong comparative blocks. The build compiler (`src/build-lectures.mjs`) parses plain Markdown fences and generates styled HTML editor windows.
 
-## Code Windows | 01 | Open and close every code block cleanly
+Digests: `skills/old-instructions/instructions.md` (code block format) and `skills/old-instructions/AUTHOR-BRIEF.md` (hard format rules).
 
-[ ] Open each code block with a language tag the highlighter knows: ` ```jsx `, ` ```js `, ` ```tsx `, ` ```ts `, ` ```javascript `, or ` ```typescript `, and close it with ` ``` ` on its own line, so every opener has a matching closer.
+## Code Windows | 01 | Clean Fencing and Supported Language Tags
 
-[ ] Prefer the `jsx` tag for component code, since all six supported tags share the same JS/JSX tokenizer and the choice mainly drives the default filename tab.
-
-[ ] Aim for complete, runnable snippets, since a snippet the reader could paste and run teaches more than a fragment that cannot stand alone.
+[ ] Open every code block with a recognized language tag: ` ```jsx `, ` ```js `, ` ```tsx `, ` ```ts `, ` ```javascript `, ` ```typescript `, or ` ```bash `.
+[ ] Close every code block with a matching closing fence ` ``` ` placed on its own line.
+[ ] Prefer `jsx` as the standard language tag for all React component code.
+[ ] Author complete, runnable snippets whenever demonstrating a pattern: a self-contained snippet that can be executed in an editor teaches more effectively than disconnected fragments.
 
 [ ] PROPER EXAMPLE: make sure you follow this example, a complete minimal component in a clean code window:
 
@@ -25,17 +26,16 @@ This skill governs how code blocks are authored in lecture Markdown: the code wi
 > }
 > ```
 
-Notes: the opener carries the language tag, the closer sits on its own line, and the snippet is dense and runnable with no blank lines.
+Notes: Uses the `jsx` language tag, closes cleanly, and provides a runnable component with zero leading empty lines.
 
-## Code Windows | 02 | Give every code block a filename tab
+## Code Windows | 02 | Filename Tabs and Title Attributes
 
-[ ] Write the `title="..."` attribute on the code window opener whenever the default derived filename would mislead, since the editor chrome with its filename tab renders for every code block.
+[ ] Add a `title="..."` attribute to the opening code fence whenever the default filename does not match the actual file name.
+[ ] Rely on derived defaults when they fit: `jsx` yields `App.jsx`, `tsx` yields `App.tsx`, `js` yields `App.js`, and `ts` yields `App.ts`. Override the title whenever introducing another file in the project.
+[ ] Use registered filenames from the lecture's file tree for runnable project code (such as `title="SearchBar.jsx"`).
+[ ] Use explicit conceptual titles without `.jsx` extensions for historical or pre-React 19 comparisons (such as `title="Historical Pattern"` or `title="Naive Implementation"`). This prevents the compiler from flagging fictitious files.
 
-[ ] Rely on the derived default when it fits: `jsx`/`javascript` yields `App.jsx`, `tsx`/`typescript` yields `App.tsx`, `js` yields `App.js`, `ts` yields `App.ts`, and anything else yields `code.txt`, so the override is only needed when the real filename differs.
-
-[ ] Use a real, registered filename for runnable project code, and a conceptual title without a `.jsx` extension (such as `title="Historical Pattern"`) for legacy or pre-React 19 comparisons, so the compiler raises no completeness warnings about fictitious files.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, overriding the default tab with the real file name:
+[ ] PROPER EXAMPLE: make sure you follow this example, overriding the default tab with a real filename:
 
 > ```jsx title="SearchBar.jsx"
 > export default function SearchBar({ query, onChange }) {
@@ -43,7 +43,7 @@ Notes: the opener carries the language tag, the closer sits on its own line, and
 > }
 > ```
 
-Notes: the reader sees a `SearchBar.jsx` tab instead of the misleading default `App.jsx`, and the name matches a real file in the lecture.
+Notes: Explicitly names `SearchBar.jsx`, matching the project file tree and providing an accurate editor tab.
 
 [ ] COUNTER-EXAMPLE: do not follow this bad example:
 
@@ -53,19 +53,16 @@ Notes: the reader sees a `SearchBar.jsx` tab instead of the misleading default `
 > }
 > ```
 
-Notes: the title names a file that does not exist anywhere in the project, so the compiler completeness check flags it and the reader hunts for a phantom file.
+Notes: Uses a cluttered, unregistered filename that does not exist in the project, triggering compiler warnings and confusing the reader.
 
-## Code Windows | 03 | Keep the editor dense and narrow
+## Code Windows | 03 | Density, Indentation & 80-Character Boundary
 
-[ ] Write snippets without blank lines where you can, since every source line becomes a numbered row and blank lines render as empty numbered rows that waste vertical space.
+[ ] Eliminate empty lines inside code blocks where possible: every source line renders as a numbered row in print, and blank lines waste vertical space.
+[ ] Keep top-level code flush against the left margin: indentation is rendered literally by the compiler, so stray leading spaces misalign the editor.
+[ ] Keep all code lines under 80 characters. Break long object literals, method chains, and JSX attribute lists across multiple rows manually.
+[ ] Format JSX elements with one prop per line whenever a component takes two or more attributes, ensuring props remain readable without accidental wrapping.
 
-[ ] Keep top-level code flush against the left margin, since indentation inside code blocks is rendered literally and stray leading spaces shift the code right.
-
-[ ] Keep every line under about 80 characters, and break long object literals and JSX attributes yourself, one property or attribute per row, so the break lands where the code reads best rather than where the container happens to wrap.
-
-[ ] Prefer one prop per line in JSX lectures, since the built row wraps as a safety net, not as a style, and a self-chosen break reads cleaner than an accidental one.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, self-broken attributes at natural boundaries:
+[ ] PROPER EXAMPLE: make sure you follow this example, formatting attributes with natural line breaks:
 
 > ```jsx
 > <button
@@ -76,7 +73,7 @@ Notes: the title names a file that does not exist anywhere in the project, so th
 > </button>
 > ```
 
-Notes: each attribute owns its row, so no line approaches the wrap threshold and the reader's eye tracks the props cleanly.
+Notes: Each attribute occupies its own line, keeping the snippet comfortably below the 80-character boundary.
 
 [ ] COUNTER-EXAMPLE: do not follow this bad example:
 
@@ -84,367 +81,198 @@ Notes: each attribute owns its row, so no line approaches the wrap threshold and
 > <button formAction={() => saveArticle(article)} disabled={pending} style={{ marginTop: 12, padding: '6px 14px' }}>Save</button>
 > ```
 
-Notes: the line far exceeds 80 characters, so the built row wraps mid-attribute and the parallel visual layout of the editor breaks.
+Notes: Far exceeds 80 characters, forcing accidental mid-attribute line wraps that break visual editor alignment in PDF layout.
 
-## Code Windows | 04 | Leave the styling to the builder
+## Code Windows | 04 | Zero Author-Side HTML Styling
 
-[ ] Write plain Markdown code and `//` comments only, since the build script produces the editor window, the traffic-light dots, the filename tab, the line numbers, the alternating row backgrounds, and the bubble markup.
+[ ] Author code blocks using plain Markdown syntax and natural language comments (`//` for JavaScript/JSX, `#` for Bash/Shell, or `<!--` for HTML). #2026_09_21_23_group_1
+[ ] Never insert raw HTML `<span>` tags, inline CSS classes, or hardcoded bubble containers into lecture code blocks: the build script automatically constructs macOS traffic lights, tab bars, alternating row shading, and speech bubbles.
+[ ] Inserting raw HTML tags inside code fences causes the syntax highlighter to double-encode entities and corrupts the rendered window.
 
-[ ] Avoid hand-written `<span>` tags, CSS classes, or bubble markup in lecture Markdown, since the highlighter double-encodes them and the output is wrong.
+## Line Ceilings | 05 | The 10-Line Hard Ceiling
 
-[ ] PROPER EXAMPLE: make sure you follow this example, author-side source only:
+[ ] Restrict every code block to 10 or fewer lines of executable code: line 11 is an automatic quality defect.
+[ ] Slicing components longer than 10 lines across sequential micro-steps is mandatory.
+[ ] Slicing code forces thorough, step-by-step deconstruction, preventing overwhelming walls of code from alienating tired readers.
 
-> ```jsx
-> const [count, setCount] = useState(0); // the pair every component starts from
-> ```
+[ ] PROPER EXAMPLE: make sure you follow this example, a focused component under the 10-line ceiling:
 
-Notes: the author wrote one code line and one `//` comment; the builder turns the comment into a speech bubble under the row, and no markup was hand-written.
-
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
-
-> ```jsx
-> const [count, setCount] = useState(0); <span class="kw">const</span> <div class="bubble">the pair</div>
-> ```
-
-Notes: the hand-written span and bubble markup get double-encoded by the highlighter, so the raw tags appear as literal text inside the rendered editor.
-
-## Ceilings | 05 | Honor the 10-line hard ceiling
-
-[ ] Keep every code block at 10 or fewer lines of executable code, since line 11 is a defect in both pre-lecture blueprints and production lectures.
-
-[ ] Treat the ceiling as the driver of progressive code assembly: a large or multi-step component is sliced across sequential micro-steps, each block within the ceiling, each accompanied by focused explanatory prose between the slices.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, a component introduced in two compliant slices:
-
-> ```jsx
-> export default function FeedbackApp() {
->   const [likes, setLikes] = useState(0);
->   const [saved, setSaved] = useState(false);
->   async function saveLike() {
->     await fetch('/api/like', { method: 'POST' });
->     setSaved(true);
->   }
-> ```
-
-> ```jsx
+> ```jsx title="ReaderGreeting.jsx"
+> export default function ReaderGreeting({ readerName }) {
 >   return (
->     <button onClick={() => { setLikes(likes + 1); saveLike(); }}>
->       Likes: {likes}
->     </button>
+>     <div className="greeting-box">
+>       <span>Welcome back, {readerName}</span>
+>     </div>
 >   );
 > }
 > ```
 
-Notes: each slice fits the ceiling and the intervening prose explains the step, so the reader assembles the file piece by piece instead of swallowing a wall of syntax.
+Notes: Complete, focused, 7 lines total, easily scanned and deconstructed in a single view.
 
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
+[ ] COUNTER-EXAMPLE: do not follow this bad example, dumping a multi-concern component into a single window:
 
-> ```jsx
-> export default function FeedbackApp() {
->   const [likes, setLikes] = useState(0);
->   const [saved, setSaved] = useState(false);
->   const [pending, setPending] = useState(false);
->   const [error, setError] = useState(null);
->   async function saveLike() {
->     setPending(true);
->     try {
->       await fetch('/api/like', { method: 'POST' });
->       setSaved(true);
->     } catch (e) {
->       setError(e);
->     } finally {
->       setPending(false);
->     }
->   }
->   return <button onClick={() => { setLikes(likes + 1); saveLike(); }}>Likes: {likes}</button>;
+> ```jsx title="SiteHeader.jsx"
+> export default function SiteHeader({ readerName, tier, onLogout }) {
+>   const [open, setOpen] = useState(false);
+>   const badgeColor = tier === 'premium' ? 'gold' : 'blue';
+>   return (
+>     <header className="site-header">
+>       <h1>The National Times</h1>
+>       <ReaderGreeting readerName={readerName} />
+>       <SubscriberBadge tier={tier} color={badgeColor} />
+>       <button onClick={() => setOpen(!open)}>Menu</button>
+>       {open && <NavMenu onLogout={onLogout} />}
+>     </header>
+>   );
 > }
 > ```
 
-Notes: the block runs far past line 10, so it reads as a monolithic dump and the reader loses the micro-step rhythm the ceiling exists to protect.
+Notes: 14 lines long, combines 3 distinct UI concerns, exceeds the 10-line budget, and must be sliced across progressive micro-steps.
 
-## Ceilings | 06 | Comment the body blocks that earn it
+## File Continuations | 06 | Slicing Files with Continuation Attributes
 
-[ ] Give every non-trivial body code block of roughly 8 or more lines clear pedagogical end-of-line comments attached to its critical expressions, state declarations, effects, or handler dispatches, since uncommented bare walls of syntax teach nothing.
+[ ] When a single component file is sliced across multiple steps in Stage C, stitch the snippets together using continuation attributes on the code fences: #2026_09_21_31_group_1
+    * First snippet: `title="Name.jsx" startLine="1" continues="bottom"`
+    * Intermediate snippets: `title="Name.jsx" startLine="NN" continues="both"`
+    * Final snippet: `title="Name.jsx" startLine="NN" continues="top"`
+[ ] The builder compiles matching continuation attributes into seamless editor windows featuring continuation tabs, proving to the reader that the code belongs to one continuous file.
+[ ] Slicing Invariant vs Progressive Refactoring: Continuation attributes (`continues`) are strictly reserved for slicing a single continuous file across line budgets. Never use continuation attributes for progressive revisions or refactorings of the same component. Intermediate and final continuation blocks (`continues="both"` or `continues="top"`) MUST have `startLine > 1`, calculated strictly as `previous_startLine + previous_lineCount`. Continuation blocks must NEVER re-declare `export default function ...` or re-open `return (` if already declared in the opening block. #2026_09_21_31_group_1
 
-[ ] Keep summary code blocks comment-free instead, since the `right`/`wrong` window format carries the instruction above the block (see the Right and Wrong section below in this skill).
+[ ] PROPER EXAMPLE: make sure you follow this example, slicing a component across continuation fences:
 
-[ ] PROPER EXAMPLE: make sure you follow this example, an 8-line body block with end-of-line labels:
-
-> ```jsx
-> likes += 1;        // 1. optimistic override: increment **LOCALLY** immediately
-> await saveLike();  // 2. tell the server to **SAVE** the change
-> likes -= 1;        // 3. rollback: if the request failed, **REVERT** the override
+> ```jsx title="FeedbackPortal.jsx" startLine="1" continues="bottom"
+> export default function FeedbackPortal() {
+>   const [query, setQuery] = useState('');
+>   return (
+>     <div className="portal-container">
+>       <LiveSearchInput query={query} onChange={setQuery} />
 > ```
-
-Notes: each load-bearing line carries a short label, so the bubbles tell the three-step story while the prose around the snippet carries the explanation.
-
-## Continuations | 07 | Stitch sliced files with continuation attributes
-
-[ ] Mark the first slice of a continued file with `continues="bottom"` and `startLine="1"` plus the `title`, since it renders the full macOS window bar with dots and tab and a flat bottom edge.
-
-[ ] Mark every middle slice with `continues="both"` and `startLine="NN"`, since it renders flat top and bottom and resumes line numbering from `NN`.
-
-[ ] Mark the final slice with `continues="top"` and `startLine="NN"`, since it renders a flat top with a rounded bottom and seals the file cleanly.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, a file split into a top and a bottom slice:
-
-> ```jsx title="App.jsx" startLine="1" continues="bottom"
-> export default function App() {
->   const [items, setItems] = useState([]);
-> ```
-
-> ```jsx startLine="3" continues="top"
->   return <ItemList items={items} />;
+> 
+> *(prose deconstructing parent state and prop passing)*
+> 
+> ```jsx title="FeedbackPortal.jsx" startLine="6" continues="top"
+>       <ArticleCorrectionForm />
+>     </div>
+>   );
 > }
 > ```
 
-Notes: the first block owns the window chrome and the number 1, the second resumes at 3 with a flat top, and together they read as one file across the page break.
+Notes: The first block opens with `continues="bottom"`, and the closing block picks up at line 6 with `continues="top"`, stitching the file seamlessly.
 
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
+## File Continuations | 07 | Real Executable Code at Block Openers
 
-> ```jsx title="App.jsx"
-> export default function App() {
->   const [items, setItems] = useState([]);
-> ```
+[ ] Start every code block directly on its first line of real, executable code.
+[ ] Never begin a code block with a blank line or a decorative comment: `startLine` must count real code.
+[ ] Leading blank lines create empty numbered rows at the top of the editor window, degrading layout presentation in print.
 
-> ```jsx title="App.jsx"
->   return <ItemList items={items} />;
-> }
-> ```
+## Code Comments | 08 | Inline Comments and Speech Bubble Rendering
 
-Notes: two standalone windows each carry their own dots and tab and both restart at line 1, so the reader sees two disjoint files instead of one continued file.
+[ ] Attach code comments directly to the end of the line they annotate: `code; // annotation` or `command # annotation`. #2026_09_21_23_group_1
+[ ] The build compiler automatically extracts inline comments—supporting standard `//` in JavaScript/JSX, native `#` in Bash/Shell, and `<!--` in HTML—and transforms them into floating speech bubbles in the right-hand panel of the editor window. #2026_09_21_23_group_1
+[ ] Avoid placing comments on their own standalone lines above code unless writing a general block header: standalone comment lines take up full vertical rows and prevent speech bubble generation.
+[ ] The Algorithmic Comment Audit Gate: Protect the two-column editor layout. Leaving any narrative code block (≥3 lines, including Shell, JSON, HTML, and JSX) with zero comments produces a barren, unbalanced window and fails the audit. Every non-trivial code block must carry end-of-line comments on its load-bearing lines. Each comment must feature exactly one load-bearing term in uppercase bold (e.g. `// Compiles JSX on demand via **ESBUILD**` or `npm run dev # Launches local server on **PORT** 5173`). Banning comments in tagged summary right/wrong blocks does NOT mean stripping comments from narrative code windows. #2026_09_21_30_group_1 (refining #2026_09_21_17_group_1)
+[ ] Comments Must Follow the Content of the Text: Code comments must track the mind of the reader. What the surrounding text underlines, introduces, or discusses, the code comments must also underline on that exact line of code, using the same vocabulary. Never leave the primary concept discussed in the prose unannotated while placing comments only on secondary lines below it. #2026_09_21_13_group_1
 
-## Continuations | 08 | Let the sticky note continuation tab do its work
-
-[ ] Expect the compiler to render a sticky note continuation tab automatically when a continued block opens a new section heading, showing the filename and a `(continued)` tag, so the reader knows which file resumed.
-
-[ ] Expect only the first continued block in a new section to get the tab, since the compiler suppresses redundant tabs on subsequent continuation blocks within the same section while preserving continuous line numbers.
-
-[ ] Rely on this placement gate rather than hand-placing anything, since the tab's spacing, indentation, and clearance are computed by the builder.
-
-## Continuations | 09 | Start every code block on real code
-
-[ ] Begin each code block immediately on its first line of executable code, since a leading empty line wastes a numbered row and shifts `startLine` away from the code it should point at.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, code flush against the opener:
+[ ] PROPER EXAMPLE: make sure you follow this example, end-of-line comments driving speech bubbles:
 
 > ```jsx
-> const [query, setQuery] = useState('');
-> return <SearchBar query={query} onChange={setQuery} />;
+> const [query, setQuery] = useState(''); // Stores current search text
+> return <input value={query} onChange={setQuery} />; // Synchronizes input on keypress
 > ```
 
-Notes: row 1 is real code, the line numbering is honest, and the editor stays dense.
+Notes: Each comment sits at the end of its line, allowing the compiler to generate structured speech bubbles.
 
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
+## Code Comments | 09 | Syntax Safety and Bubble Formatting
+
+[ ] Write speech bubble comments using plain alphanumeric characters and minimal inline markdown.
+[ ] Avoid trailing commas, semicolons, or stray closing symbols inside comments that could disrupt parser tokenization.
+[ ] Never embed raw HTML tags inside comment strings.
+[ ] Keep comments concise: a speech bubble is a compact label designed for rapid scanning, not an explanatory paragraph.
+
+## Code Comments | 10 | The Single Load-Bearing Word in Uppercase Bold
+
+[ ] Emphasize the single load-bearing architectural term in each standard comment by formatting it in uppercase bold: `// Renders subscriber **NAME**` or `// Captures keypress in **STATE**`.
+[ ] Restrict bold uppercase formatting to exactly one keyword per comment. Bolding entire sentences eliminates visual contrast and defeats the purpose of the callout.
+
+[ ] PROPER EXAMPLE: make sure you follow this example, highlighting a single load-bearing keyword:
 
 > ```jsx
->
-> const [query, setQuery] = useState('');
-> return <SearchBar query={query} onChange={setQuery} />;
+> const [status, setStatus] = useState('idle'); // Tracks submission **STATUS**
 > ```
 
-Notes: the leading empty line renders as an empty numbered row 1, so every subsequent line number is off by one against the source.
+Notes: The single load-bearing concept is highlighted, making the role of the state variable immediately clear.
 
-## Comments | 10 | Attach every comment to its code line
+## Code Comments | 11 | Sequential Numbering in Multi-Step Snippets
 
-[ ] Write comments as end-of-line comments in the form `code; // annotation`, so each bubble hangs below the exact line it annotates and points its tail up at it.
+[ ] When a snippet demonstrates a multi-step execution pipeline, number the steps sequentially inside the comments: `// (1) ...`, `// (2) ...`, `// (3) ...`.
+[ ] Sequential numbering guides the reader's eye through the chronological execution path (for example, event trigger → state update → DOM reconciliation).
 
-[ ] Avoid comment-only lines inside code blocks, since a bubble beside an empty row leaves the reader unable to tell which line it belongs to, and the build's merge of a comment-only line into the next code line's bubble is a safety net that logs a note, not an authoring pattern.
-
-[ ] Put introductions to a block of code in the prose above the snippet, so the code block stays a set of line labels rather than a narration vehicle.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, the label riding its own line:
+[ ] PROPER EXAMPLE: make sure you follow this example, numbering sequential steps:
 
 > ```jsx
-> const el = <h1>Hello</h1>; // 1. React turns this markup into an **ELEMENT** object
+> const formData = new FormData(e.currentTarget); // (1) Harvest native input values
+> const title = formData.get('title');            // (2) Extract specific form field
+> setTitle(title);                                // (3) Synchronize into React state
 > ```
 
-Notes: the bubble sits directly under the element line with its tail pointing up, so the pairing is unambiguous on screen.
+Notes: Clearly labels the 3-step pipeline in chronological order.
 
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
+## Code Comments | 12 | Tag-Free Code Comments & The Verdict Tag Law #2026_09_21_18_group_1 (superseding #2026_09_21_15_group_1)
+
+[ ] Author all code comments in clean, natural English without uppercase category prefix tags.
+[ ] Ban all category tags across all code blocks: strictly drop `CODE LOGIC:`, `DATA FLOW:`, `CLIENT API:`, `COMPONENT:`, `DOM CONTAINER:`, `ROOT INITIALIZATION:`, `TREE PROJECTION:`, and similar classification labels. Speech bubbles exist to explain line mechanics to the reader, not to catalog bureaucratic taxonomies.
+[ ] The Broken Code & Trap Verdict Mandate: Whenever a line of code is flat-out WRONG (illegal syntax, fatal compiler crashes, reserved keyword collisions, unclosed tags, returning multiple root siblings, runtime exceptions, or illegal mutations), the comment MUST lead with the verdict tag `// **WRONG:** [consequence with uppercase bold **KEYWORD**]`. The reader requires an immediate, unequivocal verdict on broken code. #2026_09_21_30_group_1
+[ ] Problematic & Flawed Code Qualifiers (**SLOW:**, **FRAGILE:**, **LEAK:**): When code is syntactically valid and runnable but suffers from a specific architectural flaw or performance bottleneck that the text wants to flag, do NOT use `**WRONG:**`. The author should find a short uppercase qualifier naming the specific problem and prefix the comment with it: e.g. `// **SLOW:** 45s cold start compiling all **FILES** into memory`, `// **FRAGILE:** breaks silently if markup changes **ID**`, or `// **LEAK:** uncleaned subscription retains **MEMORY**`. #2026_09_21_30_group_1
+[ ] Standard Working Code: In Stage C assembly steps, idiomatic solutions, and pedagogical walkthroughs, author clean, tag-free comments with a single load-bearing term in uppercase bold (Section 10) or sequential numbering (Section 11). Never prefix standard code with `**RIGHT:**` when no wrong counterpart is being contrasted.
+[ ] Keep comments concise: a speech bubble is a compact label designed for rapid scanning, not an explanatory paragraph.
+
+[ ] PROPER EXAMPLE: make sure you follow this example, using clean natural comments without prefix tags:
 
 > ```jsx
-> // 1. the element is created through React
-> const el = <h1>Hello</h1>;
+> const [query, setQuery] = useState(''); // Holds search query for per-keystroke **SYNCHRONIZATION**
+> <LiveSearchInput query={query} onChange={setQuery} /> // Passes query downward and setter for **INVERSE FLOW**
 > ```
 
-Notes: the comment-only line renders as an annotation with no code beside it, and the next row is code with no annotation, so the reader cannot pair them.
+Notes: Comments explain the physical role in natural English with single bold keywords; zero category prefix tags.
 
-## Comments | 11 | Know the exact `//` comment rule
-
-[ ] Write comments as `//` followed by a space and the text, since the first `//` on a line that is followed by a space or the end of the line marks the comment start, and everything from there to the end of the line becomes the bubble text.
-
-[ ] Trust the protection for `//` inside URLs, since `'https://example.com'` and `file://` and `http://` are untouched by the comment rule because the `//` there is followed by characters, not a space.
-
-[ ] Expect a bare trailing `//` with no text to be dropped cleanly by the build, so no dangling arrow renders.
-
-[ ] Expect the first letter of a comment to be auto-capitalized in the bubble, and expect `**bold**` runs to render as tag-styled bold inside it.
-
-## Comments | 12 | Use the supported comment formatting only
-
-[ ] Use `**double asterisks**` for the key term inside a comment, since bold is the only inline formatting the highlighter supports there.
-
-[ ] Avoid inline code, links, and italics inside comments, since they are not parsed and would show as literal characters; reference an identifier as plain text, in caps if it is the load-bearing word.
-
-[ ] Use `//` per-line comments rather than `{/* */}` JSX comments or `/* ... */` block comments, since only the per-line `//` form produces the bubble styling and block comments render as plain code.
-
-[ ] Signal verdicts with words rather than glyphs, since the build strips checkmark and cross glyphs from comments on purpose; write `// **WRONG:** reads the prop once` instead.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, word verdicts and bold only:
+[ ] PROPER EXAMPLE (THE EXCEPTION): make sure you follow this example when labeling contrasting right vs wrong lines:
 
 > ```jsx
-> const [count, setCount] = useState(initialCount); // **WRONG:** copies the prop **ONCE** into local state
-> const double = useMemo(() => count * 2, [count]); // **RIGHT:** recomputes only when count changes
+> const title = props.headline; // **WRONG:** bypasses declared component contracts
+> const { headline } = props;  // **RIGHT:** unpacks declared prop explicitly
 > ```
 
-Notes: both bubbles carry a leading verdict word and one caps load-bearing term, and nothing inside them relies on unsupported formatting.
+Notes: The `**WRONG:**` and `**RIGHT:**` tags are permitted here because the block explicitly contrasts an anti-pattern against the correct pattern.
 
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
+[ ] COUNTER-EXAMPLE: do not follow this bad example, stuffing bureaucratic uppercase category tags into comments:
 
 > ```jsx
-> const [count, setCount] = useState(initialCount); // ✔️ copies the prop `once` into [local state](https://react.dev)
+> const [query, setQuery] = useState(''); // **CODE LOGIC:**<br>Holds search query locally
+> <LiveSearchInput query={query} onChange={setQuery} /> // **DATA FLOW:**<br>Passes state downward
 > ```
 
-Notes: the glyph is stripped by the build, the inline code backticks and the link render as literal characters, so the bubble arrives mangled.
+Notes: Clutters speech bubbles with redundant classification tags instead of natural explanation.
 
-## Comments | 13 | Keep each comment a short label
+## Right & Wrong Blocks | 13 | Anti-Pattern Window Tags and Directive Headers
 
-[ ] Keep a comment to a verdict word, a step number, or a one-phrase gloss plus one caps load-bearing word, since the bubble is a label for the line, and explanations of the line belong in the prose around the snippet.
+[ ] Author right and wrong anti-pattern comparisons using the `right` or `wrong` window tag on the opening fence: ` ```jsx right ` or ` ```jsx wrong `.
+[ ] The compiler renders the `right` tag with an emerald checkmark side panel and the `wrong` tag with a rose cross side panel.
+[ ] Place a flush-left directive header in bold directly above the code fence:
+    * `**DO THIS:** [concise instruction in normal weight]`
+    * `**DO NOT DO THIS:** [concise instruction in normal weight]`
+[ ] Keep the code inside tagged `right` and `wrong` blocks completely free of internal comments: the instruction lives in the directive header above the block (`**DO THIS:**` / `**DO NOT DO THIS:**`), and internal comments create visual clutter. This comment ban applies strictly and exclusively to blocks carrying the `right` or `wrong` fence tag.
+[ ] Restrict tagged `right` and `wrong` blocks to closing `### Summary` sections. All narrative macOS editor windows in the main body (such as `title="Naive Pattern"` or `title="Historical Pattern"` in Section 1) are standard code blocks, not tagged comparison fences, and must include inline speech bubble comments to highlight friction points. #2026_09_21_17_group_1
 
-[ ] Shorten a comment whose wrapped bubble looks awkward, since the bubble wraps internally by itself in the build and the code block is not the place for paragraphs.
+[ ] PROPER EXAMPLE: make sure you follow this example, clean directive header with tagged fence:
 
-[ ] Delete a comment that is not pedagogically necessary, since every comment always renders and none are collapsible; aim for no comment kept merely for completeness.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, a one-phrase label:
-
-> ```jsx
-> const { title } = props; // **WRONG:** reads the prop once, never follows updates
-> ```
-
-Notes: the comment names the exact consequence beside the offending line in one short sentence, and the prose carries the deeper explanation.
-
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
-
-> ```jsx
-> const { title } = props; // destructuring copies the value out of the props object at the moment this line runs, which means that later updates to the prop in the parent will not be reflected here because the snapshot was taken once, and this is a common trap in components that receive changing values from a server fetch that resolves after mount
-> ```
-
-Notes: the comment is a paragraph, so the bubble wraps into a tall awkward block and buries the line it labels; the material belongs in prose.
-
-## Comments | 14 | Mark the single load-bearing word in caps bold
-
-[ ] Wrap the one keyword that carries the lesson in `**CAPS**`, since the highlighter renders it as bold in a darker grey, and the reader takes that word away from the line.
-
-[ ] Use one caps word per comment, occasionally two, since a whole sentence in caps carries no emphasis at all.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, the takeaway word carrying the line:
-
-> ```jsx
-> const b = useState(value); // **RIGHT:** changes schedule a **RE-RENDER**, reads live
-> ```
-
-Notes: the word RE-RENDER is the lesson of the line and it lands in caps bold inside the bubble.
-
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
-
-> ```jsx
-> const b = useState(value); // CHANGES SCHEDULE A RE-RENDER AND READS LIVE FOREVER
-> ```
-
-Notes: every word is caps, no word is bold, and the takeaway drowns in shouting.
-
-## Comments | 15 | Reserve verdict prefixes for real contrasts
-
-[ ] Start a comment with `**RIGHT:**` or `**WRONG:**` only when the line stands in an active comparison with a bug, an anti-pattern, or a paired right/wrong contrast, since labeling everyday code as RIGHT when no wrong counterpart exists adds noise.
-
-[ ] Author standard non-comparative lines with a direct insightful annotation instead, keeping the single caps load-bearing keyword in bold without an artificial verdict label.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, a direct annotation on a neutral line:
-
-> ```jsx
-> const [status, setStatus] = useState('idle'); // submission status kept in **LOCAL** state
-> ```
-
-Notes: no wrong pattern is being contrasted, so the comment teaches directly and the caps word LOCAL carries the line.
-
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
-
-> ```jsx
-> const [status, setStatus] = useState('idle'); // **RIGHT:** submission status kept in LOCAL state
-> ```
-
-Notes: there is no wrong counterpart anywhere near this line, so the RIGHT verdict answers a question nobody asked and dilutes real verdicts elsewhere.
-
-## Comments | 16 | Number the steps inside a sequence snippet
-
-[ ] Prefix each comment with its step number when a code block shows a sequence of operations, since the numbers survive into the rendered bubbles and give the reader a clear path through the snippet.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, three aligned numbered labels:
-
-> ```jsx
-> likes += 1;        // 1. optimistic override: increment **LOCALLY** immediately
-> await saveLike();  // 2. tell the server to **SAVE** the change
-> likes -= 1;        // 3. rollback: if the request failed, **REVERT** the override
-> ```
-
-Notes: the reader's eye tracks down the three bubbles and reads the story in order, with the caps words anchoring each step.
-
-## Comments | 17 | Place comments sensibly on very wide lines
-
-[ ] Place the comment on its own line inside the block, on the very next line, only when the code line itself is exceptionally wide and a trailing comment would hit the right edge of the editor and wrap into two rows, breaking the parallel visual layout.
-
-[ ] Treat this as the single exception to end-of-line placement, since it exists to protect the reader's row alignment, not to reopen comment-only lines as a habit.
-
-## Highlighter | 18 | Know the token classes the builder computes
-
-[ ] Expect JavaScript keywords such as `const`, `return`, `function`, `await`, `import`, and `export` to render in the deep magenta keyword class.
-
-[ ] Expect an identifier followed by `(` to render in the teal function class, so `createRoot()`, `map(`, and `console.log(` get the function color.
-
-[ ] Expect number literals such as `0` and `3.14` to render in the magenta number-literal class.
-
-[ ] Expect string literals in double, single, or template quotes to render in the green string class, including the `'use client'` and `'use server'` directives, which are strings and render green.
-
-[ ] Expect every `useXxx` identifier, built-in or custom by naming convention, to render in the orange React hook class, covering `useState`, `useMemo`, `useActionState`, `useFormStatus`, and a custom `useCart` alike.
-
-[ ] Expect plain identifiers such as variable names, property accesses, and component names to render in the default ink color with no span, since a component name used as JSX rather than a call is an identifier, not a function token.
-
-[ ] Treat these classes as builder output rather than author input, so the author writes plain code and lets the colors derive from the source.
-
-## Highlighter | 19 | Stay within the supported languages
-
-[ ] Use `jsx`, `js`, `tsx`, `ts`, `javascript`, or `typescript` for all lecture code, since they share the same JS/JSX highlighter and there is no language-specific branching.
-
-[ ] Extend the highlighter in `src/build-lectures.mjs` with a new tokenizer branch keyed on the code block language when CSS, HTML, or shell material genuinely needs different tokenization, rather than forcing it through the JS tokenizer.
-
-## Highlighter | 20 | Respect the known limitations
-
-[ ] Expect a template literal such as `` `Hello ${name}` `` to be treated as one string token, with the interpolation not separately highlighted, so document a long template literal in prose when the interpolated part matters.
-
-[ ] Avoid regex literals containing `//` in lecture code, since the followed-by-space-or-end-of-line rule protects most cases but a regex like `/foo//bar/` mis-tokenizes.
-
-[ ] Avoid multi-line `/* ... */` block comments, since they render as plain code with no bubble styling and break the bubble aesthetic of the design system.
-
-[ ] Keep the editor treatment expectations to lecture code blocks only, since the card pipeline uses a minimal `<pre><code>` style defined in the card CSS and does not share this highlighting (see the ui-panels skill).
-
-## Right and Wrong | 21 | Mark right and wrong blocks with the window tag
-
-[ ] Add `right` or `wrong` directly to the code block language tag, as in ` ```jsx right ` or ` ```jsx wrong `, so the builder generates the side-panel SVG indicator, an emerald checkmark or a rose cross.
-
-[ ] Keep the code inside these blocks free of comments, since the instruction lives on the line above and duplicate verdicts inside the block clutter the panel.
-
-[ ] Restrict this format to closing `### Summary` blocks and direct in-body anti-pattern comparisons where a broken or legacy approach is contrasted with a modern React 19 pattern, since scaffolding commands, documentation placeholders, CLI flags, and standard setup steps are not verdicts.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, the directive above and the tag on the window:
-
-> **DO THIS:** read the input value through state on every render
+> **DO THIS:** read input values through component state on every render
 >
 > ```jsx right
 > const [title, setTitle] = useState('');
 > return <input value={title} onChange={(e) => setTitle(e.target.value)} />;
 > ```
 
-Notes: the bold uppercase directive sits flush-left on the line directly above the block, the `right` tag generates the emerald indicator, and the code itself carries no comments.
+Notes: Bold directive header placed above the code block, `right` tag applied to fence, and zero internal comments.
 
 [ ] COUNTER-EXAMPLE: do not follow this bad example:
 
@@ -455,37 +283,36 @@ Notes: the bold uppercase directive sits flush-left on the line directly above t
 > return <input defaultValue={title} />;
 > ```
 
-Notes: the directive is missing above the block, the verdict is duplicated as comments inside the code where comments are banned, and the bold instruction line the format requires never appears.
+Notes: Missing the external directive header, and duplicates instructions as internal comments where comments are banned.
 
-## Assembly Annotations | 22 | The CODE LOGIC and DATA FLOW tags #2026_09_20_04_group_6
+## Callout Code Windows | 14 | Inset Display Code Blocks in Alert Cards #2026_09_22_10_group_1
 
-[ ] Annotate the load-bearing lines of the practical example's assembly fences with one of the two structured tags: `// **CODE LOGIC:**<br>` for what the line does mechanically, and `// **DATA FLOW:**<br>` for which direction data moves and where it lands, so each bubble names the line's job in the architecture.
-[ ] Treat these tags as the sanctioned exception to the short-label comment rule (Comments 13): inside the practical example fences the tag plus one clause is allowed, and everywhere else the short-label rule holds unchanged.
-[ ] Write the payload after the `<br>` as one clause, not a paragraph: a single statement of mechanism or movement, with the load-bearing words in bold, since the bubble still wraps internally and the fence is still not the place for prose.
-[ ] Choose between the two tags by the line's job: CODE LOGIC annotates what the line computes, locks, or manages, while DATA FLOW annotates what crosses a boundary and in which direction; never stack both tags on one line.
-[ ] Keep every other fence (comparisons, summaries, definitions, scaffolding) on the short-label rule, since the structured tags exist to carry the top-down architecture story of the guided build, not to decorate every block.
+[ ] When illustrating syntax transformations, compiler AST outputs, or input/output pairings inside alert callouts (`[!WILD]`, `[!TIP]`, `[!NOTE]`), author code snippets as dedicated display blocks using backticks. #2026_09_22_10_group_1
+[ ] Never embed multi-word statements, JSX elements, or transpiled function calls into running callout text as inline pills: wide inline pills cause horizontal text overflow in print and force unreadable mid-sentence wrapping. #2026_09_22_10_group_1
+[ ] Separate the input code and output transpilation onto their own lines with distinct introductory lead-ins ("When nesting elements in JSX:" and "The compiler translates inner tags into a children prop:"). #2026_09_22_10_group_1
+[ ] Format structured JSX and nested function calls across multiple indented lines so the AST hierarchy and prop mappings are immediately clear. #2026_09_22_10_group_1
+[ ] Code blocks inside callouts render with a clean 1px perimeter and light drop shadow on a pure white surface, strictly omitting heavy left accent stripes to prevent competing double-border visual collisions with the host panel. #2026_09_22_10_group_1
 
-[ ] PROPER EXAMPLE: make sure you follow this example, both tags on the lines that earn them, from Lecture 40 Step 1:
+[ ] PROPER EXAMPLE: make sure you follow this example, formatted code blocks inside a callout card:
 
-> ```jsx
-> const [query, setQuery] = useState(''); // **CODE LOGIC:**<br>Holds search state locally because filtering requires per-keystroke sync
-> <LiveSearchInput query={query} onChange={setQuery} /> // **DATA FLOW:**<br>Passes state downward and setter callback for inverse flow
+> ```markdown
+> > [!WILD]
+> > **How does JSX compile nested children under the hood?**
+> >
+> > When nesting elements in JSX:
+> > `<ArticleBox>
+> >   <Headline title="Breaking" />
+> > </ArticleBox>`
+> >
+> > The JSX compiler converts the inner tag directly into a prop named `children`:
+> > `_jsx(ArticleBox, {
+> >   children: _jsx(Headline, {
+> >     title: "Breaking"
+> >   })
+> > })`
+> >
+> > If you pass multiple sibling elements, `props.children` becomes an array of React elements. The `children` prop is not magic; it is simply a standard JavaScript object property populated automatically by the JSX parser whenever tags enclose content.
 > ```
 
-Notes: the state line gets CODE LOGIC because it computes and manages, the mounting line gets DATA FLOW because it moves state and the setter across the parent-child boundary, and each payload is one clause.
+Notes: Indented multi-line snippets deconstruct the compiler AST cleanly without overflowing the card container. #2026_09_22_10_group_1
 
-[ ] HALF WAY EXAMPLE: do not follow this example, the right tag carrying a paragraph:
-
-> ```jsx
-> const contributor = formData.get('contributor'); // **CODE LOGIC:**<br>Reads the contributor name from the native buffer that the browser maintains, which was populated while the user typed, and this happens with zero re-renders because React never runs during typing
-> ```
-
-Notes: the tag is right but the payload is a paragraph, so the bubble wraps tall and buries the line; the shipped standard keeps it to one clause (Reads contributor name from native buffer with zero re-renders).
-
-[ ] COUNTER-EXAMPLE: do not follow this bad example, the vague untagged label:
-
-> ```jsx
-> <ArticleCorrectionForm /> // sets up the form stuff
-> ```
-
-Notes: no tag, no mechanism, no direction; the reader learns nothing about the zero-props decision the line makes, where the shipped standard reads `// **DATA FLOW:**<br>Mounted with zero props; manages its own submission lifecycle`.

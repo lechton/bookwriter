@@ -1,302 +1,138 @@
 ---
 name: lecture-revision
-description: Governs the revision and polishing of completed production lectures; transforms mechanical code narration, line-by-line syntax audits, and directive-heavy prose into effortless, B2 tired-reader friendly explanations using the 3-Beat Relay and Zero Syntax Smuggling, while preserving all figures, code comments, and architectural invariants.
+description: Governs the pedagogical revision and publishing of completed production lectures into effortless, accessible explanations for junior developers; establishes density breakdown, conversational bridging, explicit relationship definitions (is vs is not), bolded terminology, and the revision build pipeline into 02-01-md-revised, 02-02-md-revised-html, and 02-03-md-revised-pdf.
 ---
 
 # Lecture Revision
 
-This skill governs how an existing, completed lecture (`md-lectures/{nn}.md`) and its accompanying figures are revised. It serves as a dedicated refining pass: taking prose that is technically complete and mechanically accurate, and transforming it into clear, effortless, human-friendly reading for a tired developer with a mild headache. #2026_09_20_14_group_1
+This skill governs the complete pedagogical revision of production lectures. It takes technically accurate lectures (`01-02-md-LECTURES/{NN}.md`) and rewrites them into crystal-clear, accessible lessons for junior developers, publishing the revised material to the revision directories (`02-01-md-revised/{NN}.md`, `02-02-md-revised-html/{NN}.html`, and `02-03-md-revised-pdf/{NN}.pdf`).
 
-Digests: skills/lecture-voice/SKILL.md (principles 27, 29, 30), skills/code-blocks/SKILL.md, skills/figures/SKILL.md
+The core standard: **retain the exact same technical depth (no shallower, no deeper)**, but eliminate academic opacity so that a developer with zero prior knowledge can understand the physical cause-and-effect mechanics on their screen.
 
-## Revision Workflow | 00 | The One-by-One Revision & Build Pipeline (MD ➔ PDF ➔ Verify ➔ Next) #2026_09_20_22_group_1
+Digests: `skills/lecture-voice/SKILL.md`, `skills/lecture-structure/SKILL.md`, `skills/code-blocks/SKILL.md`, `skills/ui-panels/SKILL.md`, `skills/figures/SKILL.md`, and `skills/build/SKILL.md`.
 
-[ ] When revising a sequence of lectures, strictly execute in a single-lecture cycle:
-    1. **Revise Markdown**: Author or edit `md-lectures-revised/{N}.md` for Lecture N.
-    2. **Build Immediate PDF**: Compile immediately (`node src/build-lectures.mjs`) to produce `md-lectures-revised-pdf/{N}.pdf`.
-    3. **Verify Gate & Layout**: Inspect the build output and PDF (zero Prince warnings, no mid-word hyphenations, no code overflow, 8-gate compliance).
-    4. **Advance to Next**: Only after Lecture N's PDF is fully verified and clean, proceed to Lecture N+1.
-[ ] Strictly ban batch-authoring all Markdown files before building PDFs: never author `01.md`, `02.md`, `03.md`, `04.md`, `05.md` in bulk and delay PDF generation until the end.
-[ ] Why? Batching conceals layout defects, compounds bad patterns across files, and delays feedback. The single-lecture loop ensures each lecture is perfected before the next begins.
+## Core Mission | 01 | Equal Technical Depth with Maximum Clarity #2026_09_21_22_group_1
 
-[ ] COUNTER-EXAMPLE: do not follow this delayed-batch workflow:
+[ ] Retain the EXACT same technical depth as the original lecture: never dumb down the material, never remove architectural edge cases, and never gloss over browser engine internals.
+[ ] Simplify the delivery, phrasing, and cognitive scaffolding, never the underlying engineering substance. The goal is to make advanced concepts immediately understandable to a junior developer while remaining rigorous enough to pass demanding technical interviews.
+[ ] Treat clarity as the single north star: if a technical mechanism requires three calm, stepped sentences instead of one dense, packed sentence, unpack it without hesitation.
+[ ] Maintain complete parity across all technical invariants: component trees, prop drilling, unidirectional data flow, reconciliation diffing, browser layout reflows/repaints, input focus preservation, and compiler rules.
 
-> Revise `01.md`, `02.md`, `03.md`, `04.md`, and `05.md` in one continuous authoring pass. After all 5 Markdown files are written, run `node src/build-lectures.mjs` to build all PDFs at once.
+## Narrative Flow | 02 | Density Breakdown and Thought Unbundling #2026_09_21_22_group_1
 
-Notes: It fails because any recurring defect (such as the 23-word sentence or repetitive Socratic vignette) gets stamped into all 5 files before the first PDF is ever inspected, multiplying the cleanup cost.
+[ ] Break down dense, academic paragraph blocks into unhurried, digestible steps.
+[ ] Abolish strict 1:1 paragraph mapping: feel completely free to split, combine, synthesize, or expand ideas whenever doing so increases pedagogical clarity.
+[ ] Give every abstract technical mechanism room to breathe: stage the concrete problem first, introduce the mechanism second, explain the physical browser/engine consequence third, and state the developer takeaway fourth.
+[ ] Avoid compressing multiple independent concepts into a single clause-heavy paragraph. Present one distinct idea at a time so the reader never experiences cognitive overload.
 
-[ ] PROPER EXAMPLE: make sure you follow the single-lecture cycle:
+[ ] COUNTER-EXAMPLE: do not write dense, academic paragraphs that pack four separate abstractions together:
 
-> 1. Revise `04.md`.
-> 2. Run `node src/build-lectures.mjs` to build `04.pdf`.
-> 3. Verify zero warnings, check sentence length, inspect page layout.
-> 4. Once `04.pdf` passes 100%, proceed to revise `05.md` and repeat the loop.
+> In standard web development, the browser engine creates the document tree directly from native HTML tags. When you load an HTML page, the browser parses elements like <header>, <main>, and <p> into living nodes inside the physical DOM. But in React, your code is written as component functions inside JavaScript files. A component function returns a tree of lightweight virtual descriptors called React elements, created via JSX. By itself, a JavaScript function sitting in App.jsx has zero connection to the browser document. It does not manipulate DOM nodes, it does not attach to <body>, and it cannot paint pixels on the screen without an explicit mounting engine.
 
-Notes: Instant feedback. Every lecture is verified in print before the next one starts.
+Notes: dense, academic, and breathless. It forces the reader to mentally unpack native parsing, C++ DOM trees, JSX compilation, virtual element descriptors, and mounting engines all within a single block of text without transitions.
 
-## Core Principles | 01 | The Division of Labor #2026_09_20_14_group_1
+[ ] PROPER EXAMPLE: break down the density into unhurried, accessible, step-by-step paragraphs:
 
-[ ] Treat code blocks, right-hand comments, and prose as three distinct instruments with zero redundant overlap:
-[ ] Let the code block show the exact syntax and runnable structure.
-[ ] Let the right-hand comments (`// **DATA FLOW:**`, `// **ACTION:**`, `// **CODE LOGIC:**`) handle line-level execution mechanics and prop roles.
-[ ] Let the prose explain the mental model, the cause-and-effect relationship, and the architectural stakes; never re-read or narrate lines of code that the reader can already see in the window above.
-[ ] Cut any paragraph whose only purpose is reciting what line 3, line 6, or line 9 contains.
-
-## Core Principles | 02 | Zero Syntax Smuggling in Prose #2026_09_20_14_group_1
-
-[ ] Restrict inline code backticks in running prose strictly to single identifiers, props, and function names (such as `headline`, `setHeadline`, `onUpdateHeadline`, or `onClick`).
-[ ] Strictly ban embedding full multi-token statements, variable declarations, or JSX tags inside running sentences (such as `const [x, setX] = useState(...)`, `<HeadlineViewer headline={headline} onUpdateHeadline={setHeadline} />`, or `onClick={() => onUpdateHeadline('...')}`).
-[ ] Protect typography and reading flow: long inline code spans cause awkward hyphenations, broken lines in print, and syntax collisions in the reader's working memory; keep all multi-token code inside code fences or scannable bullet points.
-
-## Core Principles | 03 | Banning Eyeball Ping-Pong and Directive Clutter #2026_09_20_14_group_1
-
-[ ] Strictly eliminate relentless imperative tour-guide directives that whip the reader's eyes back and forth across the page ("Notice the function parameters...", "Look at the button click handler on line 6...", "Where does X come from? Look back at Step 1...").
-[ ] Replace line-number directives with natural cause-and-effect narrative: describe what the user does on screen, what the component does, and what changes in the system.
-[ ] When an address is truly required, state the action first and the address second, so the reader processes the concept before checking the line.
-
-## Core Principles | 03B | The One-Thought Sentence Standard (Banning Clause Chaining) #2026_09_20_21_group_1
-
-[ ] Cap individual sentences at 20 words and ban clause chaining:
-    - Express exactly one main idea per sentence.
-    - Avoid chaining contrast clauses, participial phrases, and subordinate clauses into breathless run-ons (*"Instead of X, it does Y, adhering to Z while mapping to W"*).
-    - When an explanation combines a contrast, a reason, and a consequence, break them into separate, active sentences of 7 to 15 words so each thought lands before the next begins.
-
-[ ] COUNTER-EXAMPLE: do not chain multiple clauses into a single sentence:
-
-> Instead of the reserved JavaScript keyword `class`, it assigns `className`, adhering strictly to JSX naming conventions while mapping directly to the DOM property.
-
-Notes: 23 words across four chained clauses (a contrast, a main action, a participial phrase, and a subordinate clause). In print, this causes mid-word hyphenations ("el-ement", "con-ventions") and forces the tired reader to hold three distinct thoughts in memory before reaching a period.
-
-[ ] PROPER EXAMPLE: make sure you break chained thoughts into single-idea sentences:
-
-> Notice the attribute: it uses `className` instead of `class`. In JavaScript, `class` is a reserved keyword. React uses `className` to avoid that conflict and map directly to the browser's native DOM property.
-
-Notes: Three short, active sentences (7, 7, and 15 words). The contrast lands first, the reason lands second, and the engine consequence lands third. Zero hyphenations, zero breathlessness, effortless to read.
-
-## Core Principles | 04 | The "Why Not the Obvious Way?" Pattern (The Socratic Anticipation Law) #2026_09_20_17_group_1
-
-[ ] Never explain unfamiliar or seemingly redundant syntax (such as Fragments, double curlies, or unquoted attributes) with passive, academic descriptions of layout geometry.
-[ ] Voice the exact skeptical question the developer is silently asking at that moment:
-    - *"Why not wrap them in a `<div>` instead?"*
-    - *"Why not just put quotes around the variable?"*
-    - *"Why can't the child just call `document.getElementById` directly?"*
-[ ] Structure the explanation in the 4-Beat Socratic Arc:
-    1. **Beat 1: The Choice** — State what the component returned or did (`Notice what ArticlePreview returns: a Fragment <>...</>`).
-    2. **Beat 2: The Skeptic's Question** — Ask why the intuitive/familiar alternative wasn't used (*Why not wrap them in a `<div>` instead?*).
-    3. **Beat 3: The Mechanical Reality** — State what the chosen syntax physically produces in the DOM without fluff (*With the Fragment, the two elements become direct siblings in the DOM, without adding an extra `<div>` that could break CSS rules*).
-    4. **Beat 4: The "Imagine If" Disaster and Relief** — Put the developer in the broken scenario, then show the relief (*Imagine if the parent page used CSS Grid or Flexbox: an extra `<div>` would break your layout. Now both elements align directly to your layout tracks without an extra container breaking your styles*).
-[ ] Never repeat the same idiosyncratic explanation, metaphor, or specific failure scenario across steps in the same lecture: #2026_09_20_19_group_1
-    - Although it is pedagogically necessary to reinforce core concepts across multiple places, an idiosyncratic explanation (such as a specific "Imagine if" broken layout scenario) must never be repeated across steps.
-    - Make sure each part of the text offers a unique angle and advances the reader's understanding rather than echoing an earlier explanation.
-    - If Step 1 already explained why a syntax choice was made, Step 4 must not repeat that explanation or its failure scenario; Step 4 simply concludes the assembly and explores outward integration.
-
-[ ] COUNTER-EXAMPLE: do not follow this passive, academic description:
-
-> When mounted inside an outer CSS Grid or Flexbox container, these child elements participate directly in layout calculations without an intermediate wrapper div intercepting column or row rules.
-
-Notes: Passive, robotic, and abstract. It sounds like a geometry textbook. It fails to voice the reader's natural question (*"Why not just use a div?"*) and forces them to mentally parse "participate directly in layout calculations."
-
-[ ] PROPER EXAMPLE: make sure you follow this Socratic, conversational breakdown:
-
-> Notice what the component `ArticlePreview` returns: a Fragment (`<>...</>`). Why not wrap them in a `<div>` element instead?
+> In traditional web development, a browser's **rendering engine** reads an HTML document. The browser directly translates native tags (such as `<header>` or `<p>`) into living nodes within the physical **Document Object Model (DOM)**. So the tags `<header>` and `<p>` and the DOM tree are not the same thing. The browser takes the html tags and builds the DOM, which operates as a UI (User Interface) that the user interacts with.
 > 
-> With the Fragment, the two elements we added (the `<h2>` heading and the `<p>` excerpt) become direct siblings in the DOM, without adding an extra `<div>` element that could break CSS rules. 
+> Instead of writing HTML files, React developers write JavaScript component functions that return JSX, a syntax that compiles down into "React elements" (components). These are lightweight JavaScript objects acting as virtual blueprints of the desired UI. These React components are JavaScript data structures, they sit altogether within one main component, the App.jsx.
 > 
-> Imagine if the parent page used CSS Grid or Flexbox: an extra `<div>` element would break your layout. Now both elements align directly to your layout tracks without an extra container breaking your styles.
+> On its own, the App.jsx that we create is powerless. It cannot manipulate physical nodes in the DOM, it cannot attach itself to the document `<body>`, and it cannot paint pixels on the screen. To bridge this gap (between the JSX data and the browser), React relies on a **mounting engine** (such as ReactDOM). So we have two things: the files that we create (jsx format), and the mounting engine (ReactDOM) that will mount these files to the browser. We use the mounting engine to read a **virtual element tree** and systematically execute the native DOM commands required to construct and render the actual interface.
 
-Notes: Conversational and alive. It enters the reader's mind, asks the exact question they were thinking, contrasts the DOM reality, paints the visceral CSS failure, and delivers the relief.
+Notes: Breaks the dense block into three focused movements: (1) native HTML tags vs living DOM nodes, (2) component functions returning virtual blueprints, (3) the mounting engine bridging JavaScript memory to the browser screen.
 
-## Core Principles | 04B | The Pre-Example Mechanism Bridge (Auditing the Missing Introduction) #2026_09_20_24_group_1
+## Concept Introduction | 03 | Lexical Bolding of Core Terminology #2026_09_21_22_group_1
 
-[ ] During revision, audit the transition between high-level problem motivation and `### Let's Design a Practical Example...`. If the lecture jumps directly into code assembly without introducing the core React primitive, author and insert the missing conceptual section.
-[ ] Ensure this section is **dedicated to this particular lecture's topic** (e.g., `### Components as Reusable Blueprints` for Lecture 1, `### The Component Tree as a Living Hierarchy` for Lecture 2, `### Fragments as Invisible Containers` for Lecture 4, `### The JSX Evaluation Window` for Lecture 5).
-[ ] In 3 to 4 natural paragraphs, cover:
-    - What limitation in plain HTML/JS does this specific feature solve?
-    - What is the React mechanism, and how does it work under the hood?
-    - What is the non-negotiable rule or syntax trap dedicated to this topic (such as Capitalization for components, single-root return for Fragments, or expression-only rules for curlies)?
-    - Which files in our practical scenario will demonstrate it?
+[ ] Emphasize key terms using **bold text** upon their first formal introduction in prose (for example: **rendering engine**, **Document Object Model (DOM)**, **imperative DOM scripting**, **declarative UI**, **state drift**, **mounting engine**, **component**, **props**, **evaluation window**, **unidirectional data flow**, **reflow**, **repaint**, **virtual DOM**, **reconciliation**).
+[ ] Bold the term at the exact moment it is explained and grounded in physical behavior, not as an afterthought or mere decorative styling.
+[ ] Avoid bolding everyday conversational vocabulary, file names, or routine code identifiers; reserve bold styling for load-bearing architectural concepts and framework mechanisms.
 
-[ ] PROPER EXAMPLE: follow this natural, grounded bridge from Lecture 1:
+## Conversational Bridging | 04 | Plain-English Conversational Transitions #2026_09_21_22_group_1
 
-> ### Components as Reusable Blueprints
-> 
-> In plain HTML, you structure documents using native tags like the `<header>`, `<article>`, and `<button>` elements. 
-> 
-> However, native HTML tags know nothing about your application logic or subscriber data. Traditionally, developers had to copy and paste HTML markup across separate templates. Then, they attached external JavaScript scripts to add interactive behavior. This separation split structure from logic, creating fragmented and fragile codebases.
-> 
-> To solve this fragmentation, React unifies markup, style, and logic into a single cohesive structure. This mechanism is called a **component**. A component is a self-contained, reusable JavaScript function. It accepts input data called **props** and returns markup describing a piece of the user interface.
-> 
-> In React, every component function name must start with a capital letter. **Capitalization** is a strict compiler requirement. It tells React that `<SiteHeader />` is your custom component, while `<header>` is a built-in browser DOM tag. Components can be **nested** inside one another. This allows you to assemble complex pages out of small, focused building blocks.
-> 
-> To see this in action on The National Times, we organize our site header into three distinct files:
-> 1. The **parent component** `SiteHeader.jsx` acts as the orchestrating container.
-> 2. The **child component** `ReaderGreeting.jsx` renders the personalized welcome message.
-> 3. The **child component** `SubscriberInfo.jsx` displays the subscriber tier details.
-> 
-> Both child components receive the subscriber's name through the prop `readerName` passed directly from their parent.
+[ ] Connect abstract technical data to practical reality using plain-English transitional phrases (such as "So we have two things...", "To bridge this gap...", "What does this mean in day-to-day coding?", "Notice the profound difference:...", "So let us be very clear about...").
+[ ] Use natural rhetorical bridges that enter the student's mind, acknowledging what might feel unfamiliar or surprising before moving forward.
+[ ] Replace stiff, academic connectors (such as "consequently", "hitherto", "furthermore", "it is imperative to note") with clear conversational signposts that guide the developer smoothly from one thought to the next.
 
-Notes: Natural, grounded, and unstiff. It teaches the specific mechanism dedicated to Lecture 1 (components, capitalization, props, nesting) and smoothly sets up the three files before Stage A begins.
+## Conceptual Boundaries | 05 | Defining Relationships (What Things Are vs. What They Are Not) #2026_09_21_22_group_1
 
-## Core Principles | 05 | The 3-Beat Relay Pattern (Upward Wire and Data Flow) #2026_09_20_14_group_1
+[ ] Explicitly define relationships by clarifying what entities *are* and what they are *not*. Junior developers frequently conflate related but distinct tools and layers; prevent confusion by establishing sharp conceptual boundaries:
+    * **HTML Tags vs. DOM Nodes**: Static tags written in an HTML file and dynamic living nodes in browser C++ memory are *not* the same thing. The browser parses text tags to build the DOM tree.
+    * **Components vs. DOM Elements**: A React component is a JavaScript function acting as a blueprint; it is *not* a browser DOM element and cannot touch pixels directly.
+    * **Virtual DOM vs. Physical DOM**: The virtual DOM is a tree of plain, lightweight JavaScript objects in memory; it is *not* a C++ browser tree and does not trigger browser reflows.
+    * **Props vs. State**: Props are immutable inputs passed downward from a parent; they are *not* local variables that a child can reassign or mutate.
+    * **Imperative vs. Declarative**: Imperative is giving turn-by-turn driving directions where missing one turn breaks the route; declarative is entering your destination into a GPS navigation system.
+[ ] Follow the "Is / Is Not" formula whenever introducing a framework abstraction: state what it physically is in JavaScript memory, and explicitly state what browser layer it does *not* touch.
 
-[ ] Whenever explaining callbacks, props crossing component boundaries, or inverse data flow, replace dense multi-paragraph cross-references with a clean, scannable 3-beat relay.
-[ ] Structure the relay in three explicit, ordered beats:
-    1. **Beat 1: The Parent owns the truth** — Name the component where state is born and the exact setter that controls it.
-    2. **Beat 2: The Parent shares the trigger** — Name the prop that carries the updater down to the child.
-    3. **Beat 3: The Child pulls the cord** — Describe the user action in the child, the callback execution, and the immediate state update back in the parent.
-[ ] Close the relay by naming the standard architectural term (**inverse data flow**) in bold, showing that data flows down through props and user actions flow up through callbacks.
+## Formatting & Constraints | 06 | Markdown Hygiene, No Hard-Wrapping, and Code Ceilings #2026_09_21_22_group_1
 
-[ ] COUNTER-EXAMPLE: do not follow this bad example (mechanical checklist overfitting, syntax smuggling, eyeball ping-pong, and triple redundancy):
+[ ] Strictly enforce the repository-wide **Never Hard-Wrap** rule: author every paragraph, list item, blockquote line, and table row as a single continuous line without manual line breaks inside the paragraph.
+[ ] Strictly ban em-dashes (`—`): PrinceXML and synthetic TTS engines stumble on em-dashes. Use colons, parentheses, commas, or separate short sentences instead.
+[ ] Enforce the 10-line ceiling on all body code blocks: no code fence in the lecture body may exceed 10 executable lines unless it is a slice of a continuous assembly chain carrying valid `continues` and `startLine` markers.
+[ ] Keep narrative code comments free of bureaucratic category tags (dropping labels like `CODE LOGIC:` or `DATA FLOW:`), while preserving the broken code verdict tag (`// **WRONG:** [consequence with uppercase bold **KEYWORD**]`) on runtime traps and syntax errors as mandated by `code-blocks/SKILL.md`. #2026_09_21_23_group_1 revised by #2026_09_21_25_group_1
+[ ] In summary comparison snippets, enforce the directive header format: place `**DO THIS:**` or `**DO NOT DO THIS:**` on the line immediately above the fence, and append `right` or `wrong` directly to the language tag (` ```jsx right ` or ` ```jsx wrong `).
 
-> Notice the function parameters: we destructure `{ headline, onUpdateHeadline }` directly from props. That matches the contract we established in step 1. `HeadlineViewer` owns zero local state. It relies entirely on its parent to provide the active headline and the function to update it.
-> 
-> Look at the button click handler on line 6: `onClick={() => onUpdateHeadline('Mars Probe Sends First Signal')}`.
-> 
-> Where does `onUpdateHeadline` come from? Look back at Step 1 in `HeadlineDesk.jsx`. The parent declared `const [headline, setHeadline] = useState('Global Summit Concludes')`, and then rendered: `<HeadlineViewer headline={headline} onUpdateHeadline={setHeadline} />`.
-> 
-> Notice what happened: the parent handed its private updater function `setHeadline` to the child under the prop name `onUpdateHeadline`. `HeadlineViewer` does not own state, and it does not know how `headline` is stored. It only holds a telephone line called `onUpdateHeadline`.
-> 
-> When the editor clicks the button, the native browser `onClick` fires and calls `onUpdateHeadline('Mars Probe Sends First Signal')`. Because `onUpdateHeadline` points directly to `setHeadline`, that call immediately executes `setHeadline('Mars Probe Sends First Signal')` back in `HeadlineDesk`.
-> 
-> This is standard **inverse data flow**: data flows down through props (`headline`), and user actions flow up through callbacks (`onUpdateHeadline`).
+## Structural Integrity | 07 | Preserving the 5-Stage Practical Example and Pipeline Markers #2026_09_21_22_group_1
 
-Notes: It bombards the reader with commands (Notice, Look at, Where does it come from?, Look back, Notice what happened). It smuggles long JSX tags and state declarations directly into the middle of sentences. It forces the reader to mentally cross-reference three files across different pages while reading dense prose, and re-narrates lines that are already self-evident from the code fence and its comments.
+[ ] Preserve the complete anatomical skeleton required by the build compiler (`src/build-lectures.mjs`):
+    1. **Title Line**: `# Lecture {n}: {Short Title}`
+    2. **Line 2 Callout**: `> INTERVIEW QUESTION | ❱ TIER | {Question text}`
+    3. **Hook Ladder**: 7 numbered beats opening the lesson with an authentic newsroom dilemma (The National Times).
+    4. **Section 1**: Imperative/naive friction section containing a historical code snippet and the `[!WILD]` friction card.
+    5. **Section 2**: Conceptual mechanism bridge introducing the core React primitive before code assembly.
+    6. **Section 3 (`### Let's Design a Practical Example`)**: The 5-stage progressive guided build:
+       - **Stage A**: ````components title="... - Rendered UI Canvas"```` and ````files title="...: File Explorer"````. Completeness law: every file imported or shown must exist in both panels.
+       - **Stage B**: Introductory assembly pipeline figure: ````html-figure src="figures/{NN}-01-code-assembly-pipeline.html" caption="..."````.
+       - **Stage C**: Progressive implementation steps with collaborative headings ending in the exact component filename:
+         * `### Step 1: First, we construct the parent container ...`
+         * `### Step 2: Next, we build the child component ...`
+         * `### Step 3: Then, we declare the child component ...`
+         * `### Step 4: Finally, we mount the complete header inside the page shell ...`
+       - **Stage D**: `### Component Summary` with the Component Role panel: ````component-code title="Summary: The Logic of Nested Components"````.
+       - **Stage E**: Architecture Audit matrix figure: ````html-figure src="figures/{NN}-02-architecture-audit.html" caption="..."````.
+    7. **Section 4**: Engine mechanics under the hood (reflow, repaint, the `innerHTML` focus-loss trap, virtual DOM diffing, and surgical reconciliation).
+    8. **Section 5**: `### Where you will meet this` (4 real-world production use cases).
+    9. **Section 6**: `### Glossary` (4 to 6 core terms).
+    10. **Section 7**: `### Summary` with `> [!TIP]`, ❒ Daily Engineering Reality, ❒ Core Architectural Principles (➔ rules), `**DO THIS:**` & `**DO NOT DO THIS:**` blocks, and the closing 3-column comparison table (`| | **VANILLA JAVASCRIPT**<br>(Imperative DOM) | **REACT 19**<br>(Declarative Components) |`).
 
-[ ] PROPER EXAMPLE: make sure you follow this example (B2 tired-reader friendly, effortless to read, 3-beat relay, zero syntax smuggling):
+## Terminal Digest Revision | 08 | Real-World Scenarios, Tactile Glossary, and Interview Takeaways #2026_09_21_26_group_1
 
-> Notice what the component `HeadlineViewer` accepts in its props: the string prop `headline` and the callback function prop `onUpdateHeadline`.
-> 
-> This component owns zero state of its own. It cannot decide what headline to show, and it cannot change the headline directly. It is purely a presenter.
-> 
-> When the editor clicks the **Next Headline** button, how does the parent find out?
-> 
-> Trace the relay:
-> 1. **The parent owns the truth**: Back in the component `HeadlineDesk`, the parent created the setter function `setHeadline`.
-> 2. **The parent shares the trigger**: It passed the function `setHeadline` down to the child under the prop `onUpdateHeadline`.
-> 3. **The child pulls the cord**: Clicking the button calls `onUpdateHeadline('Mars Probe Sends First Signal')`. That immediately executes the function `setHeadline` back in the parent component `HeadlineDesk`.
-> 
-> This is React's classic **inverse data flow**: data flows down through props (`headline`), and user actions flow up through callbacks (`onUpdateHeadline`).
+[ ] Apply the junior-friendly pedagogical lens across all terminal sections (Sections 5, 6, and 7): never copy closing sections verbatim from the canonical source.
+[ ] In `### Where you will meet this`, author vivid, active scenarios that explain the concrete problem, the mechanism's solution, and the exact physical bug that occurs if the rule is violated. Banish dry colon-appositive fragments.
+[ ] In `### Glossary`, eliminate circular academic jargon. Ground every definition in tactile physical reality: (1) what the entity physically is in JavaScript memory or on disk, (2) what action it performs during execution, and (3) what runtime defect it prevents.
+[ ] In `### Summary`, rewrite the `> [!TIP]` interviewer callout as a calm, conversational explanation a candidate can speak naturally out loud without reciting a textbook.
+[ ] De-compress the `❒ Daily Engineering Reality` takeaways into clear, unhurried sentences that synthesize the core mental models without academic sentence cramming.
 
-Notes: Zero syntax smuggling: every inline code token is a clean, single identifier. Zero eyeball ping-pong: the reader reads down the page smoothly without being commanded to jump back and forth. The 3-Beat Relay turns a complex two-way circuit into an intuitive, memorable story while preserving 100% of the architectural depth, the component contracts, and the official community term.
+## Naming Conventions | 10 | The Two-Tier Convention Protocol: Prune First, Decode Second ([!CONVENTION]) #2026_09_21_27_group_1
 
-## Core Principles | 06 | Concrete Specificity Without Vague Abstractions (The "Name Every Actor" Law) #2026_09_20_15_group_1
+[ ] Audit all domain metaphors, editorial vocabulary, and UI naming conventions during revision: scan for terms like "masthead", "byline", "slug", "hero section", "accordion", "toast", "drawer", or "pill".
+[ ] Follow the Two-Tier Convention Protocol:
+    * **Tier 1 (First Priority: Prune & Replace in Text and Figures)**: Check if the convention can be replaced with a self-evident everyday English term (e.g. replacing "masthead" with "site header"). If replacing the word eliminates confusion and can be reflected cleanly across both prose and figures, purge the jargon entirely.
+    * **Tier 2 (Fallback: The Inescapable Industry Standard)**: If the term is an inescapable web development standard (e.g. "slug", "accordion", "toast", "drawer", "breadcrumb")—or if it is baked into a legacy figure that cannot be edited without breaking code-figure synchronization—decode it immediately using an explicit `> [!CONVENTION]` callout.
+[ ] Structure every `> [!CONVENTION]` callout across three facts: (1) physical origin, (2) web engineering reality, and (3) operational justification.
 
-[ ] When eliminating line-number directives and syntax smuggling, NEVER replace concrete identifiers with vague umbrella abstractions (such as "in-scope variables", "the children", "the elements", or "the parameters").
-[ ] Name every actor explicitly using single-token backticks: name the exact variable (`headline`), the exact prop (`author`), and the exact destination component (`AuthorBadge`, `PublishDate`).
-[ ] Deconstruct multi-role syntax into numbered roles: if a syntax construct (like curly braces or brackets) performs multiple duties in a snippet (e.g., text interpolation vs prop passing), explicitly enumerate each role so the reader sees how the same symbol serves different architectural purposes.
-[ ] Maintain tactile contrast: contrast what React is doing (evaluating live variables during render) against what the developer suffered through in plain JavaScript (string concatenation, manual DOM mutation, or innerHTML surgery).
+## Publishing Pipeline | 11 | The Revision Build Workflow and Folder Architecture #2026_09_21_22_group_1 revised by #2026_09_21_24_group_1 and #2026_09_21_26_group_1
 
-[ ] COUNTER-EXAMPLE: do not fall into the abstract hand-waving trap:
-
-> **Bad (Abstract Hand-Waving):**
-> The curly braces evaluate in-scope variables and pass them as props to the children. The parent component does not concatenate strings or touch the DOM. It declares the values it wants in markup, and React evaluates each expression during the render pass.
-
-Notes: Vague and evasive. Which variables? Which children? What is the heading doing versus the badges? Stripping line numbers without naming the actors turns sharp instruction into murky textbook jargon.
-
-[ ] PROPER EXAMPLE: make sure you follow this concrete, grounded breakdown:
-
-> **Good (Concrete, Grounded, and Effortless):**
-> Notice how the component `StoryBanner` uses curly braces in two distinct ways:
-> 
-> 1. **Text interpolation:** It drops the variable `headline` directly between the `<h1>` heading tags to display the title on screen.
-> 2. **Prop assignment:** It uses curly braces inside JSX attributes to hand live data downward: passing the object `author` to the component `<AuthorBadge />`, and the number `timestamp` to the component `<PublishDate />`.
-> 
-> In traditional JavaScript, you would concatenate strings or manually set element properties. Here, the parent component does zero string surgery and never touches the DOM. It simply declares the variables it needs, and React evaluates each expression during the render pass.
-> 
-> To recap this step: curly braces act as a bridge into JavaScript, allowing the parent to display dynamic text and pass rich data structures directly to child components.
-
-Notes: Every single actor is explicitly named (`StoryBanner`, `headline`, `author`, `AuthorBadge`, `timestamp`, `PublishDate`) using clean, single-token identifiers. It eliminates all line directives, avoids PDF-fracturing multi-token syntax, and delivers a much deeper mental model than the original code recital.
-
-## Core Principles | 06B | Explicit Entity Qualification (The "What Is What" Law) #2026_09_20_23_group_1
-
-[ ] Never drop bare, unqualified identifiers into prose that force the reader to calculate what an entity is or where it came from.
-[ ] Explicitly qualify every entity by its architectural role:
-    1. **Component Definition**: When referring to a component as a function, file, or declaration, call it **"the component `ComponentName`"** (e.g., *the component `AuthorBadge`*).
-    2. **Component Invocation**: When referring to a component being rendered or mounted in JSX, call it **"the component `<ComponentName />`"** (e.g., *the component `<AuthorBadge />`*).
-    3. **HTML Elements**: Always qualify HTML tags with their element role (e.g., *the `<span>` element*, *the `<img>` tag*, *the `<p>` paragraph*). Never drop bare tag names like `span` or `img`.
-    4. **Props and Variables**: Always state the container and property path (e.g., *the prop `author`*, *the property `author.name`*, *the variable `headline`*). Never drop bare property names like `name` without stating who owns them.
-    5. **Compound Identifier Integrity**: Never split camelCase or compound identifiers with spaces (e.g., strictly ban `avatar Url`; always write `avatarUrl` or `author.avatarUrl`).
-[ ] Trace the lineage: state where the data enters and where it lands, so the reader sees the direct bridge rather than having to reconstruct the circuit.
-
-[ ] COUNTER-EXAMPLE: do not follow this unqualified, ambiguous shorthand:
-
-> `AuthorBadge` unpacks `name` inside `span` for text display, and `avatar Url` inside `img` for the image source.
-
-Notes: Vague, fragmented, and broken. Is `AuthorBadge` being defined or invoked? What is `name`? What is `span`? Why is `avatar Url` split with a space? The reader has to stop reading to reconstruct the code in their head.
-
-[ ] HALF-WAY EXAMPLE: better, but still lacks role markers and explicit lineage:
-
-> `AuthorBadge` takes `author` and renders `author.name` in a `span` and `author.avatarUrl` in an `img`.
-
-Notes: Still treats `AuthorBadge` as a bare word and leaves `span` and `img` without explicit element roles.
-
-[ ] PROPER EXAMPLE: make sure you follow this crystal-clear, verbally qualified standard:
-
-> The component `AuthorBadge` receives the prop `author`. It unpacks the property `author.name` inside the `<span>` element for text display, and the property `author.avatarUrl` inside the `<img>` tag for the image source.
-
-Notes: Effortless to read. Every entity is explicitly qualified: the component `AuthorBadge`, the prop `author`, the property `author.name`, the `<span>` element, the property `author.avatarUrl`, the `<img>` tag. Zero mental calculation required.
-
-## Core Principles | 07 | Purpose-Driven Explanations (Banning Robotic Category Labels) #2026_09_20_16_group_1
-
-[ ] When breaking down code steps or multi-role expressions into bullet points, explain the purpose in natural, human developer language.
-[ ] Strictly ban compiler spec-sheet labels (such as "Function call evaluation", "Method chain in attributes", "Ternary operator branching", or "Object instantiation").
-[ ] Strictly ban formulaic prefix stamps that sound like an enterprise compliance checklist, such as:
-    - `**For human readers:**`
-    - `**For layout and styling:**`
-    - `**For component contracts:**`
-    - `**For styling contracts:**`
-    - `**For conditional visual theme:**`
-[ ] Instead, use purpose-driven action labels that describe the concrete task, decision, or audience in plain English:
-    - `**Choosing colors with conditional logic:**`
-    - `**Applying inline CSS styles:**`
-    - `**Formatting text for display:**`
-    - `**Supplying accessible metadata:**`
-[ ] Follow the breakdown with a tactile historical contrast: contrast React's declarative expression evaluation against what developers suffered through in plain JavaScript (helper scripts, manual string concatenation, manual DOM injection).
-[ ] Enforce the Single Takeaway Rule: strictly ban following a general takeaway sentence with an almost identical "To recap this step:" sentence; if the preceding sentence already states the takeaway, eliminate the echo.
-
-[ ] COUNTER-EXAMPLE: do not follow this robotic, formulaic pattern:
-
-> To apply dynamic styling, `StoryBanner` computes a `bannerTheme` object:
-> 
-> 1. **For conditional visual theme:** It uses the ternary operator on `isUrgent` to select between an alert background and a neutral card background.
-> 2. **For styling contracts:** It passes `bannerTheme` directly to the style prop, mapping camelCase properties like `backgroundColor` and `borderColor` to inline CSS declarations.
-
-Notes: "For styling contracts" and "For conditional visual theme" sound like an enterprise spec sheet rather than an engineer explaining code.
-
-[ ] PROPER EXAMPLE: make sure you follow this natural, human-friendly breakdown:
-
-> Before returning its markup, the component `StoryBanner` creates a plain JavaScript object named `bannerTheme` to calculate the card's appearance:
-> 
-> 1. **Choosing colors with conditional logic:** It checks the prop `isUrgent` using a ternary operator. If the story is breaking news, it picks an alert red background and border; otherwise, it falls back to a neutral white and gray card.
-> 2. **Applying inline CSS styles:** It hands the object `bannerTheme` directly to the `style` prop. React takes those camelCase property names (`backgroundColor` and `borderColor`) and automatically translates them into real browser CSS rules (`background-color` and `border-color`) on the `<article>` element.
-> 
-> In traditional JavaScript, changing an element's look based on data required manually toggling class names in the DOM or writing helper scripts that mutated `element.style` property by property. In React, you describe your styles as an ordinary JavaScript object, and React applies them to the element during render.
-
-Notes: Natural developer language, zero jargon smuggling, and explains the tangible mechanism (converting camelCase JavaScript properties into browser CSS) without robotic prefix stamps.
-
-## Core Principles | 08 | The Negative Counterfactual Without Platitudes #2026_09_20_14_group_1
-
-[ ] When explaining architectural separation (such as why the child does not hold its own state or why the parent leaves widgets independent), state the physical disaster directly without academic buzzwords or empty praise.
-[ ] Ground the disaster in tangible developer pain: lost updates, untracked mutations, parent containers forced to re-render on every keystroke, or child views trapped without access to data.
-[ ] Close with two clean, symmetric refactoring superpowers:
-    1. If tomorrow you change the UI element, you touch zero state management code.
-    2. If you change where the data comes from, you touch zero display markup.
-
-## Core Principles | 09 | Figure and Pipeline Synchronization Guardrails #2026_09_20_14_group_1
-
-[ ] During revision, treat all ````html-figure src="..." caption="..."```` tags as frozen anchors: never delete, rename, or reorder figures without explicit directive.
-[ ] Ensure that all props, state variables, and component names used in the revised prose remain 100% identical to the names in the code fences and figures.
-[ ] Ensure zero Prince XML build warnings or errors: avoid character entities that break rendering, preserve one continuous line per paragraph (no hard-wrapping), and never use em-dashes.
-
-## Revision Gates | 10 | The 8-Gate Readability Audit #2026_09_20_17_group_1
-
-[ ] Verify the 8 gates on every revised lecture section before completing the revision pass:
-    1. **The Smuggling Gate:** Are all inline code backticks limited to single identifiers? (No full JSX tags, no arrow functions, no variable declarations in prose).
-    2. **The Ping-Pong Gate:** Have all repetitive commands (*"Look at line X"*, *"Notice the parameter"*, *"Look back at Step 1"*) been replaced by natural cause-and-effect narrative?
-    3. **The Socratic Anticipation Gate:** Whenever introducing a syntax choice that has an obvious naive alternative (e.g. Fragments vs `<div>`, unquoted props vs quotes, `createRoot` vs inline mounting), does the prose explicitly voice the reader's question (*"Why not X instead?"*) before explaining the physical consequence, and does each step offer a unique angle without repeating idiosyncratic explanations?
-    4. **The Relay Gate:** Are cross-component data flows and callbacks structured as a clean, scannable 3-beat sequence?
-    5. **The Actor Gate:** Are all actors explicitly named by identifier and qualified by role ("the component `ComponentName`" vs "the component `<ComponentName />`", "the prop `propName`", "the `<span>` element") rather than hidden behind vague abstractions (*"in-scope variables"*, *"the children"*) or left as bare, unqualified tokens? #2026_09_20_23_group_1
-    6. **The Functional-Role Gate:** Are list items and step breakdowns labeled by who or what consumes the data (human readers, search engines, layout engine) rather than abstract grammar categories (*"Function call evaluation"*, *"Method chain"*), and has the duplicate *"To recap this step:"* echo been eliminated?
-    7. **The Counterfactual Gate:** Are architectural separations justified through concrete developer pain and closed with two clean, symmetric superpowers?
-    8. **The Tired-Reader Gate:** Does the prose read smoothly with short, active sentences (averaging 12 to 18 words, hard-capped at 20 words) free of chained participial clauses (*"adhering to... while doing..."*)? #2026_09_20_21_group_1
-
+[ ] Understand the revision folder structure in `react-lecture-05`:
+    * Canonical Production Source: `01-02-md-LECTURES/{NN}.md`
+    * Revised Markdown Target: `02-01-md-revised/{NN}.md`
+    * Revised HTML Target: `02-02-md-revised-html/{NN}.html`
+    * Revised PDF Target: `02-03-md-revised-pdf/{NN}.pdf`
+[ ] Execute the revision workflow in strict sequential order:
+    1. **Study Canonical Lecture**: Read `01-02-md-LECTURES/{NN}.md` to absorb all technical invariants, figures, and code snippets.
+    2. **Author Revised Lesson**: Write `02-01-md-revised/{NN}.md` applying density breakdown, bold terminology, conversational bridges, and explicit relationship definitions, while strictly observing the no-hard-wrap convention.
+    3. **Compile via Build Pipeline**: Run the subproject build script targeting the specific lecture number:
+       ```bash
+       node src/build-lectures.mjs {NN}
+       ```
+       (Example: `node src/build-lectures.mjs 01` compiles both the canonical and revised versions of Lecture 1).
+    4. **Verify Compiler Logs**: Confirm exit code 0 and verify that PrinceXML outputs the PDF with zero linter errors or warnings.
+    5. **Inspect Artifacts**: Verify that both `02-02-md-revised-html/{NN}.html` and `02-03-md-revised-pdf/{NN}.pdf` exist on disk with healthy byte sizes.
+[ ] How the pipeline manages revision folders under the hood:
+    * In `src/build-lectures.mjs`, the directories are wired directly into the compiler:
+      ```javascript
+      dirs.mdLecturesRevised = join(ROOT, '02-01-md-revised');
+      dirs.htmlRevised = join(ROOT, '02-02-md-revised-html');
+      dirs.pdfRevised = join(ROOT, '02-03-md-revised-pdf');
+      buildDirectory(dirs.mdLecturesRevised, dirs.htmlRevised, dirs.pdfRevised, 'auto', true, 'auto');
+      ```
+    * Figure resolution: when an ````html-figure src="figures/..."```` is processed in `02-01-md-revised/`, the build script automatically resolves the figure path against `01-02-md-LECTURES/figures/` if not present in the revision folder, inlining the card HTML seamlessly.

@@ -62,3 +62,7 @@ If any critical item fails → fix it before delivering. The changelog should re
 
 ## Teach by example #2026_09_20_04_group_1
 - [ ] Does every new rule ship with at least one PROPER example, drawn verbatim from real shipped lecture text wherever it exists, so the example carries the doctrine and the checkbox carries the index?
+
+## Proposing instruction changes ("iii" protocol) #2026_09_21_05_group_1
+- [ ] When analyzing root causes or proposing instruction changes under the "iii" trigger, are proposed modifications presented directly broken down by section and as explicit diffs?
+- [ ] Does the proposal clearly show what is being pruned or removed, what is being added or replaced, and the rule tag registry entry, so the user can inspect exact changes before approval?

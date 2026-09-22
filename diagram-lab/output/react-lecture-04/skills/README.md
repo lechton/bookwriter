@@ -8,6 +8,7 @@ The instruction system of the react-lecture-04 project. Each skill is one folder
 |---|---|---|
 | pre-lecture | the Phase 1 blueprint at md-pre-lectures/{nn}.md, with ★/◇ technical grading of every paragraph element and planning of the practical example stages | a pre-lecture is about to be written or revised |
 | lecture-voice | stance, plain upper-intermediate English, concept definitions (the default and the law), technical descriptions that end in a consequence, the numbered opening beats, callouts | lecture prose is written or revised |
+| pedagogical-crossroads | teaching foundational mechanics at technical crossroads using separate integrated code snippets | a technical fork, alternative syntax, or foundational mechanism is introduced |
 | lecture-structure | skeleton, practical example staging, naming, tables | a lecture is assembled or restructured, or a pre-lecture plans one |
 | code-blocks | code windows, 10-line ceiling, continuation attributes, comments | any code block is written or reviewed |
 | ui-panels | component explorer, files, component-code panels | any UI panel is added or reviewed |
@@ -18,9 +19,9 @@ The instruction system of the react-lecture-04 project. Each skill is one folder
 
 ## Load order
 
-writing a pre-lecture → load pre-lecture, lecture-voice, lecture-structure, and ui-panels
-writing a lecture → load lecture-structure, lecture-voice, code-blocks, ui-panels, and figures
-revising a lecture → load lecture-revision, lecture-voice, code-blocks, figures, and verification
+writing a pre-lecture → load pre-lecture, lecture-voice, lecture-structure, pedagogical-crossroads, and ui-panels
+writing a lecture → load lecture-structure, lecture-voice, pedagogical-crossroads, code-blocks, ui-panels, and figures
+revising a lecture → load lecture-revision, lecture-voice, pedagogical-crossroads, code-blocks, figures, and verification
 calling a lecture done → load verification and build
 
 The pre-lecture row carries lecture-structure and ui-panels because the blueprint must plan the practical example stages and the panel elements before Phase 2 begins; a blueprint written without the structure laws in the room produces clean prose with no planned guided build, and the production lecture inherits that omission. #2026_09_20_01_group_1

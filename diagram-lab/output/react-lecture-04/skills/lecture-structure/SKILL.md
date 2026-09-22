@@ -5,120 +5,125 @@ description: Governs the section skeleton, practical example staging, naming, an
 
 # Lecture Structure
 
-This skill governs how a production lecture is assembled: the two-phase workflow, the section skeleton in its exact order, the staging of the practical example, component naming, and the closing comparison table. It covers structure and placement only; the wording inside each section belongs to the lecture-voice skill, code formatting to the code-blocks skill, and panel and figure syntax to the ui-panels skill.
+This skill governs how a production lecture is assembled: the two-phase workflow, the mandatory section skeleton in its exact order, the 5-stage practical example architecture, component naming rules, and the closing comparison table. It covers structure and placement only; prose wording belongs to `lecture-voice`, code formatting to `code-blocks`, UI panels to `ui-panels`, and standalone HTML figures to `figures`.
 
-Digests: skills/old-instructions/AUTHOR-BRIEF.md and instructions.md (phases, implementation sequence, format spec)
+Digests: `skills/old-instructions/AUTHOR-BRIEF.md` and `skills/old-instructions/instructions.md` (phases, implementation sequence, format spec).
 
-## Phases | 01 | Blueprint before lecture
+## Workflow & Phases | 01 | The Pre-Lecture Blueprint Precedes the Lecture
 
-[ ] Author the Phase 1 pre-lecture blueprint in `md-pre-lectures/{nn}.md` before any production lecture work, so structure, vocabulary, and causal flow are locked before long-form writing begins.
-[ ] Have the pre-lecture blueprint mirror the final lecture headings and map every upcoming element into atomic bullets with in-situ pedagogical qualifications, so the production lecture expands a verified plan rather than improvising one.
-[ ] Treat the approved blueprint as the gate for Phase 2: prefer revising the blueprint over patching structure directly in the production lecture, so the two files stay in sync.
-[ ] Have the blueprint map the five practical example stages as concrete planned elements, so the staging crosses into the lecture as a planned build rather than being designed at lecture time (see the pre-lecture skill, Staging). #2026_09_20_01_group_1 revised by #2026_09_20_05_group_1
+[ ] Author the Phase 1 pre-lecture blueprint in `01-01-md-PRE-lectures/{nn}.md` before authoring any production lecture prose.
+[ ] Ensure the blueprint locks the structural skeleton, authorized technical vocabulary, and causal explanation flow before long-form writing begins.
+[ ] Mirror the final lecture headings inside the blueprint, mapping every upcoming element into atomic bullets with pedagogical qualifications.
+[ ] Treat the approved blueprint as the strict quality gate for Phase 2: revise the blueprint when structural defects are identified rather than improvising patches in the lecture file.
+[ ] Plan all five practical example stages (Stages A through E) as concrete elements in the blueprint before drafting code. #2026_09_20_01_group_1 revised by #2026_09_20_05_group_1
 
-## Phases | 02 | Production lecture expands the blueprint
+## Workflow & Phases | 02 | The Production Lecture Expands the Blueprint
 
-[ ] Write the Phase 2 production lecture in `md-lectures/{n}.md` from the approved pre-lecture blueprint, keeping the same numbering as the question bank row it answers.
-[ ] Aim for comprehensive coverage of the mechanism, because the lecture is the source of depth for the whole project and a thin lecture produces thin downstream artifacts.
+[ ] Write the Phase 2 production lecture in `01-02-md-LECTURES/{n}.md` by systematically expanding the approved pre-lecture blueprint.
+[ ] Maintain exact matching between the lecture file number, blueprint number, and question bank row index.
+[ ] Deliver comprehensive technical coverage of the assigned mechanism: the production lecture is the primary source of depth for the course, and downstream review materials inherit its definitions.
 
-## Phases | 03 | Lecture-first order
+## Workflow & Phases | 03 | Lecture-First Production Order
 
-[ ] Write the lecture before any distilled review artifact derived from it, so the distillation reflects a complete mental model instead of a guess at what matters.
-[ ] Keep the lecture-first order because compressing before exploring tends to produce shallow bullets that name the mechanism without teaching it; the lecture is also where unfamiliar terminology gets unpacked, so later artifacts inherit terms that are already defined.
+[ ] Author the full production lecture before creating any distilled review artifacts or summaries derived from it.
+[ ] Following the lecture-first order ensures that distillations reflect a fully resolved mental model rather than guesswork about what matters.
+[ ] The lecture is where unfamiliar terminology is unpacked, so downstream materials inherit concepts that are already defined and grounded.
 
-## Phases | 04 | Every lecture paragraph traces to the blueprint
+## Workflow & Phases | 04 | Strict Blueprint Traceability
 
-[ ] Trace every paragraph in the production lecture back to an element in the approved pre-lecture blueprint, so nothing enters the lecture unplanned.
-[ ] Add a new technical claim to the blueprint first, then write it into the lecture, so the two files never drift apart.
-[ ] Let a ★ paragraph keep its preknowledge recap when it crosses from the blueprint into the lecture (see the pre-lecture skill), so the reader gets the same grounding in both files.
+[ ] Trace every paragraph in the production lecture directly back to an element planned in the approved pre-lecture blueprint.
+[ ] If a new technical claim, code block, or panel is required, add it to the blueprint first to keep the two files synchronized.
+[ ] Ensure that conceptual foundation paragraphs (marked with ◇ in the blueprint) and deep runtime mechanics paragraphs (marked with ★) retain their planned grounding when expanded into the lecture.
 
-## Phases | 05 | Gates run inside the workflow, not after it
+## Workflow & Phases | 05 | Verification Gates Run Inside the Workflow
 
-[ ] Pass the pre-lecture gate before the production lecture is written, so the lecture expands a verified plan rather than an unverified guess.
-[ ] Pass the traceability and pedagogy gates before the lecture is called done, so done means taught, not just typed.
-[ ] Treat a clean build alone as never meaning done, because zero warnings certifies format, not teaching quality (see the verification skill).
+[ ] Pass all pre-lecture verification gates before drafting the production lecture.
+[ ] Pass structural traceability and pedagogical clarity gates before marking any lecture complete.
+[ ] Treat a clean compiler build (zero warnings) as a baseline format requirement, not as final proof of teaching quality (see the `verification` skill).
 
-## Skeleton | 06 | Exact skeleton order
+## Workflow & Phases | 06 | Topic Fidelity and Architectural Independence
 
-[ ] Assemble every production lecture in this exact order: the `#` title line, the interview question callout line, the numbered opening beats, the first `###` section, the body sections, `### Where you will meet this`, `### Glossary`, `### Summary`, and the closing comparison table as the last block of the file.
-[ ] Open Stage A of the practical example with the Rendered UI Canvas and File Explorer panels, with their syntax and rules owned by the ui-panels skill.
-[ ] Embed at least one standalone HTML figure per lecture, authored and placed per the figures skill.
-[ ] Route the opening beats' wording and sentence rules to the lecture-voice skill; this skill only fixes where the beats sit and what follows them.
+[ ] Dedicate each lecture strictly to answering its assigned interview question from the question bank.
+[ ] Expand the specific hook and domain scenario assigned to the question rather than replacing it with generic examples.
+[ ] Avoid copying component architectures, code setups, or figures from adjacent lectures: each lecture must feature an example designed specifically for its mechanism.
+[ ] Enforce the Curriculum Dependency Law: strictly restrict code syntax, hooks, conceptual references, and architectural contrasts to what has been formally introduced up to that question in the curriculum. Never introduce `useState` before Q16, never introduce callback props or inverse data flow before Q15, and never introduce `useEffect` before Q35. Furthermore, ban explaining or contrasting early tools with advanced downstream concepts (such as backend database connections, server actions, or view layers) that the reader has not yet learned. Never solve an explanation dilemma by creating a more complex mystery. #2026_09_21_02_group_1 revised by #2026_09_21_06_group_1
 
-## Skeleton | 07 | Title line
+## Section Skeleton | 07 | Canonical Skeleton Order
 
-[ ] Use exactly one `# ` heading per lecture, as the first line, in the pattern `# Lecture {n}: {Short Title}`, because the renderer uses this line as the page title and the entry heading in the course reader.
+[ ] Assemble every production lecture in this exact top-to-bottom sequence:
+    1. Document Title: `# Lecture {n}: {Short Title}` on line 1.
+    2. Interview Question Callout: `> INTERVIEW QUESTION | ...` on line 2.
+    3. The 7 Numbered Opening Beats (bare under the callout).
+    4. First Section: `### {Catchy Section Title}` introducing the core problem.
+    5. Conceptual Foundation & Mechanism Bridge: `### {Mechanism Name}`.
+    6. Practical Example Section: Adapt to the lecture's pedagogical archetype:
+       - `### Let's Design a Practical Example`: Open the practical example section with this exact clean heading. Never append component or feature names to this title. #2026_09_21_11_group_1
+       - Stage A: Scaffold UI Canvas (` ```components `) and File Explorer (` ```files `).
+       - Stage B: Assembly / Scaffolding Pipeline Figure (`figures/{NN}-01-code-assembly-pipeline.html`).
+       - Stage C: Sequential Assembly Steps 1 through 4.
+       - Stage D: Component Summary (`### Component Summary` with Role Mode panel).
+       - Stage E: Architecture Audit Table (`figures/{NN}-02-architecture-audit.html`).
+    7. Real-World Applications: `### Where you will meet this`.
+    8. Reference Glossary: `### Glossary`.
+    9. Advanced Topics & Official Documentation: `## Beyond the basics` (mandatory section with 4 to 6 authoritative bullets linking directly to live official website documentation via `(see [react.dev/...](https://react.dev/...))`; local repository paths and GitHub links are strictly banned; forces a PDF page break via `## `). #2026_09_21_32_group_1 revised by #2026_09_21_33_group_1
+    10. Practical Review: `### Summary`.
+    11. Closing Comparison Table: Three-column comparative matrix as the final block of the file.
+[ ] Embed at least one standalone HTML figure per lecture adhering strictly to the `figures` skill.
 
-[ ] PROPER EXAMPLE: make sure you follow this example, the title line pattern with its number matched to the question bank row:
+## Section Skeleton | 08 | Document Title Formatting
+
+[ ] Use exactly one `# ` heading per lecture, placed on line 1.
+[ ] Follow the standard pattern: `# Lecture {n}: {Short Title}`.
+[ ] Match the lecture number `{n}` to the question bank row, and choose a short title that captures the core technical takeaway in plain language.
+
+[ ] PROPER EXAMPLE: make sure you follow this example, matching number and clear title:
 
 > ```markdown
 > # Lecture 52: What Makes a Good Key and Why Index Fails
 > ```
 
-Notes: the lecture number matches the question row, and the short title names the chapter's idea in plain words a tired reader can hold onto.
+Notes: The number matches the question bank, and the title states the technical topic clearly.
 
-## Skeleton | 08 | Interview question callout
+## Section Skeleton | 09 | Line-2 Interview Question Callout
 
-[ ] Put the interview question on line 2, immediately after the title, as `> INTERVIEW QUESTION | {tier} | {question text}`, copying the question verbatim from the question bank row, so the build can render it as the pull-quote callout directly below the title.
-[ ] Carry the tier exactly as the row does: `❱ CORE`, `❱❱ MORE`, or `❱❱❱ ADVANCED`, with the ` (Server)` suffix on React Server questions, because the typology badge in the rendered callout depends on it.
+[ ] Place the interview question callout on line 2, immediately below the document title with no blank line between them.
+[ ] Format the callout using the exact syntax: `> INTERVIEW QUESTION | {tier} | {question text}`.
+[ ] Copy the question text verbatim from the question bank row.
+[ ] Specify the curriculum tier exactly: `❱ CORE`, `❱❱ MORE`, or `❱❱❱ ADVANCED` (appended with ` (Server)` for server-focused questions).
 
-[ ] PROPER EXAMPLE: make sure you follow this example, the callout line with a server-tier question:
+[ ] PROPER EXAMPLE: make sure you follow this example, the callout line with a server tier:
 
 > ```markdown
 > > INTERVIEW QUESTION | ❱ CORE (Server) | What is a Server Component and how does it differ from a Client Component?
 > ```
 
-Notes: the tier keeps its server suffix and the question text is copied verbatim, so the rendered badge and pull-quote match the bank exactly.
+Notes: Placed on line 2, preserves the server tier tag, and quotes the bank question verbatim.
 
-## Skeleton | 09 | First section follows the opening beats directly
+## Section Skeleton | 10 | Semantic Heading Levels
 
-[ ] Follow the numbered opening beats immediately with the first `### ` section: a catchy title that names the chapter's idea, then the paragraphs that open the teaching and lead into the first code.
-[ ] Avoid leaving a bare paragraph between the beats and the first heading, so the rendered opening-beats section closes cleanly and the body begins at a heading.
+[ ] Use `### ` as the standard heading level for all lecture sections and assembly steps so they flow inline without forcing page breaks.
+[ ] Reserve `## ` exclusively for major structural milestones that require a forced page break in the PDF (such as a major part divider in a long lecture).
+[ ] The document title on line 1 is always the single `# ` heading in the file.
+[ ] Follow the numbered opening beats immediately with the first `### ` heading with no orphan paragraphs between them.
 
-## Skeleton | 10 | Heading levels carry structure
+## Section Skeleton | 11 | Standard Body Progression & Engine Mechanics #2026_09_20_04_group_4 revised by #2026_09_20_05_group_1 and #2026_09_20_27_group_1
 
-[ ] Use `### ` as the default section heading, because it flows inline without forcing a page break.
-[ ] Reserve `## ` for genuine page boundaries such as a `## Beyond the basics` audit section or a major part boundary inside a long lecture, because every `## ` forces the PDF to start a new page; aim for at most one or two per lecture.
-[ ] Apply the quick test: if the heading introduces a new subsection of the current lecture and the section should flow inline, it is `### `; if the next page should start at that heading, it is `## `; the title at the top is always `# `.
+[ ] Progress the lecture body logically: (1) core engineering problem and native baseline, (2) foundational React mechanism bridge, (3) 5-stage practical example assembly, and (4) architectural comparison and review.
+[ ] Deconstruct the underlying browser engine consequences explicitly: in foundational lectures, explain why naive DOM updates fail (for example, showing how replacing HTML with `innerHTML` wipes input focus and resets CSS transitions, whereas React's Virtual DOM and reconciliation preserve node identity and focus). #2026_09_20_27_group_1
+[ ] Put friction cards at the end of the topic: explain the whole concept before showing the `[!WILD]` card. Walk through the broken attempt, explain why the engine behaves that way, and show the working code. Once the reader understands the fix, add the `[!WILD]` card to highlight a real-world trap. #2026_09_21_03_group_1 revised by #2026_09_21_08_group_1 and #2026_09_21_09_group_1
 
-## Skeleton | 11 | Standard body progression
+## Section Skeleton | 12 | Pre-Example Mechanism Bridge #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1
 
-[ ] Order the lecture body as: (1) foundational concept, load-bearing definition, and minimal code contrast introducing the core paradigm, (2) `### Let's Design a Practical Example` with its five stages, (3) architectural comparison and review, so the reader builds the working system first and then reads the comparative analysis, with each stage building on the one before it. #2026_09_20_04_group_4 revised by #2026_09_20_05_group_1
-[ ] When the lecture contrasts two paradigms that both modify one platform default, establish that shared default in plain prose before the first paradigm is defined, so the first paradigm reads as a departure from the default and the baseline never hides inside the second paradigm's section. #2026_09_20_03_group_1
+[ ] Never jump directly from high-level problem motivation or philosophical contrast into the practical code assembly section.
+[ ] Place a dedicated conceptual section (such as `### Components as Reusable Blueprints` or `### JSX as Compiled JavaScript`) immediately before `### Let's Design a Practical Example...`.
+[ ] In foundational lectures, use this section to introduce and deconstruct syntax primitives (such as component functions, prop signatures, evaluation curly braces, and Fragment syntax) before they appear in multi-file code examples.
+[ ] In 3 to 4 focused paragraphs, address:
+    1. What limitation in plain HTML or vanilla JavaScript does this feature solve?
+    2. What is the React mechanism, how is it written, and what happens under the hood?
+    3. What is the non-negotiable rule or common syntax trap (such as capitalization for components, single-root return for Fragments, or expression-only rules for curly braces)?
+    4. Which files in our practical scenario will demonstrate this mechanism?
 
-## Skeleton | 12 | Where you will meet this placement
-
-[ ] Place `### Where you will meet this` right before `### Summary`, holding 3 to 5 one-line uses of today's concept in real apps the reader knows, because this is the one sanctioned widening of the lecture's world beyond The National Times.
-[ ] Make each line one pictureable moment plus what the concept does there, a concrete situation rather than an abstract category, with the first line allowed to be tonight's own case.
-
-## Skeleton | 13 | Glossary placement
-
-[ ] Place `### Glossary` directly after `### Where you will meet this` and immediately before `### Summary`, defining 4 to 6 core terms, so the glossary renders on its own dedicated standalone page in the PDF.
-[ ] Format each term on a single continuous line as `- **Term**: Plain-English definition and concrete engineering role.`, so the rendered term cards stay clean.
-
-## Skeleton | 14 | Plain-talk summary structure
-
-[ ] Write `### Summary` as a plain-talk review from an experienced developer's daily perspective, answering when the reader will actually write this code and why it matters in daily practice.
-[ ] Open the summary body with an authoritative **Technical Title** in bold on its own line, followed by an empty line before the opening paragraph.
-[ ] Break the summary into `❒ {Subtitle}` section headers, numbered points under each, and sub-points as `<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) ...` kept on one continuous line, so the PDF never hard-wraps.
-[ ] Mark core principles with the `➔ NEVER / ALWAYS / IF ... THEN ...` pattern and bold load-bearing words in every bullet, so the summary stays skimmable in roughly one page.
-
-## Skeleton | 15 | Topic fidelity and architectural independence
-
-[ ] Dedicate every lecture strictly to its own interview question from the question bank, growing the hook it was given rather than replacing it, so each lecture earns its own number.
-[ ] Avoid cloning code setups, components, or diagrams from adjacent lectures, so two lectures never answer their questions with the same example.
-
-## Skeleton | 15B | Pre-Example Mechanism Section (The Mechanism Bridge) #2026_09_20_24_group_1
-
-[ ] Never jump directly from high-level problem motivation or philosophical contrast into `### Let's Design a Practical Example...`.
-[ ] Immediately before the practical example, provide a dedicated conceptual section (such as `### Components as Reusable Blueprints` or `### JSX as Compiled JavaScript`) that teaches the core React mechanism **dedicated to this particular lecture**.
-[ ] In 3 to 4 natural paragraphs, answer what the reader needs to know before opening code:
-    - What limitation in plain HTML/JS does this specific feature solve?
-    - What is the React mechanism, and how does it work under the hood?
-    - What is the non-negotiable rule or syntax trap dedicated to this topic (such as Capitalization for components, single-root return for Fragments, or expression-only rules for curlies)?
-    - Which files in our practical scenario will demonstrate it?
-
-[ ] PROPER EXAMPLE: follow this natural, grounded bridge from Lecture 1:
+[ ] PROPER EXAMPLE: follow this grounded mechanism bridge from Lecture 1:
 
 > ### Components as Reusable Blueprints
 > 
@@ -137,173 +142,179 @@ Notes: the tier keeps its server suffix and the question text is copied verbatim
 > 
 > Both child components receive the subscriber's name through the prop `readerName` passed directly from their parent.
 
-Notes: Natural, grounded, and unstiff. It teaches the specific mechanism dedicated to Lecture 1 (components, capitalization, props, nesting) and smoothly sets up the three files before Stage A begins.
+Notes: Teaches the specific syntax and engine rules (components, capitalization, props, nesting) and smoothly bridges into the files of Stage A.
 
-## Practical Example | 16 | Section title format
+## Section Skeleton | 13 | Where You Will Meet This, Glossary & Summary #2026_09_21_19_group_1
 
-[ ] Title the implementation section exactly `### Let's Design a Practical Example <Component1> <Component2>`, naming the actual components of this lecture's example in the title.
-[ ] Avoid over-engineered corporate jargon headings for this section, so it reads as an invitation to build rather than a process document.
+[ ] Place `### Where you will meet this` immediately after Stage E and before the Glossary. Include 3 to 5 concise real-world use cases showing how the lecture's concept is applied across production applications.
+[ ] Place `### Glossary` immediately after `Where you will meet this`. Define 4 to 6 core terms introduced in the lecture, formatted on single lines as `- **Term**: Plain-English definition and concrete engineering role.` so they render cleanly on a standalone page.
+[ ] Place `### Summary` immediately after the Glossary. Write it as an experienced developer's practical review answering when to write this code and why it matters in daily workflows.
+[ ] Structure the summary with an authoritative bold title on line 1, followed by `❒ {Subtitle}` category headings. Every `❒ {Subtitle}` header and every `➔ {DECISION_RULE}` line MUST be formatted as an independent paragraph separated by blank lines above and below to ensure distinct rendering.
+[ ] Emphasize actionable decision rules on their own dedicated lines starting with `➔` using bold keywords (such as `➔ ALWAYS ...`, `➔ NEVER ...`, `➔ IF ... THEN ...`).
+[ ] Render nested sub-points or secondary notes within a rule or list item as `<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) ...` on continuous lines.
 
-[ ] PROPER EXAMPLE: make sure you follow this example, the practical example title naming the two components being built:
-
-> ```markdown
-> ### Let's Design a Practical Example StoryForm SubmitButton
-> ```
-
-Notes: the heading names the two concrete components the steps will assemble, so the reader knows exactly what they are about to build.
-
-[ ] COUNTER-EXAMPLE: do not follow this bad example:
+[ ] PROPER EXAMPLE: Summary decision rules and subtitles separated by blank lines:
 
 > ```markdown
-> ### Progressive Assembly: Code Implementation Pipeline
+> ### Summary
+> 
+> **Architectural Takeaways & Decision Matrix**
+> 
+> ❒ Direct Root Mounting
+> 
+> ➔ ALWAYS verify that the DOM container element exists before calling `createRoot()` to prevent fatal null pointer exceptions.
+> 
+> ➔ IF building a single-page application THEN mount the root component once at the application entry point.
+> 
+> ❒ Multi-Tree Applications
+> 
+> ➔ ALWAYS isolate independent micro-frontends into separate `createRoot()` trees with dedicated DOM nodes.
 > ```
 
-Notes: it names a process instead of the components, and it reads like a slide deck rather than a pair-programming session.
+## Practical Example | 14 | Section Title Format & Clean Heading Law #2026_09_21_02_group_1 revised by #2026_09_21_11_group_1
 
-## Practical Example | 17 | Stage A scaffold and file explorer
+[ ] Title the practical example section simply and cleanly as `### Let's Design a Practical Example`.
+[ ] Never append component names, file names, or domain features to this heading (reject `### Let's Design a Practical Example <Component1> <Component2>`). Component roles are introduced immediately below in Stage A (` ```files `) and across the sequential Stage C step subtitles.
+[ ] Avoid generic corporate process headings (such as "Progressive Assembly: Code Implementation Pipeline"). The heading should read as an inviting, direct invitation to build.
 
-[ ] Open the practical example with the Rendered UI Canvas: a snippet-free `components` panel showing the finished interface before any code appears, followed directly by the `files` panel introducing the disk hierarchy. #2026_09_20_04_group_4
-[ ] Keep the scaffold specific to the lesson, so the reader meets exactly the files the upcoming steps will create.
-
-## Practical Example | 18 | Stage B assembly pipeline figure
-
-[ ] Follow with Stage B: embed the introductory assembly pipeline figure, `figures/{NN}-01-code-assembly-pipeline.html`, with color-coded horizontal stage cards whose roles mirror this lesson's collaborative step sequence, authored per the ui-panels skill.
-[ ] Place the pipeline before any syntax appears, so the reader holds the roadmap while reading the steps.
-
-## Practical Example | 19 | Stage C sequential steps
-
-[ ] Walk the code assembly in Stage C using the collaborative 4-step pair-programming title sequence, so the reader feels guided rather than lectured.
-[ ] Assemble top-down: Step 1 constructs the parent container and establishes every child's contract in its JSX before any child exists, the middle steps fulfill those contracts one component at a time, and the final step seals the deepest boundary instead of mounting the parent, so the architecture is dictated before it is populated. #2026_09_20_04_group_4
-[ ] Ban forward references that defer a contract to a later step: every child introduced in a parent's JSX gets its contract established in the same step, even when the child's own file is built later. #2026_09_20_04_group_4
-
-[ ] PROPER EXAMPLE: make sure you follow this example, the four step titles of the top-down assembly, from Lecture 40:
+[ ] PROPER EXAMPLE: clean, universal practical example heading:
 
 > ```markdown
-> ### Step 1: First, we construct the parent container FeedbackPortal.jsx
-> ### Step 2: Next, we build the controlled child LiveSearchInput.jsx
-> ### Step 3: Then, we declare the uncontrolled form ArticleCorrectionForm.jsx
-> ### Step 4: Finally, we seal the form with native action submission
+> ### Let's Design a Practical Example
 > ```
 
-Notes: Step 1 constructs the parent and dictates the data architecture; steps 2 and 3 fulfill the contracts the parent wrote; step 4 seals the form boundary, the deepest layer, instead of mounting the parent.
+Notes: Inviting, concise, and uncluttered; component names belong in the File Explorer and individual step titles.
 
-[ ] PROPER EXAMPLE: make sure you follow this example, the contract established inside Step 1 for a child that does not exist yet, from Lecture 40:
+## Practical Example | 15 | Stages A & B: Visual Destination & Assembly Pipeline
 
-> Now look at line 6: `<LiveSearchInput query={query} onChange={setQuery} />`. We have not coded the child component `LiveSearchInput` yet. But right here in the parent, we establish its contract. The parent owns the search text in the variable `query`, and passes the callback function `setQuery` to the prop `onChange` so the child component can report keypresses. We will build the component `LiveSearchInput` next in Step 2.
+[ ] Open Stage A with the Rendered UI Canvas (` ```components `) showing the completed interface and interactive controls (`[button: ...]`, `[input: ...]`) before presenting any code.
+[ ] Follow the UI Canvas immediately with the File Explorer (` ```files `) showing the disk hierarchy of the files about to be created or inspected.
+[ ] Embed Stage B immediately following Stage A: include the introductory assembly or scaffolding pipeline figure (`figures/{NN}-01-code-assembly-pipeline.html`), displaying color-coded horizontal stage cards that map directly to the upcoming assembly or setup steps.
 
-Notes: the child's file comes later, but its contract is fully established in the parent's JSX in Step 1, and the forward link names exactly where it will be fulfilled. This is what top-down means: the parent dictates, the children comply.
+## Practical Example | 16 | Stage C: Top-Down Assembly & Progressive Scaffolding #2026_09_20_04_group_4 revised by #2026_09_20_26_group_1 and #2026_09_21_02_group_1
 
-- [ ] Deconstruct callback invocations in child steps using the Upward Wire Standard: when a child component calls a function passed from its parent, the prose must not treat the call as self-evident; it must trace back to the parent's Step 1 JSX contract, name the parent setter being invoked, and explain the inverse data flow (see the lecture-voice skill, The Upward Wire Law). #2026_09_20_06_group_1
+[ ] Name the exact component file in every step heading: each Stage C heading must end with the file being built. Use the active pair-programming pattern:
+    * `### Step 1: First, we construct the parent container <ParentComponent.jsx>`
+    * `### Step 2: Next, we build the child component <ChildComponent.jsx>`
+    * `### Step 3: Then, we declare the child component <ChildComponent.jsx>`
+    * `### Step 4: Finally, we mount the feature inside <App.jsx>` (or seal the entry point). #2026_09_21_10_group_1
+[ ] Ban "presenter" jargon: in React, UI building blocks are simply components. Never call a component a "presenter", "header presenter", or "pure presenter". Use clear, standard terms: "child component", "parent component", or the file name itself (`ArticleHeader.jsx`). #2026_09_21_10_group_1
+[ ] In Archetype A (Component-Driven Assembly), assemble components strictly top-down:
+    * Step 1 builds the parent container and declares child prop interfaces in JSX before child files exist.
+    * Middle steps construct child components to fulfill those props.
+    * The final step seals the deepest boundary or completes submission handling.
+[ ] In Archetype B (Scaffolding & System Deconstruction), progress chronologically through the project layers:
+    * Step 1 executes the CLI scaffolding command and inspects directory generation.
+    * Step 2 inspects the manifest and build configuration (`package.json`, `vite.config.js`).
+    * Step 3 explores physical HTML and JavaScript entry points (`index.html`, `src/main.jsx`).
+    * Step 4 examines the running starter component (`src/App.jsx`).
+[ ] Strictly enforce the 10-line code ceiling on every snippet across all steps, with zero leading blank lines.
 
-[ ] PROPER EXAMPLE: make sure you follow this example, fulfilling and deconstructing a callback contract in Step 2, from Lecture 38: #2026_09_20_06_group_1
+## Practical Example | 17 | Stage C: Callback Tracing, Decoupling & Scaffolding Narration #2026_09_21_02_group_1
 
-> Look at the button click handler on line 6: `onClick={() => onSelect(room)}`.
-> 
-> Where does `onSelect` come from? Look back at Step 1 in `ChatWorkspace.jsx`. The parent declared `const [roomId, setRoomId] = useState('general')`, and then rendered: `<ChannelSelector activeRoom={roomId} onSelect={setRoomId} />`.
-> 
-> Notice what happened: the parent handed its private updater function `setRoomId` to the child under the prop `onSelect`. The component `ChannelSelector` does not own state, and it does not know what `roomId` is used for. It only holds a telephone line called `onSelect`.
-> 
-> When the reporter clicks a button, the native browser `onClick` fires and calls `onSelect(room)`. Because `onSelect` points directly to `setRoomId`, that call immediately executes `setRoomId('politics')` back in the parent component `ChatWorkspace`.
-> 
-> This is standard **inverse data flow**: data flows down through props (`activeRoom`), and user actions flow up through callbacks (`onSelect`).
+[ ] In component-driven lectures, when a child invokes a callback prop (`onSelect`, `onChange`, `onSubmit`), trace the complete Upward Wire circuit:
+    1. Ask where the callback originates.
+    2. Point back to Step 1 where the parent declared the handler or state setter.
+    3. Explain that the child owns no state and merely holds a communication line.
+    4. Trace the physical function execution that runs in the parent's memory upon user interaction.
+    5. Name the pattern as standard **inverse data flow** (props flow down, actions flow up).
+[ ] In component-driven lectures, justify component boundaries using the Negative Counterfactual circuit:
+    1. Ask what breaks if the two responsibilities are merged into one component.
+    2. Detail the concrete disaster (such as network logic tangled in navigation buttons).
+    3. Define the boundary by what is physically absent in code (`zero useState and zero useEffect`).
+    4. Prove decoupling through two symmetric refactoring scenarios.
+[ ] In scaffolding and tooling lectures, narrate the concrete engine mechanics: (1) what the tool writes to disk, (2) what the browser engine parses and runs, and (3) what runtime failures or legacy traps are eliminated.
 
-Notes: Step 1 established the contract (`onSelect={setRoomId}`); Step 2 fulfills it by calling `onSelect(room)` and tracing the physical execution back to the parent's `setRoomId`. The circuit is complete in both directions.
+## Practical Example | 18 | Pedagogical Crossroads: Grasping Opportunities to Teach Fundamentals #2026_09_21_12_group_1 revised by #2026_09_21_14_group_1 and #2026_09_22_11_group_1
 
-- [ ] Justify architectural separation in steps using The Negative Counterfactual Law: when explaining why two responsibilities are separated across components (e.g., UI controls vs. side-effects), the prose must not rely on vague praise (*"the cleanest architecture keeps X separate from Y"*); it must state what breaks if you merge them, define the boundary by physical code invariants (*"zero useState, zero useEffect"*), and prove decoupling by showing that modifying UI touches zero network code and modifying network touches zero UI code (see the lecture-voice skill, The Negative Counterfactual Law). #2026_09_20_07_group_1
+[ ] When a step introduces a syntax pattern, architectural choice, or language feature that developers often confuse (such as parameter destructuring vs `props.property`, string literals vs expression windows, or parenthesized vs naked returns), pause and grasp the opportunity to teach the fundamental mechanics.
+[ ] Never handwave with abstract jargon (such as "instead of accessing props.x throughout the body...").
+[ ] Follow the [pedagogical-crossroads](../pedagogical-crossroads/SKILL.md) skill:
+    1. Declare both options upfront in an unordered bullet list (`- **Option 1...` and `- **Option 2...`) rendered with the project's signature teal ➔ bullet marker, previewing concrete syntax tokens (Option 1: The foundational/rigid way vs Option 2: The modern idiomatic/composable way). #2026_09_22_11_group_1
+    2. Maintain strict lexical consistency across the entire crossroad, banning shifting, artistic labels.
+    3. Present the two options in separate, integrated code snippets with symmetric margin comments.
+    4. Provide focused prose deconstructing what the engine does, why juniors need the foundational reality, and why seniors choose the modern idiom.
 
-[ ] PROPER EXAMPLE: make sure you follow this example, justifying architectural separation in Step 2, from Lecture 38: #2026_09_20_07_group_1
+## Practical Example | 19 | Stage D: Component Summary #2026_09_20_09_group_1 revised by #2026_09_21_02_group_1, #2026_09_21_16_group_1, and #2026_09_21_20_group_1
 
-> What would happen if the component `ChannelSelector` opened the websocket connection itself?
-> 
-> If you put the `useEffect` hook or socket connection inside the component `ChannelSelector`, the navigation buttons would be trapped managing network sockets, reconnection timers, and message buffers. Worse, the chat message area in the component `ChatRoom` would have no way to access that socket without messy prop-drilling or global state hacks. You would have buttons and network protocols tangled in a single file.
-> 
-> By separating them, the component `ChannelSelector` owns zero `useState` and zero `useEffect`. It is a pure presenter: given the same prop `activeRoom` string and callback function `onSelect`, it will always render the exact same three buttons.
-> 
-> This separation gives you two concrete superpowers:
-> 1. If tomorrow you replace the button pills with a dropdown `<select>` menu, you touch zero lines of websocket code.
-> 2. If you swap the websocket protocol in `ChatRoom` for a mock test service, you touch zero lines of button code.
+[ ] Conclude the practical experiment under the heading `### Component Summary`.
+[ ] Never append subtitles or category labels to this heading (reject `### Component Summary: Naive Expectation vs Reality` or `### Lessons from the Experiment`).
+[ ] Render the heading as an exceptional full-width horizontal title across the page, decoupling it from the left marginalia so it spans normally on a single line with generous vertical space below it.
+[ ] Place the Component / Architecture Role panel immediately at the opening of Stage D directly below the heading:
+    * Use a `component-code` panel in role mode with an authoritative domain title: `title="Summary: The Logic of Nested Components"` for component hierarchies, or `title="Summary: Project Architecture & File Hierarchy"` for scaffolding and project structures.
+    * Render the nested components bare on the page substrate without outer window borders, background fills, or traffic light dots, preserving their centered dimensions.
+    * Scope the panel to the core architecture (maximum 3 items).
+    * Describe each entity's architectural duty in clear serif prose without code distractions.
+[ ] Contrast the naive expectation against the React 19 reality in subsequent prose:
+    * Explain what a developer instinctively assumes is required (such as monolithic starter scripts or manual event interception).
+    * Contrast with what the working code demonstrated (clean modularity, native browser modules, or declarative actions).
 
-Notes: Instead of vague praise, the text poses the obvious merge question, details the concrete disaster (trapped socket, unreachable chat area), defines the presenter by physical code absence (zero useState, zero useEffect), and proves decoupling with symmetric refactoring scenarios.
+## Practical Example | 20 | Stage E: Architecture Audit Table
 
-- [ ] Explain code relations between files, components, or props explicitly using the Explicit Architectural Relations standard: when a step imports or mounts a component, state the count and names of all components in the source module, explain syntax differences (such as curly braces for named exports), and clarify why one component is imported while its companion remains internal, avoiding shorthand that merely names a technical category (see the lecture-voice skill, Explicit Architectural Relations). #2026_09_20_13_group_1
+[ ] Conclude Stage D with Stage E: the dedicated Architecture Audit Table figure (`figures/{NN}-02-architecture-audit.html`).
+[ ] Structure the table with an uppercase eyebrow (`LESSONS FROM THE CODE`) and a title naming the lecture's engineering challenge.
+[ ] Use a three-column matrix: `Component Layer`, `Naive Expectation (Legacy Approach)`, and `What Happened (React 19 Reality)`.
+[ ] Apply subtle background shading on the reality column to highlight the modern pattern.
+[ ] Deconstruct the component hierarchy across the layers built in Stage C (parent container, intermediate coordinators, terminal UI controls).
+[ ] Conclude the audit table with a verdict row contrasting fragile coupling in red uppercase against modular resilience in teal uppercase.
 
-[ ] COUNTER-EXAMPLE: do not follow this bad example, the bottom-up shape where the parent arrives last:
+## Component Naming | 21 | Everyday Vocabulary and Clear Roles
 
-> ```markdown
-> ### Step 1: First, we build the search input component
-> ### Step 2: Next, we write the correction form
-> ### Step 3: Then, we add the submit button
-> ### Step 4: Finally, we mount everything inside the parent App.jsx
-> ```
+[ ] Choose component names from universally understood everyday English words. Any developer should instantly picture what the component represents.
+[ ] Reject names that fail the everyday-words test, even if they sound technically sophisticated: if a reader cannot immediately picture the on-screen element, the name must be simplified.
 
-Notes: the children are built with no contract to fulfill, and the parent is reduced to a mounting step at the end, so the architecture is discovered instead of dictated.
+[ ] PROPER EXAMPLE: make sure you follow this example, components named with everyday words:
 
-[ ] Keep each step's runnable snippet within the 10-line ceiling with zero leading empty lines, per the code-blocks skill.
-[ ] Phrase step titles as natural, active, practical developer actions rather than stiff pseudo-compiler phrasing, per the lecture-voice skill.
+> `SearchBar`, `ArticleTitle`, `SearchSummary`, `CommentSection`, `FeedbackPortal`
 
-## Practical Example | 20 | Stage D lessons from the experiment
+Notes: Each name conveys an immediate mental image, allowing the reader to understand the component's role before inspecting its code.
 
-[ ] Conclude the experiment with Stage D under the heading `### Lessons from the Experiment: Naive Expectation vs Reality`. #2026_09_20_09_group_1
-[ ] Carry the Component Role panel at the head of Stage D: a `component-code` panel in role mode with a meaningful domain title (e.g. `Summary: The Logic of Nested Components`) explaining each component's responsibilities in serif prose without code distractions, so the lessons that follow have the hierarchy on record (panel modes owned by the ui-panels skill). #2026_09_20_04_group_4 revised by #2026_09_20_09_group_1
-[ ] Detail what the naive expectation would have been, meaning the classical mental model, manual state hooks, or imperative event-interception routines developers instinctively assume are required.
-[ ] Contrast it against what the experiment showed, meaning the modern React 19 engine reality, platform alignment, and clean modularity proven by the working code, so the lesson lands as a before and after rather than a verdict from nowhere.
+## Component Naming | 22 | Avoid Noun Pileups and Visual Shape Slang
 
-## Practical Example | 21 | Stage E concluding lessons comparison table
-
-[ ] Close the practical example with Stage E: the dedicated Architecture Audit Table, `figures/{NN}-02-architecture-audit.html`, as the definitive final step of the code showcase, authored per the ui-panels skill.
-[ ] Build it with the uppercase eyebrow `LESSONS FROM THE CODE`, a title naming this lecture's concrete domain challenge, and a three-column comparative matrix of `Component Layer`, `Naive Expectation (Legacy Approach)`, and `What Happened (React 19 Reality)` with subtle shading on the reality column.
-[ ] Deconstruct the hierarchy across the layers relevant to this lesson, meaning the parent, intermediate boundaries, and terminal UI control, using the genealogical naming from this skill.
-[ ] End the table with a final verdict row contrasting fragile coupling in red uppercase against bulletproof modularity in teal uppercase, and calibrate padding and font sizes so the table and its caption fit on a single PDF page.
-
-## Naming | 22 | The everyday-words naming rule
-
-[ ] Choose component names from the simplest, universally understood everyday vocabulary, words any reader knows, so the name carries the mental picture by itself.
-[ ] Treat a failed everyday-words check, meaning a reader has no clue what the word refers to, as a signal the name is wrong even if it sounds precise to an engineer.
-
-[ ] PROPER EXAMPLE: make sure you follow this example, names that pass the everyday-words check:
-
-> `SearchBar`, `ArticleTitle`, `SearchSummary`, `CommentSection`, `FeedbackApp`
-
-Notes: each name is one everyday idea any reader immediately pictures, so the reader decodes the component before reading a line of its code.
-
-## Naming | 23 | Avoid pileups and visual-shape names
-
-[ ] Avoid combining three nouns into one component name, so the reader is not forced to decode a compound before understanding the code.
-[ ] Avoid CSS visual shapes and insider slang as component identities, names like `Badge`, `Ticker`, `Prompter`, or `WireCategory`, because the reader has to translate them into a real thing first.
+[ ] Avoid combining three or more nouns into a single component name. Compound names force the reader to decode language before understanding code.
+[ ] Avoid naming components after visual shapes or internal jargon (such as `Badge`, `Ticker`, `Prompter`, or `WireCategory`). Name components after what they represent in the application.
 
 [ ] COUNTER-EXAMPLE: do not follow this bad example:
 
 > `SearchResultsBadge`, `WireStatsBadge`, `ArticlePrompter`, `FeedbackSwitcher`
 
-Notes: each name either piles up nouns, names a visual shape, or reaches for jargon the reader does not own, and the decoded meaning arrives too late to help.
+Notes: Piles up nouns and relies on visual shape jargon rather than meaningful application roles.
 
-## Naming | 24 | Name by role, not by HTML tag
+## Component Naming | 23 | Name by Role, Not HTML Tags
 
-[ ] Avoid naming a component after an HTML tag or a spreadsheet coordinate, patterns like `...Row`, `...Cell`, `...Div`, or `...Span`, because the tag is presentation and the name should say what the thing is.
-[ ] Prefer `...Item` for individual entries, for example `ArticleItem` or `CartItem`, and `...Header` for section dividers, for example `CategoryHeader`, so the name describes the thing's role in the interface rather than its markup.
+[ ] Never name components after raw HTML tags or table coordinates (avoid `...Row`, `...Cell`, `...Div`, or `...Span`).
+[ ] Name components after their functional role in the user interface:
+    * Use `...Item` for individual list entries (such as `ArticleItem` or `CartItem`).
+    * Use `...Header` for section dividers (such as `CategoryHeader`).
 
-[ ] PROPER EXAMPLE: make sure you follow this example, the swaps from tag names to role names:
+[ ] PROPER EXAMPLE: make sure you follow this example, naming by role instead of HTML tags:
 
 > `ArticleItem` instead of `ArticleRow`, `CartItem` instead of `CartItemRow`, `CategoryHeader` instead of `CategoryRow`
 
-Notes: each corrected name describes the thing's role in the interface, not the HTML tag it happens to render as, so the name survives a markup refactor.
+Notes: The names describe the functional role of the element, ensuring the name remains accurate even if markup is refactored from table rows to list elements.
 
-## Naming | 25 | Genealogical terms, not leaf
+## Component Naming | 24 | Standard Genealogical Hierarchy Terms
 
-[ ] Name components and describe component relationships with the official family terms: parent, child, nested child, grandchild, ancestor, descendant, terminal UI control (the full vocabulary law lives in the ui-panels skill).
+[ ] Use standard genealogical terms when describing component relationships across prose, figures, and UI panels.
+[ ] Supported genealogical terms: `parent`, `child`, `nested child`, `grandchild`, `ancestor`, `descendant`, and `terminal UI control`.
+[ ] Avoid informal or idiosyncratic terms like `leaf component` or `outer shell wrapper` when standard genealogical terms apply.
 
-## Tables | 26 | Closing table as the last block
+## Closing Tables | 25 | Closing Table Placement & Contrast
 
-[ ] End every lecture with `### Summary` followed by the comparison table as the last block of the file, so the "what makes this different" point is the visual anchor the reader leaves with.
-[ ] Contrast the lecture's mechanism against its nearest alternative, for example `useState` vs `useRef`, controlled vs uncontrolled inputs, or Server vs Client Components, so the table has a genuine tension to resolve.
-[ ] When the lecture genuinely has no meaningful contrast, substitute a "what to remember" two-column table of term to one-line definition, keeping the same alignment as the standard shape.
+[ ] End every lecture with the comparison table as the definitive final block of the Markdown file, placed directly under `### Summary`.
+[ ] Center the table on a genuine technical contrast: compare the lecture's primary mechanism against its nearest alternative (such as `useState` vs `useRef`, controlled vs uncontrolled inputs, or Server vs Client Components).
+[ ] In rare lectures where no direct alternative exists, use a structured "What to Remember" matrix mapping core terms to their operational invariants.
 
-## Tables | 27 | Exact table shape
+## Closing Tables | 26 | Standard Three-Column Table Shape
 
-[ ] Build the closing table in the fixed three-column shape: the first header cell always empty, column titles formatted as `**CAPS**` plus `<br>` plus a one-word subtitle, the divider row exactly `| ---: | :--- | :--- |`, and every body row starting with a bold dimension.
-[ ] Keep titles in the markdown header row only, because the header renders as the real table head and a title placed in a body row produces a duplicate unstyled strip.
+[ ] Format the closing comparison table in a fixed three-column markdown structure:
+    1. Leave the first header cell empty (`| |`).
+    2. Format the second and third column titles as uppercase names with a one-word lowercase subtitle: `**CAPS**<br>(subtitle)`.
+    3. Set the table alignment divider row strictly to `| ---: | :--- | :--- |` (right-aligning the first dimension column, and left-aligning the two content columns).
+    4. Start every body row with a bold dimension title (`**Dimension**`).
+[ ] Keep all titles inside the header row to ensure clean table rendering in the PDF without duplicate unstyled rows.
 
-[ ] PROPER EXAMPLE: make sure you follow this example, the fixed closing table skeleton:
+[ ] PROPER EXAMPLE: make sure you follow this example, the standard closing table layout:
 
 > ```markdown
 > | | **VANILLA JS**<br>(Manual DOM) | **REACT**<br>(Declarative Components) |
@@ -312,20 +323,22 @@ Notes: each corrected name describes the thing's role in the interface, not the 
 > | **Reuse** | Copy-paste with different IDs | Components carry their own logic everywhere |
 > ```
 
-Notes: the empty first header cell blanks the top-left corner by design, each column title pairs a caps title with a one-word subtitle, the divider right-aligns the dimension column so dimensions read as sub-headings, and the shape renders identically in every lecture.
+Notes: Leaves the top-left cell empty, formats headers with capitalized names and subtitles, right-aligns dimensions, and provides direct, concise contrasts.
 
-## Tables | 28 | Code wrapping inside table cells
+## Closing Tables | 27 | Inline Code Wrapping in Table Cells
 
-[ ] Separate explanatory prose from an inline code string with `<br>` placed after the prose, because table columns in the PDF are narrow and a code chip left attached to prose wraps mid-token into fragmented grey boxes.
-[ ] Split long or multi-part code across separate inline code spans joined by `<br>`, for example `createRoot(node)` and `.render(<App />)` as two spans, and place `<br>` between distinct spans rather than inside any span.
+[ ] Separate explanatory prose from an inline code string inside table cells using a `<br>` tag placed after the prose.
+[ ] In narrow PDF table columns, a long code span attached to prose wraps mid-token into broken grey background fragments.
+[ ] When rendering multi-expression code, split the code across separate inline code spans joined by `<br>` rather than a single long span.
+[ ] Place `<br>` between separate code spans, never inside an inline code span.
 
-[ ] PROPER EXAMPLE: make sure you follow this example, code broken across spans inside a cell:
+[ ] PROPER EXAMPLE: make sure you follow this example, splitting code spans cleanly:
 
 > ```markdown
 > | **Mounting** | Two-step:<br>`createRoot(node)`<br>`.render(<App />)` | One call: `hydrateRoot` |
 > ```
 
-Notes: each code span stays whole, the `<br>` sits between spans and never inside one, and no chip breaks mid-token in the narrow PDF column.
+Notes: Each code span remains whole and uninterrupted, avoiding awkward hyphenations and background breaks in print.
 
 [ ] COUNTER-EXAMPLE: do not follow this bad example:
 
@@ -333,4 +346,31 @@ Notes: each code span stays whole, the `<br>` sits between spans and never insid
 > | **Mounting** | `createRoot(node).render(<App />)` | One call: `hydrateRoot` |
 > ```
 
-Notes: the single long code span wraps mid-expression in the narrow column, and the renderer breaks the grey background into dangling padding fragments that read as broken.
+Notes: The single long code span wraps mid-expression across narrow column boundaries, creating broken background padding in the PDF.
+
+## Closing Tables | 28 | Pure HTML/Markdown Standard & Anti-LaTeX Syntax Law #2026_09_22_09_group_1
+
+[ ] The lecture compiler (`src/build-lectures.mjs` → PrinceXML) uses standard web markdown parsing (`marked`) without LaTeX or MathJax processors.
+[ ] Strictly forbid all LaTeX math syntax (`$...$`, `$$...$$`) and LaTeX commands (`\rightarrow`, `\leftarrow`, `\le`, `\ge`, `\times`, `\cdot`, `\frac`) across all prose, bullets, and table cells.
+[ ] When authoring directional sequences, hierarchies, or life cycles, use the unicode arrow (`→`, U+2192) or descriptive English words ("to", "leads to").
+[ ] When rendering mathematical formulas or purity expressions, wrap them as inline code spans (e.g. `y = f(x)`, `UI = f(state)`) or write them in standard prose.
+[ ] When rendering mathematical inequalities or relational comparisons, use unicode characters (`≤`, `≥`, `≠`) or standard comparison operators (`<=`, `>=`, `!==`) in code spans.
+
+[ ] PROPER EXAMPLE: make sure you follow this example, using clean code spans and unicode symbols:
+
+> ```markdown
+> | **Purity Guarantee** | Strictly pure function: `y = f(x)` with identical inputs producing identical JSX |
+> | **Component Hierarchy** | Top-down tree flow: NewsLayout → ArticleGrid → StoryCard |
+> ```
+
+Notes: Uses standard code spans and unicode arrows that render natively without raw dollar signs or LaTeX commands.
+
+[ ] COUNTER-EXAMPLE: do not follow this bad example:
+
+> ```markdown
+> | **Purity Guarantee** | Strictly pure function: $y = f(x)$ with identical inputs producing identical JSX |
+> | **Component Hierarchy** | Top-down tree flow: NewsLayout $\rightarrow$ ArticleGrid $\rightarrow$ StoryCard |
+> ```
+
+Notes: Emits raw unrendered dollar signs (`$y = f(x)$`) and broken LaTeX backslash commands (`\rightarrow`) into the output document.
+
