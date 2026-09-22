@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /* ============================================================
-   build-lectures.mjs — lecture pipeline: md-lectures -> html -> pdf
+   build-lectures.mjs — lecture pipeline: 01-02-md-LECTURES -> html -> pdf
    ------------------------------------------------------------
-   Reads md-lectures/*.md, writes md-lectures-html/*.html plus the
+   Reads 01-02-md-LECTURES/*.md, writes 01-03-md-lectures-HTML/*.html plus the
    combined course reader (one HTML file per theme, named after the
-   pipeline's deck file name), then renders each to md-lectures-pdf/
+   pipeline's deck file name), then renders each to 01-04-md-lectures-PDF/
    via Prince.
 
    Usage (run from this project folder):
@@ -26,7 +26,7 @@
      everything else                   paragraphs (one line each, never hard-wrapped)
    ============================================================ */
 
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
@@ -42,9 +42,9 @@ const rangeArg = rangeIdx !== -1 ? args[rangeIdx + 1] : null;
 const deckOnly = args.includes('--deck-only');
 
 const dirs = {
-	mdLectures: join(ROOT, 'md-lectures'),
-	html: join(ROOT, 'md-lectures-html'),
-	pdf: join(ROOT, 'md-lectures-pdf'),
+	mdLectures: existsSync(join(ROOT, '01-02-md-LECTURES')) ? join(ROOT, '01-02-md-LECTURES') : join(ROOT, 'md-lectures'),
+	html: existsSync(join(ROOT, '01-03-md-lectures-HTML')) ? join(ROOT, '01-03-md-lectures-HTML') : join(ROOT, 'md-lectures-html'),
+	pdf: existsSync(join(ROOT, '01-04-md-lectures-PDF')) ? join(ROOT, '01-04-md-lectures-PDF') : join(ROOT, 'md-lectures-pdf'),
 	// Review experiment directories
 	mdLecturesReview: join(ROOT, 'md-lectures-review'),
 	htmlReview: join(ROOT, 'md-lectures-review-html'),
@@ -54,9 +54,9 @@ const dirs = {
 	htmlDataFlow: join(ROOT, 'md-data-flow-html'),
 	pdfDataFlow: join(ROOT, 'md-data-flow-pdf'),
 	// Revised lectures pipeline
-	mdLecturesRevised: join(ROOT, 'md-lectures-revised'),
-	htmlRevised: join(ROOT, 'md-lectures-revised-html'),
-	pdfRevised: join(ROOT, 'md-lectures-revised-pdf'),
+	mdLecturesRevised: existsSync(join(ROOT, '02-01-md-revised')) ? join(ROOT, '02-01-md-revised') : join(ROOT, 'md-lectures-revised'),
+	htmlRevised: existsSync(join(ROOT, '02-02-md-revised-html')) ? join(ROOT, '02-02-md-revised-html') : join(ROOT, 'md-lectures-revised-html'),
+	pdfRevised: existsSync(join(ROOT, '02-03-md-revised-pdf')) ? join(ROOT, '02-03-md-revised-pdf') : join(ROOT, 'md-lectures-revised-pdf'),
 };
 
 // HTML figures are numbered Fig {lecture}.{n} per lecture; reset for each file.
@@ -317,22 +317,22 @@ function inline(s, allowDisplayCode = false) {
 // Render one source line: split at the first // comment (followed by space or EOL),
 // drop empty trailing comments, return {code, comment}.
 function highlightLine(raw) {
-	// Match a full-line comment: either // or <!--
-	const mFull = raw.match(/^(?:\/\/|<!--)(\s|$)/);
+	// Match a full-line comment: //, <!--, or # followed by space or EOL
+	const mFull = raw.match(/^(?:\/\/|<!--|#)(\s|$)/);
 	if (mFull && mFull.index === 0) {
 		// Whole line is a comment.
-		let text = raw.replace(/^(?:\/\/|<!--)\s?/, '').replace(/\s?-->\s*$/, '');
+		let text = raw.replace(/^(?:\/\/|<!--|#)\s?/, '').replace(/\s?-->\s*$/, '');
 		if (!text.trim()) return null; // drop empty comment-only line
 		text = text.replace(/(✔️|✖️|✖)\s*/g, '');
 		text = text.charAt(0).toUpperCase() + text.slice(1);
 		return { code: '', comment: text };
 	}
 	
-	// Match an inline comment: either // or <!--
-	const idx = raw.search(/(?:\/\/|<!--)(\s|$)/);
+	// Match an inline comment: //, <!--, or # followed by space or EOL
+	const idx = raw.search(/(?:\/\/|<!--|#)(\s|$)/);
 	if (idx > 0 && raw[idx - 1] !== ':') {
 		const codePart = raw.slice(0, idx);
-		const matchToken = raw.substr(idx).startsWith('<!--') ? '<!--' : '//';
+		const matchToken = raw.substr(idx).startsWith('<!--') ? '<!--' : (raw.substr(idx).startsWith('#') ? '#' : '//');
 		let commentText = raw.slice(idx + matchToken.length).replace(/^\s?/, '').replace(/\s?-->\s*$/, '');
 		
 		const code = tokenizeLine(codePart);
@@ -503,13 +503,20 @@ function highlightMiniCode(code, lang) {
 /* ---------------- markdown block parser ---------------- */
 
 function parseBlocks(md) {
-	const starters = (l) => l.startsWith('```') || l.startsWith('#') || /^\s*[-*]\s+/.test(l) || /^\d+\.\s/.test(l) || l.startsWith('> ') || l.trim().startsWith('![');
+	const starters = (l) => l.startsWith('```') || l.startsWith('#') || /^\s*[-*]\s+/.test(l) || /^\d+\.\s/.test(l) || l.startsWith('> ') || l.trim().startsWith('![') || l.trim().startsWith('➔') || l.trim().startsWith('❒');
 	const lines = md.split('\n');
 	const out = [];
 	let i = 0;
 	while (i < lines.length) {
 		const line = lines[i];
 		if (!line.trim()) { i++; continue; }
+
+		// Summary subtitle or decision principle rule.
+		if (line.trim().startsWith('❒') || line.trim().startsWith('➔')) {
+			out.push({ t: 'p', text: line.trim() });
+			i++;
+			continue;
+		}
 
 		// Standalone image.
 		const imgMatch = line.trim().match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
@@ -520,8 +527,8 @@ function parseBlocks(md) {
 		}
 
 		// HTML figure embed: ```html-figure src="..." caption="..." (or ```figure).
-		// The figure is a standalone HTML file in md-lectures/figures/ (referenced
-		// by src, resolved against the project root or md-lectures/) or inline HTML
+		// The figure is a standalone HTML file in 01-02-md-LECTURES/figures/ (referenced
+		// by src, resolved against the project root or 01-02-md-LECTURES/) or inline HTML
 		// inside the fence. It is inlined verbatim into the lecture page.
 		const figFence = line.match(/^```(figure|html-figure)\b(.*)$/);
 		if (figFence) {
@@ -580,14 +587,18 @@ function parseBlocks(md) {
 		// blockquote. Only the alert types in ALERT_TYPES are recognized; anything else
 		// (including a bare `> [!TIP]` typo or unsupported type) falls back to a plain
 		// blockquote so the author sees the literal text and notices the typo.
-		if (line.startsWith('> ')) {
+		if (line.startsWith('> ') || line === '>') {
 			const buf = [];
-			while (i < lines.length && lines[i].startsWith('> ')) { buf.push(lines[i].slice(2)); i++; }
-			const joined = buf.join(' ');
+			while (i < lines.length && (lines[i].startsWith('> ') || lines[i] === '>')) {
+				const l = lines[i];
+				buf.push(l === '>' ? '' : (l.startsWith('> ') ? l.slice(2) : l.slice(1)));
+				i++;
+			}
+			const joined = buf.join('\n');
 			// Match `> [!TYPE]` optionally followed by more text on the same line.
 			// The body is everything after the `]` (trimmed); if the `]` ended the
 			// first line, the body is the remaining joined lines.
-			const alert = joined.match(/^\[!(NOTE|TIP|KEY|WARNING|CAUTION|WILD|GROUNDING)\]\s*([\s\S]*)$/);
+			const alert = joined.match(/^\[!(NOTE|TIP|KEY|WARNING|CAUTION|WILD|GROUNDING|CONVENTION)\]\s*([\s\S]*)$/);
 			if (alert) {
 				out.push({ t: 'callout', kind: alert[1].toLowerCase(), text: alert[2].trim() });
 			} else {
@@ -784,7 +795,8 @@ function render(blocks) {
 			const isSummary = /^summary\b/i.test(b.text.trim());
 			const isStep = /^Step\s+(\d+)/i.test(b.text.trim());
 			const isExample = /^(?:LET'S DESIGN A PRACTICAL EXAMPLE|Let's Design a Practical Example|Practical Example)/i.test(b.text.trim());
-			let extra = isGlossary ? ' glossary-section' : (isSummary ? ' summary-section' : (isStep ? ' step-section' : (isExample ? ' example-section' : '')));
+			const isLessons = /^(?:Lessons from the Experiment|Component Summary)\b/i.test(b.text.trim());
+			let extra = isGlossary ? ' glossary-section' : (isSummary ? ' summary-section' : (isStep ? ' step-section' : (isExample ? ' example-section' : (isLessons ? ' lessons-section' : ''))));
 			html += `<div class="keep-together${extra}">\n`;
 			inH3 = true;
 		}
@@ -805,6 +817,7 @@ function render(blocks) {
 			case 'h3': {
 				const stepMatch = b.text.match(/^Step\s+(\d+)[:\s]+(.*?)(?:\s+((?:`?<[^>]+>`?\s*)+))?$/i);
 				const isExample = /^(?:LET'S DESIGN A PRACTICAL EXAMPLE|Let's Design a Practical Example|Practical Example)/i.test(b.text.trim());
+				const isLessons = /^(?:Lessons from the Experiment|Component Summary)\b/i.test(b.text.trim());
 				if (stepMatch) {
 					const stepNum = stepMatch[1];
 					const title = stepMatch[2].trim();
@@ -857,6 +870,8 @@ function render(blocks) {
     </div>
   </div>
 </div>\n`;
+				} else if (isLessons) {
+					html += `<h3 class="lessons-heading">${inline(b.text)}</h3>\n`;
 				} else {
 					html += `<h3>${inline(b.text)}</h3>\n`;
 				}
@@ -869,7 +884,7 @@ function render(blocks) {
 			case 'component-code': html += renderComponentCodeExplorer(b.source, b.title) + '\n'; break;
 			case 'html-figure': {
 				// Standalone HTML figure (React Component Explorer card): the src
-				// attribute points at a file in md-lectures/figures/; its content is
+				// attribute points at a file in 01-02-md-LECTURES/figures/; its content is
 				// inlined verbatim, wrapped in a figure with a numbered caption.
 				figState.n += 1;
 				let content = b.source;
@@ -907,22 +922,38 @@ function render(blocks) {
 					caution: 'Caution',
 					wild: '⚡ IN THE WILD',
 					grounding: '⚡ IN THE WILD',
+					convention: 'UI & Domain Convention',
 				}[b.kind] || 'Tip';
-				html += `<aside class="callout callout-${b.kind}">\n  <p class="callout-eyebrow">${eyebrow}</p>\n  <div class="callout-body">${inline(b.text, false)}</div>\n</aside>\n`;
+				const paras = b.text.split(/\n\s*\n/).filter(Boolean);
+				const bodyHtml = paras.length > 1
+					? paras.map((p) => `<p>${inline(p, true)}</p>`).join('\n  ')
+					: inline(b.text, true);
+				html += `<aside class="callout callout-${b.kind}">\n  <p class="callout-eyebrow">${eyebrow}</p>\n  <div class="callout-body">${bodyHtml}</div>\n</aside>\n`;
 				break;
 			}
 			case 'ul': {
 				function renderUlItems(items) {
-					let res = '<ul>\n';
+					const hasOptions = items.some(item => {
+						const txt = (typeof item === 'string' ? item : item.text || '').trim();
+						return /^(➔\s*)?\*\*Option\s+\d+/i.test(txt) || /^➔\s+/.test(txt);
+					});
+					let res = hasOptions ? '<ul class="options-list">\n' : '<ul>\n';
 					for (const item of items) {
+						let rawText = typeof item === 'string' ? item : item.text;
+						let cleanText = (rawText || '').trim();
+						let isOption = /^(➔\s*)?\*\*Option\s+\d+/i.test(cleanText) || /^➔\s+/.test(cleanText);
+						if (cleanText.startsWith('➔')) {
+							cleanText = cleanText.replace(/^➔\s*/, '');
+						}
+						const liCls = isOption ? ' class="option-item"' : '';
 						if (typeof item === 'string') {
-							res += `<li>${inline(item, true)}</li>\n`;
+							res += `<li${liCls}>${inline(cleanText, true)}</li>\n`;
 						} else {
 							let sub = '';
 							if (item.children && item.children.length > 0) {
 								sub = '\n' + renderUlItems(item.children);
 							}
-							res += `<li>${inline(item.text, true)}${sub}</li>\n`;
+							res += `<li${liCls}>${inline(cleanText, true)}${sub}</li>\n`;
 						}
 					}
 					res += '</ul>\n';
@@ -1067,6 +1098,9 @@ const page = (title, body, theme = 'teal') => `<!doctype html>
 <head>
 <meta charset="utf-8">
 <title>${title}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../src/lecture.css">
 </head>
 <body class="theme-${theme}">
@@ -1077,7 +1111,7 @@ ${body}
 </html>
 `;
 
-// The reader HTML lives next to the per-lecture HTML files (in md-lectures-html/),
+// The reader HTML lives next to the per-lecture HTML files (in 01-03-md-lectures-HTML/),
 // so it shares the same relative path to the stylesheet.
 const deckPage = (title, body, theme = 'teal') => page(title, body, theme);
 
@@ -1106,9 +1140,9 @@ function checkLecture(file, md) {
 
 	if (!/^# Lecture \d+: \S/.test(lines[0] || '')) warns.push(`title line is not "# Lecture {n}: {Short Title}"`);
 	if (!/^>\s*INTERVIEW QUESTION\s*\|\s*❱+\s*[A-Z]+(\s*\(Server\))?\s*\|/.test(lines[1] || '')) warns.push(`line 2 is not the "> INTERVIEW QUESTION | ❱ TIER |" callout`);
-	if (!/\[!(TIP|NOTE|KEY|WARNING|CAUTION|WILD|GROUNDING)\]/.test(md)) warns.push(`no alert callout ([!TIP] etc.) anywhere in the lecture`);
+	if (!/\[!(TIP|NOTE|KEY|WARNING|CAUTION|WILD|GROUNDING|CONVENTION)\]/.test(md)) warns.push(`no alert callout ([!TIP] etc.) anywhere in the lecture`);
 	if (!/```(?:components|component-code)/.test(md)) warns.push(`no "components" Rendered UI Canvas or "component-code" panel found in the lecture`);
-	if (!/```(?:figure|html-figure)/.test(md)) warns.push(`no "html-figure" HTML figure panel (mandatory in every lecture; embed at least one md-lectures/figures/ RCE panel)`);
+	if (!/```(?:figure|html-figure)/.test(md)) warns.push(`no "html-figure" HTML figure panel (mandatory in every lecture; embed at least one 01-02-md-LECTURES/figures/ RCE panel)`);
 
 	// The completeness law: every file the lecture shows (fence title) or
 	// imports must appear as an entry in a components panel tree.
@@ -1231,6 +1265,9 @@ function checkLecture(file, md) {
 					} else if (i > 0 && i < flist.length - 1 && f.continues !== 'both') {
 						warns.push(`component "${file}" intermediate fence ${i + 1} has invalid continues="${f.continues}" (must be "both")`);
 					}
+					if (i > 0 && f.startLine <= flist[i - 1].startLine) {
+						warns.push(`component "${file}" continuation fence ${i + 1} has invalid startLine="${f.startLine}" (must be greater than previous fence startLine="${flist[i - 1].startLine}")`);
+					}
 				}
 
 				// Multi-step Progressive Assembly Pipeline Figure Law (Lecture 38/39 Benchmark):
@@ -1267,7 +1304,7 @@ function checkLecture(file, md) {
 		}
 	}
 
-	// Constructive Staging Gate (react-04 skills: lecture-structure Practical Example 16-21,
+	// Constructive Staging Gate (react-05 skills: lecture-structure Practical Example 16-21,
 	// pre-lecture Staging 34, verification Structure Gates 16): a lecture that builds an
 	// example from 2 or more component files must stage the 5-stage practical example.
 	// Rule batch #2026_09_20_02_group_1 (registry: skills/RULE-TAGS.md, brief: brief/brief_2026_09_20_02.md). The 4-phase flow check was removed by #2026_09_20_05_group_1.
@@ -1278,7 +1315,7 @@ function checkLecture(file, md) {
 	const hasPracticalExample = /^### Let's Design a Practical Example\b/m.test(bodyContent);
 	if (builtComponents.size >= 2 && !hasPracticalExample) {
 		const names = [...builtComponents].slice(0, 4).join(', ') + (builtComponents.size > 4 ? ', ...' : '');
-		warns.push(`lecture builds ${builtComponents.size} component files (${names}) but has no "### Let's Design a Practical Example" 5-stage section (files panel, assembly pipeline figure, Step 1-4 build, Lessons from the Experiment, Architecture Audit table); see lecture-structure skill Practical Example 16-21`);
+		warns.push(`lecture builds ${builtComponents.size} component files (${names}) but has no "### Let's Design a Practical Example" 5-stage section (files panel, assembly pipeline figure, Step 1-4 build, Component Summary, Architecture Audit table); see lecture-structure skill Practical Example 16-21`);
 	}
 	if (hasPracticalExample) {
 		if (!/```files/.test(md)) {
@@ -1323,18 +1360,18 @@ function checkLecture(file, md) {
 				}
 			}
 		}
-		if (!/^### Lessons from the Experiment\b/m.test(bodyContent)) {
-			warns.push(`practical example is missing its Stage D "### Lessons from the Experiment: Naive Expectation vs Reality" section; see lecture-structure skill Practical Example 25`);
+		if (!/^### (?:Lessons from the Experiment|Component Summary)\b/m.test(bodyContent)) {
+			warns.push(`practical example is missing its Stage D "### Component Summary" section; see lecture-structure skill Section 19`);
 		}
-		if (!/```component-code\b[^\n]*title=["']Summary: The Logic of Nested Components["']/.test(bodyContent)) {
-			warns.push(`practical example Stage D is missing its component-code role panel titled "Summary: The Logic of Nested Components"; see lecture-structure skill Section 20 and ui-panels skill Section 21`);
+		if (!/```component-code\b[^\n]*title=["']Summary: (?:The Logic of Nested Components|Project Architecture & File Hierarchy|Project Scaffolding & File Hierarchy|The Scaffolded File Hierarchy)["']/.test(bodyContent)) {
+			warns.push(`practical example Stage D is missing its component-code role panel (titled "Summary: The Logic of Nested Components" or "Summary: Project Architecture & File Hierarchy"); see lecture-structure skill Section 20 and ui-panels skill Section 21`);
 		}
 		if (!/```(?:html-figure|figure)\b[^\n]*src=["'][^"']*architecture-audit/.test(bodyContent)) {
 			warns.push(`practical example is missing its Stage E Architecture Audit Table figure (figures/{NN}-02-architecture-audit.html); see lecture-structure skill Practical Example 26`);
 		}
 	}
 
-	// Strict 10-Line Ceiling (react-04 skills: code-blocks, verification Structure Gates 17):
+	// Strict 10-Line Ceiling (react-05 skills: code-blocks, verification Structure Gates 17):
 	// every body code fence holds at most 10 executable lines unless it is a slice of a
 	// validated continuation chain (slices carry continues/startLine markers).
 	for (const f of bodyFences) {
@@ -1388,7 +1425,7 @@ function checkLecture(file, md) {
 
 /* ---------------- build ---------------- */
 
-function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = false, deckFileName = 'deck') {
+function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = false, deckFileName = 'deck', alwaysBuildDeck = false) {
 	try {
 		mkdirSync(htmlDir, { recursive: true });
 		mkdirSync(pdfDir, { recursive: true });
@@ -1429,6 +1466,8 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 	const filterArg = args.find((a) => /^[\w-]+$/.test(a) && !a.startsWith('--') && a !== rangeArg);
 	const isSingle = Boolean(filterArg);
 	const isCustomRange = Boolean(rangeArg);
+	const isRevised = (inputDir === dirs.mdLecturesRevised);
+	const defaultPrefix = isRevised ? 'React v5.2-rev' : 'React v5.2';
 
 	// Dynamically compute the question range from markdown files
 	let allNumFiles = [];
@@ -1447,11 +1486,15 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 		const first = allNumFiles[0].padStart(2, '0');
 		const last = allNumFiles[allNumFiles.length - 1].padStart(2, '0');
 		const rangeSlug = `Q${first}-Q${last}`;
-		if (!deckFileName || deckFileName === 'deck' || deckFileName === 'auto' || deckFileName.includes('Q01-Q12') || deckFileName.startsWith('React 19 Q')) {
-			resolvedDeckFileName = `React 19 ${rangeSlug}`;
+		if (!deckFileName || /^(auto|deck)$/i.test(deckFileName) || /^React\s*(?:(?:R5|v5\.[12](?:-rev)?|19)\s*)?Q/i.test(deckFileName) || deckFileName.includes('Q01-Q12')) {
+			resolvedDeckFileName = `${defaultPrefix} ${rangeSlug}`;
+		} else {
+			resolvedDeckFileName = resolvedDeckFileName.replace(/\b19\s+/g, '').replace(/\bR5\s+/g, '').replace(/\s+/g, ' ').trim();
 		}
-		if (!deckTitle || deckTitle === 'auto' || deckTitle.includes('Q01-Q12') || deckTitle.startsWith('React 19 Q')) {
-			resolvedDeckTitle = `React 19 ${rangeSlug}`;
+		if (!deckTitle || /^(auto)$/i.test(deckTitle) || /^React\s*(?:(?:R5|v5\.[12](?:-rev)?|19)\s*)?Q/i.test(deckTitle) || deckTitle.includes('Q01-Q12')) {
+			resolvedDeckTitle = `${defaultPrefix} ${rangeSlug}`;
+		} else {
+			resolvedDeckTitle = resolvedDeckTitle.replace(/\b19\s+/g, '').replace(/\bR5\s+/g, '').replace(/\s+/g, ' ').trim();
 		}
 	}
 
@@ -1482,30 +1525,55 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 		}
 	}
 
-	if (!isSingle) {
+	const shouldBuildDeck = (!isSingle || alwaysBuildDeck);
+
+	if (shouldBuildDeck) {
 		// Purge stale ranged deck HTML files (skip during custom range build; preserve custom subdecks like Q01-Q10, Q01-Q11, Q01-Q12)
 		if (!isCustomRange) {
 			try {
 				for (const f of readdirSync(htmlDir)) {
-					if (/^React 19 Q\d+-Q\d+.*\.html$/.test(f) && !f.startsWith(resolvedDeckFileName) && !f.startsWith('React 19 Q01-Q1')) {
+					if (/^React\s*(?:(?:R5|v5\.[12](?:-rev)?|19)\s*)?Q\d+-Q\d+.*\.html$/i.test(f) && !f.startsWith(resolvedDeckFileName)) {
 						unlinkSync(join(htmlDir, f));
 					}
 				}
 			} catch (e) { /* ignore */ }
 		}
 
+		let deckLectures = lectures;
+		if (isSingle && alwaysBuildDeck) {
+			deckLectures = [];
+			const allSourceFiles = readdirSync(inputDir)
+				.filter((f) => f.endsWith('.md') && !f.endsWith('.thinking.md') && !f.includes('-old'))
+				.sort();
+			for (const f of allSourceFiles) {
+				const name = basename(f, '.md');
+				const md = readFileSync(join(inputDir, f), 'utf8');
+				figState.lecture = name;
+				figState.n = 0;
+				const callout = calloutHTML(md);
+				const bodyWithoutQuestion = stripQuestionLine(md);
+				codeNotes.length = 0;
+				const rendered = render(parseBlocks(bodyWithoutQuestion));
+				const body = callout
+					? rendered.replace(/(<\/h1>)/, `</h1>\n${callout}`)
+					: rendered;
+				deckLectures.push({ name, body });
+			}
+		}
+
 		// Course reader: all lectures stitched, with a page break between each.
-		const readerBody = lectures
+		const readerBody = deckLectures
 			.map((l) => `<article class="lecture">${l.body}</article>`)
 			.join('\n<hr class="lecture-break">\n');
 
-		// Multi-theme decks: teal, black, and old (the react-lecture-01 look).
+		// Multi-theme decks: teal, black, old (the react-lecture-01 look), and enhanced (lecture_view_01 look).
 		// The reader is published once per theme under the pipeline's deck file
-		// name (e.g. "React 19 Q01-Q39-teal.pdf"); no duplicate deck-* outputs.
+		// name (e.g. "React v5.2 Q01-Q10-teal.pdf"); no duplicate deck-* outputs.
 		const themes = [
 			{ id: 'teal', label: 'Teal' },
 			{ id: 'black', label: 'Black' },
-			{ id: 'old', label: 'Old' }
+			{ id: 'old', label: 'Old' },
+			{ id: 'enhanced', label: 'Enhanced' }
 		];
 
 		for (const th of themes) {
@@ -1529,23 +1597,29 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 			console.log(`pdf   ${name}.pdf`);
 		}
 
-		if (!isSingle) {
+		if (shouldBuildDeck) {
+			if (isSingle) {
+				execFileSync('prince', [join(htmlDir, `${resolvedDeckFileName}.html`), '-o', join(pdfDir, `${resolvedDeckFileName}.pdf`)], { stdio: ['ignore', 'ignore', 'inherit'] });
+				console.log(`pdf   ${resolvedDeckFileName}.pdf`);
+			}
+
 			// Purge stale ranged deck PDF files (skip during custom range build; preserve custom subdecks like Q01-Q10, Q01-Q11)
 			if (!isCustomRange) {
 				try {
 					for (const f of readdirSync(pdfDir)) {
-						if (/^React 19 Q\d+-Q\d+.*\.pdf$/.test(f) && !f.startsWith(resolvedDeckFileName) && !f.startsWith('React 19 Q01-Q1')) {
+						if (/^React\s*(?:(?:R5|v5\.[12](?:-rev)?|19)\s*)?Q\d+-Q\d+.*\.pdf$/i.test(f) && !f.startsWith(resolvedDeckFileName)) {
 							unlinkSync(join(pdfDir, f));
 						}
 					}
 				} catch (e) { /* ignore */ }
 			}
 
-			// Compile multi-theme reader PDFs: <deckFileName>-teal.pdf, -black.pdf, -old.pdf
+			// Compile multi-theme reader PDFs: <deckFileName>-teal.pdf, -black.pdf, -old.pdf, -enhanced.pdf
 			const themes = [
 				{ id: 'teal', label: 'Teal' },
 				{ id: 'black', label: 'Black' },
-				{ id: 'old', label: 'Old' }
+				{ id: 'old', label: 'Old' },
+				{ id: 'enhanced', label: 'Enhanced' }
 			];
 			for (const th of themes) {
 				const thName = `${resolvedDeckFileName}-${th.id}`;
@@ -1557,10 +1631,10 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 }
 
 // Build standard lectures (format checks on: this is the lectures pipeline)
-buildDirectory(dirs.mdLectures, dirs.html, dirs.pdf, 'auto', true, 'auto');
+buildDirectory(dirs.mdLectures, dirs.html, dirs.pdf, 'auto', true, 'auto', false);
 
 // Build revised lectures pipeline
-buildDirectory(dirs.mdLecturesRevised, dirs.htmlRevised, dirs.pdfRevised, 'auto', true, 'auto');
+buildDirectory(dirs.mdLecturesRevised, dirs.htmlRevised, dirs.pdfRevised, 'auto', true, 'auto', true);
 
 if (!rangeArg) {
 	// Build review experiment

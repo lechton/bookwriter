@@ -378,13 +378,7 @@ export function renderComponentCodeExplorer(source, title = '') {
 	const explorerTitle = title || 'Component Code Architecture';
 	const ariaLabel = `Component hierarchy for ${explorerTitle}`;
 
-	return `<section class="component-explorer component-code-explorer" aria-label="${escapeHtml(ariaLabel)}">
-	<div class="component-explorer-bar">
-		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
-		<span class="component-explorer-title">${escapeHtml(explorerTitle)}</span>
-	</div>
-	<div class="component-explorer-stage cce-stage-full">
-		<div class="component-explorer-canvas cce-canvas-full">${renderComponentNode(root)}</div>
-	</div>
-</section>`;
+	return `<div class="component-code-wrapper" aria-label="${escapeHtml(ariaLabel)}">
+	<div class="component-code-canvas">${renderComponentNode(root)}</div>
+</div>`;
 }

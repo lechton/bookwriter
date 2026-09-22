@@ -217,8 +217,55 @@ function renderFileTree(nodes, activePath) {
 // carry **bold** for the load-bearing value. When present, these lines replace
 // the deterministic mock surface: a panel must never show an empty placeholder
 // where the learner should see the computed result.
+const UI_ICONS = {
+	image: '<svg class="surface-ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+	alert: '<svg class="surface-ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+	bell: '<svg class="surface-ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+	newspaper: '<svg class="surface-ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>',
+	search: '<svg class="surface-ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+	user: '<svg class="surface-ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+	clock: '<svg class="surface-ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+	radio: '<svg class="surface-ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>',
+	check: '<svg class="surface-ui-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>',
+};
+
+function renderUiImage(caption) {
+	const escCap = caption ? escapeHtml(caption.trim()) : 'Image';
+	return `<div class="surface-ui-image"><span class="surface-ui-image-icon">${UI_ICONS.image}</span><span class="surface-ui-image-caption">${escCap}</span></div>`;
+}
+
 function renderInline(text) {
 	return escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
+function renderUiElem(tag, rawContent) {
+	let formattedContent = '';
+	const isImgTag = /^\[img(\.[a-z0-9_.-]+)?\]$/i.test(tag);
+	const baseTagMatch = tag.match(/^\[([a-z0-9]+)/i);
+	const baseTag = baseTagMatch ? baseTagMatch[1].toLowerCase() : '';
+	const tagClass = baseTag ? ` ui-tag-${baseTag}` : '';
+	if (rawContent) {
+		if (isImgTag && !rawContent.includes('[') && !rawContent.includes(']')) {
+			formattedContent = renderUiImage(rawContent);
+		} else {
+			formattedContent = escapeHtml(rawContent)
+				.replace(/\[(?:img|image):\s*([^\]]+)\]/gi, (_, val) => renderUiImage(val.trim()))
+				.replace(/\[icon:\s*([^\]]+)\]/gi, (_, val) => `<span class="surface-ui-icon-wrap">${UI_ICONS[val.trim().toLowerCase()] || UI_ICONS.image}</span>`)
+				.replace(/\[(?:badge|tag):\s*([^\]]+)\]/gi, (_, val) => `<span class="surface-ui-badge">${renderInline(val.trim())}</span>`)
+				.replace(/\[(?:btn|button):\s*([^\]]+)\]/gi, (_, val) => `<span class="surface-ui-btn">${escapeHtml(val.trim())}</span>`)
+				.replace(/\[input:\s*([^\]]+)\]/gi, (_, val) => `<div class="surface-ui-input"><span class="surface-ui-input-placeholder">${escapeHtml(val.trim())}</span></div>`)
+				.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+				.replace(/`([^`]+)`/g, '<code>$1</code>');
+			if (baseTag === 'button' && !rawContent.includes('[btn:') && !rawContent.includes('[button:') && !formattedContent.includes('surface-ui-btn')) {
+				formattedContent = `<span class="surface-ui-btn">${formattedContent}</span>`;
+			} else if (baseTag === 'input' && !rawContent.includes('[input:') && !formattedContent.includes('surface-ui-input')) {
+				formattedContent = `<div class="surface-ui-input"><span class="surface-ui-input-placeholder">${formattedContent}</span></div>`;
+			}
+		}
+	} else if (isImgTag) {
+		formattedContent = renderUiImage('Image');
+	}
+	return `<div class="ui-elem${tagClass}" data-elem="${escapeHtml(tag)}"><div class="ui-elem-content">${formattedContent}</div></div>`;
 }
 
 function renderRenderItem(raw, node) {
@@ -231,6 +278,21 @@ function renderRenderItem(raw, node) {
 			.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 			.replace(/`([^`]+)`/g, '<code>$1</code>');
 		return `<div class="surface-ui-role"><p class="surface-ui-role-text">${formatted}</p></div>`;
+	}
+	// 0.5 Web-Inspector Element: [elem:tag:content] or [ui-elem:tag:content] or [elem:tag]
+	const mElem = text.match(/^\[(?:elem|ui-elem):\s*(\[[^\]]+\]|[^:]+?)(?::\s*([\s\S]+))?\]$/i);
+	if (mElem) {
+		const rawTag = mElem[1].trim();
+		const tag = rawTag.startsWith('[') && rawTag.endsWith(']') ? rawTag : `[${rawTag}]`;
+		const rawContent = (mElem[2] || '').trim();
+		return renderUiElem(tag, rawContent);
+	}
+	const mCustomElem = text.match(/^\[([a-z0-9_.-]+\.[a-z0-9_.-]+|[a-z0-9_.-]+:\s*[^\]:]+):\s*([\s\S]+)\]$/i);
+	if (mCustomElem) {
+		const rawTag = mCustomElem[1].trim();
+		const tag = rawTag.startsWith('[') && rawTag.endsWith(']') ? rawTag : `[${rawTag}]`;
+		const rawContent = (mCustomElem[2] || '').trim();
+		return renderUiElem(tag, rawContent);
 	}
 	// 1. Code snippet: [code: ...] or `...` or code: ...
 	const mCode = text.match(/^\[code:[ \t]?([\s\S]+?)\]$/i) || text.match(/^code:[ \t]?(.+)$/i) || text.match(/^`([^`]+)`$/);
@@ -251,6 +313,17 @@ function renderRenderItem(raw, node) {
 	const mBadge = text.match(/^\[(?:badge|tag):\s*([^\]]+)\]$/i) || text.match(/^(?:badge|tag):\s*(.+)$/i);
 	if (mBadge) {
 		return `<span class="surface-ui-badge">${renderInline(mBadge[1].trim())}</span>`;
+	}
+	// 4.5 Image component: [img: ...] or [image: ...]
+	const mImg = text.match(/^\[(?:img|image):\s*([^\]]+)\]$/i);
+	if (mImg) {
+		return renderUiImage(mImg[1].trim());
+	}
+	// 4.6 Icon component: [icon: ...]
+	const mIcon = text.match(/^\[icon:\s*([^\]]+)\]$/i);
+	if (mIcon) {
+		const iconName = mIcon[1].trim().toLowerCase();
+		return `<span class="surface-ui-icon-wrap">${UI_ICONS[iconName] || UI_ICONS.image}</span>`;
 	}
 	// 5. Button: [button: ...] or [Button Label] or kind="button"
 	const mBtn = text.match(/^\[(?:button:\s*)?([^\]]+)\]$/i) || text.match(/^button:\s*(.+)$/i);
