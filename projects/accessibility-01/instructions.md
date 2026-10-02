@@ -25,7 +25,7 @@ When the user asks "write the lecture for question 09" you start from `md-lectur
 
 ## The question bank
 
-- **Location:** `../../questions-accessibility/questions.md`, with the controlled topic vocabulary in `../../questions-accessibility/topics.md` and the design rationale in `../../questions-accessibility/README.md`.
+- **Location:** `../../questions/accessibility/questions.md`, with the controlled topic vocabulary in `../../questions/accessibility/topics.md` and the design rationale in `../../questions/accessibility/README.md`.
 - **Format:** every question is a row with five columns: `# | Tier | Topic | Question | Hook`. The number is the stable ID and the lecture filename. The Tier is `❱ CORE`, `❱❱ MORE`, or `❱❱❱ ADVANCED`. The Question is written in interview register and becomes the `> INTERVIEW QUESTION` line of the lecture. The Hook is the pain-point seed of the Opening Ladder: grow it, never replace it.
 - **Bank growth:** the bank grows in tranches from audits of the local corpus (see Sources of truth). Never invent a lecture without a bank row; if a topic is missing, add the row to the bank first, then write the lecture.
 

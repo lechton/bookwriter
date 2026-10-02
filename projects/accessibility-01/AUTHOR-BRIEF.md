@@ -4,7 +4,7 @@ Paste this brief plus the question row into the writing model. The full rules li
 
 ## Input you receive
 
-- One row from `../../questions-accessibility/questions.md`: number, tier (`❱ CORE` / `❱❱ MORE` / `❱❱❱ ADVANCED`), topic tag, question text, hook. The hook is the seed of your opening scenario; grow it, do not replace it.
+- One row from `../../questions/accessibility/questions.md`: number, tier (`❱ CORE` / `❱❱ MORE` / `❱❱❱ ADVANCED`), topic tag, question text, hook. The hook is the seed of your opening scenario; grow it, do not replace it.
 
 ## Write `md-lectures/{n}.md` with this skeleton, in this order
 

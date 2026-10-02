@@ -1,11 +1,11 @@
 # React + React Server Interview Questions — Curriculum
 
-A unified, dependency-ordered curriculum of **180 questions** covering both React (the UI library, Q1–Q100) and React Server (SSR, Server Components, and full-stack rendering, Q101–Q180), in a single file with one continuous numbering scale. This bank is the React sibling of `../questions/` (the Svelte 5 + SvelteKit curriculum) and follows the exact same format and tier philosophy.
+A unified, dependency-ordered curriculum of **180 questions** covering both React (the UI library, Q1–Q100) and React Server (SSR, Server Components, and full-stack rendering, Q101–Q180), in a single file with one continuous numbering scale. This bank is the React sibling of `../svelte/` (the Svelte 5 + SvelteKit curriculum) and follows the exact same format and tier philosophy.
 
 ## File layout
 
 ```
-questions-react/
+questions/react/
 ├── README.md       ← this file (design + rationale)
 ├── topics.md       ← controlled vocabulary of hashtags (one tag per question)
 └── questions.md    ← all 180 questions, sections stacked, continuous numbering 1–180
