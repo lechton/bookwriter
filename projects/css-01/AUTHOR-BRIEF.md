@@ -4,7 +4,7 @@ Paste this brief plus the question row into the writing model. The full rules li
 
 ## Input you receive
 
-- One row from `../../questions-css/questions.md`: number, tier (`❱ CORE` / `❱❱ MORE` / `❱❱❱ ADVANCED`), topic tag, question text, hook. The hook is the seed of your opening scenario; grow it, do not replace it.
+- One row from `../../questions/css/questions.md`: number, tier (`❱ CORE` / `❱❱ MORE` / `❱❱❱ ADVANCED`), topic tag, question text, hook. The hook is the seed of your opening scenario; grow it, do not replace it.
 
 ## Write `md-lectures/{n}.md` with this skeleton, in this order
 
@@ -73,7 +73,7 @@ Read the matching local documentation before writing: `documentation official/cs
 
 ## When you are done
 
-Run through every item in [`AUDIT-CHECKLIST.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/css-01/AUDIT-CHECKLIST.md). An **AUDIT** requires inspecting against every single gate and executing all necessary fixes. Run `node src/build-lectures.mjs` from the project folder (`diagram-lab/output/css-01/`). Read the log: a `warn` line is a format violation you must fix in the source and rebuild; a `note` line is safe. Zero warnings means the lecture passes the mechanical gate. Then the eight-gate final read: ladder laws kept, one thing centered, naive alternative answered, quote verbatim and cited, figure serves the mechanism, code runs, summary streetwise, table closes the file.
+Run through every item in [`AUDIT-CHECKLIST.md`](./AUDIT-CHECKLIST.md). An **AUDIT** requires inspecting against every single gate and executing all necessary fixes. Run `node src/build-lectures.mjs` from the project folder (`projects/css-01/`). Read the log: a `warn` line is a format violation you must fix in the source and rebuild; a `note` line is safe. Zero warnings means the lecture passes the mechanical gate. Then the eight-gate final read: ladder laws kept, one thing centered, naive alternative answered, quote verbatim and cited, figure serves the mechanism, code runs, summary streetwise, table closes the file.
 
 ### Mandatory Visual Quality Gate: UI Image Verification Gate
 Zero build warnings is not enough. Take screenshots (via `pdftoppm -png -r 150 -f <page> -l <page> md-lectures-pdf/{n}.pdf md-lectures-pdf/audit-page<page>-{n}`) **after creating or modifying every UI image / figure canvas mode (in `src/css-figure.mjs`), and ONLY in this case, OR if there is a serious grounded suspicion of a visual error**.

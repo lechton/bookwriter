@@ -3,7 +3,7 @@
 Paste this brief plus the question row into the writing model. The full rules live in `instructions.md`; this page is the working subset that fits a small context. When the build log is clean, the lecture is mechanically done.
 
 ## Input you receive
-- One row from `../../questions-react/questions.md`: number, tier (`❱ CORE` / `❱❱ MORE` / `❱❱❱ ADVANCED`, each possibly suffixed ` (Server)` for Q101–Q180), topic tag, question text, hook. The hook is the seed of your opening scenario; grow it, do not replace it.
+- One row from `../../questions/react/questions.md`: number, tier (`❱ CORE` / `❱❱ MORE` / `❱❱❱ ADVANCED`, each possibly suffixed ` (Server)` for Q101–Q180), topic tag, question text, hook. The hook is the seed of your opening scenario; grow it, do not replace it.
 
 ## Write `md-lectures/{n}.md` with this skeleton, in this order
 1. Line 1, exactly: `# Lecture {n}: {Short Title}`
@@ -50,4 +50,4 @@ First header cell always empty; header titles are `**CAPS**` plus `<br>` plus a 
 Read the matching local documentation before writing: `documentation official/React 19 Sept 2026/react.dev/src/content/` — `learn/` for concept pages, `reference/react/` for hooks and APIs, `reference/react-dom/` for rendering and built-in components, `reference/rsc/` for the server course (Q101+). Anchor every technical claim to those docs when possible.
 
 ## When you are done
-Run `node src/build-lectures.mjs` from the project folder (`diagram-lab/output/react-lecture-01/`). Read the log: a `warn` line is a format violation you must fix in the source and rebuild; a `note` line is something the build already repaired (for example a comment-only line merged into the next code line) and is safe to leave. Zero warnings means the lecture passes the mechanical gate.
+Run `node src/build-lectures.mjs` from the project folder (`projects/react-01/`). Read the log: a `warn` line is a format violation you must fix in the source and rebuild; a `note` line is something the build already repaired (for example a comment-only line merged into the next code line) and is safe to leave. Zero warnings means the lecture passes the mechanical gate.

@@ -1,6 +1,6 @@
 # React 19 Complete Curriculum: Zero-Gap Pedagogical Architecture
 
-A unified, strictly dependency-ordered curriculum of **180 questions** covering both client-side React 19 (Q1–Q100) and React Server (Q101–Q180), housed directly inside `diagram-lab/output/react-lecture-06/questions/`.
+A unified, strictly dependency-ordered curriculum of **180 questions** covering both client-side React 19 (Q1–Q100) and React Server (Q101–Q180), housed directly inside `projects/react-06/questions/`.
 
 This question bank serves a dual mission:
 1. **Zero-Gap First-Time Learner Path**: A student who has never written React before can follow from Question 1 onward without hitting missing concepts, premature jargon, or chicken-and-egg dependency loops.
@@ -31,7 +31,7 @@ React Server Components (RSC), SSR, and Server Functions are strictly quarantine
 ## File Layout
 
 ```
-diagram-lab/output/react-lecture-06/questions/
+projects/react-06/questions/
 ├── README.md       ← this file (pedagogical design, curriculum map, and rationale)
 ├── topics.md       ← controlled vocabulary of hashtags (one tag per question)
 └── questions.md    ← all 180 questions, strictly ordered, continuous numbering 1–180

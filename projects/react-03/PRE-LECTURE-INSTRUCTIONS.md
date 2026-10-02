@@ -1,6 +1,6 @@
 # Pre-Lecture / Prelecture Instructions: Phase 1 Iteration Guide
 
-This document is the authoritative specification for authoring a **pre-lecture** (also referred to as a **prelecture**) in `diagram-lab/output/react-lecture-03/md-pre-lectures/`.
+This document is the authoritative specification for authoring a **pre-lecture** (also referred to as a **prelecture**) in `projects/react-03/md-pre-lectures/`.
 
 The pre-lecture / prelecture is the **first iteration of the material** before creating the full production lecture in `md-lectures/{nn}.md`. It establishes maximum coherence and clarity, plans the causal flow of every paragraph and code block, and locks in the technical vocabulary before writing begins.
 

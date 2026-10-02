@@ -1,6 +1,6 @@
 # Accessibility and Web Performance Lecture Series: Project Instructions
 
-This document is the single source of truth for the workflow of the `accessibility-01` project inside `diagram-lab/output/`. Every question in the bank is taught as one long-form lecture: the lecture is the source of truth for depth, written first, built into HTML and PDF by the scripts in `src/`. The topic is interview readiness for Web Accessibility and Web Performance: standards (WCAG, ARIA, HTML), developer practice (MDN, web.dev, Chrome, V8, Node), measurement (Core Web Vitals, Lighthouse, real-user data), and the supporting book corpus.
+This document is the single source of truth for the workflow of the `accessibility-01` project inside `projects/`. Every question in the bank is taught as one long-form lecture: the lecture is the source of truth for depth, written first, built into HTML and PDF by the scripts in `src/`. The topic is interview readiness for Web Accessibility and Web Performance: standards (WCAG, ARIA, HTML), developer practice (MDN, web.dev, Chrome, V8, Node), measurement (Core Web Vitals, Lighthouse, real-user data), and the supporting book corpus.
 
 ## File structure and logic
 

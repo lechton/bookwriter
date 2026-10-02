@@ -1,4 +1,4 @@
-/Users/techton/lechton/research-code/bookwriter/diagram-lab/output/vue-01
+projects/vue-01
 
 Write lecture 1
 

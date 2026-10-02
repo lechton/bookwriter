@@ -46,4 +46,4 @@ Read the matching local documentation before writing: `documentation official/ac
 
 ## When you are done
 
-Run `node src/build-lectures.mjs` from the project folder (`diagram-lab/output/accessibility-01/`). Read the log: a `warn` line is a format violation you must fix in the source and rebuild; a `note` line is safe. Zero warnings means the lecture passes the mechanical gate. Then the eight-gate final read: ladder laws kept, one thing centered, naive alternative answered, quote verbatim and cited, canvas serves the mechanism, code runs, summary streetwise, table closes the file.
+Run `node src/build-lectures.mjs` from the project folder (`projects/accessibility-01/`). Read the log: a `warn` line is a format violation you must fix in the source and rebuild; a `note` line is safe. Zero warnings means the lecture passes the mechanical gate. Then the eight-gate final read: ladder laws kept, one thing centered, naive alternative answered, quote verbatim and cited, canvas serves the mechanism, code runs, summary streetwise, table closes the file.

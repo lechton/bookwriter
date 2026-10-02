@@ -1,6 +1,6 @@
 # CSS Interview Lecture Series: Project Instructions (css-01)
 
-This document is the single source of truth for the workflow of the `css-01` project inside `diagram-lab/output/`. Every question in the bank is taught as one long-form lecture: the lecture is the source of truth for depth, written first, built into HTML and PDF by the scripts in `src/`. The topic is interview readiness for CSS in three tracks: CSS review (cascade, box model, layout, modern selectors), BEM methodology with LESS and SASS, and responsive, accessible, cross-browser CSS. The design benchmark and the origin of every inherited law is the sibling project `../accessibility-01/`; the dated decision journal that records how this project was designed lives in `briefs/` (read `2026_09_13_01` through `04` in order).
+This document is the single source of truth for the workflow of the `css-01` project inside `projects/`. Every question in the bank is taught as one long-form lecture: the lecture is the source of truth for depth, written first, built into HTML and PDF by the scripts in `src/`. The topic is interview readiness for CSS in three tracks: CSS review (cascade, box model, layout, modern selectors), BEM methodology with LESS and SASS, and responsive, accessible, cross-browser CSS. The design benchmark and the origin of every inherited law is the sibling project `../accessibility-01/`; the dated decision journal that records how this project was designed lives in `briefs/` (read `2026_09_13_01` through `04` in order).
 
 ## File structure and logic
 
@@ -28,7 +28,7 @@ When the user asks "write the lecture for question 09" you start from `md-lectur
 
 ## The question bank
 
-- **Location:** `../../questions-css/questions.md`, with the controlled topic vocabulary in `../../questions-css/topics.md` and the design rationale in `../../questions-css/README.md`. The bank holds 60 questions in three parts: CSS Review (1–31), BEM with LESS and SASS (32–45), Responsive + Accessible + Cross-Browser CSS (46–60).
+- **Location:** `../../questions/css/questions.md`, with the controlled topic vocabulary in `../../questions/css/topics.md` and the design rationale in `../../questions/css/README.md`. The bank holds 60 questions in three parts: CSS Review (1–31), BEM with LESS and SASS (32–45), Responsive + Accessible + Cross-Browser CSS (46–60).
 - **Format:** every question is a row with five columns: `# | Tier | Topic | Question | Hook`. The number is the stable ID and the lecture filename. The Tier is `❱ CORE`, `❱❱ MORE`, or `❱❱❱ ADVANCED`. The Question is written in interview register and becomes the `> INTERVIEW QUESTION` line of the lecture. The Hook is the pain-point seed of the Opening Ladder: grow it, never replace it.
 - **Bank growth:** the bank grows from audits of the local corpus (see Sources of truth). Never invent a lecture without a bank row; if a topic is missing, add the row to the bank first, then write the lecture. Once the bank is approved its numbers freeze; later growth appends a new tranche, never renumbers.
 
@@ -167,7 +167,7 @@ Every HTML figure must satisfy the following strict publication criteria:
 
 ### Canonical Reference Implementation: Abstract Component UI
 
-The following exact, complete HTML file ([`md-lectures/figures/01-01-cascade-order.html`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/css-01/md-lectures/figures/01-01-cascade-order.html)) serves as the gold standard reference template for Paradigm 1 (Abstract Component UI). Copy and adapt this structure for all component-level comparisons:
+The following exact, complete HTML file ([`md-lectures/figures/01-01-cascade-order.html`](./md-lectures/figures/01-01-cascade-order.html)) serves as the gold standard reference template for Paradigm 1 (Abstract Component UI). Copy and adapt this structure for all component-level comparisons:
 
 ```html
 <style>
@@ -595,7 +595,7 @@ Teaching is not documenting. A reference manual merely states technical rules; a
 
 ## Build and gates
 
-- **Mandatory Operational Audit Checklist:** Before marking any lecture authored, audited, or revised, run through every item in [`AUDIT-CHECKLIST.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/css-01/AUDIT-CHECKLIST.md). An **AUDIT** requires full inspection against all gates followed immediately by executing all necessary fixes.
+- **Mandatory Operational Audit Checklist:** Before marking any lecture authored, audited, or revised, run through every item in [`AUDIT-CHECKLIST.md`](./AUDIT-CHECKLIST.md). An **AUDIT** requires full inspection against all gates followed immediately by executing all necessary fixes.
 
 From this folder run `node src/build-lectures.mjs` (add `--no-pdf` to skip Prince). The combined reader is written as `md-lectures-html/deck.html`, and its PDF is always named with the question range it contains, in the `CSS Q01-Q03.pdf` style, computed from the first and last lecture present; the build removes any previous range's deck PDF so the folder never carries two readers. Read the log: a `warn` line is a format violation you must fix in the source and rebuild; a `note` line is something the build already repaired and is safe to leave. The mechanical gate is zero warnings. The build enforces: the title and question line shapes, the presence of a callout, the mandatory figure panel, the section lead-in rule, the quoting law's citation path, the Summary section and its non-filler opening, and the closing table's exact shape including the long-code-string split rule.
 

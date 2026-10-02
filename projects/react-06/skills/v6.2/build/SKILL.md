@@ -11,7 +11,7 @@ Digests: `skills/old-instructions/instructions.md` (build commands, themes, work
 
 ## Build Pipeline | 01 | Execution Context and Core Commands
 
-- [ ] Are all build commands executed directly from the subproject directory: `diagram-lab/output/react-lecture-06/`?
+- [ ] Are all build commands executed directly from the subproject directory: `projects/react-06/`?
 - [ ] Is the versioned directory architecture respected across source lectures, blueprints, figures, HTML, and PDF outputs (`01-02-md-LECTURES/<version>/`, `01-01-md-PRE-lectures/<version>/`, `01-03-md-lectures-HTML/<version>/`, `01-04-md-lectures-PDF/<version>/`, and `01-02-md-LECTURES/<version>/figures/`)? #2026_09_24_05_group_1 revised by #2026_09_25_01_group_1
 - [ ] Is the default curriculum version determined by the Compound Default Version convention (highest in `skills/` + highest in lessons markdown, e.g. `v6.2` skills + `v2` lessons yields `v6.2-2`)? #2026_09_25_01_group_1
 - [ ] Do internal operations target the latest version by default unless an explicit version flag is passed?

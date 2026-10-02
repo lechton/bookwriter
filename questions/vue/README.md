@@ -2,7 +2,7 @@
 
 Status: **FINALIZED AND FROZEN (60 Questions)**
 
-This directory hosts the question bank and topic vocabulary for the `vue-01` lecture series (`diagram-lab/output/vue-01/`), covering **Vue.js without Nuxt.js** (Core Vue 3: Reactivity Engine, Component Architecture, Composition API, SFC Template Compilation, Virtual DOM patching, Vue Router, Pinia, and Performance Optimization). The design rationale and track decisions are recorded in `diagram-lab/output/vue-01/briefs/2026_09_15_04_question_bank_design.md`.
+This directory hosts the question bank and topic vocabulary for the `vue-01` lecture series (`projects/vue-01/`), covering **Vue.js without Nuxt.js** (Core Vue 3: Reactivity Engine, Component Architecture, Composition API, SFC Template Compilation, Virtual DOM patching, Vue Router, Pinia, and Performance Optimization). The design rationale and track decisions are recorded in `projects/vue-01/briefs/2026_09_15_04_question_bank_design.md`.
 
 ## Files
 

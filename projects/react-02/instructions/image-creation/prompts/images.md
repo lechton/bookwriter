@@ -4,7 +4,7 @@
 
 ## Prompt 1
 
- /Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/lab/01-forensic-investigator
+ projects/react-02/lab/01-forensic-investigator
 
  run the instructions for lecture-creation for the next chapter with proper figures and pannels (NOT the image-creation instructinos)
 Do not ask me to approve implementation plan, compose the final result by yourself. 

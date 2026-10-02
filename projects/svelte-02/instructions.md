@@ -1,6 +1,6 @@
 # Svelte 5 Lecture + Card Series: Project Instructions
 
-This document is the single source of truth for the workflow of the `svelte-lecture-02` project inside `diagram-lab/output/`. The project mirrors the structure of the sibling `online-demo-01`, with one essential difference: **every question is taught first as a long-form lecture, and only afterwards distilled into a review card**. The lecture is the source of truth for depth; the card is the review artifact.
+This document is the single source of truth for the workflow of the `svelte-lecture-02` project inside `projects/`. The project mirrors the structure of the sibling `online-demo-01`, with one essential difference: **every question is taught first as a long-form lecture, and only afterwards distilled into a review card**. The lecture is the source of truth for depth; the card is the review artifact.
 
 > **Project Architecture note.** This project runs three parallel content pipelines — **lectures** (comprehensive, long-form), **cards** (distilled, reviewable), and **data-flow** (architectural placement in a real app) — each with its own source folder, build step, and HTML/PDF output folders. All three pipelines draw from the same 210-question curriculum (Svelte 5 + SvelteKit, Q1–Q210) and the same local Svelte documentation. The lecture pipeline is authored first per question; the card and data-flow pipelines follow. The lecture teaches *how* a Svelte mechanism works; the card distills it for review; the data-flow file teaches *where that mechanism belongs* in a real component tree, grounding the concept in the fixed ElectroShop reference architecture.
 
@@ -9,7 +9,7 @@ This document is the single source of truth for the workflow of the `svelte-lect
 
 archive: Reserved for snapshots and provenance
 diagrams: The raw HTML/CSS diagram snippets injected into the rendered cards
-docs: Documentation including the component data flow architecture (the question bank itself now lives at `../../questions/`)
+docs: Documentation including the component data flow architecture (the question bank itself now lives at `../../questions/svelte/`)
 img: The standalone generated PNG images for the cards
 img-instruction: The design system rules, palette, typography, and image generation prompts
 
@@ -48,7 +48,7 @@ src: The build scripts (`build-lectures.mjs`, `build-cards.mjs`) and shared styl
 
 ## Source of Content
 
-- **Question bank:** `../../questions/questions.md` — the redesigned 210-question curriculum (Svelte 5 Q1–Q100, SvelteKit Q101–Q210), each row carrying `# | Tier | Topic | Question | Hook`. This is the single source of truth for every question and replaces the old flat 200-question list. The controlled topic vocabulary lives in `../../questions/topics.md`, and the design rationale in `../../questions/README.md`. (A legacy copy of the old list remains at `diagram-lab/docs/200Q/200Q.md` for backward reference only — do not author new lectures from it.)
+- **Question bank:** `../../questions/svelte/questions.md` — the redesigned 210-question curriculum (Svelte 5 Q1–Q100, SvelteKit Q101–Q210), each row carrying `# | Tier | Topic | Question | Hook`. This is the single source of truth for every question and replaces the old flat 200-question list. The controlled topic vocabulary lives in `../../questions/svelte/topics.md`, and the design rationale in `../../questions/svelte/README.md`. (A legacy copy of the old list remains at ``diagram-lab-docs/200Q/200Q.md` in the archive folder (resolve `archive` from bookwriter-project.local.json)` for backward reference only — do not author new lectures from it.)
 - **Local Svelte documentation (primary source for lectures):** `documentation 2026 June/svelte-docs/` — 106 Markdown files covering runes, template syntax, styling, special elements, runtime, and reference material. Use these as the authoritative technical source for lecture content.
 - **Supplementary research:** when the local docs do not fully answer a question, expand with online research, but always anchor claims back to the local docs when possible.
 - **Reference architecture for the data-flow pipeline (primary source for `md-data-flow/`):** `docs/component_data_flow.md`, `docs/component_language.md`, and `docs/component_flow_lecture_49.md`. The first two fix the ElectroShop component tree, the component-relationship shorthand, and the multi-scale A/B/C explanation structure that every data-flow file must follow. The third is the prototype; use it as a *format* template only, never as faithful content for question 49 (see the **Data-Flow Format Spec** below for the faithfulness rules).
@@ -355,7 +355,7 @@ The six steps above are the standard authoring flow for one question. The audit 
 The lecture pipeline uses a full Markdown renderer (`src/build-lectures.mjs`). Unlike the card pipeline, there are no card-specific constraints — you may use any combination of standard Markdown.
 
 - **Plain markdown with full formatting.** **bold**, *italic*, bullet lists, numbered lists, inline `` `code` ``, fenced code blocks with optional `title=""`, blockquotes, and inline `[text](url)` links are all supported and render correctly to HTML and PDF. (See the **heading rules** below for the specific roles of `#`, `##`, and `###`.)
-- **The interview question is embedded in the lecture source** — it is the second line of every lecture file, immediately after the title, as a blockquote with the exact pattern `> INTERVIEW QUESTION | ❱ [TYPOLOGY] | <question text>`. The build script parses this line and renders it as a pull-quote callout **directly below the title** (an `<aside class="interview-question">` styled by `src/lecture.css`), including a premium badge for the typology (e.g. `❱ CORE`, `❱❱ MORE`, `❱❱❱ ADVANCED`). The visual order matches the source order: title first, then the question, then the lecture body. The author copies the **Question** column verbatim from `../../questions/questions.md` (row `n`) when creating the lecture and may edit it inline afterward. The build no longer reads `questions.md` — the lecture file is the single source of truth for its own question.
+- **The interview question is embedded in the lecture source** — it is the second line of every lecture file, immediately after the title, as a blockquote with the exact pattern `> INTERVIEW QUESTION | ❱ [TYPOLOGY] | <question text>`. The build script parses this line and renders it as a pull-quote callout **directly below the title** (an `<aside class="interview-question">` styled by `src/lecture.css`), including a premium badge for the typology (e.g. `❱ CORE`, `❱❱ MORE`, `❱❱❱ ADVANCED`). The visual order matches the source order: title first, then the question, then the lecture body. The author copies the **Question** column verbatim from `../../questions/svelte/questions.md` (row `n`) when creating the lecture and may edit it inline afterward. The build no longer reads `questions.md` — the lecture file is the single source of truth for its own question.
 - **Long-form, not summary.** Aim for comprehensive coverage of the concept. The lecture is the source of depth for the whole project; a thin lecture produces a thin card.
 - **Lead with critical questions and visceral pain points (Organic Lexical Audit - OLA).** Always introduce new lexical terms using visceral, real-world, high-stakes contexts. Don't just explain a feature theoretically—create a scenario where a newbie would physically hit a wall without it (e.g., "if you rename the ID, the button breaks silently and you lose the sale"). Open each lecture by surfacing this real-world failure or confusion that motivates the concept. Build tension before revealing the solution.
 - **Give structural logic an introductory visual reference.** Immediately after the opening establishes the pain and before the first code that implements the central mechanism, run the **intro component-tree visual-reference gate** from “Component Explorer Panels and the Intro Component-Tree Gate.” If the learner must understand component ownership, nesting, repetition, a conditional subtree, boundary flow, or the identity and lifetime of a rendered element, place the matching `components` panel there and explain how to read it. This is mandatory even for a single-component example when the component-to-DOM relationship is the mechanism; `bind:this` is the canonical case. A panel may be omitted only when the working plan records why the concept has no useful structural model.
@@ -461,7 +461,7 @@ Quick test: if the heading introduces a new subsection of the current lecture an
   > INTERVIEW QUESTION | ❱ CORE | How do you initialize a reactive local variable that dynamically syncs with an incoming prop using Runes?
   ```
 - **A blank line follows** before the rest of the lecture body begins.
-- **Editing**: to change the question, edit this single line. Do not edit `../../questions/questions.md` and do not edit the build script — the build reads only from this line.
+- **Editing**: to change the question, edit this single line. Do not edit `../../questions/svelte/questions.md` and do not edit the build script — the build reads only from this line.
 - **If the line is missing**, the build renders the lecture without a callout (no error, but the visual anchor is gone — always include it).
 
 ### The Hook Ladder (opening pattern)
@@ -951,11 +951,11 @@ The lecture is the comprehensive source for a question; the card is its distille
 - `docs/component_data_flow.md` and `docs/component_language.md` — the primary sources for the data-flow pipeline: the fixed ElectroShop component tree, the component-relationship shorthand, and the A/B/C multi-scale structure every `md-data-flow/` file follows.
 - `docs/component_flow_lecture_49.md` — the data-flow prototype. Use as a *format* template only; its `$derived.by` VIP-discount scenario is not faithful to Q49 (see the Data-Flow Format Spec's faithfulness rules).
 - `docs/` — local project documentation. Currently contains `CODE-BLOCK-VISUAL-FIX.md`, a detailed brief for a separate AI tool (Antigravity) brought in to close the visual gap between this project's code blocks and the Pencil book reference. Read this if working on code-block styling.
-- **Screenshots folder** (outside the project, on disk): `/Users/techton/Images/CleanShotX/` — CleanShot X saves every screen capture here, newest first by filename timestamp. Use this folder to find before/after comparisons when iterating on visual output. Files are named `CleanShot YYYY-MM-DD at HH.MM.SS@2x.png`.
+- **Screenshots folder** (outside the project, on disk): `screenshots/` — CleanShot X saves every screen capture here, newest first by filename timestamp. Use this folder to find before/after comparisons when iterating on visual output. Files are named `CleanShot YYYY-MM-DD at HH.MM.SS@2x.png`.
 
 ## Visual reference for the Pencil book design
 
-The lecture pipeline's code-block presentation is meant to mimic the visual style of the Pencil book at `/Users/techton/lechton/research-code/svelte dev 2026/Pencil/`. The canonical references are:
+The lecture pipeline's code-block presentation is meant to mimic the visual style of the Pencil book at `external.svelteDev2026/Pencil/`. The canonical references are:
 
 - `Pencil/styles/figure-03.css` — the source-of-truth stylesheet for the editor code-block look.
 - `Pencil/cards 05/04_extra_javascript_1/01-prototype/card.html` — a hand-curated example of the editor HTML structure.

@@ -4,7 +4,7 @@ Date: 2026-09-16 · Number: 01 · Status: foundational
 
 ## What we are doing
 
-We are creating `diagram-lab/output/react-lecture-02/`, a publication-grade interview lecture series covering modern React 19 and React Server across 180 questions:
+We are creating `projects/react-02/`, a publication-grade interview lecture series covering modern React 19 and React Server across 180 questions:
 1. **Part One: React 19 Client Architecture (Q01–Q100)**: Components, JSX compilation, immutable state contracts, hooks lifecycle, render vs commit phases, Fiber reconciliation, Concurrency, and the React 19 Compiler.
 2. **Part Two: React Server & Full-Stack Systems (Q101–Q180)**: Server-Side Rendering (SSR), streaming via `renderToPipeableStream`, client hydration (`hydrateRoot`), React Server Components (RSC), the `'use client'`/`'use server'` boundary, Flight protocol streaming, and Server Actions (`useActionState`).
 

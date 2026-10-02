@@ -26,6 +26,6 @@ Six production-ready templates were created in `md-lectures/figures/templates/`:
 ## 3. Dedicated PDF Showcase
 
 A dedicated compilation tool `src/build-figure-showcase.mjs` was built to assemble all 6 templates into:
-- **`diagram-lab/output/vue-01/Vue Figure Templates.pdf`**
+- **`projects/vue-01/Vue Figure Templates.pdf`**
 
 Each template was rendered to high-resolution PNG (`preview-1.png` through `preview-6.png`) and audited for visual perfection. All templates meet the 10/10 quality standard.

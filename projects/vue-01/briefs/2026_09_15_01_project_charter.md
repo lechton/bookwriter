@@ -4,7 +4,7 @@ Date: 2026-09-15 · Number: 01 · Status: foundational
 
 ## What we are doing
 
-We are creating `diagram-lab/output/vue-01/`, a new lecture series for a web developer preparing for job interviews, covering three tracks: (1) Core Reactivity & Composition API, (2) Component Architecture, Templates & Directives, and (3) Application Architecture, State Management & Routing (pure Vue 3 without Nuxt.js). The series follows the architecture of `../css-01/` and `../accessibility-01/`, whose pedagogical clarity, mechanical gates, and visual design systems are our benchmark.
+We are creating `projects/vue-01/`, a new lecture series for a web developer preparing for job interviews, covering three tracks: (1) Core Reactivity & Composition API, (2) Component Architecture, Templates & Directives, and (3) Application Architecture, State Management & Routing (pure Vue 3 without Nuxt.js). The series follows the architecture of `../css-01/` and `../accessibility-01/`, whose pedagogical clarity, mechanical gates, and visual design systems are our benchmark.
 
 ## What I studied from css-01
 
@@ -36,5 +36,5 @@ We are creating `diagram-lab/output/vue-01/`, a new lecture series for a web dev
 
 1. Set up cloned project structure with updated internal references.
 2. Discuss and finalize authoritative resources in `documentation official/vue/`.
-3. Discuss and draft the question bank in `diagram-lab/questions-vue/`.
+3. Discuss and draft the question bank in `questions/vue/`.
 4. Launch lecture production row-by-row.

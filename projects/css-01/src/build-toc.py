@@ -5,7 +5,7 @@ import subprocess
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
-QUESTIONS_FILE = os.path.join(REPO_DIR, 'diagram-lab', 'questions-css', 'questions.md')
+QUESTIONS_FILE = os.path.join(REPO_DIR, 'questions', 'css', 'questions.md')
 MD_LECTURES_DIR = os.path.join(BASE_DIR, 'md-lectures')
 HTML_DIR = os.path.join(BASE_DIR, 'md-lectures-html')
 PDF_DIR = os.path.join(BASE_DIR, 'md-lectures-pdf')
@@ -305,7 +305,7 @@ md_lines.extend([
     "---",
     "",
     "## Master Reader Deck",
-    "- **Lecture Deck (Q01–Q56)**: [CSS Q01-Q56.pdf](md-lectures-pdf/CSS%20Q01-Q56.pdf) — Production lectures compiled in sequential order.",
+    "- **Lecture Deck (Q01–Q56)**: [CSS Q01-Q56.pdf](../md-lectures-pdf/CSS%2520Q01-Q56.pdf) — Production lectures compiled in sequential order.",
     ""
 ])
 

@@ -4,7 +4,7 @@ Date: 2026-09-15 · Number: 05 · Status: pedagogical law adopted
 
 ## 1. Provenance and Context
 
-In the sibling CSS project (`diagram-lab/output/css-01/briefs/2026_09_14_05_the_delayed_truth_bomb.md`), a systematic structural defect was uncovered across earlier lecture series (`accessibility-01` and early drafts of `css-01`): **The Delayed Truth-Bomb (or Garden-Path Pedagogy)**.
+In the sibling CSS project (`projects/css-01/briefs/2026_09_14_05_the_delayed_truth_bomb.md`), a systematic structural defect was uncovered across earlier lecture series (`accessibility-01` and early drafts of `css-01`): **The Delayed Truth-Bomb (or Garden-Path Pedagogy)**.
 
 In this defect, a lecture spent 70–80% of its runtime developing a textbook explanation through intermediate steps (Concept A $\to$ B $\to$ C), encouraging the reader to accept it as an invincible solution, only to abruptly drop a catastrophic revelation (Concept D) in Section 4 or quarantined inside the callout block `> [!TIP] **To impress the interviewer:**`.
 

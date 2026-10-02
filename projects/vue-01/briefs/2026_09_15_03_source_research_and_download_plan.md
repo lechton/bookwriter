@@ -126,4 +126,4 @@ git clone --depth 1 https://github.com/vuejs/v3-migration-guide.git "documentati
 1. User approves the 11-repository download plan.
 2. Execute the shallow clones into `documentation official/vue/resources/`.
 3. Update `documentation official/vue/README.md` with the verified local file paths and question-to-authority citation mapping.
-4. Proceed to finalize the 60-question bank in `diagram-lab/questions-vue/questions.md`.
+4. Proceed to finalize the 60-question bank in `questions/vue/questions.md`.

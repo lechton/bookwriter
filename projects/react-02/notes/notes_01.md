@@ -4,7 +4,7 @@
 
 ### PROMPT 1
 
-/Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/lab/01-forensic-investigator
+projects/react-02/lab/01-forensic-investigator
 
 Lectures to create: next missing lecture
 Study this project, all its rules, follow the lecture instructions to create requested lecture(s) on this project. 

@@ -4,7 +4,7 @@ Date: 2026-09-14 · Number: 05 · Status: analytical audit
 
 ## 1. Executive Summary
 
-This brief documents a systematic structural defect identified across the parallel lecture series `diagram-lab/output/accessibility-01/` and `diagram-lab/output/css-01/`: **The Delayed Truth-Bomb (or Garden-Path Pedagogy)**.
+This brief documents a systematic structural defect identified across the parallel lecture series `projects/accessibility-01/` and `projects/css-01/`: **The Delayed Truth-Bomb (or Garden-Path Pedagogy)**.
 
 In this pattern, a lecture spends the majority of its body slowly developing an explanation through intermediate stages (Concept A to Concept B to Concept C), encouraging the reader to accept this progression as the definitive engineering solution. Then, either in a late subsection or quarantined inside the callout block `> [!TIP] **To impress the interviewer:**`, the text abruptly drops a **truth bomb (Concept D)** that fundamentally reframes, contradicts, or reveals fatal production defects in the very model just taught.
 

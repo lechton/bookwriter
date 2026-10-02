@@ -4,7 +4,7 @@ Date: 2026-09-15 · Number: 04 · Status: question bank finalized and frozen
 
 ## What this brief decides
 
-This brief records the design and population of the 60-question interview bank for the `vue-01` project (Vue.js without Nuxt.js), frozen as of 2026-09-15 in `diagram-lab/questions-vue/questions.md`.
+This brief records the design and population of the 60-question interview bank for the `vue-01` project (Vue.js without Nuxt.js), frozen as of 2026-09-15 in `questions/vue/questions.md`.
 
 ## Curriculum Architecture
 
@@ -32,7 +32,7 @@ The 60 questions are distributed across three depth tiers to cover the full spec
 
 ## Controlled Vocabulary
 
-To ensure thematic consistency, the 54 questions draw from a strict controlled vocabulary of 29 topic tags defined in `diagram-lab/questions-vue/topics.md` (e.g., `#proxy_reactivity`, `#effect_scheduler`, `#vdom_patching`).
+To ensure thematic consistency, the 54 questions draw from a strict controlled vocabulary of 29 topic tags defined in `questions/vue/topics.md` (e.g., `#proxy_reactivity`, `#effect_scheduler`, `#vdom_patching`).
 
 ## Next Steps
 

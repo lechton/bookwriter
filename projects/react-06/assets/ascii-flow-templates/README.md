@@ -106,7 +106,7 @@ The catalog includes an experimental research section (`templates/10-context-exp
 Run the build script from the catalog directory:
 
 ```bash
-cd diagram-lab/output/react-lecture-06/assets/ascii-flow-templates
+cd projects/react-06/assets/ascii-flow-templates
 node build.mjs
 ```
 

@@ -30,7 +30,7 @@ question bank is discovered at ../../questions-*/questions.md relative to
 the project root (override with --bank).
 
 Examples:
-  python3 write-lectures.py --path .../diagram-lab/output/accessibility-01/md-lectures-pdf --count 9
+  python3 write-lectures.py --path .../projects/accessibility-01/md-lectures-pdf --count 9
   python3 write-lectures.py --path ../react-lecture-01 --count 1 --dry-run
 """
 

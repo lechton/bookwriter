@@ -31,7 +31,7 @@ css-01/
 └── various/               <- reference material collected earlier (demo UI, design instructions, images, the GPT resources consultation)
 ```
 
-The question bank lives one level up at `../../questions-css/` (60 questions, draft under review), mirroring how `../accessibility-01/` reads `../../questions-accessibility/`. The corpus lives at `../../documentation official/css/` (handout: its `README.md`) and reuses the CSS zones of `../../documentation official/accessibility-performance/`.
+The question bank lives one level up at `../../questions/css/` (60 questions, draft under review), mirroring how `../accessibility-01/` reads `../../questions/accessibility/`. The corpus lives at `../../documentation official/css/` (handout: its `README.md`) and reuses the CSS zones of `../../documentation official/accessibility-performance/`.
 
 ## The briefs (read in order)
 

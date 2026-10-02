@@ -38,7 +38,7 @@ The prompt author must write a single, cohesive textual description describing t
   - Connections and pathways (e.g., parallel paths, opposing directional arrows, dashed connector lines with midpoint waypoint dots).
   - Exact text labels for nodes and floating pill badges (e.g., node labeled "HTML File", badge labeled "Browser Parser", node labeled "Live DOM Tree").
 - **What to Strictly Exclude:**
-  - **Zero Visual Aesthetic Directives:** Do NOT mention hex color codes (e.g. `#f4ecfd`, `#8a5af7`), font families, stroke widths, corner radii, or drop shadow styling. All visual aesthetics are governed by the standalone theme in [`lab/01-forensic-investigator/prompts/image_prompt_01.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/lab/01-forensic-investigator/prompts/image_prompt_01.md) and will be applied downstream.
+  - **Zero Visual Aesthetic Directives:** Do NOT mention hex color codes (e.g. `#f4ecfd`, `#8a5af7`), font families, stroke widths, corner radii, or drop shadow styling. All visual aesthetics are governed by the standalone theme in [`prompts/images.md`](prompts/images.md) and will be applied downstream.
   - **Zero Unexplained Acronyms or Metric Shorthand (The Anti-Acronym Ban):** Strictly forbid unexplained networking or system acronyms (`RTT`, `TTL`, `TTFB`, `MTU`, `CDN`, `P99`) and pseudo-math (`$3\times\text{ RTT}$`). Always use plain, tangible physical English describing what actually happens (e.g., "Three Round Trips Over the Internet" instead of "3x RTT"; "Single Parallel Server Query" instead of "1x RTT").
   - **The "Tired Reader with Headache" Test for Labels:** Every word on a card, pill badge, or lane header must pass the Oxford 3000 / CEFR B2 vocabulary test. A tired developer with a headache must understand every card in under two seconds without reaching for a computer networking dictionary.
   - **Zero Frame Metadata:** Do NOT include diagram titles, captions, figure numbers (e.g. "Figure 1"), or legend boxes.
@@ -135,7 +135,7 @@ Every image creation iteration must execute the following 4 stages in strict chr
 
   ## Design Theme
 
-  <complete design system from prompts/image_prompt_01.md including Section 5 Perspective & Scale Law>
+  <complete design system from prompts/images.md including Section 5 Perspective & Scale Law>
   ```
 - **External Generation & Manual Intake:**
   - The author copies the compiled prompt into **Google Flow** (or equivalent high-fidelity image tool).

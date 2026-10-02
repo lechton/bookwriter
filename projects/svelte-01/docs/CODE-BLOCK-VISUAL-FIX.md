@@ -2,19 +2,19 @@
 
 ## Summary for Antigravity
 
-I am building a lecture pipeline at `/Users/techton/lechton/research-code/svelte dev 2026/diagram-lab/output/svelte-lecture-02/`. Each lecture is a Markdown file in `md-lectures/NN.md`, rendered to HTML and PDF by `src/build-lectures.mjs` using the stylesheet `src/lecture.css`. The build embeds a custom syntax highlighter I wrote that produces editor-style code blocks. **The rendered output looks broken and nothing like the reference design it is supposed to mimic.** I cannot see images in this client, so I am writing this brief for Antigravity (which can read images and has great CSS/design intuition) to diagnose and fix the gap.
+I am building a lecture pipeline at `external.svelteDev2026/projects/svelte-02/`. Each lecture is a Markdown file in `md-lectures/NN.md`, rendered to HTML and PDF by `src/build-lectures.mjs` using the stylesheet `src/lecture.css`. The build embeds a custom syntax highlighter I wrote that produces editor-style code blocks. **The rendered output looks broken and nothing like the reference design it is supposed to mimic.** I cannot see images in this client, so I am writing this brief for Antigravity (which can read images and has great CSS/design intuition) to diagnose and fix the gap.
 
-The reference design lives in a sibling project at `/Users/techton/lechton/research-code/svelte dev 2026/Pencil/`. I want my lecture pipeline's code blocks to look **visually identical** to that reference.
+The reference design lives in a sibling project at `external.svelteDev2026/Pencil/`. I want my lecture pipeline's code blocks to look **visually identical** to that reference.
 
 ## The two screenshots to compare
 
 These are the two files to open side-by-side:
 
 - **My broken output (pre-last screenshot):**
-  `/Users/techton/Images/CleanShotX/CleanShot 2026-07-22 at 02.08.18@2x.png`
+  `screenshots/CleanShot 2026-07-22 at 02.08.18@2x.png`
 
 - **The reference design (last screenshot, the target look):**
-  `/Users/techton/Images/CleanShotX/CleanShot 2026-07-22 at 02.08.31@2x.png`
+  `screenshots/CleanShot 2026-07-22 at 02.08.31@2x.png`
 
 The user description of the gap: my output is "broken / misaligned" and "everything looks wrong." Beyond that, the user could not articulate specific differences — they just see that the two don't match. Antigravity needs to look at both images and identify the concrete visual gaps.
 
@@ -23,22 +23,22 @@ The user description of the gap: my output is "broken / misaligned" and "everyth
 The reference is the figure-03 design system used across the Pencil book:
 
 - **Reference CSS (the canonical style):**
-  `/Users/techton/lechton/research-code/svelte dev 2026/Pencil/styles/figure-03.css`
+  `external.svelteDev2026/Pencil/styles/figure-03.css`
 
 - **Reference PDF (full chapter, 34 pages of the look we want):**
-  `/Users/techton/lechton/research-code/svelte dev 2026/Pencil/book/out/04_extra_javascript_1.pdf`
+  `external.svelteDev2026/Pencil/book/out/04_extra_javascript_1.pdf`
 
 - **Reference HTML (the same chapter as HTML):**
-  `/Users/techton/lechton/research-code/svelte dev 2026/Pencil/book/out/04_extra_javascript_1.html`
+  `external.svelteDev2026/Pencil/book/out/04_extra_javascript_1.html`
 
 - **Reference hand-curated card HTML (one example of the editor code block):**
-  `/Users/techton/lechton/research-code/svelte dev 2026/Pencil/cards 05/04_extra_javascript_1/01-prototype/card.html`
+  `external.svelteDev2026/Pencil/cards 05/04_extra_javascript_1/01-prototype/card.html`
 
 The reference's editor block uses hand-curated HTML where authors write tokens like `<span class="kw">let</span>` directly. Comments are written as `<span class="cmt">→ on the <b>prototype</b></span>` — note the literal `→` arrow, not `//`. The CSS paints: thin grey border, light grey editor chrome with three dots and a centered filename tab, monospace code at 15px, zebra striping on even rows, deep-magenta keywords (`#93275a`), teal function calls (`#156a64`), green strings (`#1a7d2e`), orange runes (`#c2410c`), and comments in IBM Plex Sans Condensed at 15.5px in muted grey (`#4b5563`) with bold runs in darker grey (`#374151`).
 
 ## Where my output lives (the thing that's broken)
 
-Project root: `/Users/techton/lechton/research-code/svelte dev 2026/diagram-lab/output/svelte-lecture-02/`
+Project root: `external.svelteDev2026/projects/svelte-02/`
 
 - **My build script (Markdown → HTML with auto-highlighter):**
   `src/build-lectures.mjs`
@@ -93,7 +93,7 @@ Despite all this, the user says it still looks broken. So one or more of these i
 
 ## Constraints
 
-- **All edits must be local to `/Users/techton/lechton/research-code/svelte dev 2026/diagram-lab/output/svelte-lecture-02/`.** Do not modify anything in the `Pencil/` folder — that's the immutable reference. Do not modify the card pipeline (`build-cards.mjs`) — only the lecture pipeline.
+- **All edits must be local to `external.svelteDev2026/projects/svelte-02/`.** Do not modify anything in the `Pencil/` folder — that's the immutable reference. Do not modify the card pipeline (`build-cards.mjs`) — only the lecture pipeline.
 - **The project must remain self-contained.** Any CSS values, fonts, or logic must be copied inline into `src/lecture.css` and `src/build-lectures.mjs`. No `@import` of the reference CSS, no symlinks.
 - **The Markdown authoring contract is sacred.** Authors write plain Markdown fences with `//` comments. The `//` → `→` transformation, wrapper-tag stripping, blank-line dropping, and token highlighting all happen in the build script. Do not push styling concerns back onto authors.
 - **The build command stays the same**: `node src/build-lectures.mjs` (or `--no-pdf` for HTML only), invoked from inside the project folder.

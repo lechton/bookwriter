@@ -5,7 +5,7 @@ import subprocess
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
-QUESTIONS_FILE = os.path.join(REPO_DIR, 'diagram-lab', 'questions-vue', 'questions.md')
+QUESTIONS_FILE = os.path.join(REPO_DIR, 'questions', 'vue', 'questions.md')
 MD_LECTURES_DIR = os.path.join(BASE_DIR, 'md-lectures')
 HTML_DIR = os.path.join(BASE_DIR, 'md-lectures-html')
 PDF_DIR = os.path.join(BASE_DIR, 'md-lectures-pdf')

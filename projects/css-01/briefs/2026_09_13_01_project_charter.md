@@ -4,7 +4,7 @@ Date: 2026-09-13 · Number: 01 · Status: foundational
 
 ## What we are doing
 
-We are creating `diagram-lab/output/css-01/`, a new lecture series for a web developer preparing for job interviews, covering three tracks: (1) CSS review for interview, (2) BEM methodology with LESS and SASS for interview, (3) responsive design plus accessible and cross-browser compatible CSS for interview. The series follows the design of `../accessibility-01/`, the first complete project of the family, whose clarity and comprehensiveness is our benchmark. Three problems are open: (a) we have no question bank yet for CSS, (b) we have no local authoritative corpus for these topics yet, (c) we need a new UI template for visually representing CSS with code and with rendered UI, one that stays visually calm because the topic itself is visually loud. This brief records what I studied, what I conclude, and the execution order.
+We are creating `projects/css-01/`, a new lecture series for a web developer preparing for job interviews, covering three tracks: (1) CSS review for interview, (2) BEM methodology with LESS and SASS for interview, (3) responsive design plus accessible and cross-browser compatible CSS for interview. The series follows the design of `../accessibility-01/`, the first complete project of the family, whose clarity and comprehensiveness is our benchmark. Three problems are open: (a) we have no question bank yet for CSS, (b) we have no local authoritative corpus for these topics yet, (c) we need a new UI template for visually representing CSS with code and with rendered UI, one that stays visually calm because the topic itself is visually loud. This brief records what I studied, what I conclude, and the execution order.
 
 ## What I studied
 

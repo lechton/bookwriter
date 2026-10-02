@@ -20,7 +20,7 @@ Never bury the architectural answer. Do not treat a technical lecture like a mys
 - **The Rule:** In Section 1 (or the immediate opening of Section 2), bridge directly from the visible failure into an **Upfront Baptism of the Core Terms**. State the breakthrough concepts, industry terms, and acronyms (`CSR`, `SSR`, `SSG`, `Build Tool`, `Framework`) immediately in clear B2 English.
 - **The Inverted Pyramid:** Give the reader the complete answer to the interview question upfront within the first two pages. The remaining sections exist to prove, deconstruct, and mechanically defend that answer—not to reveal it as a late surprise.
 
-*(See [`instructions/06-pedagogical-presentation-examples.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/06-pedagogical-presentation-examples.md) for the authoritative collection of comparative transformations across all core topics).*
+*(See [`instructions/06-pedagogical-presentation-examples.md`](06-pedagogical-presentation-examples.md) for the authoritative collection of comparative transformations across all core topics).*
 
 ---
 

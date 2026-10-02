@@ -1,10 +1,10 @@
 React 06, latest version of skills, latest version of markdown. 
 write the prelecture and lecture and md and pdf for lesson 07
 
-(a) by following the guidance from the corresponding question and file in the lesson map in /Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-06/01-01-map
+(a) by following the guidance from the corresponding question and file in the lesson map in projects/react-06/01-01-map
 
 and more importantly, the principle map (key to understand the principles)
-/Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-06/01-01-map-principles
+projects/react-06/01-01-map-principles
 (b) do NOT copy other files from other projects like React 04, or React 05 try to build your own logic, structure independently for this lesson 
 (c) do NOT copy other files from other versions like React 06 v1 or v2 etc, try to build your own logic, structure independently for this lesson 
 (d) make sure you examine carefully the official documentation with links provided, before you respond

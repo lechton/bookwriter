@@ -1,13 +1,13 @@
 # React Lecture + Card Series: Project Instructions
 
-This document is the single source of truth for the workflow of the `react-lecture-01` project inside `diagram-lab/output/`. The project mirrors the structure of the sibling `svelte-lecture-02`, with the same essential rule: **every question is taught first as a long-form lecture, and only afterwards distilled into a review card**. The lecture is the source of truth for depth; the card is the review artifact.
+This document is the single source of truth for the workflow of the `react-lecture-01` project inside `projects/`. The project mirrors the structure of the sibling `svelte-lecture-02`, with the same essential rule: **every question is taught first as a long-form lecture, and only afterwards distilled into a review card**. The lecture is the source of truth for depth; the card is the review artifact.
 
 > **Project Architecture note.** This project runs three parallel content pipelines — **lectures** (comprehensive, long-form), **cards** (distilled, reviewable), and **data-flow** (architectural placement in a real app) — each with its own source folder, build step, and HTML/PDF output folders. All three pipelines draw from the same 180-question curriculum (React Q1–Q100, React Server Q101–Q180) and the same local React documentation. The lecture pipeline is authored first per question; the card and data-flow pipelines follow. The lecture teaches *how* a React mechanism works; the card distills it for review; the data-flow file teaches *where that mechanism belongs* in a real component tree, grounding the concept in the fixed ElectroShop reference architecture.
 
 ## File structure and logic
 
 archive: Reserved for snapshots and provenance
-docs: Documentation including the component data flow architecture (the question bank itself lives at `../../questions-react/`)
+docs: Documentation including the component data flow architecture (the question bank itself lives at `../../questions/react/`)
 
 > THE LECTURES: this is the main source of truth, we start from md-lectures
 
@@ -40,7 +40,7 @@ src: The build scripts (`build-lectures.mjs`, `build-cards.mjs`) and shared styl
 
 ## Source of Content
 
-- **Question bank:** `../../questions-react/questions.md` — the 180-question curriculum (React Q1–Q100, React Server Q101–Q180), each row carrying `# | Tier | Topic | Question | Hook`. This is the single source of truth for every question. The controlled topic vocabulary lives in `../../questions-react/topics.md`, and the design rationale in `../../questions-react/README.md`.
+- **Question bank:** `../../questions/react/questions.md` — the 180-question curriculum (React Q1–Q100, React Server Q101–Q180), each row carrying `# | Tier | Topic | Question | Hook`. This is the single source of truth for every question. The controlled topic vocabulary lives in `../../questions/react/topics.md`, and the design rationale in `../../questions/react/README.md`.
 - **Local React documentation (primary source for lectures):** `documentation official/React 19 Sept 2026/react.dev/src/content/` — the official react.dev content as Markdown: `learn/` (50 teaching files), `reference/react/` (hooks, APIs, components), `reference/react-dom/` (client, server, and static rendering plus the built-in HTML components), `reference/rsc/` (Server Components, Server Functions, directives), `reference/rules/`, `reference/react-compiler/`, `reference/eslint-plugin-react-hooks/`, and `reference/dev-tools/`. Use these as the authoritative technical source for lecture content; cite them by relative path (for example `documentation official/React 19 Sept 2026/react.dev/src/content/reference/react/useState.md`).
 - **Supplementary research:** when the local docs do not fully answer a question, expand with online research, but always anchor claims back to the local docs when possible.
 - **Reference architecture for the data-flow pipeline (primary source for `md-data-flow/`):** `docs/component_data_flow.md` and `docs/component_language.md`. The first fixes the multi-scale A/B/C explanation structure that every data-flow file must follow; the second fixes the ElectroShop component tree, the component-relationship shorthand, and the server/client boundary notation for Q101+.
@@ -308,7 +308,7 @@ The six steps above are the standard authoring flow for one question. The audit 
 The lecture pipeline uses a full Markdown renderer (`src/build-lectures.mjs`). Unlike the card pipeline, there are no card-specific constraints — you may use any combination of standard Markdown.
 
 - **Plain markdown with full formatting.** **bold**, *italic*, bullet lists, numbered lists, inline `` `code` ``, fenced code blocks with optional `title=""`, blockquotes, and inline `[text](url)` links are all supported and render correctly to HTML and PDF. (See the **heading rules** below for the specific roles of `#`, `##`, and `###`.)
-- **The interview question is embedded in the lecture source** — it is the second line of every lecture file, immediately after the title, as a blockquote with the exact pattern `> INTERVIEW QUESTION | ❱ [TYPOLOGY] | <question text>`. The typology is `❱ CORE`, `❱❱ MORE`, or `❱❱❱ ADVANCED`, with the suffix ` (Server)` on React Server questions (Q101–Q180), copied verbatim from the Tier column of `../../questions-react/questions.md`. The build script parses this line and renders it as a pull-quote callout **directly below the title** (an `<aside class="interview-question">` styled by `src/lecture.css`), including a premium badge for the typology (e.g. `❱ CORE (Server)`). The visual order matches the source order: title first, then the question, then the lecture body. The author copies the **Question** column verbatim from `../../questions-react/questions.md` (row `n`) when creating the lecture and may edit it inline afterward. The build no longer reads `questions.md` — the lecture file is the single source of truth for its own question.
+- **The interview question is embedded in the lecture source** — it is the second line of every lecture file, immediately after the title, as a blockquote with the exact pattern `> INTERVIEW QUESTION | ❱ [TYPOLOGY] | <question text>`. The typology is `❱ CORE`, `❱❱ MORE`, or `❱❱❱ ADVANCED`, with the suffix ` (Server)` on React Server questions (Q101–Q180), copied verbatim from the Tier column of `../../questions/react/questions.md`. The build script parses this line and renders it as a pull-quote callout **directly below the title** (an `<aside class="interview-question">` styled by `src/lecture.css`), including a premium badge for the typology (e.g. `❱ CORE (Server)`). The visual order matches the source order: title first, then the question, then the lecture body. The author copies the **Question** column verbatim from `../../questions/react/questions.md` (row `n`) when creating the lecture and may edit it inline afterward. The build no longer reads `questions.md` — the lecture file is the single source of truth for its own question.
 - **Long-form, not summary.** Aim for comprehensive coverage of the concept. The lecture is the source of depth for the whole project; a thin lecture produces a thin card.
 - **Lead with critical questions and visceral pain points (Organic Lexical Audit - OLA).** Always introduce new lexical terms using visceral, real-world, high-stakes contexts. Don't just explain a feature theoretically—create a scenario where a newbie would physically hit a wall without it (e.g., "if you mutate the state object, the screen keeps the old headline and you lose the sale"). Open each lecture by surfacing this real-world failure or confusion that motivates the concept. Build tension before revealing the solution.
 - **Give structural logic an introductory visual reference.** Immediately after the opening establishes the pain and before the first code that implements the central mechanism, run the **intro component-tree visual-reference gate** from "Component Explorer Panels and the Intro Component-Tree Gate." If the learner must understand component ownership, nesting, repetition, a conditional subtree, boundary flow, or the identity and lifetime of a rendered element, place the matching `components` panel there and explain how to read it. This is mandatory even for a single-component example when the component-to-DOM relationship is the mechanism; a DOM `ref` is the canonical case.
@@ -428,7 +428,7 @@ Quick test: if the heading introduces a new subsection of the current lecture an
   > INTERVIEW QUESTION | ❱ CORE (Server) | What is hydration, and how does hydrateRoot attach interactivity?
   ```
 - **A blank line follows** before the rest of the lecture body begins.
-- **Editing**: to change the question, edit this single line. Do not edit `../../questions-react/questions.md` and do not edit the build script — the build reads only from this line.
+- **Editing**: to change the question, edit this single line. Do not edit `../../questions/react/questions.md` and do not edit the build script — the build reads only from this line.
 - **If the line is missing**, the build renders the lecture without a callout (no error, but the visual anchor is gone — always include it).
 
 ### The Opening Ladder (opening pattern)
@@ -916,13 +916,13 @@ The lecture is the comprehensive source for a question; the card is its distille
 - `../svelte-lecture-02/instructions.md` — the sibling project whose structure this project mirrors. The card format spec is intentionally identical.
 - `img-instruction/005.md` — the design system that decides how every diagram looks and how images are generated.
 - `documentation official/React 19 Sept 2026/react.dev/src/content/` — the primary source for lecture content.
-- `../../questions-react/` — the question bank: `questions.md` (the 180 rows), `topics.md` (the controlled tag vocabulary), `README.md` (the design rationale and reading paths).
+- `../../questions/react/` — the question bank: `questions.md` (the 180 rows), `topics.md` (the controlled tag vocabulary), `README.md` (the design rationale and reading paths).
 - `docs/component_data_flow.md` and `docs/component_language.md` — the primary sources for the data-flow pipeline: the fixed ElectroShop component tree, the component-relationship shorthand, the server/client boundary notation, and the A/B/C multi-scale structure every `md-data-flow/` file follows.
-- **Screenshots folder** (outside the project, on disk): `/Users/techton/Images/CleanShotX/` — CleanShot X saves every screen capture here, newest first by filename timestamp. Use this folder to find before/after comparisons when iterating on visual output. Files are named `CleanShot YYYY-MM-DD at HH.MM.SS@2x.png`.
+- **Screenshots folder** (outside the project, on disk): `screenshots/` — CleanShot X saves every screen capture here, newest first by filename timestamp. Use this folder to find before/after comparisons when iterating on visual output. Files are named `CleanShot YYYY-MM-DD at HH.MM.SS@2x.png`.
 
 ## Visual reference for the Pencil book design
 
-The lecture pipeline's code-block presentation is meant to mimic the visual style of the Pencil book at `/Users/techton/lechton/research-code/svelte dev 2026/Pencil/`. The canonical references are:
+The lecture pipeline's code-block presentation is meant to mimic the visual style of the Pencil book at `external.svelteDev2026/Pencil/`. The canonical references are:
 
 - `Pencil/styles/figure-03.css` — the source-of-truth stylesheet for the editor code-block look.
 - `Pencil/cards 05/04_extra_javascript_1/01-prototype/card.html` — a hand-curated example of the editor HTML structure.

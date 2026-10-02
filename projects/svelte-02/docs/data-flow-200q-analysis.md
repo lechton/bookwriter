@@ -1,6 +1,6 @@
 # Data-Flow Companion Suitability — 200-Question Svelte 5 Bank Analysis
 
-This document evaluates which of the 200 questions in `diagram-lab/docs/200Q/200Q.md` would genuinely benefit from a `md-data-flow/{n}.md` companion file, and for each that does, whether the ElectroShop or MyTube reference app fits better. It is the planning atlas for the data-flow pipeline: it tells the author where to spend effort and which reference app to reach for, so that the 200-question deck is authored consistently rather than ad hoc.
+This document evaluates which of the 200 questions in ``diagram-lab-docs/200Q/200Q.md` in the archive folder (resolve `archive` from bookwriter-project.local.json)` would genuinely benefit from a `md-data-flow/{n}.md` companion file, and for each that does, whether the ElectroShop or MyTube reference app fits better. It is the planning atlas for the data-flow pipeline: it tells the author where to spend effort and which reference app to reach for, so that the 200-question deck is authored consistently rather than ad hoc.
 
 ## 1. Methodology
 

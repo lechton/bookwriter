@@ -40,4 +40,4 @@ First header cell always empty; header titles are `**CAPS**` plus `<br>` plus a 
 - Length: 800–1,200 words (about 1,000). ADVANCED questions may reach 1,500. Do not pad; do not rush the mechanism either.
 
 ## When you are done
-Run `node src/build-lectures.mjs` from the project folder (`diagram-lab/output/svelte-lecture-02/`). Read the log: a `warn` line is a format violation you must fix in the source and rebuild; a `note` line is something the build already repaired (for example a comment-only line merged into the next code line) and is safe to leave. Zero warnings means the lecture passes the mechanical gate.
+Run `node src/build-lectures.mjs` from the project folder (`projects/svelte-02/`). Read the log: a `warn` line is a format violation you must fix in the source and rebuild; a `note` line is something the build already repaired (for example a comment-only line merged into the next code line) and is safe to leave. Zero warnings means the lecture passes the mechanical gate.

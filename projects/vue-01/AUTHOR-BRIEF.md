@@ -51,4 +51,4 @@ Paste this brief plus the question row into the writing model. The full rules li
 ## When you are done
 
 
-Run through every item in [`AUDIT-CHECKLIST.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/vue-01/AUDIT-CHECKLIST.md). Run `node src/build-lectures.mjs` from the project folder (`diagram-lab/output/vue-01/`). Zero warnings means the lecture passes the mechanical gate.
+Run through every item in [`AUDIT-CHECKLIST.md`](./AUDIT-CHECKLIST.md). Run `node src/build-lectures.mjs` from the project folder (`projects/vue-01/`). Zero warnings means the lecture passes the mechanical gate.

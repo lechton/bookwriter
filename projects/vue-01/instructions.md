@@ -1,6 +1,6 @@
 # Vue.js Interview Lecture Series: Project Instructions (vue-01)
 
-This document is the single source of truth for the workflow of the `vue-01` project inside `diagram-lab/output/`. Every question in the bank is taught as one long-form lecture: the lecture is the source of truth for depth, written first, built into HTML and PDF by the scripts in `src/`. The topic is interview readiness for **Vue.js without Nuxt.js** in three tracks: Core Reactivity & Composition API, Component Architecture & Templates, and Application Architecture, State Management & Routing. The design benchmark and the origin of every inherited law is the sibling project `../css-01/` and `../accessibility-01/`; the dated decision journal lives in `briefs/` (read `2026_09_15_01` onward).
+This document is the single source of truth for the workflow of the `vue-01` project inside `projects/`. Every question in the bank is taught as one long-form lecture: the lecture is the source of truth for depth, written first, built into HTML and PDF by the scripts in `src/`. The topic is interview readiness for **Vue.js without Nuxt.js** in three tracks: Core Reactivity & Composition API, Component Architecture & Templates, and Application Architecture, State Management & Routing. The design benchmark and the origin of every inherited law is the sibling project `../css-01/` and `../accessibility-01/`; the dated decision journal lives in `briefs/` (read `2026_09_15_01` onward).
 
 ## Primary Pedagogical Benchmark: The "Headache & Short Attention Span" Standard
 
@@ -172,7 +172,7 @@ When the user asks "write the lecture for question 09" you start from `md-lectur
 
 ## The question bank
 
-- **Location:** `../../questions-vue/questions.md`, with the controlled topic vocabulary in `../../questions-vue/topics.md` and the design rationale in `../../questions-vue/README.md`.
+- **Location:** `../../questions/vue/questions.md`, with the controlled topic vocabulary in `../../questions/vue/topics.md` and the design rationale in `../../questions/vue/README.md`.
 - **Format:** every question is a row with five columns: `# | Tier | Topic | Question | Hook`. The number is the stable ID and the lecture filename. The Tier is `❱ CORE`, `❱❱ MORE`, or `❱❱❱ ADVANCED`. The Question is written in interview register and becomes the `> INTERVIEW QUESTION` line of the lecture. The Hook is the pain-point seed of the Opening Ladder: grow it, never replace it.
 - **Bank growth:** the bank grows from audits of the local corpus. Never invent a lecture without a bank row; if a topic is missing, add the row to the bank first, then write the lecture. Once the bank is approved its numbers freeze; later growth appends a new tranche, never renumbers.
 

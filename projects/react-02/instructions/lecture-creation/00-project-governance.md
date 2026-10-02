@@ -1,6 +1,6 @@
 # 00: Project Governance & Operational Specification (react-lecture-02)
 
-This document is the operational specification, architectural charter, and governance protocol for the `react-lecture-02` series inside `diagram-lab/output/`. Every question in the curriculum is taught as one long-form, publication-grade lecture. The lecture is the source of truth for depth, written first, and compiled into print-ready HTML and PDF via PrinceXML.
+This document is the operational specification, architectural charter, and governance protocol for the `react-lecture-02` series inside `projects/`. Every question in the curriculum is taught as one long-form, publication-grade lecture. The lecture is the source of truth for depth, written first, and compiled into print-ready HTML and PDF via PrinceXML.
 
 The topic is interview readiness for **Modern React 19 and React Server** across two tracks:
 1. **Part One: React 19 Client Architecture (Q01–Q100)**: Components, JSX compilation, pure rendering, immutable state contracts, hooks lifecycle, render/commit phases, Fiber reconciliation, Concurrency, and the React 19 Compiler.
@@ -35,12 +35,12 @@ Whenever a new requirement, constraint, or user correction is introduced:
 ## 2. The 4 Unified Invariants of Technical Pedagogy
 
 All teaching methodology is governed by the 4 Invariants located in this directory:
-- [`01-cognitive-contract.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/01-cognitive-contract.md): Reader profile, B2 English, senior voice, poisonous jargon demystification, and Embedded Gate 1.
-- [`02-concept-lifecycle.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/02-concept-lifecycle.md): Theory of Mind Triad (Known → Bridge → New), physical symptom first, notation decoding, 4 pillars for primitives, invisible scaffolding, and Embedded Gate 2.
-- [`03-harmonious-step-rhythm.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/03-harmonious-step-rhythm.md): 4-Beat measure, macOS editor fidelity, zero orphan syntax, 1:1 synchronization, and Embedded Gate 3.
-- [`04-comparative-proof.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/04-comparative-proof.md): High-stakes failure walls, symmetrical duels, visual substrate, Embedded Gate 4, and the Production Pipeline Gate.
-- [`05-figure-design-system.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/05-figure-design-system.md): Visual aesthetics constitution, visual-first philosophy, color palettes, and template standards for the React Component Explorer (RCE) and Symmetrical State Audit.
-- [`06-pedagogical-presentation-examples.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/06-pedagogical-presentation-examples.md): Canonical reference library of side-by-side Bad vs. Good transformations applying the Theory of Mind Triad across core React topics.
+- [`01-cognitive-contract.md`](01-cognitive-contract.md): Reader profile, B2 English, senior voice, poisonous jargon demystification, and Embedded Gate 1.
+- [`02-concept-lifecycle.md`](02-concept-lifecycle.md): Theory of Mind Triad (Known → Bridge → New), physical symptom first, notation decoding, 4 pillars for primitives, invisible scaffolding, and Embedded Gate 2.
+- [`03-harmonious-step-rhythm.md`](03-harmonious-step-rhythm.md): 4-Beat measure, macOS editor fidelity, zero orphan syntax, 1:1 synchronization, and Embedded Gate 3.
+- [`04-comparative-proof.md`](04-comparative-proof.md): High-stakes failure walls, symmetrical duels, visual substrate, Embedded Gate 4, and the Production Pipeline Gate.
+- [`05-figure-design-system.md`](05-figure-design-system.md): Visual aesthetics constitution, visual-first philosophy, color palettes, and template standards for the React Component Explorer (RCE) and Symmetrical State Audit.
+- [`06-pedagogical-presentation-examples.md`](06-pedagogical-presentation-examples.md): Canonical reference library of side-by-side Bad vs. Good transformations applying the Theory of Mind Triad across core React topics.
 
 ---
 
@@ -100,7 +100,7 @@ Every lecture file `md-lectures/{n}.md` must strictly follow this sequential ske
 
 ## 5. Build Pipeline & Mechanical Gates
 
-From the project root `/Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/`:
+From the project root `projects/react-02/`:
 ```bash
 node src/build-lectures.mjs            # compile HTML + Prince PDFs (generates React 2026 Q{first}-Q{last}.pdf)
 node src/build-lectures.mjs --no-pdf   # compile HTML only

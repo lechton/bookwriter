@@ -4,7 +4,7 @@ Date: 2026-09-16 · Number: 03 · Status: active / canon
 
 ## 1. Executive Summary & Why We Are Updating
 
-During the production of Lecture 02 in `diagram-lab/output/react-lecture-02/lab/01-forensic-investigator/`, our initial automated image generation workflow encountered three critical failure modes:
+During the production of Lecture 02 in `projects/react-02/lab/01-forensic-investigator/`, our initial automated image generation workflow encountered three critical failure modes:
 1. **Perspective & Typographic Scale Distortion (The Auto-Zoom Pathology):** When an image description contained low information density (e.g., 2–3 nodes in `02_01`), the diffusion generator automatically zoomed in by ~2.5× to fill the 3:2 canvas, inflating node cards to 70% canvas height and rendering balloon headline letters.
 2. **Aesthetic Invariant Erosion (Prompt Pollution):** Attempting to force both high-density interview facts and styling instructions into single ad-hoc generation prompts overwhelmed the diffusion model's latent attention, causing it to discard core aesthetic invariants (dropping purple dashed strokes, omitting circular waypoint dots, generating nested solid peach containers, and drawing scribbled document clip-art).
 3. **API Rate-Limiting / 429 Quota Exhaustion:** Automated generation via `gemini-3.1-flash-image` hit hard server-side quotas (`429 RESOURCE_EXHAUSTED`), halting agent execution for multiple hours.
@@ -14,7 +14,7 @@ We transitioned to a **Two-Tier Structured Prompting & Manual Intake Workflow**:
 - Pure spatial descriptions are authored in `images-md/`.
 - Assembled two-part prompts (`## Description` + `## Design Theme`) are compiled into a dedicated `images-md-prompt/` folder.
 - Images are generated externally in **Google Flow** and placed manually into modular lecture subfolders: `images/{lecture_num:02d}/{seq:02d}.jpeg`.
-- A test-drive on Lecture 02 ([01.jpeg](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/lab/01-forensic-investigator/images/02/01.jpeg) through [05.jpeg](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/lab/01-forensic-investigator/images/02/05.jpeg)) proved that this workflow achieves 10/10 publication-grade consistency, flawless 2D orthogonal perspective, identical typographic scale, and 100% aesthetic compliance.
+- A test-drive on Lecture 02 ([01.jpeg](../lab/01-forensic-investigator/images/02/01.jpeg) through [05.jpeg](../lab/01-forensic-investigator/images/02/05.jpeg)) proved that this workflow achieves 10/10 publication-grade consistency, flawless 2D orthogonal perspective, identical typographic scale, and 100% aesthetic compliance.
 
 This brief outlines **everything that must be codified across the instruction suite** to make this workflow permanent and airtight.
 
@@ -26,7 +26,7 @@ Under the **Holistic Instruction Integration Law** (enshrined in `instructions/l
 
 Below is the complete inventory of updates required across the codebase:
 
-### Layer A: Master Aesthetic Template (`prompts/image_prompt_01.md`)
+### Layer A: Master Aesthetic Template (`prompts/images.md`)
 *Current State:* Contains Sections 1 through 4 (Palette, Container Architecture, Component Nodes, Composition). Lacks explicit camera distance, scale laws, and anti-clip-art enforcement.
 *Required Additions:*
 1. **Section 5: Uniform Camera Perspective & Scale Law (The Anti-Zoom Invariant):**
@@ -82,7 +82,7 @@ Below is the complete inventory of updates required across the codebase:
 ### Layer E: Root Workspace Constitution (`AGENTS.md`)
 *Current State:* Mentions the 4-Stage Image Lifecycle with automated `generate_image` and `lab/<path>/images/` flat placement.
 *Required Additions:*
-- Under **React Interview Lectures (`diagram-lab/output/react-lecture-02`)**:
+- Under **React Interview Lectures (`projects/react-02`)**:
   - Update the 4-Stage Image Lifecycle to reflect the `images-md-prompt/` compilation and manual intake into `images/{NN:02d}/{seq:02d}.jpeg`.
   - Formally record the **Anti-Zoom / Uniform Camera Perspective Law**, the **Delicate Dashed Grouping Law**, and the **No-Clip-Art Law**.
 
@@ -102,10 +102,10 @@ Below is the complete inventory of updates required across the codebase:
 
 | File Path | Component Area | Target Modification |
 | :--- | :--- | :--- |
-| [`prompts/image_prompt_01.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/prompts/image_prompt_01.md) | Master Theme | Add Section 5 (Perspective & Scale Law), anti-clip-art ban, dashed path rules. |
-| [`instructions/image-creation/01-uncertainty-audit-and-prompt-engineering.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/image-creation/01-uncertainty-audit-and-prompt-engineering.md) | Track 2 Governance | Add `images-md-prompt/`, Invariant 5, overhaul Stage (c) for Google Flow manual intake. |
-| [`instructions/image-creation/prompts/images.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/image-creation/prompts/images.md) | Prompt Templates | Update agent prompt recipes to reflect the new two-part compilation workflow. |
-| [`instructions/README.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/README.md) | Master Dispatcher | Harmonize Track 2 description with the 3-folder architecture and manual intake. |
-| [`AGENTS.md`](file:///Users/techton/lechton/research-code/bookwriter/AGENTS.md) | Workspace Rules | Update React Interview Lectures section with new image paths, perspective laws, and intake flow. |
-| [`instructions/lecture-creation/00-project-governance.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/instructions/lecture-creation/00-project-governance.md) | Track 1 Governance | Document canonical image link syntax (`images/{NN:02d}/{seq:02d}.jpeg`). |
-| [`AUTHOR-BRIEF.md`](file:///Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-02/AUTHOR-BRIEF.md) | Author Brief | Synchronize image file path expectations. |
+| [`prompts/images.md`](../instructions/image-creation/prompts/images.md) | Master Theme | Add Section 5 (Perspective & Scale Law), anti-clip-art ban, dashed path rules. |
+| [`instructions/image-creation/01-uncertainty-audit-and-prompt-engineering.md`](../instructions/image-creation/01-uncertainty-audit-and-prompt-engineering.md) | Track 2 Governance | Add `images-md-prompt/`, Invariant 5, overhaul Stage (c) for Google Flow manual intake. |
+| [`instructions/image-creation/prompts/images.md`](../instructions/image-creation/prompts/images.md) | Prompt Templates | Update agent prompt recipes to reflect the new two-part compilation workflow. |
+| [`instructions/README.md`](../instructions/README.md) | Master Dispatcher | Harmonize Track 2 description with the 3-folder architecture and manual intake. |
+| [`AGENTS.md`](../../../AGENTS.md) | Workspace Rules | Update React Interview Lectures section with new image paths, perspective laws, and intake flow. |
+| [`instructions/lecture-creation/00-project-governance.md`](../instructions/lecture-creation/00-project-governance.md) | Track 1 Governance | Document canonical image link syntax (`images/{NN:02d}/{seq:02d}.jpeg`). |
+| [`AUTHOR-BRIEF.md`](../AUTHOR-BRIEF.md) | Author Brief | Synchronize image file path expectations. |

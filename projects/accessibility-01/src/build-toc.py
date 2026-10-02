@@ -5,7 +5,7 @@ import subprocess
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
-QUESTIONS_FILE = os.path.join(REPO_DIR, 'diagram-lab', 'questions-accessibility', 'questions.md')
+QUESTIONS_FILE = os.path.join(REPO_DIR, 'questions', 'accessibility', 'questions.md')
 MD_LECTURES_DIR = os.path.join(BASE_DIR, 'md-lectures')
 HTML_DIR = os.path.join(BASE_DIR, 'md-lectures-html')
 PDF_DIR = os.path.join(BASE_DIR, 'md-lectures-pdf')
@@ -187,7 +187,7 @@ md_lines.extend([
     "",
     "## Master Reader Deck",
     "- **Complete Master Book (Cover + TOC + 54 Lectures)**: [Web Accessibility & Web Performance.pdf](Web%20Accessibility%20&%20Web%20Performance.pdf) — Complete 657-page volume bound in single sequential order.",
-    "- **Lecture Deck**: [Accessibility Q01-Q54.pdf](md-lectures-pdf/Accessibility%20Q01-Q54.pdf)",
+    "- **Lecture Deck**: [Accessibility Q01-Q54.pdf](../md-lectures-pdf/Accessibility%2520Q01-Q54.pdf)",
     ""
 ])
 

@@ -3,12 +3,21 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { mkdirSync } from 'node:fs';
-
-const require = createRequire('/Users/techton/lechton/research-code/svelte dev 2026/Pencil/package.json');
-const puppeteer = require('puppeteer-core');
+import { mkdirSync, readFileSync, existsSync } from 'node:fs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const pencilPkg = join(readConfig('external.svelteDev2026'), 'Pencil', 'package.json');
+const require = createRequire(pencilPkg);
+const puppeteer = require('puppeteer-core');
+
+function readConfig(key) {
+	const local = join(ROOT, 'bookwriter-project.local.json');
+	const def = join(ROOT, 'bookwriter-project.json');
+	const cfg = { ...(existsSync(def) ? JSON.parse(readFileSync(def, 'utf8')) : {}), ...(existsSync(local) ? JSON.parse(readFileSync(local, 'utf8')) : {}) };
+	const val = key.split('.').reduce((o, k) => (o ? o[k] : undefined), cfg);
+	if (!val || String(val).startsWith('<')) { console.error(`Missing config key: ${key} (set it in bookwriter-project.local.json)`); process.exit(1); }
+	return val;
+}
 const demoName = process.argv[2] && !process.argv[2].endsWith('.mjs') ? process.argv[2] : 'svelte-demo';
 const targetName = process.argv[3] || 'deck';
 const width = Number(process.argv[4]) || 820;

@@ -11,7 +11,7 @@ Digests: `skills/old-instructions/instructions.md` (build commands, themes, work
 
 ## Build Pipeline | 01 | Execution Context and Core Commands
 
-[ ] Execute all build commands directly from the subproject directory: `diagram-lab/output/react-lecture-05/`. Executing from parent or sibling folders misdirects relative paths.
+[ ] Execute all build commands directly from the subproject directory: `projects/react-05/`. Executing from parent or sibling folders misdirects relative paths.
 [ ] Use the primary compilation commands:
     * `node src/build-lectures.mjs`: Compiles `01-02-md-LECTURES/` into `01-03-md-lectures-HTML/` and `01-04-md-lectures-PDF/` via Prince XML, and rebuilds the combined reader.
     * `node src/build-lectures.mjs --no-pdf`: Fast HTML-only compilation; skips the Prince PDF step during rapid local iteration.

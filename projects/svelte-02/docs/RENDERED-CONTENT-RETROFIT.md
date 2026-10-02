@@ -3,7 +3,7 @@
 You are the writing model for the svelte-lecture-02 lecture pipeline. Your job is a narrow, mechanical retrofit: add the fourth field (rendered lines) to every `components` explorer panel entry, so that no panel ever shows an empty placeholder surface. Lecture 32 is already retrofitted and is the reference exemplar; do not touch it.
 
 ## Where things live
-- Lectures: `md-lectures/{n}.md` for n = 01 to 31, inside `diagram-lab/output/svelte-lecture-02/`.
+- Lectures: `md-lectures/{n}.md` for n = 01 to 31, inside `projects/svelte-02/`.
 - The panel syntax and the new rule: `instructions.md`, section "Component Explorer Panels", subsection "The rendered-content rule (no empty surfaces)".
 - The build: `node src/build-lectures.mjs`, run from the project folder.
 
@@ -36,7 +36,7 @@ For every panel entry, you MUST calculate the final UI by hand before writing th
 2. Edit ONLY the `components` blocks. Do not touch prose, code blocks, headings, tables, callouts, or line wrapping anywhere. One continuous line per entry, never hard-wrapped.
 
 ## Definition of done
-After each batch, run `node src/build-lectures.mjs` from `diagram-lab/output/svelte-lecture-02/` and confirm three things: the build completes, every touched lecture produces its HTML, and no NEW `warn` line appears that was not there before you started. Verify the lines landed: the built `md-lectures-html/{n}.html` must contain your text inside `<div class="surface-render">` elements.
+After each batch, run `node src/build-lectures.mjs` from `projects/svelte-02/` and confirm three things: the build completes, every touched lecture produces its HTML, and no NEW `warn` line appears that was not there before you started. Verify the lines landed: the built `md-lectures-html/{n}.html` must contain your text inside `<div class="surface-render">` elements.
 
 ## Final report
 End with a table, one row per lecture: the panel entries you edited, the computed values you derived with the arithmetic behind them (for example "1475 = (800 + 1200 + 950) × 0.5"), and any lecture you skipped (no panel at all, or UI inferred from prose). The owner audits the arithmetic; show it plainly, do not bury it.

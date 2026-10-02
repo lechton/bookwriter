@@ -12,7 +12,7 @@ We cloned the project architecture, adapted all instructions, design systems, op
 
 ## 1. Project Structure and File Layout
 
-The `vue-01` project lives at `diagram-lab/output/vue-01/` with the following established structure:
+The `vue-01` project lives at `projects/vue-01/` with the following established structure:
 
 ```
 vue-01/
@@ -92,7 +92,7 @@ Adapted the visual design system (`FIGURE-DESIGN-SYSTEM.md`) from CSS box layout
 
 Created clean, decoupled placeholder directories ready for joint review:
 
-- **`diagram-lab/questions-vue/`**:
+- **`questions/vue/`**:
   - `questions.md`: Markdown table header `# | Tier | Topic | Question | Hook`.
   - `topics.md`: Controlled topic vocabulary covering 3 planned tracks (Core Reactivity, Component Architecture, Application Architecture & Routing/Pinia).
   - `README.md`: Curriculum design rationale.
@@ -109,7 +109,7 @@ Created clean, decoupled placeholder directories ready for joint review:
 2. **Table of Contents**: `python3 src/build-toc.py` generated `00_TOC.md`, `00_TOC.html`, and rendered `00_TOC.pdf`.
 3. **Book Compilation**: `python3 src/build-book.py` united Cover, TOC, and Lecture Deck into `Mastering Vue.js Architecture.pdf`.
 4. **Internal References**: Grep search confirmed zero stale paths to `questions-css` or `css-01`.
-5. **Rule Integration**: Added `Vue.js Interview Lectures (diagram-lab/output/vue-01)` section to `AGENTS.md`.
+5. **Rule Integration**: Added `Vue.js Interview Lectures (projects/vue-01)` section to `AGENTS.md`.
 
 ---
 
@@ -118,7 +118,7 @@ Created clean, decoupled placeholder directories ready for joint review:
 1. **Discuss and approve authoritative resources in `documentation official/vue/`**:
    - Determine which repositories to shallow-clone (`vuejs/core`, `vuejs/docs`, `vuejs/rfcs`, `vuejs/router`, `vuejs/pinia`, `vuejs/test-utils`).
    - Identify licensed books to unpack in `books/`.
-2. **Discuss and populate the question bank in `diagram-lab/questions-vue/questions.md`**:
+2. **Discuss and populate the question bank in `questions/vue/questions.md`**:
    - Review proposed tracks and question bank size (e.g. 50–60 questions).
    - Freeze question IDs and typology tiers (`❱ CORE`, `❱❱ MORE`, `❱❱❱ ADVANCED`).
 3. **Begin lecture production row-by-row**:

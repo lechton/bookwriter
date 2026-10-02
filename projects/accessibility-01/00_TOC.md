@@ -114,5 +114,5 @@
 ---
 
 ## Master Reader Deck
-- **Complete Master Book (Cover + TOC + 54 Lectures)**: [Web Accessibility & Web Performance.pdf](Web%20Accessibility%20&%20Web%20Performance.pdf) — Complete 657-page volume bound in single sequential order.
+- **Complete Master Book (Cover + TOC + 54 Lectures)**: [Web Accessibility & Web Performance.pdf](Web%20Accessibility%20%26%20Web%20Performance_v1.pdf) — Complete 657-page volume bound in single sequential order.
 - **Lecture Deck**: [Accessibility Q01-Q54.pdf](md-lectures-pdf/Accessibility%20Q01-Q54.pdf)

@@ -32,7 +32,7 @@
   The untagged `React 19 Q01-Q12.pdf` (and `.html`) is the teal alias. No separate `deck-*` reader files are produced for the lectures pipeline; the generic `deck.html`/`deck.pdf` names are used only by pipelines that have no dedicated reader name (review, data-flow).
 - **Cautious Visual Verification Law (Anti-Screenshot-Waste Gate)**: Be cautious and do NOT scan screenshots or render pages (`pdftoppm`) of the build result during routine prose authoring, text revisions, or copy editing. Scanning screenshots is strictly reserved ONLY for when you have made an actual change to the visual design, layout CSS, component template geometry, or visual styling of the page/figure, OR if there is a serious grounded suspicion of an actual visual layout collision. Clean up any inspection PNGs immediately.
 
-This document is the single source of truth for the workflow of the `react-lecture-03` project inside `diagram-lab/output/`. The project is a fully self-contained silo with one essential rule: **every question is taught first as a long-form lecture, and only afterwards distilled into a review card**. The lecture is the source of truth for depth; the card is the review artifact.
+This document is the single source of truth for the workflow of the `react-lecture-03` project inside `projects/`. The project is a fully self-contained silo with one essential rule: **every question is taught first as a long-form lecture, and only afterwards distilled into a review card**. The lecture is the source of truth for depth; the card is the review artifact.
 
 > **Project Architecture note.** This project runs three parallel content pipelines — **lectures** (comprehensive, long-form), **cards** (distilled, reviewable), and **data-flow** (architectural placement in a real app) — each with its own source folder, build step, and HTML/PDF output folders. All three pipelines draw from the same 180-question curriculum (React Q1–Q100, React Server Q101–Q180) and the same local React documentation. The lecture pipeline is authored first per question; the card and data-flow pipelines follow. The lecture teaches *how* a React mechanism works; the card distills it for review; the data-flow file teaches *where that mechanism belongs* in a real component tree, grounding the concept in the fixed ElectroShop reference architecture.
 
@@ -968,11 +968,11 @@ Every lecture embeds at least one standalone HTML figure: a real HTML/CSS file a
 - `documentation official/React 19 Sept 2026/react.dev/src/content/` — the primary source for lecture content.
 - `./questions/` — the dedicated project-level question bank: `questions.md` (the 180 rows), `topics.md` (the controlled tag vocabulary), `README.md` (the design rationale and reading paths).
 - `docs/component_data_flow.md` and `docs/component_language.md` — the primary sources for the data-flow pipeline: the fixed ElectroShop component tree, the component-relationship shorthand, the server/client boundary notation, and the A/B/C multi-scale structure every `md-data-flow/` file follows.
-- **Screenshots folder** (outside the project, on disk): `/Users/techton/Images/CleanShotX/` — CleanShot X saves every screen capture here, newest first by filename timestamp. Use this folder to find before/after comparisons when iterating on visual output. Files are named `CleanShot YYYY-MM-DD at HH.MM.SS@2x.png`.
+- **Screenshots folder** (outside the project, on disk): `screenshots/` — CleanShot X saves every screen capture here, newest first by filename timestamp. Use this folder to find before/after comparisons when iterating on visual output. Files are named `CleanShot YYYY-MM-DD at HH.MM.SS@2x.png`.
 
 ## Visual reference for the Pencil book design
 
-The lecture pipeline's code-block presentation is meant to mimic the visual style of the Pencil book at `/Users/techton/lechton/research-code/svelte dev 2026/Pencil/`. The canonical references are:
+The lecture pipeline's code-block presentation is meant to mimic the visual style of the Pencil book at `external.svelteDev2026/Pencil/`. The canonical references are:
 
 - `Pencil/styles/figure-03.css` — the source-of-truth stylesheet for the editor code-block look.
 - `Pencil/cards 05/04_extra_javascript_1/01-prototype/card.html` — a hand-curated example of the editor HTML structure.

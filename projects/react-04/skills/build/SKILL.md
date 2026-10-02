@@ -11,7 +11,7 @@ Digests: skills/old-instructions/instructions.md (build commands, themes, workfl
 
 ## Pipeline | 01 | Run the build from the project folder
 
-[ ] Invoke the builders from inside the project folder (`diagram-lab/output/react-lecture-04/`), so the relative source and output folders resolve to this project and not to a sibling.
+[ ] Invoke the builders from inside the project folder (`projects/react-04/`), so the relative source and output folders resolve to this project and not to a sibling.
 [ ] `node src/build-lectures.mjs` compiles `md-lectures/` into `md-lectures-html/` and `md-lectures-pdf/` via Prince, and the same invocation rebuilds the data-flow and review pipelines.
 [ ] `node src/build-cards.mjs` builds the card pipeline alone, from `md-cards/` into its own HTML and PDF output folders.
 [ ] Pass `--no-pdf` to either builder when HTML output is enough, so quick iteration skips the Prince step until the final PDFs are needed.

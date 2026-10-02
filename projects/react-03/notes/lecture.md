@@ -1,4 +1,4 @@
-/Users/techton/lechton/research-code/bookwriter/diagram-lab/output/react-lecture-03/md-lectures-pdf
+projects/react-03/md-lectures-pdf
 
 Range: next 3 questions
 
