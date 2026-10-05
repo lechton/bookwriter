@@ -33,3 +33,11 @@ I need new edit in the instructions, after the Let's Design a Practical Example
 we need to add a clear, easy-to-follow short introduction as for the example to be created. 
 
 edit 07 as example for me to check 
+
+
+---
+
+PROBLEM
+
+Are principles mapped in the example in a good way? 
+Code needs post-edit with special prompt 
