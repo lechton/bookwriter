@@ -201,8 +201,10 @@ def build_prompt(n, row):
     pre_path = PRE_DIR / f"{bn(n)}.md"
     pre_note = (f"A Phase 1 blueprint already exists at {PRE_REL}/{bn(n)}.md from an earlier "
                 f"interrupted run. Treat it as a draft: audit it against the pre-lecture skill "
-                f"(especially its Staging law and its Quality Gate), revise whatever fails, and "
-                f"only then expand it into the production lecture. Do not discard it wholesale."
+                f"(especially its Staging law and its Quality Gate), answer the eight steps of "
+                f"{SKILLS_REL}/principle-definition/SKILL.md afresh in a [principle-steps] element "
+                f"for every principle, and rewrite each principle box the answers do not support; "
+                f"only then expand it into the production lecture."
                 if pre_path.is_file() else
                 f"No blueprint exists yet: author {PRE_REL}/{bn(n)}.md from scratch.")
     # Mandatory bootstrapping: the agy CLI session starts outside the project (its command
@@ -234,26 +236,37 @@ The question row, verbatim from questions/questions.md:
 The proper instruction system is the {SKILLS_REL}/ folder. Read {SKILLS_REL}/README.md first: it fixes the load order, and every skill below is one {SKILLS_REL}/<name>/SKILL.md file of numbered principles evaluated as questions with PROPER, HALF WAY, and COUNTER examples. The files in {SKILLS_REL}/old-instructions/ are a frozen archive of the legacy instructions and are not current standards; do not follow them.
 
 Read, in this order, before writing anything:
-1. questions/questions.md (your row and the rows around it) and questions/topics.md
+1. questions/questions.md (your row and the rows around it) and questions/topics.md; questions/archive/ and questions/drafts/ hold earlier and proposed versions of the bank and are not current, so do not read them
 2. {SKILLS_REL}/README.md (the load order and the rule-tag registry)
-3. For the pre-lecture: {SKILLS_REL}/pre-lecture/SKILL.md, {SKILLS_REL}/lecture-voice/SKILL.md, {SKILLS_REL}/lecture-structure/SKILL.md, {SKILLS_REL}/ui-panels/SKILL.md
-4. For the lecture: {SKILLS_REL}/lecture-structure/SKILL.md, {SKILLS_REL}/lecture-voice/SKILL.md, {SKILLS_REL}/code-blocks/SKILL.md, {SKILLS_REL}/ui-panels/SKILL.md, {SKILLS_REL}/figures/SKILL.md
-5. For calling it done: {SKILLS_REL}/verification/SKILL.md and {SKILLS_REL}/build/SKILL.md
-6. {prev_ref}
+3. For the principles, before the blueprint: the `### Principles of React` sections of {LEC_REL}/04.md and {LEC_REL}/13.md (every new principle box should look like theirs: plain sentences, side notes, and a code pair for each decision), then {SKILLS_REL}/principle-definition/SKILL.md, read in full (its eight steps guide the thinking behind each principle; its Golden Exemplar Bank shows finished boxes), then the map 01-01-map-principles/{bn(n)}.md (if it exists), read as data: its fields tell you which decisions to teach and in what order, never the wording
+4. For the pre-lecture: {SKILLS_REL}/pre-lecture/SKILL.md, {SKILLS_REL}/principled-theory/SKILL.md, {SKILLS_REL}/lecture-voice/SKILL.md, {SKILLS_REL}/lecture-structure/SKILL.md, {SKILLS_REL}/ui-panels/SKILL.md
+5. For the lecture: {SKILLS_REL}/lecture-structure/SKILL.md, {SKILLS_REL}/principled-theory/SKILL.md, {SKILLS_REL}/lecture-voice/SKILL.md, {SKILLS_REL}/code-blocks/SKILL.md, {SKILLS_REL}/ui-panels/SKILL.md, {SKILLS_REL}/figures/SKILL.md
+6. For calling it done: {SKILLS_REL}/verification/SKILL.md and {SKILLS_REL}/build/SKILL.md
+7. {prev_ref}
 
 {bootstrap}
 
-The shipped standard to match is {LEC_REL}/04.md (with its blueprint {PRE_REL}/04.md): the Rendered UI Canvas opening the practical example, the files scaffold, the assembly pipeline figure, top-down Step 1-4 construction where Step 1 builds the parent and establishes every child contract, the calm professor narration (notice-moves with line addresses, per-step recaps, no template questions), clean end-of-line annotations in the assembly fences, the Component Summary section with its Component Role panel, the Architecture Audit table, the closing summary family and comparison table.
+The shipped standard to match is {LEC_REL}/04.md (with its blueprint {PRE_REL}/04.md): the Rendered UI Canvas opening the practical example, the files scaffold, the assembly pipeline figure, top-down Step 1-4 construction where Step 1 builds the parent and establishes every child contract, the calm professor narration (notice-moves with line addresses, per-step recaps, no template questions), clean end-of-line annotations in the assembly fences, the Component Summary section with its Component Role panel, the Architecture Audit table, the closing summary family and comparison table. The working lectures carry plain trailing comments; this session drafts the same way, with zero tildes. The `~token~` markers are added later by the code-comment-audit pass in 02-01-md-revised/, a folder this session never reads.
 
 Deliverables, in this exact order:
-1. Phase 1 pre-lecture: {PRE_REL}/{bn(n)}.md, following {SKILLS_REL}/pre-lecture/SKILL.md exactly, including the staging standards (the five practical example stages and the panel elements planned as concrete pre-elements, each Step bullet carrying the narration itself, not a summary) and the full Quality Gate self-audit at the end. {pre_note}
-2. Phase 2 production lecture: {LEC_REL}/{bn(n)}.md, following {SKILLS_REL}/lecture-structure/SKILL.md (skeleton order, five-stage practical example, naming, closing table), {SKILLS_REL}/lecture-voice/SKILL.md (stance, definitions with the default and the law, the numbered opening beats), {SKILLS_REL}/code-blocks/SKILL.md (10-line ceiling, continuation attributes, comment standards), {SKILLS_REL}/ui-panels/SKILL.md (the panel modes), and {SKILLS_REL}/figures/SKILL.md. The mandatory html-figure file(s) go under {LEC_REL}/figures/, cloned from the closest proven archetype in {LEC_REL}/figures/templates/.
-3. Build: run `node src/build-lectures.mjs` from the project root. Read the build output; fix every warn by editing your own files and rebuild. A clean build with zero warnings is the mechanical definition of done. The same build regenerates the combined course-reader deck.
+1. Phase 1 pre-lecture: {PRE_REL}/{bn(n)}.md, following {SKILLS_REL}/pre-lecture/SKILL.md exactly, with a [principle-steps] element answering the eight steps of {SKILLS_REL}/principle-definition/SKILL.md before each finished principle box, including the staging standards (the five practical example stages and the panel elements planned as concrete pre-elements, each Step bullet carrying the narration itself, not a summary) and the full Quality Gate self-audit at the end. {pre_note}
+2. Phase 2 production lecture: {LEC_REL}/{bn(n)}.md, carrying the blueprint's finished principle boxes unchanged (the [principle-steps] answers stay in the blueprint), following {SKILLS_REL}/principled-theory/SKILL.md (the explanation, cards, and substrate under each box), {SKILLS_REL}/lecture-structure/SKILL.md (skeleton order, five-stage practical example, naming, closing table), {SKILLS_REL}/lecture-voice/SKILL.md (stance, definitions with the default and the law, the numbered opening beats), {SKILLS_REL}/code-blocks/SKILL.md (10-line ceiling, continuation attributes, comment standards), {SKILLS_REL}/ui-panels/SKILL.md (the panel modes), and {SKILLS_REL}/figures/SKILL.md. The mandatory html-figure file(s) go under {LEC_REL}/figures/, cloned from the closest proven archetype in {LEC_REL}/figures/templates/.
+3. Diagnostic & Build: run `node src/diagnose-lecture.mjs {bn(n)}` (Phase 1 draft mode, without `--audit`) from the project root and fix your files until it ends without `[GATE FAILED]`. Invariants 1-3 print `[DRAFT PASS]` by design in this mode; do not run `--audit` and do not add `~token~` markers in this session. Then run `node src/build-lectures.mjs` from the project root. Read the build output; fix every warn by editing your own files and rebuild. A clean build with zero warnings is the mechanical definition of done. The same build regenerates the combined course-reader deck.
 4. Stop after confirming all three exist: {PRE_REL}/{bn(n)}.md, {LEC_REL}/{bn(n)}.md, {PDF_REL}/{bn(n)}.pdf.
 
 When a term you use was already introduced by an earlier answered lecture, cite it as (see Lecture N) instead of re-teaching it; the answered list above is your citation map.
 
 Hard rules: one continuous line per paragraph (never hard-wrap), zero em-dashes, no screenshots or pdftoppm scans (text and build output only), and never modify any lecture, prelecture, figure, question row, skill, or build script other than Q{n}'s own deliverables."""
+
+
+def archive_for_rewrite(n):
+    """Move every file of an existing lecture (blueprint, lecture, figures, HTML, PDF, revised
+    copies) into their archive folders before a forced rewrite, so the new session authors from
+    scratch instead of inheriting the old draft. Delegates to archive_lecture.py, which never
+    deletes or overwrites."""
+    import archive_lecture
+    moves = archive_lecture.archive(n, version=LEC_VERSION or None, reason="produce_lectures --force")
+    return [dest for _, dest in moves]
 
 
 # ----------------------------------------------------------------------------- agy runner
@@ -471,7 +484,7 @@ def main():
                          "(interactive permission prompts will then block print mode)")
     ap.add_argument("--force", action="store_true",
                     help="with --start: produce exactly that question even if its lecture "
-                         "already exists (it gets rewritten); without --force, --start scans "
+                         "already exists (every file of that lecture is first moved to archive/ by archive_lecture.py, then rewritten); without --force, --start scans "
                          "forward to the next unanswered question")
     ap.add_argument("--version", default=None,
                     help="lecture version subdirectory (default: latest version, e.g. v1)")
@@ -589,9 +602,11 @@ def main():
             print(f"    Q{n} not found in the question bank — stopping.")
             results.append((n, "no-question-row", 0, None, "row missing in questions.md"))
             break
-        prompt = build_prompt(n, row)
-
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        if args.force:
+            for dest in archive_for_rewrite(n):
+                print(f"    archived for rewrite: {dest.relative_to(PROJECT)}")
+        prompt = build_prompt(n, row)
         log_path = LOG_DIR / f"q{bn(n)}_{stamp}.log"
 
         print(f"[{produced + 1}/{chapters}] Q{n} — tier {row['tier']} — {row['topic']}")

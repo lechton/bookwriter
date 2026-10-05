@@ -457,8 +457,31 @@ function inline(s, allowDisplayCode = false) {
 	return out;
 }
 
+function tokenizeCodeWithTarget(codeStr, charWidth = 9.5, tailWidth = 8) {
+	const m = codeStr.match(/^(.*?)~(.*?)~(.*)$/) || codeStr.match(/^(.*?)\*\*([^*]+)\*\*(.*)$/);
+	if (m) {
+		const before = m[1];
+		const target = m[2];
+		const after = m[3];
+		const indentMatch = before.match(/^(\s*)/);
+		const indentLen = indentMatch ? indentMatch[1].length : 0;
+		const codeBeforeTarget = before.slice(indentLen);
+		// Absolute character column from start of the line:
+		const colIndex = indentLen + codeBeforeTarget.length + (target.length / 2);
+		// Benchmark: column 36 divides left side vs right side of the page (standard 72-80 col code line)
+		const PAGE_BENCHMARK_COL = 36;
+		const isRightSide = colIndex > PAGE_BENCHMARK_COL;
+		const tipOffset = Math.round(codeBeforeTarget.length * charWidth + (target.length / 2) * charWidth);
+		const minLeft = 10;
+		const tokenOffset = Math.max(minLeft, Math.round(tipOffset - (tailWidth / 2)));
+		const html = tokenizeLine(before) + `<span class="target-token">${tokenizeLine(target)}</span>` + tokenizeLine(after);
+		return { codeHtml: html, tokenOffset, colIndex, isRightSide };
+	}
+	return { codeHtml: tokenizeLine(codeStr), tokenOffset: null, colIndex: null, isRightSide: false };
+}
+
 // Render one source line: split at the first // comment (followed by space or EOL),
-// drop empty trailing comments, return {code, comment}.
+// drop empty trailing comments, return {code, comment, tokenOffset, colIndex, isRightSide}.
 function highlightLine(raw) {
 	// 1. Full-line JSX or block comment: {/* comment */} or /* comment */
 	const mFullBlock = raw.match(/^\s*(?:\{\/\*|\/\*)\s*(.*?)\s*(?:\*\/\}|\*\/)\s*$/);
@@ -467,7 +490,7 @@ function highlightLine(raw) {
 		if (!text) return null; // drop empty comment-only line
 		text = text.replace(/(✔️|✖️|✖)\s*/g, '');
 		text = text.charAt(0).toUpperCase() + text.slice(1);
-		return { code: '', comment: text };
+		return { code: '', comment: text, tokenOffset: null, colIndex: null, isRightSide: false };
 	}
 
 	// 2. Trailing/inline JSX or block comment: code {/* comment */} or code /* comment */
@@ -480,7 +503,8 @@ function highlightLine(raw) {
 			if (commentText.length > 0) {
 				commentText = commentText.charAt(0).toUpperCase() + commentText.slice(1);
 			}
-			return { code: tokenizeLine(codePart), comment: commentText };
+			const { codeHtml, tokenOffset, colIndex, isRightSide } = tokenizeCodeWithTarget(codePart);
+			return { code: codeHtml, comment: commentText, tokenOffset, colIndex, isRightSide };
 		}
 	}
 
@@ -492,7 +516,7 @@ function highlightLine(raw) {
 		if (!text.trim()) return null; // drop empty comment-only line
 		text = text.replace(/(✔️|✖️|✖)\s*/g, '');
 		text = text.charAt(0).toUpperCase() + text.slice(1);
-		return { code: '', comment: text };
+		return { code: '', comment: text, tokenOffset: null, colIndex: null, isRightSide: false };
 	}
 	
 	// 4. Match an inline comment: //, <!--, or # followed by space or EOL
@@ -502,17 +526,22 @@ function highlightLine(raw) {
 		const matchToken = raw.substr(idx).startsWith('<!--') ? '<!--' : (raw.substr(idx).startsWith('#') ? '#' : '//');
 		let commentText = raw.slice(idx + matchToken.length).replace(/^\s?/, '').replace(/\s?-->\s*$/, '');
 		
-		const code = tokenizeLine(codePart);
-		if (!commentText.trim()) return { code, comment: null }; // drop empty trailing //
+		const { codeHtml, tokenOffset, colIndex, isRightSide } = tokenizeCodeWithTarget(codePart);
+		if (!commentText.trim()) return { code: codeHtml, comment: null, tokenOffset, colIndex, isRightSide }; // drop empty trailing //
 
 		commentText = commentText.replace(/(✔️|✖️|✖)\s*/g, '');
 		if (commentText.length > 0) {
 			commentText = commentText.charAt(0).toUpperCase() + commentText.slice(1);
 		}
-		return { code, comment: commentText };
+		return { code: codeHtml, comment: commentText, tokenOffset, colIndex, isRightSide };
+	}
+	// No comment: verify line does not contain dangling target tokens (~token~)
+	if (raw.includes('~')) {
+		codeNotes.push(`orphan target token detected on line without comment: "${raw.trim()}"`);
 	}
 	// No comment — tokenize the whole line.
-	return { code: tokenizeLine(raw), comment: null };
+	const { codeHtml, tokenOffset, colIndex, isRightSide } = tokenizeCodeWithTarget(raw);
+	return { code: codeHtml, comment: null, tokenOffset, colIndex, isRightSide };
 }
 
 // Build the editor-style HTML for one fenced code block.
@@ -572,7 +601,10 @@ function highlightCode(code, title, lang, attrs = {}) {
 		// Blank lines do not consume pending comments; only real code does.
 		const hasCode = codeText.trim() !== '';
 		const merged = hasCode ? pending.splice(0, pending.length) : [];
-		parsed.push({ code: codeText, comment, indent, merged });
+		const tokenOffset = result ? result.tokenOffset : null;
+		const colIndex = result ? result.colIndex : null;
+		const isRightSide = result ? result.isRightSide : false;
+		parsed.push({ code: codeText, comment, indent, tokenOffset, colIndex, isRightSide, merged });
 	});
 	// A block that ends on comment-only lines folds them into the last code row.
 	if (pending.length) {
@@ -581,7 +613,7 @@ function highlightCode(code, title, lang, attrs = {}) {
 			if (parsed[i].code.trim() !== '' || parsed[i].comment) { last = parsed[i]; break; }
 		}
 		if (last) last.merged.push(...pending.splice(0, pending.length));
-		else parsed.push({ code: '', comment: null, indent: 0, merged: pending.splice(0, pending.length) });
+		else parsed.push({ code: '', comment: null, indent: 0, tokenOffset: null, colIndex: null, isRightSide: false, merged: pending.splice(0, pending.length) });
 	}
 	const rows = parsed.map((p, idx) => {
 		const lineNum = startLine + idx;
@@ -594,9 +626,21 @@ function highlightCode(code, title, lang, attrs = {}) {
 		const commentText = [...p.merged, ...(p.comment ? [p.comment] : [])].join('<br>');
 		if (commentText) {
 			const isMulti = commentText.includes('<br>');
-			const bubbleClass = isMulti ? 'cmt-bubble cmt-bubble-multi' : 'cmt-bubble';
-			const offset = p.indent * 9.5;
-			out += `\n      <div style="flex-basis: 100%; height: 0;"></div>\n      <span class="num"></span>\n      <div class="${bubbleClass}" style="--indent-offset: ${offset}px;">\n        <span class="text">${renderComment(commentText)}</span>\n      </div>`;
+			const shoulder = 24;
+			if (p.isRightSide && p.colIndex !== null) {
+				// Benchmark: target word is on the RIGHT side of the page (> 36 columns)
+				// Starting point: RIGHT (anchored at target word + shoulder, extending left)
+				const rightEdge = Math.round(p.colIndex * 9.5 + shoulder);
+				const bubbleClass = (isMulti ? 'cmt-bubble cmt-bubble-multi' : 'cmt-bubble') + ' cmt-bubble-right';
+				out += `\n      <div style="flex-basis: 100%; height: 0;"></div>\n      <span class="num"></span>\n      <div class="${bubbleClass}" style="--right-edge: ${rightEdge}px; --tail-shoulder: ${shoulder}px;">\n        <span class="text">${renderComment(commentText)}</span>\n      </div>`;
+			} else {
+				// Benchmark: target word is on the LEFT side of the page (<= 36 columns)
+				// Starting point: LEFT (anchored on the left at line indentation, extending right)
+				const offset = p.indent * 9.5;
+				const tokenStyle = p.tokenOffset !== null && p.tokenOffset !== undefined ? ` --token-offset: ${p.tokenOffset}px;` : '';
+				const bubbleClass = isMulti ? 'cmt-bubble cmt-bubble-multi' : 'cmt-bubble';
+				out += `\n      <div style="flex-basis: 100%; height: 0;"></div>\n      <span class="num"></span>\n      <div class="${bubbleClass}" style="--indent-offset: ${offset}px;${tokenStyle}">\n        <span class="text">${renderComment(commentText)}</span>\n      </div>`;
+			}
 		}
 		out += `</div>`;
 		return out;
@@ -1140,18 +1184,37 @@ function render(blocks, currentMdFile = '') {
 							}
 						}
 
-						const defHtml = def.map(d => `<p class="principle-statement">${inline(d, false)}</p>`).join('\n      ');
+						// Definitions may decompose paired roles into `- ` / `* ` bullet items; adjacent bullet
+						// paragraphs (blank `>` lines between items) merge into one list.
+						const defBlocks = [];
+						for (const d of def) {
+							for (const dl of d.split('\n').map(l => l.trim()).filter(Boolean)) {
+								const last = defBlocks[defBlocks.length - 1];
+								const item = dl.match(/^[-*]\s+(.+)$/);
+								if (item) {
+									if (last && last.type === 'roles') last.items.push(item[1]);
+									else defBlocks.push({ type: 'roles', items: [item[1]] });
+								} else if (last && last.type === 'p' && last.para === d) {
+									last.text += ' ' + dl;
+								} else {
+									defBlocks.push({ type: 'p', text: dl, para: d });
+								}
+							}
+						}
+						const defHtml = defBlocks.map(blk => blk.type === 'roles'
+							? `<ul class="principle-roles">${blk.items.map(it => `<li>${inline(it, false)}</li>`).join('')}</ul>`
+							: `<p class="principle-statement">${inline(blk.text, false)}</p>`).join('\n      ');
 						
 						let glossaryHtml = '';
 						if (glossaryItems.length > 0) {
-							glossaryHtml = '    <div class="principle-marginalia-glossary">\n' +
+							glossaryHtml = '      <div class="principle-marginalia-glossary">\n' +
 								glossaryItems.map(item =>
-									`      <div class="gloss-entry">\n` +
-									`        <span class="gloss-term">${inline(item.term, false)}</span>\n` +
-									`        <span class="gloss-def">${inline(item.def, false)}</span>\n` +
-									`      </div>`
+									`        <div class="gloss-entry">\n` +
+									`          <span class="gloss-term">${inline(item.term, false)}</span>\n` +
+									`          <span class="gloss-def">${inline(item.def, false)}</span>\n` +
+									`        </div>`
 								).join('\n') +
-								'\n    </div>\n';
+								'\n      </div>\n';
 						}
 
 						function processCaseSnippet(rawText, pNum, caseType, currentMdFile) {
@@ -1191,7 +1254,7 @@ function render(blocks, currentMdFile = '') {
 										const rawCodeMatch = trimmed.match(/^`([\s\S]*)`$/);
 										if (rawCodeMatch) rawCode = rawCodeMatch[1];
 										const codeOnly = rawCode.replace(/\s*\/\/.*$/, '').replace(/\s*\/\*.*\*\/$/, '').trim();
-										const MAX_CASE_LINE_LEN = 80;
+										const MAX_CASE_LINE_LEN = 68;
 										if (codeOnly.length > MAX_CASE_LINE_LEN) {
 											console.log(`  warn ${currentMdFile || 'markdown'}: Principle ${pNum} (${caseType}) code line length ${codeOnly.length} > ${MAX_CASE_LINE_LEN} chars: "${rawCode}". Break into multiple lines for clean card presentation.`);
 										}
@@ -1250,22 +1313,24 @@ function render(blocks, currentMdFile = '') {
 								}
 
 								const codeOnly = codeText.trim();
-								const MAX_CASE_LINE_LEN = 80;
+								const MAX_CASE_LINE_LEN = 68;
 								if (codeOnly.length > MAX_CASE_LINE_LEN) {
 									console.log(`  warn ${currentMdFile || 'markdown'}: Principle ${pNum} (${caseType}) code line length ${codeOnly.length} > ${MAX_CASE_LINE_LEN} chars: "${codeText.trim()}". Break into multiple lines for clean card presentation.`);
 								}
 
 								if (codeText.length > 0) {
-									rowItems.push({ type: 'code', html: tokenizeLine(codeText) });
+									const { codeHtml, tokenOffset, colIndex, isRightSide } = tokenizeCodeWithTarget(codeText, 8.2, 7);
+									const isCardRight = colIndex !== null && colIndex > 36;
+									rowItems.push({ type: 'code', html: codeHtml });
 									if (pendingBubble) {
 										rowItems.push(pendingBubble);
 										pendingBubble = null;
 									}
 									if (commentText) {
-										rowItems.push({ type: 'bubble', text: commentText, indentOffset });
+										rowItems.push({ type: 'bubble', text: commentText, indentOffset, tokenOffset, colIndex, isRightSide: isCardRight });
 									}
 								} else if (commentText) {
-									pendingBubble = { type: 'bubble', text: commentText, indentOffset };
+									pendingBubble = { type: 'bubble', text: commentText, indentOffset, tokenOffset: null, colIndex: null, isRightSide: false };
 								}
 							}
 							if (pendingBubble) {
@@ -1277,7 +1342,19 @@ function render(blocks, currentMdFile = '') {
 								if (item.type === 'code') {
 									codeHtml += `<div class="case-code-line">${item.html}</div>`;
 								} else if (item.type === 'bubble') {
-									codeHtml += `<div class="cmt-bubble" style="--indent-offset: ${item.indentOffset}px;"><span class="text">${esc(item.text)}</span></div>`;
+									const shoulder = 20;
+									if (item.isRightSide && item.colIndex !== null) {
+										// Benchmark: target word is on the RIGHT side of the principle card (> 30 columns)
+										// Starting point: RIGHT
+										const rightEdge = Math.round(item.colIndex * 8.2 + shoulder);
+										const bubbleClass = 'cmt-bubble cmt-bubble-right';
+										codeHtml += `<div class="${bubbleClass}" style="--right-edge: ${rightEdge}px; --tail-shoulder: ${shoulder}px;"><span class="text">${renderComment(item.text)}</span></div>`;
+									} else {
+										// Benchmark: target word is on the LEFT side of the principle card (<= 30 columns)
+										// Starting point: LEFT
+										const tokenStyle = item.tokenOffset !== null && item.tokenOffset !== undefined ? ` --token-offset: ${item.tokenOffset}px;` : '';
+										codeHtml += `<div class="cmt-bubble" style="--indent-offset: ${item.indentOffset}px;${tokenStyle}"><span class="text">${renderComment(item.text)}</span></div>`;
+									}
 								}
 							}
 
@@ -1286,6 +1363,8 @@ function render(blocks, currentMdFile = '') {
 
 						let casesHtml = '';
 						if (doThis || doNot) {
+							const reactLogoSvg = `<svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg>`;
+							const reactLogoWatermark = compactPrinciples ? '' : `<div class="case-react-bg">${reactLogoSvg}</div>\n        `;
 							casesHtml += '    <div class="principle-cases-grid">\n';
 							if (doThis) {
 								const doLabel = isBestPractice ? 'It is best practice to do this:' : 'We should do this:';
@@ -1299,7 +1378,7 @@ function render(blocks, currentMdFile = '') {
 								const processedDo = processCaseSnippet(doThis, pNum, 'do', currentMdFile);
 								const doWatermark = compactPrinciples ? '' : `<div class="case-watermark-bg">${doIconSvg}</div>\n        `;
 								casesHtml += `      <div class="principle-case principle-case-do">\n` +
-											 `        ${doWatermark}<div class="case-header">\n` +
+											 `        ${doWatermark}${reactLogoWatermark}<div class="case-header">\n` +
 											 `          <div class="case-icon-col">${doIconSvg}</div>\n` +
 											 `          <div class="case-label">${doLabel}</div>\n` +
 											 `        </div>\n` +
@@ -1320,7 +1399,7 @@ function render(blocks, currentMdFile = '') {
 								const processedDont = processCaseSnippet(doNot, pNum, 'dont', currentMdFile);
 								const dontWatermark = compactPrinciples ? '' : `<div class="case-watermark-bg">${dontIconSvg}</div>\n        `;
 								casesHtml += `      <div class="${dontCardClass}">\n` +
-											 `        ${dontWatermark}<div class="case-header">\n` +
+											 `        ${dontWatermark}${reactLogoWatermark}<div class="case-header">\n` +
 											 `          <div class="case-icon-col">${dontIconSvg}</div>\n` +
 											 `          <div class="case-label">${dontLabel}</div>\n` +
 											 `        </div>\n` +
@@ -1331,6 +1410,14 @@ function render(blocks, currentMdFile = '') {
 							casesHtml += '    </div>\n';
 						}
 
+						const topRowClass = glossaryItems.length > 0 ? 'principle-top-row' : 'principle-top-row no-glossary';
+						const topRowHtml = `    <div class="${topRowClass}">\n` +
+								(glossaryHtml ? `${glossaryHtml}` : '') +
+								`      <div class="principle-definition-card">\n` +
+								`        ${defHtml}\n` +
+								`      </div>\n` +
+								`    </div>\n`;
+
 						const principleClass = compactPrinciples ? 'callout callout-principle compact' : 'callout callout-principle';
 						html += `<aside class="${principleClass}" data-principle="${pNum}">\n` +
 								`  <div class="principle-header">\n` +
@@ -1338,10 +1425,7 @@ function render(blocks, currentMdFile = '') {
 								`    <h4 class="principle-title">${inline(pTitle, false)}</h4>\n` +
 								`  </div>\n` +
 								`  <div class="principle-body">\n` +
-								`    ${glossaryHtml}` +
-								`    <div class="principle-definition-card">\n` +
-								`      ${defHtml}\n` +
-								`    </div>\n` +
+								`${topRowHtml}` +
 								`    ${casesHtml}` +
 								`  </div>\n` +
 								`</aside>\n`;
@@ -1850,6 +1934,55 @@ function checkLecture(file, md) {
 		if (lineCount > 10 && !f.continues) {
 			warns.push(`body code fence "${f.title || f.tag}" exceeds the 10-line ceiling (${lineCount} lines) without continuation markers; slice into progressive steps (verification Structure Gates 17)`);
 		}
+
+		// Deterministic Code Block Invariants: orphan tokens, tilde parity, line width
+		const blockLines = f.code.split('\n');
+		for (let idx = 0; idx < blockLines.length; idx++) {
+			const bl = blockLines[idx];
+			const trimmed = bl.trim();
+			if (!trimmed) continue;
+			const tildeCount = (bl.match(/~/g) || []).length;
+			if (tildeCount % 2 !== 0) {
+				warns.push(`code fence "${f.title || f.tag}" line ${idx + 1} has unclosed or odd tildes: "${trimmed}"`);
+			}
+			const hasComment = (bl.includes('//') && !bl.includes('://')) || bl.includes('<!--') || bl.match(/#\s+\S+/);
+			const tildeMatch = bl.match(/~([^~]+)~/);
+			if (tildeMatch && !hasComment) {
+				warns.push(`code fence "${f.title || f.tag}" line ${idx + 1} has orphan target token "~${tildeMatch[1]}~" without a trailing comment`);
+			}
+			if (bl.length > 80) {
+				warns.push(`code fence "${f.title || f.tag}" line ${idx + 1} exceeds 80 characters (${bl.length} chars): "${trimmed.slice(0, 50)}..."`);
+			}
+		}
+	}
+
+	// Invariant 9: Zero multi-line code in content (ban raw code passed as simple prose text)
+	let inFence = false;
+	let consecutiveProseCode = [];
+	for (let idx = 0; idx < lines.length; idx++) {
+		const l = lines[idx];
+		if (l.startsWith('```')) {
+			inFence = !inFence;
+			consecutiveProseCode = [];
+			continue;
+		}
+		if (inFence) continue;
+		if (!l.startsWith('>')) {
+			const trimmed = l.trim();
+			if (/^\s*\*(?:It is best practice to do this|Instead of doing this|We should do this|We should not do this|Do This|Do Not Do This):\*/i.test(trimmed)) {
+				warns.push(`line ${idx + 1} has unquoted principle card header outside callout: "${trimmed}"`);
+			}
+			if (/^`[^`]+`$/.test(trimmed)) {
+				consecutiveProseCode.push({ lineNum: idx + 1, text: trimmed });
+				if (consecutiveProseCode.length === 2) {
+					warns.push(`line ${consecutiveProseCode[0].lineNum} has multi-line code passed as simple prose text (Invariant 9 violation)`);
+				}
+			} else if (trimmed.length > 0) {
+				consecutiveProseCode = [];
+			}
+		} else {
+			consecutiveProseCode = [];
+		}
 	}
 
 	if (summaryContent) {
@@ -2010,8 +2143,10 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 
 		const title = (md.match(/^#\s+(.*)$/m) || [, `Lecture ${name}`])[1];
 		if (!deckOnly) {
-			writeFileSync(join(htmlDir, `${name}.html`), page(title, body, 'teal', cssRelPath, currentEdition));
-			console.log(`html  ${name}.html`);
+			const activeTheme = args.includes('--pro') ? 'pro' : 'teal';
+			const outName = args.includes('--pro') ? `${name}-pro` : name;
+			writeFileSync(join(htmlDir, `${outName}.html`), page(title, body, activeTheme, cssRelPath, currentEdition));
+			console.log(`html  ${outName}.html`);
 		}
 	}
 
@@ -2065,33 +2200,37 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 			.map((l) => `<article class="lecture">${l.body}</article>`)
 			.join('\n<hr class="lecture-break">\n');
 
-		// Multi-theme decks: teal, teal-pro (alias matching isolated pdf theme), black, old, and enhanced.
+		// Multi-theme decks: teal, teal-pro (alias matching isolated pdf theme), black, old, enhanced, and pro.
 		// The reader is published once per theme under the pipeline's deck file
-		// name (e.g. "React v6.0 Q01-Q10-teal-pro.pdf"); no duplicate deck-* outputs.
+		// name (e.g. "React v6.0 Q01-Q10-pro.pdf"); no duplicate deck-* outputs.
 		const themes = [
 			{ id: 'teal', theme: 'teal', label: 'Teal' },
 			{ id: 'teal-pro', theme: 'teal', label: 'Teal Pro' },
 			{ id: 'black', theme: 'black', label: 'Black' },
 			{ id: 'old', theme: 'old', label: 'Old' },
-			{ id: 'enhanced', theme: 'enhanced', label: 'Enhanced' }
+			{ id: 'enhanced', theme: 'enhanced', label: 'Enhanced' },
+			{ id: 'pro', theme: 'pro', label: 'Pro' }
 		];
 
-		for (const th of themes) {
+		const activeDeckThemes = args.includes('--pro') ? themes.filter((t) => t.id === 'pro') : themes;
+		for (const th of activeDeckThemes) {
 			const themedDeckHtml = deckPage(resolvedDeckTitle, readerBody, th.theme || th.id, cssRelPath, currentEdition);
 			writeFileSync(join(htmlDir, `${resolvedDeckFileName}-${th.id}.html`), themedDeckHtml);
 			console.log(`html  ${resolvedDeckFileName}-${th.id}.html`);
 		}
 
-		// Default (untagged) reader, aliased to teal
-		const defaultDeckHtml = deckPage(resolvedDeckTitle, readerBody, 'teal', cssRelPath, currentEdition);
-		writeFileSync(join(htmlDir, `${resolvedDeckFileName}.html`), defaultDeckHtml);
-		console.log(`html  ${resolvedDeckFileName}.html`);
+		if (!args.includes('--pro')) {
+			// Default (untagged) reader, aliased to teal
+			const defaultDeckHtml = deckPage(resolvedDeckTitle, readerBody, 'teal', cssRelPath, currentEdition);
+			writeFileSync(join(htmlDir, `${resolvedDeckFileName}.html`), defaultDeckHtml);
+			console.log(`html  ${resolvedDeckFileName}.html`);
+		}
 	}
 
 	if (withPdf) {
 		const targets = isSingle
-			? files.map((f) => basename(f, '.md'))
-			: (deckOnly ? (shouldBuildDeck ? [resolvedDeckFileName] : []) : [...files.map((f) => basename(f, '.md')), ...(shouldBuildDeck ? [resolvedDeckFileName] : [])]);
+			? files.map((f) => args.includes('--pro') ? `${basename(f, '.md')}-pro` : basename(f, '.md'))
+			: (deckOnly ? (shouldBuildDeck ? (args.includes('--pro') ? [] : [resolvedDeckFileName]) : []) : [...files.map((f) => basename(f, '.md')), ...(shouldBuildDeck ? (args.includes('--pro') ? [] : [resolvedDeckFileName]) : [])]);
 		for (const name of targets) {
 			execFileSync('prince', [join(htmlDir, `${name}.html`), '-o', join(pdfDir, `${name}.pdf`)], { stdio: ['ignore', 'ignore', 'inherit'] });
 			console.log(`pdf   ${name}.pdf`);
@@ -2107,7 +2246,7 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 		} catch (e) { /* ignore */ }
 
 		if (shouldBuildDeck) {
-			if (isSingle) {
+			if (isSingle && !args.includes('--pro')) {
 				execFileSync('prince', [join(htmlDir, `${resolvedDeckFileName}.html`), '-o', join(pdfDir, `${resolvedDeckFileName}.pdf`)], { stdio: ['ignore', 'ignore', 'inherit'] });
 				console.log(`pdf   ${resolvedDeckFileName}.pdf`);
 			}
@@ -2123,15 +2262,17 @@ function buildDirectory(inputDir, htmlDir, pdfDir, deckTitle, checkFormat = fals
 				} catch (e) { /* ignore */ }
 			}
 
-			// Compile multi-theme reader PDFs: <deckFileName>-teal.pdf, -teal-pro.pdf, -black.pdf, -old.pdf, -enhanced.pdf
+			// Compile multi-theme reader PDFs: <deckFileName>-teal.pdf, -teal-pro.pdf, -black.pdf, -old.pdf, -enhanced.pdf, -pro.pdf
 			const themes = [
 				{ id: 'teal', theme: 'teal', label: 'Teal' },
 				{ id: 'teal-pro', theme: 'teal', label: 'Teal Pro' },
 				{ id: 'black', theme: 'black', label: 'Black' },
 				{ id: 'old', theme: 'old', label: 'Old' },
-				{ id: 'enhanced', theme: 'enhanced', label: 'Enhanced' }
+				{ id: 'enhanced', theme: 'enhanced', label: 'Enhanced' },
+				{ id: 'pro', theme: 'pro', label: 'Pro' }
 			];
-			for (const th of themes) {
+			const activePdfThemes = args.includes('--pro') ? themes.filter((t) => t.id === 'pro') : themes;
+			for (const th of activePdfThemes) {
 				const thName = `${resolvedDeckFileName}-${th.id}`;
 				execFileSync('prince', [join(htmlDir, `${thName}.html`), '-o', join(pdfDir, `${thName}.pdf`)], { stdio: ['ignore', 'ignore', 'inherit'] });
 				console.log(`pdf   ${thName}.pdf`);
