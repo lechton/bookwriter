@@ -1,19 +1,26 @@
 ---
 name: map-principles
-description: Author or audit React 06 principle maps in 01-01-map-principles/{nn}.md. Use when turning a syllabus card, the react.dev pages for its topic, and senior engineering knowledge into the numbered principles a lesson must teach, when routing a decision to the lesson that owns it, or when checking a map's coverage, ownership, importance, atomicity, or review language.
+description: Author or audit React 06 principle maps in 01-01-map-principles/{nn}.md. Use when turning a question-bank row and its syllabus card, the react.dev pages for its topic, and senior engineering knowledge into the numbered principles a lesson must teach, when routing a decision to the lesson that owns it, or when checking a map's coverage, ownership, importance, atomicity, or review language.
 ---
 
 # Map Principles
 
-Turn one syllabus card into the approved principle contract for its lesson. The work runs in two passes. Discovery searches wide (the syllabus card, the official react.dev pages for the topic, and senior engineering knowledge) without looking at any principle map. Selection decides: it routes each candidate to the lesson that owns it, keeps the important and independent decisions, and numbers them last. The finished map tells pre-lecture and lecture authors which principles to teach, what to explain as support, what to recall from earlier lessons, what to preview for later lessons, and what to leave out. #2026_09_26_21_group_1
+Turn one question-bank row and its syllabus card into the approved principle contract for its lesson. The work runs in two passes. Discovery searches wide (the syllabus card, the official react.dev pages for the topic, and senior engineering knowledge) without looking at any principle map. Selection decides: it routes each candidate to the lesson that owns it, keeps the important and independent decisions, and numbers them last. The finished map tells pre-lecture and lecture authors which principles to teach, what to explain as support, what to recall from earlier lessons, what to preview for later lessons, and what to leave out. #2026_09_26_21_group_1 revised by #2026_10_05_07_group_1
 
 ## Artifact Authority | 01 | Sources, Owners, and the Approved Map #2026_09_26_19_group_1 revised by #2026_09_26_20_group_1 and #2026_09_26_21_group_1
 
-- [ ] Is `01-01-map/{nn}.md` treated as the authority for the lesson's topic, interview question, code experiment, and scope boundary?
+- [ ] Is row {nn} of `questions/questions.md`, the live question bank, treated as the authority for the lesson's number, topic tag, tier, and interview question, and `01-01-map/{nn}.md` as the authority for its code experiment and scope boundary? #2026_09_26_19_group_1 revised by #2026_10_05_07_group_1
+- [ ] Before Discovery, do the bank row and the card carry the same number, topic tag, and question text, and when they differ, does the work stop with a report of both values instead of continuing with whichever card looks closest? Builds read only the live `questions/questions.md`; the files in `questions/archive/` and `questions/drafts/` are history and proposals. #2026_10_05_07_group_1
 - [ ] Is the whole syllabus in `01-01-map/` treated as the authority for ownership, so each decision belongs to the lesson whose card makes it a main subject rather than to the first lesson that mentions it?
 - [ ] Is the local react.dev corpus (`documentation official/React 19 Sept 2026/react.dev/src/content/`) treated as the authority for React facts, so it prevails when a syllabus card or general knowledge disagrees with it?
-- [ ] Once approved, is `01-01-map-principles/{nn}.md` treated as the authority for the lesson's numbered principles, their order, their required proofs, and every disposition in its candidate ledger?
+- [ ] Once approved, is `01-01-map-principles/{nn}.md` treated as the authority for the lesson's numbered principles, their order, their required proofs, and every disposition in its candidate ledger, as long as its header still carries the topic tag and question of bank row {nn}? A map whose header differs from its row was written for another bank version, and it is rebuilt with this workflow before a pre-lecture or lecture relies on it. #2026_09_26_19_group_1 revised by #2026_10_05_07_group_1
 - [ ] When a lecture, a pre-lecture, or an earlier principle map conflicts with syllabus ownership or with the approved map, is the conflict reported for correction rather than used to expand or shrink the principle set?
+
+- [ ] PROPER EXAMPLE: Before writing map 15, the author reads bank row 15 (`#render_and_commit`, "What are the trigger, render, and commit phases of the React lifecycle, and what runs in each?") and card 15, finds the same tag and question in both, and starts Discovery. Later, asked to produce Lecture 15 from an older map, the author sees `#callback_props` in map 15's header, stops, and reports: "row 15 is `#render_and_commit`, map 15 is `#callback_props`, so map 15 needs a rebuild." #2026_10_05_07_group_1
+
+- [ ] COUNTER-EXAMPLE: Lecture 14 was produced while row 14 was `#use_state` and map 14 was still the events map from bank Version 1. The agent opened map 16 instead, because it was about useState, and wrote the lecture from it without reporting the mismatch, so the stale maps stayed in place until a later audit found them. #2026_10_05_07_group_1
+
+Notes: The number ties the bank, the cards, the maps, and the lectures together, and a new bank version can move a topic to a new number. Comparing the topic tag and question text, rather than trusting the file number alone, is what catches a file left behind by a version change. #2026_10_05_07_group_1
 
 ## Discovery | 02 | Source-Open, Map-Blind Candidate Search #2026_09_26_21_group_1
 
@@ -94,6 +101,7 @@ Notes: Importance decides membership, atomicity decides boundaries, and ownershi
 ```markdown
 # Q{NN}: {Lesson title} — Operational Principle Map
 - **Source Map**: `01-01-map/{NN}.md`
+- **Bank Row**: `questions/questions.md` row {NN}, Version {V}
 - **Topic Tag**: `{tag}` | `{tier}`
 - **Interview Question**: *{verbatim question}*
 
@@ -129,6 +137,7 @@ Notes: Importance decides membership, atomicity decides boundaries, and ownershi
 {One paragraph answering the interview question using only this map's principles and prerequisites.}
 
 ## Completion Gate
+- [ ] The header's topic tag, tier, and interview question equal bank row {NN} and card {NN}.
 - [ ] Every Recap, Pitfall, Caveat, and Troubleshooting item on the pages in Sources Read has a ledger row.
 - [ ] Every ledger row has one disposition, and every Prerequisite, Preview, and Deferred row names its owner lesson.
 - [ ] The ledger names candidates by their decision rather than by principle number and keeps rejected candidates with their reasons.
@@ -138,12 +147,12 @@ Notes: Importance decides membership, atomicity decides boundaries, and ownershi
 - [ ] Ownership conflicts with earlier principle maps are reported.
 ```
 
-- [ ] Does the header preserve the syllabus card's title, topic tag, tier, interview question, and path exactly?
+- [ ] Does the header preserve the syllabus card's title and path, and do its topic tag, tier, and interview question equal bank row {NN} exactly, with the bank version named in `Bank Row`? #2026_09_26_19_group_1 revised by #2026_10_05_07_group_1
 - [ ] Does a `Decision` principle carry a Review Point without a Prediction, and a `Model` principle carry a Prediction without a Review Point?
 - [ ] Are Roles, Placement, Mechanism, and Defect written as data fragments (`e.currentTarget: element holding the running handler; e.target: innermost element clicked`) rather than finished sentences? The map is an information source for `principle-definition`; a paste-ready sentence here becomes a paraphrased definition downstream. #2026_10_04_09_group_1
 - [ ] Are ledger rows grouped by disposition, so authors can scan principles, merges, supporting explanations, previews, prerequisites, deferrals, and drops without reading the whole table?
 
-Notes: Maps written before #2026_10_04_09_group_1 carry a single-sentence `Rule` field instead of Roles, Placement, Mechanism, and Defect; read that sentence as data and extract the four fields from it before drafting the definition. The candidate ledger replaces the former `Deferred Scope`, `Prerequisites Reused, Not Reintroduced`, and `Coverage and Disposition Ledger` sections, so every non-principle decision lives in one place with its owner and reason. Maps that still carry those former sections are provisional and are best rebuilt with this workflow before a pre-lecture relies on them.
+Notes: Maps written before #2026_10_04_09_group_1 carry a single-sentence `Rule` field instead of Roles, Placement, Mechanism, and Defect; read that sentence as data and extract the four fields from it before drafting the definition. The candidate ledger replaces the former `Deferred Scope`, `Prerequisites Reused, Not Reintroduced`, and `Coverage and Disposition Ledger` sections, so every non-principle decision lives in one place with its owner and reason. Maps that still carry those former sections are provisional and are best rebuilt with this workflow before a pre-lecture relies on them. Maps written before #2026_10_05_07_group_1 have no `Bank Row` line; compare their Topic Tag and Interview Question with the live bank row before relying on them.
 
 ## Verification | 07 | Coverage, Ownership, Importance, and Handoff #2026_09_26_19_group_1 revised by #2026_09_26_20_group_1 and #2026_09_26_21_group_1
 
