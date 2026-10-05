@@ -42,7 +42,7 @@ Notes: The number ties the bank, the cards, the maps, and the lectures together,
 
 Notes: Discovery is deliberately wide. Selection narrows it. A candidate that was found and rejected is visible evidence in the ledger; a candidate that was never found is an invisible gap.
 
-## Selection | 03 | Ownership Through the Syllabus #2026_09_26_21_group_1
+## Selection | 03 | Ownership Through the Syllabus #2026_09_26_21_group_1 revised by #2026_10_05_09_group_1
 
 - [ ] Is each candidate routed to the lesson whose syllabus card makes it a main subject, meaning the card's Topic Tag, Core Truth, Mechanism, or Code Experiment is about that decision, even when an earlier card mentions it in passing?
 - [ ] Are the Topic Tag, Core Truth, Mechanism, and Scope Boundary lines of every card in `01-01-map/` searched for each route, rather than only the neighboring cards?
@@ -50,6 +50,11 @@ Notes: Discovery is deliberately wide. Selection narrows it. A candidate that wa
 - [ ] Is a candidate owned by an earlier lesson recorded as `Prerequisite` with its owner, so the lesson recalls it instead of numbering it again?
 - [ ] Is a candidate owned by a later lesson recorded as `Preview` when this lesson's code touches it and a one-sentence mention naming the owner prevents confusion, and as `Deferred` when the lesson can leave it out entirely?
 - [ ] When the syllabus routes a decision to this lesson but an earlier principle map already numbers it, is the conflict reported for correction in that earlier map?
+- [ ] Does every owner in the ledger name the lesson by its number and its topic tag from the live bank (`Q17 #state_updates`), so a later bank version that moves the topic leaves a number and tag that no longer match instead of a bare number that silently points at another lesson? #2026_10_05_09_group_1
+
+- [ ] PROPER EXAMPLE: Map 14 defers updater functions with the owner `Q17 #state_updates`. When a later bank version moves `#state_updates` to Q19, anyone reading the row sees that row 17 no longer carries that tag and corrects the number. #2026_10_05_09_group_1
+
+- [ ] COUNTER-EXAMPLE: Maps 01 to 13 named owners by number alone ("state (Q16)", "render pipeline (Q17)"). Bank Version 2 moved those topics to Q14 and Q15, nothing in the maps showed it, and every preview pointed at the wrong lesson until an audit compared each reference with its topic. #2026_10_05_09_group_1
 
 - [ ] PROPER EXAMPLE: react.dev places the numeric-zero `&&` Pitfall on its conditional-rendering page. The lesson whose card makes conditional rendering its main subject owns it as a principle, while an earlier lesson that teaches which values JSX prints records it as `Preview` with that owner and states only that numbers render as text.
 
@@ -94,7 +99,7 @@ Notes: Importance decides membership, atomicity decides boundaries, and ownershi
 
 - [ ] COUNTER-EXAMPLE: "Do not use a ternary that returns null" turns one valid conditional style into a false prohibition merely to complete a pair.
 
-## Output Contract | 06 | Principle Map Format #2026_09_26_19_group_1 revised by #2026_09_26_20_group_1 and #2026_09_26_21_group_1
+## Output Contract | 06 | Principle Map Format #2026_09_26_19_group_1 revised by #2026_09_26_20_group_1, #2026_09_26_21_group_1, and #2026_10_05_09_group_1
 
 - [ ] Does every principle-map file use this order and keep each paragraph, bullet, and table row on one continuous line?
 
@@ -117,7 +122,7 @@ Notes: Importance decides membership, atomicity decides boundaries, and ownershi
 ## Candidate Ledger
 | candidate | source | disposition | owner | reason |
 |---|---|---|---|---|
-| {one plain decision or mental model} | {card field, react.dev block, or general} | {Principle, Merged, Supporting, Prerequisite, Preview, Deferred, or Dropped} | {Q{NN}, the candidate it merged into, or —} | {one line} |
+| {one plain decision or mental model} | {card field, react.dev block, or general} | {Principle, Merged, Supporting, Prerequisite, Preview, Deferred, or Dropped} | {Q{NN} `#tag`, the candidate it merged into, or —} | {one line} |
 
 ## Principles
 
@@ -140,6 +145,7 @@ Notes: Importance decides membership, atomicity decides boundaries, and ownershi
 - [ ] The header's topic tag, tier, and interview question equal bank row {NN} and card {NN}.
 - [ ] Every Recap, Pitfall, Caveat, and Troubleshooting item on the pages in Sources Read has a ledger row.
 - [ ] Every ledger row has one disposition, and every Prerequisite, Preview, and Deferred row names its owner lesson.
+- [ ] Every owner's number and topic tag equal a row of the live bank.
 - [ ] The ledger names candidates by their decision rather than by principle number and keeps rejected candidates with their reasons.
 - [ ] Every principle is owned by this lesson through the syllabus and records the importance question it passed.
 - [ ] Every Required Lesson Proof can be produced inside the Authorized Scope.
@@ -152,14 +158,14 @@ Notes: Importance decides membership, atomicity decides boundaries, and ownershi
 - [ ] Are Roles, Placement, Mechanism, and Defect written as data fragments (`e.currentTarget: element holding the running handler; e.target: innermost element clicked`) rather than finished sentences? The map is an information source for `principle-definition`; a paste-ready sentence here becomes a paraphrased definition downstream. #2026_10_04_09_group_1
 - [ ] Are ledger rows grouped by disposition, so authors can scan principles, merges, supporting explanations, previews, prerequisites, deferrals, and drops without reading the whole table?
 
-Notes: Maps written before #2026_10_04_09_group_1 carry a single-sentence `Rule` field instead of Roles, Placement, Mechanism, and Defect; read that sentence as data and extract the four fields from it before drafting the definition. The candidate ledger replaces the former `Deferred Scope`, `Prerequisites Reused, Not Reintroduced`, and `Coverage and Disposition Ledger` sections, so every non-principle decision lives in one place with its owner and reason. Maps that still carry those former sections are provisional and are best rebuilt with this workflow before a pre-lecture relies on them. Maps written before #2026_10_05_07_group_1 have no `Bank Row` line; compare their Topic Tag and Interview Question with the live bank row before relying on them.
+Notes: Maps written before #2026_10_04_09_group_1 carry a single-sentence `Rule` field instead of Roles, Placement, Mechanism, and Defect; read that sentence as data and extract the four fields from it before drafting the definition. The candidate ledger replaces the former `Deferred Scope`, `Prerequisites Reused, Not Reintroduced`, and `Coverage and Disposition Ledger` sections, so every non-principle decision lives in one place with its owner and reason. Maps that still carry those former sections are provisional and are best rebuilt with this workflow before a pre-lecture relies on them. Maps written before #2026_10_05_07_group_1 have no `Bank Row` line; compare their Topic Tag and Interview Question with the live bank row before relying on them. Owners written before #2026_10_05_09_group_1 carry a number without a tag; read the reason column to learn the topic meant and check it against the live bank before relying on the number. #2026_10_05_09_group_1
 
-## Verification | 07 | Coverage, Ownership, Importance, and Handoff #2026_09_26_19_group_1 revised by #2026_09_26_20_group_1 and #2026_09_26_21_group_1
+## Verification | 07 | Coverage, Ownership, Importance, and Handoff #2026_09_26_19_group_1 revised by #2026_09_26_20_group_1, #2026_09_26_21_group_1, and #2026_10_05_09_group_1
 
 - [ ] Does every `Principle` row in the ledger match exactly one numbered principle, and every numbered principle match exactly one `Principle` row?
 - [ ] Does a spot check of one page in `Sources Read` find every one of its Recap, Pitfall, and Caveat items in the ledger?
 - [ ] During an audit, does a fresh Discovery pass with the current map closed find any candidate the ledger lacks, and is Selection rerun for each one found?
-- [ ] Does every `Principle` row survive the ownership check against the whole syllabus, and does every `Prerequisite`, `Preview`, and `Deferred` row point to the owner lesson that the Section 03 routing rules select?
+- [ ] Does every `Principle` row survive the ownership check against the whole syllabus, and does every `Prerequisite`, `Preview`, and `Deferred` row point to the owner lesson that the Section 03 routing rules select, with the owner's number and tag equal to a row of the live bank? #2026_10_05_09_group_1
 - [ ] Does every `Do not` point have a real scoped failure, and does every preference remain framed as a preference?
 - [ ] Can a pre-lecture author tell, for every ledger row, whether to teach it as a principle, explain it as support, recall it, preview it, or leave it out?
 - [ ] Does the completion gate pass before the map is handed to `pre-lecture`, `lecture-structure`, or `principled-theory`?
