@@ -79,6 +79,10 @@ Every question carries exactly **one** primary Topic hashtag, drawn from this li
 - `#use_sync_external_store` — Subscribing safely to non-React external stores without tearing during concurrency.
 - `#use_debug_value` — Labeling custom hook internals and inspecting values in React DevTools.
 
+## Client Security and State Architecture
+- `#xss_safety`: How React escapes rendered text, and how `dangerouslySetInnerHTML` and unsanitized HTML reopen cross-site scripting.
+- `#state_libraries`: When external stores and server-cache libraries replace or complement useState and context.
+
 ## Performance Optimization and Memoization
 - `#re-render_mechanics` — Why components re-render, and when re-rendering is cheap versus problematic.
 - `#memo` — `React.memo`: skipping child re-renders via shallow prop comparison.
@@ -115,6 +119,7 @@ Every question carries exactly **one** primary Topic hashtag, drawn from this li
 - `#asset_preloading_client` — Preloading images, stylesheets, and scripts in the browser head.
 - `#ref_as_prop` — Native `ref` prop support in React 19 function components without `forwardRef`.
 - `#ref_cleanups` — Returning cleanup callbacks from ref functions in React 19 to handle DOM unmounts.
+- `#testing_components`: Testing components through what the reader sees and does, with a DOM testing library.
 - `#act_in_testing` — Wrapping updates in `act()` to flush state queues and effects during unit testing.
 - `#component_composition_patterns` — Render props, compound components, and polymorphic slot patterns.
 
