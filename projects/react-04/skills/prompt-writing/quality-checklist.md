@@ -12,9 +12,6 @@ These are the guiding standards a prompt needs to adhere to. Use your judgment t
 - [ ] Is the language used consistently within the prompt and with the environment around it?
 
 ## Language
-- [ ] **The Golden Rule of De-Prescription**: When fixing a problem or defect, did we first consider making subtle edits to existing rules to remove the prescriptions or conflicts creating the issue, rather than adding new rules?
-- [ ] Did we avoid the reflexive AI attitude of proposing bans and authoritarian negative language ("never do this", "never do that")?
-- [ ] Did we avoid the common fallacy of interpreting "do this" as "do not do the other"?
 - [ ] Have we preferred setting standards instead of giving prescriptive instructions?
 - [ ] Positive instructions ("do X") instead of negative ("don't do Y") where possible?
 - [ ] Flexible instructions ("avoid", "prefer", "instructions"...) instead of authoritarian orders ("never", "always", "law"...) where appropriate?
@@ -24,6 +21,13 @@ These are the guiding standards a prompt needs to adhere to. Use your judgment t
 - [ ] No artificial limits that would constrain the autonomy of our colleague and drown his own judgment?
 - [ ] Do enumerations terminate in etc. if they are not complete?
 - [ ] Do non-obvious instructions have motivation/why?
+- [ ] **The Golden Rule of De-Prescription**: When fixing a problem or defect, did we first consider making subtle edits to existing rules to remove the prescriptions or conflicts creating the issue, rather than adding new rules?
+- [ ] Did we avoid the reflexive AI attitude of proposing bans and authoritarian negative language ("never do this", "never do that")?
+- [ ] Did we avoid the common fallacy of interpreting "do this" as "do not do the other"?
+- [ ] **The Canonical Noun + Plain Human Verb Standard**: Did we ensure instructions require canonical industry terms (Declarative UI, Virtual DOM, Props) coupled with simple, active human verbs, while explicitly banning inflated corporate and academic rhetorical dressing ("authoritatively", "projection surface", "application truth")? #2026_09_26_12_group_1
+- [ ] **The Calibrated Net & Nuanced Specialization Standard**: Did we consider the specific circumstances and context under which every rule is framed? Are we sensitive to whether a requirement is domain-specific rather than universal? Did we avoid casting a blanket maximum net that over-regulates unrelated contexts? Nuance matters: specialize with proper specialization to cover what needs to be covered: not more, not less. (For example, senior interviewers grade candidates on knowing exact industry vocabulary in specific conceptual cases like Slot Composition or Inversion of Control, where vague circumlocutions are unacceptable; but this must never become a blanket net forcing jargon into simple mechanical steps). #2026_09_27_01_group_1
+- [ ] **The Short Operational Instruction Standard**: Are the instructions themselves written in proper pedagogy with multiple short, clear, and operational sentences? Did we eliminate monolithic, compound technical run-on sentences in prompts, keeping individual sentences direct (averaging 10-18 words) so models do not mimic dense, compound syntax in their output? #2026_09_27_01_group_1
+- [ ] **The Five Principles of Principles**: Did our instruction authoring adhere to the five governing meta-rules: (1) Prune Before Banning (de-prescribe existing conflicts before inventing prohibitions), (2) Teach by Living Example (examples carry the doctrine; checkboxes only index the standard), (3) General Standards Over Micro-Regulations (insist on broad standards rather than word-counting micro-bans), (4) Name Things as the Reader Sees Them (code names first, who provides each thing, a human label only for a look-alike pair), (5) Name the Exact Platform Defect (state the exact runtime error rather than hand-waving filler slang)? #2026_10_04_03_group_1
 
 ## Structure
 - [ ] Components separated in XML (instruction, context, data, examples)?
@@ -60,8 +64,11 @@ If any critical item fails → fix it before delivering. The changelog should re
 - [ ] Does the brief explain, per group: the rules added, the philosophy behind them (why the batch exists, which defect or lecture triggered it), the group tag, the files touched, and how to trace or revert the batch?
 - [ ] Is the batch considered incomplete until its brief exists and its registry rows are filled?
 
-## Teach by example #2026_09_20_04_group_1
-- [ ] Does every new rule ship with at least one PROPER example, drawn verbatim from real shipped lecture text wherever it exists, so the example carries the doctrine and the checkbox carries the index?
+## Teach by example #2026_09_20_04_group_1 revised by #2026_10_04_03_group_1
+- [ ] Does every new rule or standard ship with living PROPER EXAMPLE and COUNTER-EXAMPLE pairs, drawn from real shipped text or production scenarios, so the examples actively carry the doctrine rather than serving as decorative afterthoughts?
+- [ ] Do living examples let the shape follow the content (plain sentences as the normal shape, bullets only for a look-alike pair) rather than forcing identical mechanical templates across every scenario? #2026_10_04_11_group_1
+- [ ] Does the counter-example vividly demonstrate the exact bureaucratic contortion, vague slang, or failure mode that the standard eliminates?
+- [ ] Do principles name each thing as the reader sees it (the code name first, who provides it), reserving a human label such as *The Listener* for a look-alike pair like `currentTarget` and `target`, and naming the exact runtime defect prevented? #2026_10_04_11_group_1
 
 ## Proposing instruction changes ("iii" protocol) #2026_09_21_05_group_1
 - [ ] When analyzing root causes or proposing instruction changes under the "iii" trigger, are proposed modifications presented directly broken down by section and as explicit diffs?

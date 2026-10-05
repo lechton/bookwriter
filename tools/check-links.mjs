@@ -8,7 +8,9 @@ import { join, dirname, resolve } from 'node:path';
 
 const ROOT = process.cwd();
 const files = execSync('git ls-files', { cwd: ROOT, encoding: 'utf8' })
-  .split('\n').filter(Boolean).filter(f => f.endsWith('.md'));
+  .split('\n').filter(Boolean).filter(f => f.endsWith('.md'))
+  // tracked files moved or deleted in the working tree but not yet committed
+  .filter(f => existsSync(join(ROOT, f)));
 
 const ignored = new Set(
   execSync('git ls-files -o -i --exclude-standard --directory', { cwd: ROOT, encoding: 'utf8' })

@@ -57,17 +57,27 @@ The documentation corpus (formerly the in-repo `documentation official/` folder)
 - `"ppp"` — proceed immediately: author, edit, and build without asking further confirmation.
 - `"ppi"` — proceed to edit instructions and/or skills files only; stop when instruction and skill editing is finished; never touch lectures or other files.
 - `"iii"` — when there is a problem, focus on the instructions that enabled it: examine pruning or editing them, and present proposed instruction changes broken down by section with exact diffs before approval.
+- `"aaa NN"` (e.g. `aaa 14`): archive lecture NN of the active project: run `python3 archive_lecture.py NN --dry-run` in the project folder, show the plan, then run `python3 archive_lecture.py NN` and report the moves. Do nothing else. If the project has no `archive_lecture.py`, stop and say so.
+
+### Retiring Lecture Files
+
+Never delete, overwrite, or hand-move a lecture, pre-lecture, figure, HTML, or PDF file. To retire a version, run the project's `archive_lecture.py`: it moves every file of that lecture into the `archive/` subfolder next to it under a timestamped name, refuses to overwrite anything, logs each move in `ARCHIVE-LOG.md`, and brings a version back with `--restore STAMP` (`--list` shows the stamps).
+
+### Versioning a Question Bank
+
+A project that keeps its own bank (react-06 today) has one live file, `questions/questions.md`, with `topics.md` beside it; builds read only that name, and syllabus cards, principle maps, and lectures are keyed to its numbers. Never reorder, renumber, add, or remove questions in the live file in place. Write the next version as `questions/drafts/questions-vN.md` with a brief that lists every old-to-new number; on approval, move the live file unchanged to `questions/archive/questions-v(N-1).md` (and `topics.md` to `archive/topics-v(N-1).md` when its tags change), move the draft into place with its version line, and add the version to the Versions table in `questions/README.md`. Files in `archive/` and `drafts/` are never read as the current bank.
 
 ## Rule Authoring
 
-When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/` and `projects/react-06/skills/v6.3/`.
+When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/` and `projects/react-06/skills/v6.4/`.
 
-### The Golden Rule: De-Prescribe Before Adding Rules
+### The Principles of Principles (Authoring Doctrine)
 
-1. *The Reflexive Ban Fallacy*: models default to proposing bans, inventing negative prohibitions, and using authoritarian language ("never do this").
-2. *The Exclusionary Fallacy*: models interpret positive guidance ("do this") as forbidding everything else.
-
-The FIRST remedy for unwanted model behavior is a subtle edit to existing rules that removes the prescriptions or conflicts creating the problem — prune the root cause instead of stacking new bans. Keep the instruction system lean and grounded in clear standards.
+1. *Prune Before Banning (The Golden Rule of De-Prescription)*: Models default to proposing bans ("never do this") and treating positive guidance as exclusionary. The first remedy for unwanted behavior is pruning conflicting prescriptions or artificial constraints from existing instructions, rather than stacking new bans. Keep the instruction system lean and grounded in clear standards.
+2. *Teach by Living Example (Examples Carry the Doctrine)*: Rules and checkboxes are merely indices; the living PROPER and COUNTER-EXAMPLE pair carries the doctrine, the pedagogical rhythm, and the tactile texture. Instructions must never treat examples as decorative. Every new standard or rule must ship with concrete, contrasting exemplars.
+3. *General Standards Over Micro-Regulations*: Insist on broad standards of clarity, rhythm, and physical reality rather than micromanaging word counts, sentence counts, or mechanical templates. Let the shape follow the content: plain sentences are the normal shape, and bullets appear only where the reader must tell two look-alike things apart.
+4. *Name Things as the Reader Sees Them*: Use the name in the code first and say who provides it (the browser, React, or our code). Add a human label such as *The Listener* only when two code names look alike and confuse the reader, as `currentTarget` and `target` do.
+5. *Name the Exact Platform Defect*: Eliminate hand-waving developer filler jargon ("preventing broken lookups", "ensuring robustness"). State the exact physical runtime consequence ("returns undefined", "clears client memory on reload", "causes duplicate renders in StrictMode").
 
 ## Project Law
 
