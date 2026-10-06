@@ -9,9 +9,11 @@ Every failing version is quoted as it shipped or as it was drafted, with its sou
 These are observations from the cases below, not steps to follow in order.
 
 - They start where the reader already stands: code the reader would write, or a result the reader would expect.
+- They remind the reader of the basics first. The behavior the new fact depends on (what the code normally does, what the reader expects) comes in its own plain sentence before anything new, never in a side clause. See Case 3B.
 - They answer the questions the reader would ask, in the order the reader would ask them. "When does this run?" gets an answer the reader can picture ("when the button appears", "when the user clicks"), never a mechanism name.
 - They describe what the reader would see: the text on the screen, the line in the console, the error.
 - They hold one idea. The mechanism, the history, and the edge cases go in the paragraph under the box, if anywhere.
+- They use general names (`count`, `setCount`, a component, the screen), never the lesson's story (its component, its variables, its characters). A principle is a rule for every component; the lesson's own example belongs in the paragraph under the box. See Case 3, version C.
 - Their code pair makes sense on its own, without the lesson's story.
 
 ## Case 1: When Does the Function Run? (a setter called during render)
@@ -66,59 +68,118 @@ These are observations from the cases below, not steps to follow in order.
 
 **What the reader goes through.** "Durable values", "survives across renders", "during this render": three abstractions in the first two sentences. The side notes define words the box only names, so the reader gets a glossary instead of an idea. The one-line code pair uses `likes` and `setLikes` from a story the box never tells, so the pair cannot be read alone.
 
-**A better version:**
+**A better version** (approved by the owner):
 
 > [!PRINCIPLE]
-> **Principle N: A Value on the Screen Comes With Its Own Setter**
-> In plain JavaScript we keep a number in a variable and change it: `let count = 3`, then `count = count + 1`. React asks for something stranger. We ask React for the number and for a function that changes it, both in one line:
+> **Principle N: `useState` Gives a Value That Lasts and a Function That Changes It**
+> A value on the screen needs two things. It must keep its value from one run of the component to the next. And changing it must make React run the component again, so the screen shows the new value. A plain variable does neither. `useState` gives both, in one line: `const [count, setCount] = useState(0)`.
 >
-> - `count` is the number to show now. We read it, and we never assign to it.
-> - `setCount` changes it. `setCount(4)` stores 4 and makes React draw the component again, now with `count` equal to 4.
+> - `count` is the state variable, the current value: 0 on the first run. We read it, and we never assign to it.
+> - `setCount` is the setter. `setCount(1)` stores 1 and makes React run the component again. In that run, `count` is 1.
 >
-> Why the extra function? React does not watch our variables. Calling `setCount` is how React learns that something changed.
+> >> state variable : a value that keeps its value from one run of the component to the next
 >
 > *We should do this:*
-> `const [count, setCount] = useState(3);`
-> `setCount(count + 1); // the screen shows 4`
+> `const [count, setCount] = useState(0);`
+> `setCount(count + 1); // the screen shows 1`
 >
 > *We should not do this:*
-> `let count = 3;`
-> `count = count + 1; // the screen still shows 3`
+> `const [count, setCount] = useState(0);`
+> `count = count + 1; // TypeError, the screen stays at 0`
 
-**Why it works.** It starts from the code the reader already writes and admits that React's way is strange. The bullets are there because one line of code produces two things with different jobs; that is the only reason for bullets. "Why the extra function?" is the question the reader is about to ask, answered in two short sentences.
+**Why it works.** It first reminds the reader what the two earlier principles showed, as the need a value on the screen has: keep its value between runs, and make React run the component again when it changes. It says plainly that a plain variable does neither. Only then does `useState` appear, as the answer to that need. The bullets are there because one line of code produces two things with different jobs, and each bullet says what its thing does on the screen.
 
-**Take to other topics.** When React's design differs from the reader's habit, show the habit first and say plainly that React differs.
+**Take to other topics.** When a new tool appears, state the need first, in the reader's terms, and introduce the tool as what meets it.
 
 **Do not copy.** Bullets belong only where one piece of code holds two things the reader must tell apart.
 
-## Case 3: The Number Changes, the Screen Does Not (assignment)
+## Case 3: The Number Changes, the Screen Does Not (assignment) #2026_10_06_04_group_1
 
-**Context.** Lecture 14, the first principle. The reader has seen the console count up while the button stays at `Like (0)`.
+**Context.** Lecture 14, the first principle. The reader has seen the console count up while the button stays at `Like (0)`. This box failed three times in one day, in three different ways, which makes it the most useful case in this file.
 
-**Failing version** (Lecture 14, October 6 run):
+**Failing version A** (Lecture 14, October 6 run, jargon):
 
 > **Principle 1: Assigning a Local Variable Does Not Ask React to Render**
 > React updates what is on the screen only when it renders a component again. Assigning a new value to a local variable changes memory that React does not watch. Because an assignment alone never requests a render, the screen remains stuck on the old value.
 
-**What the reader goes through.** The sentence order is right (React's rule, then the variable, then the result), but the key word is "render" three times, and the title is a statement about React's internals instead of about the screen the reader is staring at.
+**Failing version B** (the pilot rewrite, a claim with no mechanism):
 
-**A better version:**
+> **Principle 1: Changing a Variable Does Not Change the Screen**
+> We add one to a variable in a click handler and expect the screen to show the new number. It does not. The variable changes, but the screen keeps the old number. React never looks at our variables. It changes the screen only when it runs the component again, and a plain assignment does not ask it to.
+
+**Failing version C** (the first fix of B, locked in the lesson's story):
+
+> **Principle 1: The Button Keeps the Number It Got When the Component Ran**
+> When React runs `StoryCard`, the line `<button>Like ({likes})</button>` puts the number `likes` holds at that moment, 0, into the button's text. The button now says `Like (0)`. A click changes `likes` to 1, but nothing puts the new number into the button. The button changes only when React runs `StoryCard` again, so that line runs again with the new number. Changing a variable does not make React do that.
+
+**What the reader goes through.**
+
+- A says "render" three times, and its title describes React's internals instead of the screen the reader is looking at.
+- B reads smoothly and explains nothing. The owner's verdict: "I don't get it." "React never looks at our variables" and "a plain assignment does not ask it to" treat React as a person who looks and is asked, and the reader cannot picture either. The box jumps from "the variable changes" to "React runs the component again" without saying why running the component has anything to do with the screen. That missing link is the whole principle.
+- C finds the link (the JSX line copies the value onto the screen when the component runs) but ties it to `StoryCard`, `likes`, and `Like (0)`. A principle is a rule the reader takes to every component. Told in the lesson's names, it reads as a fact about one card in one story, and the reader must translate it before it is useful. The owner had already asked for general names in the box; C ignored that request.
+
+**A better version** (approved by the owner):
 
 > [!PRINCIPLE]
-> **Principle N: Changing a Variable Does Not Change the Screen**
-> We add one to a variable in a click handler and expect the screen to show the new number. It does not. The variable changes, and the screen keeps the old number. React never looks at our variables. It updates the screen only when we ask it to, and a plain assignment does not ask.
+> **Principle N: The Screen Keeps the Value It Got When the Component Ran**
+> When React runs a component, the `{count}` in its JSX puts the current value of `count` on the screen, for example 0. A click handler then changes `count` to 1, but nothing puts the new value on the screen. The screen changes only when React runs the component again, because only then is `{count}` read again. Changing a variable does not make React run the component. Calling a setter does, as Principle 3 shows.
 >
 > *We should do this:*
 > `const [count, setCount] = useState(0);`
-> `setCount(count + 1); // asks React to update the screen`
+> `setCount(count + 1); // React runs the component again`
 >
 > *We should not do this:*
 > `let count = 0;`
-> `count = count + 1; // the screen keeps showing 0`
+> `count = count + 1; // the screen still shows 0`
 
-**Why it works.** The title names what the reader sees. The box opens with the expectation, breaks it in two words ("It does not."), and gives the one cause in plain verbs: React never looks; we must ask.
+**Why it works.** It tells what physically happens, in the order it happens: the JSX reads the value when the component runs, the screen gets that value, the click changes the variable, the screen stays. "Runs again" now has a visible job, because it is the only way `{count}` is read again. The names are general (`count`, a component, the screen), so the rule fits any component. The paragraph under the box then shows the same thing on the lesson's own card: `Like ({likes})` stays at `Like (0)` while the console counts up.
 
-**Take to other topics.** When the reader already watched the failure, the box can start from it and spend its words on the cause.
+**Take to other topics.** When a box says that something does not happen, show the step that would make it happen. "React does not watch" is a claim; "`{count}` is read only when the component runs" is a mechanism the reader can check.
+
+**Do not copy.** Never put the lesson's story in the box: no component, variable, or label from the lesson's example (`StoryCard`, `likes`, `Like (0)`, Leo). General names in the box, the story's names in the paragraph under it. This rule is the one most easily lost, because the lesson's example is what the author has just been working with.
+
+## Case 3B: Say the Basic Fact Before the New One (local variables start over) #2026_10_06_04_group_1
+
+**Context.** Lecture 14, the second principle. The reader has just learned that changing a variable does not change the screen. They know plain JavaScript functions. They do not yet know the setter (Principle 3), and they have never thought about how often React runs a component.
+
+**Failing version A** (first draft):
+
+> **Principle 2: Running the Component Again Starts Its Variables Over**
+> Suppose a plain variable has reached 3, and then a setter makes React run the component again, even a setter for some other value. Running the component means calling its function again from the first line. So `let count = 0` runs again, and `count` is 0 once more. The 3 belonged to the previous call, and that call is over. A plain variable inside a component lasts for one run only.
+
+**Failing version B** (second draft):
+
+> **Principle 2: Each Run of a Component Starts Its Variables Over**
+> We change a plain variable, and later a setter makes React run the component again. We expect the variable to keep its new value. It does not. React runs a component by calling its function from the first line. So `let count = 0` runs again, and `count` is 0 again. A plain variable inside a component lasts only until the function returns.
+
+**What the reader goes through.**
+
+- Both versions hide the basic fact the whole principle stands on: React runs a component many times, every time the screen must change. Neither says it. Both slip it into a side clause ("and then a setter makes React run the component again"), as if the reader already knew it.
+- Both lean on the setter, which the reader meets only in the next principle. The reader stops at "a setter" and cannot go on.
+- A stacks conditions before the reader has the main fact: "suppose... has reached 3", "and then...", "even a setter for some other value". The edge case ("some other value") comes before the rule. "The 3 belonged to the previous call, and that call is over" is true, but it asks the reader to picture calls as things that end, without telling them why that matters.
+- B is shorter, but its first sentence is still a riddle. The owner's verdict: "What kind of cryptomeaning is this?" "Later" than what? Why would a setter run the component? The reader is asked to accept a new behavior before being reminded of the old one.
+
+**A better version** (approved by the owner):
+
+> [!PRINCIPLE]
+> **Principle N: Each Run of a Component Starts Its Variables Over**
+> React runs a component more than once: every time the screen must change. Each time, it calls the component's function again from its first line. So `let count = 0` runs again, and `count` is back to 0, whatever it held before. A plain variable inside a component never lasts from one run to the next.
+>
+> *We should do this:*
+> `function Counter() {`
+> `  const [count, setCount] = useState(0); // keeps its value`
+> `  return <p>{count}</p>;`
+> `}`
+>
+> *We should not do this:*
+> `function Counter() {`
+> `  let count = 0; // back to 0 on every run`
+> `  return <p>{count}</p>;`
+> `}`
+
+**Why it works.** The first sentence states the foundation as a plain fact, with no condition and no new term: React runs a component more than once, every time the screen must change. The second sentence ties it to what the reader already knows from JavaScript: running the component is calling its function from the first line. Only then comes the consequence, on a line of code the reader can see (`let count = 0` runs again). The last sentence states the rule. Each sentence rests on the one before it.
+
+**Take to other topics.** Before a box says what is new, it reminds the reader, in the plainest words, of the basic behavior the new fact depends on: what the code normally does and what the reader expects. A fact the principle stands on goes in its own short sentence, first, never in a side clause. A term from a later principle never appears in an earlier one.
 
 ## Case 4: Show What the Screen Shows (curly braces)
 

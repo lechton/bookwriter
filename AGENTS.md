@@ -69,7 +69,7 @@ A project that keeps its own bank (react-06 today) has one live file, `questions
 
 ## Rule Authoring
 
-When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/` and `projects/react-06/skills/v6.5/`.
+When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/` and `projects/react-06/skills/v6.6/` (the latest version folder is live).
 
 ### The Principles of Principles (Authoring Doctrine)
 

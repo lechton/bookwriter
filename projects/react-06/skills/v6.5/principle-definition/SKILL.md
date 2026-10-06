@@ -16,11 +16,13 @@ Notes: There is no fixed order of parts and no fixed length. The reader's own qu
 ## The Reading Test | 02 | Would a Beginner Get It on One Read? #2026_10_06_04_group_2
 
 - [ ] Read the box as someone who knows only the lessons before this one. Can they picture every phrase (a number on the screen, a function that runs, a click), and could they say back what to write and why? If a phrase makes them ask "what is that?" or "later than what?", rewrite it in what they would see or do. #2026_10_06_04_group_2
+- [ ] Does the box state the basic behavior it stands on (what the code normally does, what the reader expects) in its own plain sentence before anything new, and use no term that a later principle introduces? Casebook Case 3B shows two drafts that skipped this. #2026_10_06_04_group_2
 - [ ] Is every claim true in React 19 and shown by the lesson's proofs? A warning is not a crash, and a development-only behavior is not a production bug. #2026_10_06_04_group_2
 
 ## Study the Casebook and Adapt | 03 | Take the Moves, Not the Words #2026_10_06_04_group_2
 
 - [ ] Before drafting, read `examples.md` beside this file. Each case gives the context, a failing box quoted from a real run, a better box, and an analysis of what the reader is asking and what changed. #2026_10_06_04_group_2
+- [ ] Does the box use general names (`count`, `setCount`, a component, the screen) and none of the lesson's story (its component, variables, labels, or characters)? A principle is a rule for every component; the lesson's example goes in the paragraph under the box. Casebook Case 3, version C, shows how easily this slips. #2026_10_06_04_group_2
 - [ ] Take the moves the analyses name (follow the reader's question, say what they would see, use the code name when the reader already knows it). Do not take the cases' wording, variable names, sentence count, or shape into a lesson that teaches something else. #2026_10_06_04_group_2
 
 ## Where the Facts Come From | 04 | The Map and the Proofs #2026_10_06_04_group_2
