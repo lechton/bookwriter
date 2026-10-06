@@ -7,7 +7,8 @@
    2. Sentence length profiles & 20-word cap compliance
    3. Line width (>80 chars) & block height (>10 lines)
    4. Curriculum dependency keyword checks (e.g. useState before Q16)
-   5. Every principle box ends with a code pair (fails otherwise)
+   5. Every principle box has its right card, and a wrong card exactly when
+      the map's Real Mistake is filled (fails otherwise)
    6. Ledger owners: every lesson that the principle map's Prerequisite
       and Preview rows name is named in the lecture, and no lecture-stage
       handout message for the lesson is still open
@@ -21,7 +22,7 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
-import { readMapFacts, readHandout, OWNER_RE } from './map-lib.mjs';
+import { readMapFacts, readHandout, OWNER_RE, MAP_DIR } from './map-lib.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -554,6 +555,18 @@ function diagnoseFile(filename) {
 	const DO_LABEL = /^\*(?:We should do this|It is best practice to do this):\*/i;
 	const DONT_LABEL = /^\*(?:We should not do this|Instead of doing this):\*/i;
 	const unpairedBoxes = [];
+	// The map's Real Mistake decides the second card: filled means a wrong card, `none` means the right card alone.
+	const realMistakes = new Map();
+	const mapFile = join(MAP_DIR, `${(filename.match(/^(\d+)/) || [])[1]}.md`);
+	if (existsSync(mapFile)) {
+		let current = null;
+		for (const l of readFileSync(mapFile, 'utf8').split('\n')) {
+			const h = l.match(/^### Principle (\d+):/);
+			if (h) current = parseInt(h[1], 10);
+			const f = l.match(/^- \*\*Real Mistake\*\*: ?(.*)$/);
+			if (f && current !== null) realMistakes.set(current, !/^`?none`?\.?$/i.test(f[1].trim()));
+		}
+	}
 	for (let i = 0; i < lines.length; i++) {
 		if (!/^>\s*\[!PRINCIPLE\]/.test(lines[i])) continue;
 		let title = '';
@@ -567,15 +580,22 @@ function diagnoseFile(filename) {
 			if (DO_LABEL.test(t)) hasDo = true;
 			if (DONT_LABEL.test(t)) hasDont = true;
 		}
-		if (!hasDo || !hasDont) unpairedBoxes.push({ lineNum: i + 1, title: title || 'untitled box', missing: [!hasDo && 'right card', !hasDont && 'wrong card'].filter(Boolean).join(' and ') });
+		const n = parseInt((title.match(/\d+/) || [])[0], 10);
+		// A map without the Real Mistake field predates the reader fields and still expects a pair.
+		const wantsWrong = realMistakes.has(n) ? realMistakes.get(n) : true;
+		const problems = [];
+		if (!hasDo) problems.push('no right card');
+		if (wantsWrong && !hasDont) problems.push('no wrong card, though the map names a Real Mistake');
+		if (!wantsWrong && hasDont) problems.push('a wrong card, though the map says Real Mistake: none');
+		if (problems.length) unpairedBoxes.push({ lineNum: i + 1, title: title || 'untitled box', missing: problems.join(' and ') });
 		i = j - 1;
 	}
 	if (unpairedBoxes.length > 0) {
 		gateFailures++;
-		console.log(`  \x1b[31m[FAIL]\x1b[0m Invariant 10: PRINCIPLE_WITHOUT_CODE_PAIR (${unpairedBoxes.length} box(es)):`);
-		for (const b of unpairedBoxes) console.log(`    - [Line ${b.lineNum}] ${b.title}: no ${b.missing}`);
+		console.log(`  \x1b[31m[FAIL]\x1b[0m Invariant 10: PRINCIPLE_CARDS_DO_NOT_MATCH_MAP (${unpairedBoxes.length} box(es)):`);
+		for (const b of unpairedBoxes) console.log(`    - [Line ${b.lineNum}] ${b.title}: ${b.missing}`);
 	} else {
-		console.log(`  \x1b[32m[PASS]\x1b[0m Invariant 10: Every principle box ends with a code pair`);
+		console.log(`  \x1b[32m[PASS]\x1b[0m Invariant 10: Every principle box has its right card, and a wrong card exactly when the map names a Real Mistake`);
 	}
 
 	// 6. Curriculum Dependency Keyword Check

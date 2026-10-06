@@ -7,6 +7,8 @@ description: Build or audit React 06 principle maps in 01-01-map-principles/{nn}
 
 A principle map turns one bank row and its syllabus card into the contract for one lesson. It says which principles the lesson teaches, in what order, and how each one is proven. It also says what the lesson only supports, recalls, previews, or leaves out. #2026_09_26_21_group_1 revised by #2026_10_06_01_group_7
 
+Every principle starts from a question a beginner actually has at this point of the course, and answers it in the order things happen. The docs check the facts and supply the mistakes readers really make; a doc heading is not a principle. #2026_10_06_09_group_1
+
 The work runs in two passes. Discovery searches wide and looks at no principle map. Selection decides: it routes each idea to the lesson that owns it, keeps the important ones, and numbers them last. An Archive Check then compares the result with any older map of the same topic. #2026_09_26_21_group_1 revised by #2026_10_06_01_group_7 and #2026_10_06_01_group_8
 
 The map feeds three readers: the pre-lecture author, the lecture author, and `node src/diagnose-map.mjs`. Write it so all three can use it without guessing. #2026_10_06_01_group_5
@@ -32,7 +34,8 @@ Notes: A new bank version can move a topic to a new number. Comparing the tag an
 ## Discovery | 02 | Search Wide Without Looking at Any Map #2026_09_26_21_group_1 revised by #2026_10_06_01_group_7
 
 - [ ] Is Discovery finished before any principle map is opened, including the archived ones in `01-01-map-principles/v_old_*/`? A fresh agent or session is best. An existing title, order, or total would otherwise shape the search. #2026_09_26_21_group_1 revised by #2026_10_06_01_group_8
-- [ ] Does Discovery read the card and every react.dev Learn and Reference page that teaches its topic? Find the pages by searching the corpus for the card's API names and mechanism words, and list them in `Sources Read`.
+- [ ] Does Discovery begin with the reader, before any doc is open? Write down the questions a beginner has at this point: what the card's code experiment makes them wonder, what the earlier lessons left open, and what they will try first out of habit from plain JavaScript, HTML, or another framework. Each question goes into the ledger in the reader's words. #2026_10_06_09_group_1
+- [ ] Does Discovery then read the card and every react.dev Learn and Reference page that teaches its topic, to answer and check those questions? Find the pages by searching the corpus for the card's API names and mechanism words, and list them in `Sources Read`. #2026_10_06_09_group_1
 - [ ] On each page, are the `<Recap>`, `<Pitfall>`, `<DeepDive>`, `<Note>`, and `<Challenges>` blocks read, and the `#### Caveats` and `## Troubleshooting` sections of Reference pages?
 - [ ] Are the Rules of React pages in `reference/rules/` read when the topic touches rendering, purity, or Hooks? Is the React 19 upgrade guide (`blog/2024/04/25/react-19-upgrade-guide.md`) read when the topic touches an API that React 19 removed or changed?
 - [ ] Does Discovery add ideas from senior engineering knowledge, marked `general`? Think of what reviewers flag, what interviewers probe, what juniors ship broken, what behaves differently on a laptop and in CI, etc.
@@ -46,6 +49,8 @@ Notes: A new bank version can move a topic to a new number. Comparing the tag an
 - [ ] HALF WAY EXAMPLE: Discovery reads the react.dev prose but skips the `<Pitfall>` blocks. The most common production bug on the page never enters the ledger, and no later step can recover it.
 
 - [ ] COUNTER-EXAMPLE: Discovery opens the earlier principle maps first, copies their headings, and searches the card for enough material to fill a similar list.
+
+- [ ] COUNTER-EXAMPLE: The first map 15 took its principles from the steps of `learn/render-and-commit.md`: "rendering is React calling our components", "the commit changes only what differs". Those are the page's headings, not anything a beginner asks. The lecture's boxes turned into chains of definitions, and the owner read them as "this is this, that is that". #2026_10_06_09_group_1
 
 Notes: Discovery is wide on purpose, and Selection narrows it. A rejected idea stays visible in the ledger. An idea never found is an invisible gap.
 
@@ -77,7 +82,7 @@ Notes: First mention is not ownership. A passing mention earns a preview; the ma
 
 - [ ] Does each owned idea pass at least one importance question? Would a senior reviewer flag its absence? Would an interviewer expect it in a complete answer? Would a developer without it ship a visible bug, or carry a model that breaks a later lesson?
 - [ ] Is an owned idea that fails every importance question recorded as `Supporting` when the theory needs it, or `Dropped` when it is trivia?
-- [ ] Are setup facts, API names, definitions, and restatements of the question kept as `Supporting`? They become principles only when getting them wrong is a realistic failure.
+- [ ] Are setup facts, API names, definitions, and restatements of the question kept as `Supporting`? They become principles only when a beginner would ask about them or get them wrong. #2026_10_06_09_group_1
 - [ ] Is a principle marked `Decision` when it tells a developer what to check, choose, keep, or avoid in code? Is it marked `Model` when it is a mental model that later decisions rest on?
 - [ ] Does every `Model` principle carry a `Prediction`: a behavior the reader can predict with the model and check in the console, DevTools, or on screen?
 - [ ] Are two ideas split when code can pass one and fail the other, and each failure needs a different fix?
@@ -94,19 +99,25 @@ Notes: First mention is not ownership. A passing mention earns a preview; the ma
 
 Notes: Importance decides membership, atomicity decides boundaries, and ownership decides the lesson. The number of principles is whatever survives these tests. It has no target or typical value, and other lessons' totals are not evidence.
 
-## Selection | 05 | Tempting Belief and Defect #2026_10_06_01_group_1
+## Selection | 05 | The Reader's Question, What They Expect, and What React Does #2026_10_06_09_group_1 (replaces Tempting Belief and Defect, #2026_10_06_01_group_1)
 
-- [ ] Does every principle state its `Tempting Belief`? The belief is the wrong idea a capable developer brings to this code. It comes from an earlier habit: HTML attributes, another template language, plain JavaScript, an older React version, etc. The lesson uses it to explain why the wrong idea felt right. #2026_10_06_01_group_1
-- [ ] Does `Defect` hold only what someone can see: the screen, the console, DevTools, or the build output? The wrong idea itself belongs in `Tempting Belief`. #2026_10_06_01_group_1
-- [ ] For a `Model` principle, is the Defect the first visible surprise the belief produces? #2026_10_06_01_group_1
+- [ ] Does every principle start from a `Reader Question`: what a beginner at this point of the course would actually ask, in their own words? "I call `setCount(1)`. How does the 1 get onto the screen?" is a reader's question. "What is the render phase?" is a doc heading. #2026_10_06_09_group_1
+- [ ] Does `Reader Expects` give the beginner's own answer and the habit it comes from: plain JavaScript, HTML, another framework, an earlier lesson, etc.? The guess may be right. When it is right, the principle explains how it comes true, and nothing is invented to make it fail. #2026_10_06_09_group_1
+- [ ] Does `React Does` say what really happens, in the order it happens, ending in something the reader can see: the screen, the console, DevTools, or the build output? #2026_10_06_09_group_1
+- [ ] Is `Real Mistake` filled only with code readers really write at this point, and with what the screen, console, or build then shows, reproduced in React 19? When readers make no such mistake, does it say `none`? Code written only so that it fails is not a real mistake. #2026_10_06_09_group_1
+- [ ] Does the box follow from `Real Mistake`? When it is filled, the lecture shows the mistake as the box's second card. When it is `none`, the box shows one card: the code that does the job. #2026_10_06_09_group_1
 
-- [ ] PROPER EXAMPLE: A principle about double curlies. Tempting Belief: `{{ }}` is special JSX syntax, a habit from Handlebars, Mustache, and Vue, which print values with double braces. Defect: `style="color: pink"`, written as a string, throws an error that says `style` expects a mapping from properties to values. #2026_10_06_01_group_1
+- [ ] PROPER EXAMPLE: Map 15, Principle 1, written from the reader. Reader Question: "I call `setCount(1)`. How does the 1 get onto the screen?" Reader Expects: the setter writes 1 onto the page, as `element.textContent = 1` does in plain JavaScript. React Does: stores 1; calls the component again; the component returns `<p>1</p>`; React compares it with the page and changes the 0 to 1. Real Mistake: the plain JavaScript habit of changing the page by hand, `document.querySelector('p').textContent = count + 1` in the handler with no setter. Every click shows 1, never 2, because `count` stays 0 (React 19.3.0). #2026_10_06_09_group_1
 
-- [ ] COUNTER-EXAMPLE: The archived map 14, Principle 3. Its Defect reads: "A reader who pictures state as belonging to the function expects a click on one card to change both counts." This is a belief, and nobody can see it. The habit behind it, one variable outside the function shared by every call, is never named. So the lesson cannot explain why the idea felt right. #2026_10_06_01_group_1
+- [ ] PROPER EXAMPLE: A principle about double curlies. Reader Expects: `{{ }}` is special JSX syntax, a habit from Handlebars, Mustache, and Vue, which print values with double braces. Real Mistake: `style="color: pink"`, written as a string, throws an error that says `style` expects a mapping from properties to values. #2026_10_06_01_group_1 revised by #2026_10_06_09_group_1
 
-Notes: The pre-lecture and the lecture are asked to respect the reader's reasoning before they correct it. They can only do that when the map names the reasoning. #2026_10_06_01_group_1
+- [ ] HALF WAY EXAMPLE: The author fills `Reader Question` with "What happens in the commit phase?". The field is there, but it holds a heading. The box that follows defines a word instead of answering a beginner. #2026_10_06_09_group_1
 
-Notes: The map gives facts, not the box. It holds no roles and no code pair: the lecture author writes the box and its pair from these facts and the proofs, under `principle-definition` and its casebook (each card must stand alone, with its declaration as well as the change). #2026_10_06_04_group_4
+- [ ] COUNTER-EXAMPLE: The first map 15, Principle 1. The old rules asked every principle for a wrong belief and a visible defect. The reader's real guess, that a setter updates the screen, comes true. So the map invented code nobody writes: a component that reads its own number from the page while it runs and finds the old one. The lecture box built on it passed every script. The owner rejected four rewrites of it as absurd, because none answered a question a reader has. #2026_10_06_09_group_1
+
+Notes: The pre-lecture and the lecture respect the reader's reasoning before they correct it, and say so when the reasoning is right. They can only do that when the map names it. #2026_10_06_01_group_1 revised by #2026_10_06_09_group_1
+
+Notes: The map gives facts, not the box. It holds no roles and no code: the lecture author writes the box and its cards from these facts and the proofs, under `principle-definition` and its casebook (each card must stand alone, with its declaration as well as the change). #2026_10_06_04_group_4 revised by #2026_10_06_09_group_1
 
 ## Selection | 06 | Proofs and Verified Behavior #2026_09_26_21_group_1 revised by #2026_09_27_11_group_1 and #2026_10_06_01_group_4
 
@@ -153,7 +164,7 @@ Notes: Only the maps see the whole syllabus at once. Settling first appearances 
 - [ ] Are the Authorized Scope and the Senior Answer written to `lecture-voice` Sections 05 and 06? That means common words, one idea per sentence, and short sentences. Authors copy the shape of what they read, so a dense map tends to produce a dense lecture. #2026_10_06_01_group_6
 - [ ] Does the Authorized Scope say what the lesson teaches and what it builds on? The list of what later lessons own already lives in the ledger's Preview and Deferred rows, so the scope leaves it out. #2026_10_06_01_group_6
 - [ ] Could a candidate say the Senior Answer aloud in an interview? The interviewer hears it once, so each sentence carries one point. #2026_10_06_01_group_6
-- [ ] Are Placement, Mechanism, Tempting Belief, and Defect written as short data fragments rather than finished sentences? The lecture author writes the definition from them; a ready sentence here tends to be pasted with synonyms swapped. #2026_10_04_09_group_1 revised by #2026_10_06_01_group_1 and #2026_10_06_04_group_4
+- [ ] Is `Reader Question` written as the reader would say it? Are Reader Expects, React Does, Placement, and Real Mistake written as short data fragments rather than finished sentences? The lecture author writes the box from them; a ready sentence here tends to be pasted with synonyms swapped. #2026_10_04_09_group_1 revised by #2026_10_06_01_group_1, #2026_10_06_04_group_4, and #2026_10_06_09_group_1
 - [ ] Are ledger rows grouped by disposition, in this order: Principle, Merged, Supporting, Prerequisite, Preview, Deferred, Dropped?
 - [ ] Is each paragraph, bullet, and table row one continuous line, with no em-dashes anywhere in the file? #2026_10_06_01_group_5
 
@@ -229,7 +240,7 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 ## Candidate Ledger
 | candidate | source | disposition | owner | reason |
 |---|---|---|---|---|
-| {one plain decision, model, or observed behavior} | {card field, react.dev block, or general} | {Principle, Merged, Supporting, Prerequisite, Preview, Deferred, or Dropped} | {see the owner rule below} | {one line} |
+| {a reader's question, or one plain decision, model, or observed behavior} | {reader, card field, react.dev block, or general} | {Principle, Merged, Supporting, Prerequisite, Preview, Deferred, or Dropped} | {see the owner rule below} | {one line} |
 
 ## Terms
 | term | kind | status | first lesson | refresher | first needed in |
@@ -241,10 +252,11 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 ### Principle {N}: {Active title}
 - **Handle**: `{two-to-four-words}`
 - **Kind**: {Decision or Model}
+- **Reader Question**: {what a beginner at this point actually asks, in their words}
+- **Reader Expects**: {their own answer, right or wrong, and the habit it comes from}
+- **React Does**: {what really happens, in order, ending in what the reader can see, verified in React 19}
 - **Placement**: {where the right code goes, and where it does not}
-- **Mechanism**: {the platform behavior that makes the rule true}
-- **Tempting Belief**: {the wrong idea, and the habit it comes from}
-- **Defect**: {what the screen, console, DevTools, or build shows, verified in React 19}
+- **Real Mistake**: {code readers really write here and what it shows, verified in React 19; or `none`}
 - **Importance**: {the review finding, interview expectation, shipped bug, or broken later lesson it prevents}
 - **Review Point**: {Decision only: Do, Prefer, Avoid, Do not, or Condition}
 - **Prediction**: {Model only: the behavior the reader can predict and check}
@@ -260,6 +272,7 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 - {One line per unverified claim or uncorrected error: what it is, where it sits, and what would close it. `None` when empty.}
 
 ## Completion Gate
+- [ ] Every principle passed the Sense Test (Section 13) before the scripts ran.
 - [ ] The header's tag, tier, and question equal bank row {NN} and card {NN}.
 - [ ] `node src/diagnose-map.mjs {NN}` reports no failure.
 - [ ] Every Recap, Pitfall, Caveat, and Troubleshooting item on the pages in Sources Read has a ledger row.
@@ -275,12 +288,26 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 
 - [ ] Does the owner column follow one rule per disposition? `Principle` and `Merged` rows name a principle handle. `Supporting` rows name this lesson (`Q{NN} #tag`). `Prerequisite` rows name an earlier lesson, and `Preview` and `Deferred` rows a later one, each as `Q{NN} #tag`. `Dropped` rows hold `none`. #2026_10_06_01_group_9
 - [ ] Does a `Decision` principle carry a Review Point and no Prediction, and a `Model` principle a Prediction and no Review Point? #2026_10_06_03_group_1 revised by #2026_10_06_04_group_4
+- [ ] Does a `Do not` Review Point come with a filled `Real Mistake`? A ban needs the code it bans. #2026_10_06_09_group_1
 - [ ] Does the header keep the card's title, and do its tag, tier, and question equal bank row {NN} exactly, with the bank version named in `Bank Row`? #2026_10_05_07_group_1
 
 Notes: Maps in the `v_old_*` folders use older formats; read them only during the Archive Check. #2026_10_06_01_group_8
 
-## Verification | 13 | Before the Map Is Handed On #2026_09_26_19_group_1 revised by #2026_10_05_09_group_1 and #2026_10_06_01_group_5
+## Sense Test | 13 | Before Any Script #2026_10_06_09_group_1
 
+The scripts check form: fields, owners, terms, and links. A principle that makes no sense passes all of them. So the sense test comes first, and a principle that fails it goes back to Section 05 or leaves the list. #2026_10_06_09_group_1
+
+- [ ] Read each principle's Reader Question, Reader Expects, React Does, and Real Mistake alone, with the docs closed. Would a beginner who has only the earlier lessons ask this question? Does React Does answer it, step by step, in the order things happen? #2026_10_06_09_group_1
+- [ ] When Real Mistake is filled, would a reader really write that code, out of a habit they really have? #2026_10_06_09_group_1
+- [ ] Taken in order, do the principles answer the interview question the way the Senior Answer does? #2026_10_06_09_group_1
+
+- [ ] PROPER EXAMPLE: Map 15, Principle 1, as written in Section 05. A beginner does ask how the 1 gets onto the screen. React Does answers it in three steps. Changing the page by hand is what plain JavaScript taught them. #2026_10_06_09_group_1
+
+- [ ] COUNTER-EXAMPLE: The first map 15 passed `diagnose-map`. Lecture 15 passed every invariant of `diagnose-lecture` and was reported as done. Its first box explained why a component that reads its own number from the page gets the old one. No beginner asks that, and the owner's first question was whether it made any sense. #2026_10_06_09_group_1
+
+## Verification | 14 | Before the Map Is Handed On #2026_09_26_19_group_1 revised by #2026_10_05_09_group_1, #2026_10_06_01_group_5, and #2026_10_06_09_group_1
+
+- [ ] Has every principle passed the Sense Test (Section 13)? #2026_10_06_09_group_1
 - [ ] Does `node src/diagnose-map.mjs {nn}` report no failure? It checks the header against the bank, the sections and their order, the owner rule, the handles, the principle fields, the Terms rows, em-dashes, and hard wraps. It also compares the map with the other live maps: every map must date a term to the same first lesson, a `Recall` term must exist under the same name in the map it names, and a cited `Q{NN} \`handle\`` must exist. Last, it validates the inbox and fails while a `map` message is open. It lists long sentences in the scope and the Senior Answer, and checks that wait for a map not yet written, as indications to read, not as failures. #2026_10_06_01_group_5 revised by #2026_10_06_02_group_3, #2026_10_06_03_group_1, and #2026_10_06_04_group_4
 - [ ] Does a spot check of one page in Sources Read find each of its Recap, Pitfall, and Caveat items in the ledger?
 - [ ] During an audit, does a fresh Discovery pass, with the current map closed, find any idea the ledger lacks? Is Selection rerun for each one found?

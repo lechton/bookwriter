@@ -26,8 +26,8 @@ Notes: Approved examples of the paragraph under the box will be added to `princi
 ## Choosing the Code Pair | 03 | Honest and Readable Alone #2026_09_26_06_group_1 revised by #2026_10_06_05_group_3
 
 - [ ] Do both cards show peer code from the same file and language, never an HTML tag against a JavaScript call, a terminal command, or identical code with different comments? #2026_09_27_12_group_1 revised by #2026_10_06_05_group_3
-- [ ] Does the wrong card show a mistake developers really make in this topic, not a strawman or a trivial typo? #2026_09_26_06_group_1 revised by #2026_10_06_05_group_3
-- [ ] When no honest same-file pair exists, is the topic raised in the map as possibly not a principle, instead of forcing a card? #2026_10_06_05_group_3
+- [ ] Does the wrong card show the map's `Real Mistake`, a mistake developers really make in this topic, not a strawman or a trivial typo? #2026_09_26_06_group_1 revised by #2026_10_06_05_group_3 and #2026_10_06_09_group_2
+- [ ] When the map's `Real Mistake` is `none`, does the box end with the right card alone, instead of a wrong card made up to complete a pair? #2026_10_06_05_group_3 revised by #2026_10_06_09_group_2
 
 ## Map Traceability | 04 | The Map Decides the Principles #2026_09_26_19_group_1 revised by #2026_10_06_05_group_3
 

@@ -18,7 +18,7 @@ Before writing a box, read `examples.md` beside this file. It holds only boxes t
 - [ ] **No riddles.** Is every sentence clear on its own? No "later" without "than what", no "something", no stacked "suppose... and then...", no edge case before the rule. (Case 2) #2026_10_06_05_group_2
 - [ ] **No words the reader lacks.** Does the box avoid machinery words (render, render cycle, memory slot, call order) and invented terms? A word taught in a later principle appears only with a pointer to where it is taught ("as Principle 3 shows"). A side note is given only for a term the box itself needs, with the same words. (Cases 1, 3, 4, 6) #2026_10_06_05_group_2
 - [ ] **One idea.** Does the box hold one idea, or one idea and the question it raises next? (Case 4) #2026_10_06_05_group_2
-- [ ] **A code pair that stands alone.** Does each card include the lines it needs to be read alone (the declaration as well as the change), and does its comment say what the reader would see? (Cases 1, 3) #2026_10_06_05_group_2
+- [ ] **Code that stands alone.** Does each card include the lines it needs to be read alone (the declaration as well as the change), and does its comment say what the reader would see? (Cases 1, 3) #2026_10_06_05_group_2
 - [ ] **True.** Is every claim true in React 19 and shown by the lesson's verified proofs? #2026_10_06_05_group_2
 
 ## Syntax the Build Needs | 02 | Mechanics Only #2026_10_06_05_group_2
@@ -28,7 +28,7 @@ These are checked by `diagnose-lecture` and the build. #2026_10_06_05_group_2
 - [ ] The box opens with `> [!PRINCIPLE]` and `> **Principle N: Title**`, numbered without gaps. #2026_10_06_05_group_2
 - [ ] Side notes follow the text as `> >> phrase : explanation`, one per line. #2026_10_06_05_group_2
 - [ ] Bullets, used only when one piece of code holds two things the reader must tell apart, are `> - ` lines with a blank `>` line before and after the list. #2026_10_06_05_group_2
-- [ ] The box ends with a code pair: `*We should do this:*` / `*We should not do this:*` when the wrong code breaks, `*It is best practice to do this:*` / `*Instead of doing this:*` when both run. #2026_10_06_05_group_2
+- [ ] The box ends with its code. When the map's `Real Mistake` is filled, that is a pair: `*We should do this:*` / `*We should not do this:*` when the wrong code breaks, `*It is best practice to do this:*` / `*Instead of doing this:*` when both run. When it is `none`, the box ends with one `*We should do this:*` card. #2026_10_06_05_group_2 revised by #2026_10_06_09_group_2
 - [ ] Each code line sits in its own backticks on its own `> ` line, keeps its indentation, stays within 68 characters, and each card has at least one end-of-line comment. #2026_10_06_05_group_2
 - [ ] No em-dashes, no hard wraps. #2026_10_06_05_group_2
 
