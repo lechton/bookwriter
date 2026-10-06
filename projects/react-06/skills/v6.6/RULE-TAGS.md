@@ -197,6 +197,8 @@ One row per group. The tag names the origin; revisions keep their tag; continuat
 | #2026_10_06_05_group_2 | The Owner's Rules for a Box | skills/v6.6/principle-definition/SKILL.md, skills/v6.6/README.md | the reading test gives way to the rules the owner enforced box by box: basics first, then what happens step by step, show not claim, general names, no riddles, no words the reader lacks, one idea, a code pair that stands alone, true; a box enters the casebook only after approval |
 | #2026_10_06_05_group_3 | Short principled-theory | skills/v6.6/principled-theory/SKILL.md, skills/v6.6/README.md | theory before the case study, the paragraph under the box, an honest code pair, map traceability, zero new concepts in the case study |
 | #2026_10_06_05_group_4 | Skills v6.6 Aligned | skills/v6.6/ (copied from skills/v6.5/), skills/v6.6/pre-lecture/SKILL.md, skills/v6.6/verification/SKILL.md, skills/v6.6/lecture-structure/SKILL.md, skills/v6.6/map-principles/SKILL.md, AGENTS.md | the principle-notes example uses the approved Case 2 box; gate 20 checks the new rules; paths and casebook pointers point at v6.6; v6.5 stays as it was |
+| #2026_10_06_06_group_1 | Principle Map 15 | 01-01-map-principles/15.md, handouts/54.json | map 15 built under v6.6 with four principles on `LikeCounter`, every behavior reproduced in React 19.3.0 |
+| #2026_10_06_06_group_2 | Hyphen in Topic Tags | src/map-lib.mjs, src/diagnose-map.mjs | the bank reader, the owner rule, and the header check accept a hyphen in a tag, so row 54 `#re-render_mechanics` is found |
 Pre-tag history: every rule in the skills that carries no tag predates 2026-09-20 and belongs to the original skill rewrite.
 
 

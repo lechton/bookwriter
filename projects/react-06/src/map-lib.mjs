@@ -25,7 +25,7 @@ export function readBank() {
 	const version = (text.match(/^> \*\*Version (\d+)\*\*/m) || [])[1] || null;
 	const rows = new Map();
 	for (const line of text.split('\n')) {
-		const m = line.match(/^\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|\s*`#([a-z0-9_]+)`\s*\|\s*([^|]+?)\s*\|/);
+		const m = line.match(/^\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|\s*`#([a-z0-9_-]+)`\s*\|\s*([^|]+?)\s*\|/);
 		if (m) rows.set(parseInt(m[1], 10), { tier: m[2], tag: m[3], question: m[4] });
 	}
 	return { version, rows };
@@ -60,7 +60,7 @@ export function sectionOf(lines, name) {
 	return end === -1 ? rest : rest.slice(0, end);
 }
 
-export const OWNER_RE = /^Q(\d{1,3}) `?#([a-z0-9_]+)`?$/;
+export const OWNER_RE = /^Q(\d{1,3}) `?#([a-z0-9_-]+)`?$/;
 
 // The handles and Terms rows of one live map, or null when the map does not exist.
 export function readMapFacts(n) {

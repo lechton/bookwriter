@@ -64,7 +64,7 @@ function diagnose(nn, bank, file = join(MAP_DIR, `${nn}.md`)) {
 	else if (!lines[0].startsWith(`# Q${nn} `)) fails.push(`title number is not Q${nn}`);
 	const header = (label) => (lines.find((l) => l.startsWith(`- **${label}**:`)) || '').replace(`- **${label}**:`, '').trim();
 	const tagLine = header('Topic Tag');
-	const tagMatch = tagLine.match(/^`#([a-z0-9_]+)` \| `(.+)`$/);
+	const tagMatch = tagLine.match(/^`#([a-z0-9_-]+)` \| `(.+)`$/);
 	if (!tagMatch) fails.push('Topic Tag line is not "`#tag` | `tier`"');
 	else if (row) {
 		if (tagMatch[1] !== row.tag) fails.push(`Topic Tag #${tagMatch[1]} differs from bank row ${num} #${row.tag}`);
