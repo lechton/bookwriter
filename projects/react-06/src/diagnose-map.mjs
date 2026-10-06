@@ -12,10 +12,17 @@
    4. Principle numbering, handles, and fields per Kind
    5. Terms rows (status, first lesson, refresher)
    6. Em-dashes and hard wraps
+   7. Agreement with the other live maps: every map dates a term to the
+      same first lesson, a Recall row names a map that lists the term
+      under the same name, and a cited handle (Q04 `braces-window`)
+      exists in its map
+   8. handouts/{NN}.json is valid, and no message for the map is open
 
    NOTE lines are indications to read, not failures:
    - sentences over 20 words in the Authorized Scope and Senior Answer
    - unticked Completion Gate boxes and open issues
+   - checks that wait for a map not yet written, open lecture messages,
+     and messages this lesson has sent
 
    Usage:
      node src/diagnose-map.mjs 04
@@ -23,54 +30,17 @@
      node src/diagnose-map.mjs path/to/04.md   (a draft or archived map)
    ============================================================ */
 
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { basename, dirname, join, resolve } from 'node:path';
-
-const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const MAP_DIR = join(ROOT, '01-01-map-principles');
-const BANK_PATH = join(ROOT, 'questions', 'questions.md');
+import { readFileSync, existsSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
+import { MAP_DIR, OWNER_RE, readBank, tableRows, sectionOf, readMapFacts, liveMapNumbers, readHandout, validateHandout, handoutNumbers, pad } from './map-lib.mjs';
 
 const SECTIONS = ['Authorized Scope', 'Sources Read', 'Candidate Ledger', 'Terms', 'Principles', 'Senior Answer', 'Reported Conflicts', 'Open Issues', 'Completion Gate'];
 const DISPOSITIONS = ['Principle', 'Merged', 'Supporting', 'Prerequisite', 'Preview', 'Deferred', 'Dropped'];
 const DECISION_FIELDS = ['Handle', 'Kind', 'Roles', 'Placement', 'Mechanism', 'Tempting Belief', 'Defect', 'Importance', 'Required Lesson Proof'];
 const REVIEW_LABELS = ['Do', 'Prefer', 'Avoid', 'Do not', 'Condition'];
 const HANDLE_RE = /^[a-z0-9]+(-[a-z0-9]+){1,3}$/;
-const OWNER_RE = /^Q(\d{1,3}) `?#([a-z0-9_]+)`?$/;
+const CITATION_RE = /\bQ(\d{2,3}) `([a-z0-9]+(?:-[a-z0-9]+){1,3})`/g;
 const SENTENCE_CAP = 20;
-
-function readBank() {
-	if (!existsSync(BANK_PATH)) throw new Error(`bank not found: ${BANK_PATH}`);
-	const text = readFileSync(BANK_PATH, 'utf8');
-	const version = (text.match(/^> \*\*Version (\d+)\*\*/m) || [])[1] || null;
-	const rows = new Map();
-	for (const line of text.split('\n')) {
-		const m = line.match(/^\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|\s*`#([a-z0-9_]+)`\s*\|\s*([^|]+?)\s*\|/);
-		if (m) rows.set(parseInt(m[1], 10), { tier: m[2], tag: m[3], question: m[4] });
-	}
-	return { version, rows };
-}
-
-// Splits a table row on pipes that sit outside backtick code spans.
-function splitRow(line) {
-	const cells = [];
-	let cell = '';
-	let inCode = false;
-	const body = line.trim().replace(/^\|/, '').replace(/\|$/, '');
-	for (const ch of body) {
-		if (ch === '`') inCode = !inCode;
-		if (ch === '|' && !inCode) {
-			cells.push(cell.trim());
-			cell = '';
-		} else cell += ch;
-	}
-	cells.push(cell.trim());
-	return cells;
-}
-
-function tableRows(lines) {
-	return lines.filter((l) => l.startsWith('|')).slice(2).map(splitRow);
-}
 
 function sentences(paragraph) {
 	return paragraph.split(/(?<=[.!?]["*)]?)\s+(?=[A-Z`*"(])/).map((s) => s.trim()).filter(Boolean);
@@ -115,15 +85,9 @@ function diagnose(nn, bank, file = join(MAP_DIR, `${nn}.md`)) {
 	if (missing.length) fails.push(`sections missing: ${missing.join(', ')}`);
 	const order = found.filter((s) => SECTIONS.includes(s));
 	if (!missing.length && order.join('|') !== SECTIONS.join('|')) fails.push(`sections out of order: ${order.join(', ')}`);
-	const section = (name) => {
-		const start = lines.findIndex((l) => l.trim() === `## ${name}`);
-		if (start === -1) return [];
-		const rest = lines.slice(start + 1);
-		const end = rest.findIndex((l) => l.startsWith('## '));
-		return end === -1 ? rest : rest.slice(0, end);
-	};
+	const section = (name) => sectionOf(lines, name);
 	const sources = section('Sources Read');
-	for (const lead of ['Runtime check:', 'Archive check:']) {
+	for (const lead of ['Runtime check:', 'Archive check:', 'Handout:']) {
 		if (!sources.some((l) => l.startsWith(`- ${lead}`))) fails.push(`Sources Read has no "${lead}" line`);
 	}
 
@@ -218,6 +182,60 @@ function diagnose(nn, bank, file = join(MAP_DIR, `${nn}.md`)) {
 		if (need !== 'Supporting' && !handles.has(need)) fails.push(`${where}: first needed in "${neededIn}" is not a handle or Supporting`);
 	});
 
+	// 7. Agreement with the other live maps: one first lesson per term, and cited handles exist
+	const others = liveMapNumbers().filter((k) => k !== num).map(readMapFacts).filter(Boolean);
+	const firstOf = (t, k) => (t.status === 'New' ? k : t.first);
+	terms.forEach((cells) => {
+		if (cells.length !== 6) return;
+		const [term, , status, first] = cells;
+		const m = first.match(OWNER_RE);
+		const mine = status === 'New' ? num : m ? parseInt(m[1], 10) : null;
+		if (mine === null) return;
+		for (const o of others) {
+			const t = o.terms.find((x) => x.term === term);
+			if (t && firstOf(t, o.n) !== mine) fails.push(`Terms "${term}": map ${pad(o.n)} dates it to Q${pad(firstOf(t, o.n))}, this map to Q${pad(mine)}`);
+		}
+		if (status === 'Recall') {
+			const src = others.find((o) => o.n === mine);
+			if (!src) notes.push(`Terms "${term}": map ${pad(mine)} does not exist yet, so the first appearance is unconfirmed`);
+			else if (!src.terms.some((x) => x.term === term)) fails.push(`Terms "${term}": map ${pad(mine)} has no Terms row with this exact name`);
+		}
+	});
+	const unconfirmed = new Set();
+	lines.forEach((l, i) => {
+		for (const [, q, handle] of l.matchAll(CITATION_RE)) {
+			const k = parseInt(q, 10);
+			if (k === num) {
+				if (!handles.has(handle)) fails.push(`line ${i + 1} cites Q${q} \`${handle}\`, which is not a handle of this map`);
+				continue;
+			}
+			const o = others.find((x) => x.n === k);
+			if (!o) unconfirmed.add(`Q${q} \`${handle}\``);
+			else if (!o.handles.has(handle)) fails.push(`line ${i + 1} cites Q${q} \`${handle}\`, which map ${q} does not have`);
+		}
+	});
+	if (unconfirmed.size) notes.push(`cited handles in maps that do not exist yet: ${[...unconfirmed].join(', ')}`);
+
+	// 8. Handout: messages addressed to this lesson
+	const handoutProblems = validateHandout(num, bank);
+	handoutProblems.forEach((p) => fails.push(p));
+	if (!handoutProblems.length) {
+		const inbox = readHandout(num).messages || [];
+		for (const msg of inbox.filter((x) => x.status === 'open')) {
+			const text = `${msg.id} from Q${pad(msg.from.q)} (${msg.kind}): ${msg.msg.slice(0, 80)}${msg.msg.length > 80 ? '...' : ''}`;
+			if (msg.stage === 'map') fails.push(`handout message ${text} is open; close it with node src/handout.mjs close`);
+			else notes.push(`handout message for the lecture is open: ${text}`);
+		}
+	}
+	const sent = handoutNumbers().filter((k) => k !== num).flatMap((k) => {
+		try {
+			return (readHandout(k).messages || []).filter((x) => x.from && x.from.q === num);
+		} catch {
+			return [];
+		}
+	});
+	if (sent.length) notes.push(`this lesson has sent ${sent.length} handout message(s): ${sent.map((x) => x.id).join(', ')}`);
+
 	// Reported Conflicts and Open Issues
 	for (const name of ['Reported Conflicts', 'Open Issues']) {
 		const items = section(name).filter((l) => l.startsWith('- '));
@@ -263,8 +281,8 @@ if (!arg) {
 const bank = readBank();
 const isPath = arg.endsWith('.md');
 const targets = arg === 'all'
-	? readdirSync(MAP_DIR).filter((f) => /^\d{2}\.md$/.test(f)).map((f) => f.slice(0, 2)).sort()
-	: [isPath ? basename(arg).slice(0, 2) : String(parseInt(arg, 10)).padStart(2, '0')];
+	? liveMapNumbers().map(pad)
+	: [isPath ? basename(arg).replace(/\.md$/, '') : pad(parseInt(arg, 10))];
 let failed = 0;
 for (const nn of targets) {
 	const { fails, notes } = isPath ? diagnose(nn, bank, resolve(arg)) : diagnose(nn, bank);

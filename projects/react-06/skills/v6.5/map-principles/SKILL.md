@@ -11,6 +11,8 @@ The work runs in two passes. Discovery searches wide and looks at no principle m
 
 The map feeds three readers: the pre-lecture author, the lecture author, and `node src/diagnose-map.mjs`. Write it so all three can use it without guessing. #2026_10_06_01_group_5
 
+What one lesson needs another lesson to do travels as a message in `handouts/`, not in the map's prose (Section 11B). #2026_10_06_02_group_4
+
 ## Sources and Authority | 01 | Which File Decides What #2026_09_26_19_group_1 revised by #2026_10_05_07_group_1 and #2026_10_06_01_group_7
 
 - [ ] Is row {nn} of `questions/questions.md`, the live bank, the authority for the lesson's number, topic tag, tier, and question? The files in `questions/archive/` and `questions/drafts/` are history and proposals. #2026_09_26_19_group_1 revised by #2026_10_05_07_group_1
@@ -51,6 +53,7 @@ Notes: Discovery is wide on purpose, and Selection narrows it. A rejected idea s
 
 - [ ] Is each idea routed to the lesson whose card makes it a main subject? A main subject appears in the card's Topic Tag, Core Truth, Mechanism, or Code Experiment.
 - [ ] Is every card in `01-01-map/` searched for each route, not only the neighbouring cards? Read the Topic Tag, Core Truth, Mechanism, and Scope Boundary lines.
+- [ ] Are those key lines read in one pass with `rg -N --sort path '^\* \*\*(Topic Tag|Core Truth|The Mechanism|Scope Boundary)\*\*' 01-01-map/[0-9]*.md`, run in the project folder? It prints four lines per card in bank order, so a route to a distant lesson is as easy to find as one to a neighbour. #2026_10_06_02_group_2
 - [ ] When no card makes an idea a main subject, is it owned by the earliest lesson whose Code Experiment needs it? Does the ledger note that the syllabus leaves it unassigned?
 - [ ] Is an idea owned by an earlier lesson recorded as `Prerequisite`, so the lesson recalls it instead of numbering it again?
 - [ ] Is an idea owned by a later lesson recorded as `Preview` when this lesson's code touches it, and as `Deferred` when the lesson can leave it out?
@@ -117,10 +120,13 @@ Notes: The pre-lecture and the lecture are asked to respect the reader's reasoni
 - [ ] Is each term marked `New` or `Recall`? `New` means no earlier lesson in bank order uses it. `Recall` names the earliest lesson that does. Decide by searching the earlier cards and maps. A wrong mark makes two lectures explain the same term, or neither. #2026_10_06_01_group_2
 - [ ] Does each `New` JavaScript form carry `yes` under refresher, so the lecture explains it in a sentence or two? #2026_10_06_01_group_2
 - [ ] Does each `New` React or browser term name the principle that first needs it? #2026_10_06_01_group_2
+- [ ] Does a term that an earlier map already lists keep that map's name, character for character? Copy the name from the earliest map that lists it. `node src/diagnose-map.mjs` matches terms across maps by exact name, so a reworded name hides the earlier row and leaves two first appearances. #2026_10_06_02_group_1
 
 - [ ] PROPER EXAMPLE: Map 04 marks the ternary `New` with refresher `yes`. Its third principle writes `readTime > 10 ? 'Long read' : 'Quick read'`, six lessons before Q10 teaches branching. Lecture 04 explains the operator in one sentence. Lecture 10 recalls it from Q04. #2026_10_06_01_group_2
 
 - [ ] COUNTER-EXAMPLE: The archived map 14 lists array destructuring as `Supporting`, and no archived map records where object destructuring first appears. The Lecture 14 author must read thirteen lectures to learn whether the reader has met it. #2026_10_06_01_group_2
+
+- [ ] COUNTER-EXAMPLE: Map 04 lists "local variable (`const`, `let`)". The first draft of map 14 recalled the same idea as "local variable (`let`, `const`)". A search for map 04's name missed the row, and the cross-map check could not see that both rows meant one term. #2026_10_06_02_group_1
 
 Notes: Only the maps see the whole syllabus at once. Settling first appearances here saves every lecture author from rediscovering them. #2026_10_06_01_group_2
 
@@ -173,6 +179,22 @@ Notes: Only the maps see the whole syllabus at once. Settling first appearances 
 
 Notes: The archive holds evidence that took real work to collect. Reading it after Selection keeps that evidence without letting it shape the search. #2026_10_06_01_group_8
 
+## Handouts | 11B | Messages Between Lessons #2026_10_06_02_group_4
+
+- [ ] Before Selection, is the lesson's inbox read with `node src/handout.mjs {nn}`? It shows the messages sent to this lesson, the ledger rows of other maps that name it as owner, and the later maps that recall its terms. #2026_10_06_02_group_4
+- [ ] Is every open message with stage `map` closed before the map is handed on? Close it with `node src/handout.mjs close {id} --status done --resolution "..."` and say where it landed, or with `declined` and the reason. `node src/diagnose-map.mjs {nn}` fails while one stays open. #2026_10_06_02_group_4
+- [ ] Is a message sent only for what the ledger cannot carry? The kinds are `promise` (this lesson says another will show something), `reuse` (a name, example, or log another lesson should build on), `caution` (a trap the other author would not see from its own card), `correction` (an error found in another lesson), and `move` (ownership should change). An ordinary `Preview` or `Deferred` row needs no message. #2026_10_06_02_group_4
+- [ ] Is a message to an earlier lesson treated as a request? The earlier map or lecture changes only through its normal revision, and the message lists in `--affects` the later lessons that recall the changed part. #2026_10_06_02_group_4
+- [ ] Is a `move` sent with stage `map`, and does the receiving author change the cards before the maps? Ownership comes from the cards (Section 03), so a map that takes an idea the cards still route elsewhere is a conflict. #2026_10_06_02_group_4
+- [ ] Is every message written with `node src/handout.mjs add`, never by hand? The command fills the topic tags from the live bank, numbers the message, and rejects a broken one. `handouts/README.md` lists the fields. #2026_10_06_02_group_4
+- [ ] Does `Sources Read` record the inbox: the messages closed and the messages sent, by id? #2026_10_06_02_group_4
+
+- [ ] PROPER EXAMPLE: Map 14 proves call order on `StoryCard` with two `useState` calls and a render log. Q37 `#rules_of_hooks` will break that order, and its card cannot know the example exists. Map 14 sends `14-37-01`, kind `reuse`, stage `map`, with Q38 under `affects`. The map 37 author finds it in the inbox, breaks the order on the same `StoryCard`, and closes the message with the handle of the principle whose proof uses it. #2026_10_06_02_group_4
+
+- [ ] COUNTER-EXAMPLE: Lecture 05 says rendering runs before the DOM commit "(see Lecture 12 and Lecture 17)". The promise lives only in that lecture's prose, by number. Bank Version 3 moved render and commit to Q15, and Q17 is now `#state_updates`. No file told the Lecture 15 author that Lecture 05 counts on it, and nothing flagged the broken pointer. #2026_10_06_02_group_4
+
+Notes: The ledger records what this lesson decides about an idea. A handout records what another lesson must do about it. Keeping the two apart lets each author read one inbox instead of every other file. #2026_10_06_02_group_4
+
 ## Output Contract | 12 | The Map File #2026_09_26_19_group_1 revised by #2026_10_05_09_group_1 and #2026_10_06_01_group_7
 
 - [ ] Does every map use this template, in this order?
@@ -195,6 +217,7 @@ Notes: The archive holds evidence that took real work to collect. Reading it aft
 - Syllabus cards used for ownership: {Q numbers}
 - General engineering knowledge: {review, interview, and failure angles considered}
 - Archive check: {archived maps compared, and how many rows each added}
+- Handout: {messages read and closed from `handouts/{NN}.json`, and messages sent, by id}
 
 ## Candidate Ledger
 | candidate | source | disposition | owner | reason |
@@ -239,6 +262,7 @@ Notes: The archive holds evidence that took real work to collect. Reading it aft
 - [ ] Every Required Lesson Proof runs on the card's example inside the scope, or says why it cannot.
 - [ ] Every Terms row was marked after a search of the earlier cards and maps.
 - [ ] The Archive Check is done, and every idea it found has a ledger row.
+- [ ] Every `map` message in the inbox is closed, and every message another lesson needs from this map was sent.
 - [ ] Reported Conflicts and Open Issues are complete.
 - [ ] A candidate could say the Senior Answer aloud, and it would satisfy a senior interviewer.
 ```
@@ -251,7 +275,7 @@ Notes: Maps in the `v_old_*` folders use older formats; read them only during th
 
 ## Verification | 13 | Before the Map Is Handed On #2026_09_26_19_group_1 revised by #2026_10_05_09_group_1 and #2026_10_06_01_group_5
 
-- [ ] Does `node src/diagnose-map.mjs {nn}` report no failure? It checks the header against the bank, the sections and their order, the owner rule, the handles, the principle fields, the Terms rows, em-dashes, and hard wraps. It also lists long sentences in the scope and the Senior Answer as indications to read, not as failures. #2026_10_06_01_group_5
+- [ ] Does `node src/diagnose-map.mjs {nn}` report no failure? It checks the header against the bank, the sections and their order, the owner rule, the handles, the principle fields, the Terms rows, em-dashes, and hard wraps. It also compares the map with the other live maps: every map must date a term to the same first lesson, a `Recall` term must exist under the same name in the map it names, and a cited `Q{NN} \`handle\`` must exist. Last, it validates the inbox and fails while a `map` message is open. It lists long sentences in the scope and the Senior Answer, and checks that wait for a map not yet written, as indications to read, not as failures. #2026_10_06_01_group_5 revised by #2026_10_06_02_group_3
 - [ ] Does a spot check of one page in Sources Read find each of its Recap, Pitfall, and Caveat items in the ledger?
 - [ ] During an audit, does a fresh Discovery pass, with the current map closed, find any idea the ledger lacks? Is Selection rerun for each one found?
 - [ ] Does every `Do not` point have a real scoped failure, and does every preference stay framed as a preference?

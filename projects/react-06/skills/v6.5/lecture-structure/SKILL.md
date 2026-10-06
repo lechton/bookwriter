@@ -49,6 +49,7 @@ Digests: `skills/old-instructions/AUTHOR-BRIEF.md` and `skills/old-instructions/
 - [ ] Does the lecture respect the Curriculum Dependency Law, restricting code syntax, hooks, and references to what has been formally introduced up to that question (e.g. in `questions/questions.md` Version 3: no `useState` before Q14, no callback props before Q13, no `useEffect` before Q31)? #2026_09_21_02_group_1 revised by #2026_09_21_06_group_1 and #2026_10_05_04_group_1
 - [ ] Is the lecture governed by both maps: `01-01-map/{nn}.md` for syllabus scope and `01-01-map-principles/{nn}.md` for the exact operational principle set and order? #2026_09_25_06_group_1 revised by #2026_09_26_19_group_1
 - [ ] Does every numbered lecture principle trace one-to-one to the approved principle map, while ledger rows marked `Supporting`, `Prerequisite`, or `Preview` appear as theory prose, one-line recalls, or one-sentence forward mentions that name the owner lesson rather than as extra principles? #2026_09_26_19_group_1 revised by #2026_09_26_21_group_2
+- [ ] Is every `lecture` message in `node src/handout.mjs {nn}` delivered in the lecture where the blueprint planned it? Does each forward promise the lecture makes have a matching `promise` message to that lesson, sent with `node src/handout.mjs add`? A promise kept only in prose breaks silently when the bank renumbers. #2026_10_06_02_group_5
 
 ## Section Skeleton | 07 | Canonical Skeleton Order #2026_09_25_03_group_1
 
