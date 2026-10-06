@@ -199,6 +199,7 @@ One row per group. The tag names the origin; revisions keep their tag; continuat
 | #2026_10_06_05_group_4 | Skills v6.6 Aligned | skills/v6.6/ (copied from skills/v6.5/), skills/v6.6/pre-lecture/SKILL.md, skills/v6.6/verification/SKILL.md, skills/v6.6/lecture-structure/SKILL.md, skills/v6.6/map-principles/SKILL.md, AGENTS.md | the principle-notes example uses the approved Case 2 box; gate 20 checks the new rules; paths and casebook pointers point at v6.6; v6.5 stays as it was |
 | #2026_10_06_06_group_1 | Principle Map 15 | 01-01-map-principles/15.md, handouts/54.json | map 15 built under v6.6 with four principles on `LikeCounter`, every behavior reproduced in React 19.3.0 |
 | #2026_10_06_06_group_2 | Hyphen in Topic Tags | src/map-lib.mjs, src/diagnose-map.mjs | the bank reader, the owner rule, and the header check accept a hyphen in a tag, so row 54 `#re-render_mechanics` is found |
+| #2026_10_06_07_group_1 | Lecture 15 | 01-01-md-PRE-lectures/v6/15.md, 01-02-md-LECTURES/v6/15.md, 01-02-md-LECTURES/v6/figures/15-01-code-assembly-pipeline.html, 01-02-md-LECTURES/v6/figures/15-02-architecture-audit.html, 01-01-map-principles/15.md | lecture 15 built under v6.6 from map 15, four boxes awaiting owner review, every console line reproduced in React 19.3.0 |
 Pre-tag history: every rule in the skills that carries no tag predates 2026-09-20 and belongs to the original skill rewrite.
 
 
