@@ -124,7 +124,7 @@ Notes: Placed on line 2, preserves the server tier tag, and quotes the bank ques
 - [ ] In 3 to 4 focused paragraphs, does the section address:
     1. What limitation in plain HTML or vanilla JavaScript does this feature solve?
     2. What is the React mechanism, how is it written, and what happens under the hood?
-    3. What is the standard rule or common syntax trap?
+    3. What surprise does the reader meet, left as a question the principles answer? #2026_10_06_03_group_4
     4. Which core mental model anchors the student's understanding before formal principles?
 
 - [ ] PROPER EXAMPLE: Grounded mechanism bridge from Lecture 1:

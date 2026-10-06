@@ -16,6 +16,7 @@ Every codebase is full of technical forks: patterns where React or JavaScript of
 - [ ] Is maximum pedagogical clarity prioritized over artificial brevity when foundational understanding is at stake?
 - [ ] Do foundational code contrasts serve both audiences: teaching junior developers mechanical engine truth while reminding senior developers of architectural trade-offs behind everyday idioms?
 - [ ] When staging an Architectural Crossroad (such as Div Container vs. React Fragment), does it resolve one primary dilemma while ensuring secondary invariants receive dedicated mechanical derivation? #2026_09_24_01_group_1
+- [ ] Is a crossroad kept for two ways developers really write this code? A JavaScript form the reader meets for the first time (`refresher yes` in the map's Terms) gets a sentence or two where it first appears, not two options. Reading the `useState` array by index is not a way anyone writes React, so destructuring gets the short reminder. #2026_10_06_03_group_5
 
 ## Code Staging | 02 | Visual-First Option Declaration & Consistent Vocabulary #2026_09_21_12_group_1 revised by #2026_09_21_14_group_1 and #2026_09_22_11_group_1
 

@@ -7,6 +7,9 @@
    2. Sentence length profiles & 20-word cap compliance
    3. Line width (>80 chars) & block height (>10 lines)
    4. Curriculum dependency keyword checks (e.g. useState before Q16)
+   5. Ledger owners: every lesson that the principle map's Prerequisite
+      and Preview rows name is named in the lecture, and no lecture-stage
+      handout message for the lesson is still open
 
    Usage:
      node src/diagnose-lecture.mjs 02
@@ -17,6 +20,7 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
+import { readMapFacts, readHandout, OWNER_RE } from './map-lib.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -560,6 +564,44 @@ function diagnoseFile(filename) {
 		console.log(`  \x1b[31m[RED FLAG]\x1b[0m Premature hooks detected: ${prematureHooks.join(', ')}`);
 	} else {
 		console.log(`  \x1b[32m[INDICATION]\x1b[0m Zero premature hooks detected.`);
+	}
+
+	// 7. Ledger owners and open handout messages
+	console.log(`\n--- 7. LEDGER OWNERS AND HANDOUTS (Q${qNum}) ---`);
+	const facts = readMapFacts(qNum);
+	if (!facts) {
+		console.log(`  \x1b[33m[INDICATION]\x1b[0m No principle map for Q${qNum}; ledger owners not checked.`);
+	} else {
+		const unnamed = new Map();
+		for (const [candidate, , disposition, owner] of facts.ledger) {
+			if (disposition !== 'Prerequisite' && disposition !== 'Preview') continue;
+			const m = owner.match(OWNER_RE);
+			if (!m) continue;
+			const n = parseInt(m[1], 10);
+			if (new RegExp(`\\b(Lecture|Lesson)s? 0?${n}\\b`).test(content)) continue;
+			if (!unnamed.has(n)) unnamed.set(n, []);
+			unnamed.get(n).push(`${disposition}: ${candidate}`);
+		}
+		if (unnamed.size) {
+			console.log(`  \x1b[31m[RED FLAG]\x1b[0m ${unnamed.size} owner lesson(s) from the map's ledger are never named as "Lecture N":`);
+			for (const [n, rows] of [...unnamed].sort((a, b) => a[0] - b[0])) {
+				console.log(`    - Lecture ${n}:`);
+				for (const r of rows) console.log(`        ${r.slice(0, 110)}`);
+			}
+		} else {
+			console.log(`  \x1b[32m[INDICATION]\x1b[0m Every Prerequisite and Preview owner is named.`);
+		}
+	}
+	let openLecture = [];
+	try {
+		openLecture = readHandout(qNum).messages.filter((m) => m.status === 'open' && m.stage === 'lecture');
+	} catch (e) {
+		console.log(`  \x1b[31m[RED FLAG]\x1b[0m handouts/${String(qNum).padStart(2, '0')}.json cannot be read: ${e.message}`);
+	}
+	if (openLecture.length) {
+		console.log(`  \x1b[31m[RED FLAG]\x1b[0m ${openLecture.length} open lecture message(s) in the handout: ${openLecture.map((m) => m.id).join(', ')}`);
+	} else {
+		console.log(`  \x1b[32m[INDICATION]\x1b[0m No open lecture messages in the handout.`);
 	}
 
 	console.log(`------------------------------------------------------------\n`);

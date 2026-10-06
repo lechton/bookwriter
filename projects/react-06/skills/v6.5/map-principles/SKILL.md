@@ -56,6 +56,7 @@ Notes: Discovery is wide on purpose, and Selection narrows it. A rejected idea s
 - [ ] Are those key lines read in one pass with `rg -N --sort path '^\* \*\*(Topic Tag|Core Truth|The Mechanism|Scope Boundary)\*\*' 01-01-map/[0-9]*.md`, run in the project folder? It prints four lines per card in bank order, so a route to a distant lesson is as easy to find as one to a neighbour. #2026_10_06_02_group_2
 - [ ] When no card makes an idea a main subject, is it owned by the earliest lesson whose Code Experiment needs it? Does the ledger note that the syllabus leaves it unassigned?
 - [ ] Is an idea owned by an earlier lesson recorded as `Prerequisite`, so the lesson recalls it instead of numbering it again?
+- [ ] When an earlier lesson owns a decision but this lesson's API is the first to make breaking it visible or worse, is the new failure kept here? Record the decision as `Prerequisite`, and the new failure as a candidate of its own that faces the importance test: `Principle` when it passes, `Supporting` otherwise. #2026_10_06_03_group_2
 - [ ] Is an idea owned by a later lesson recorded as `Preview` when this lesson's code touches it, and as `Deferred` when the lesson can leave it out?
 - [ ] Does every owner name its lesson by number and topic tag from the live bank, as in `Q17 #state_updates`? A later bank version that moves the topic then leaves a visible mismatch. #2026_10_05_09_group_1
 - [ ] When the cards route an idea to this lesson but another map already numbers it, is the conflict listed in Reported Conflicts? #2026_10_06_01_group_3
@@ -65,6 +66,10 @@ Notes: Discovery is wide on purpose, and Selection narrows it. A rejected idea s
 - [ ] HALF WAY EXAMPLE: The author routes by main subject but lets the earlier lesson keep its full principle "because it was taught first". The owner lesson repeats it, and the two lectures disagree on where the decision lives.
 
 - [ ] COUNTER-EXAMPLE: Maps 01 to 13 once named owners by number alone ("state (Q16)"). Bank Version 2 moved state to Q14, nothing in the maps showed it, and every preview pointed at the wrong lesson until an audit. #2026_10_05_09_group_1
+
+- [ ] PROPER EXAMPLE: Q13 owns passing a handler instead of calling it. In Q13 a called handler only runs too early. With a setter, the same mistake throws "Too many re-renders", and setters first exist in Q14. Map 14 recalls the Q13 decision and keeps the crash as a candidate of its own. #2026_10_06_03_group_2
+
+- [ ] COUNTER-EXAMPLE: The first v6.5 map 14 filed the crash only as a Q13 `Prerequisite`. Lecture 14 dropped it, and the most common useState crash appeared in no lesson of the series. #2026_10_06_03_group_2
 
 Notes: First mention is not ownership. A passing mention earns a preview; the main subject earns the principle.
 
@@ -94,6 +99,7 @@ Notes: Importance decides membership, atomicity decides boundaries, and ownershi
 - [ ] Does every principle state its `Tempting Belief`? The belief is the wrong idea a capable developer brings to this code. It comes from an earlier habit: HTML attributes, another template language, plain JavaScript, an older React version, etc. The lesson uses it to explain why the wrong idea felt right. #2026_10_06_01_group_1
 - [ ] Does `Defect` hold only what someone can see: the screen, the console, DevTools, or the build output? The wrong idea itself belongs in `Tempting Belief`. #2026_10_06_01_group_1
 - [ ] For a `Model` principle, is the Defect the first visible surprise the belief produces? #2026_10_06_01_group_1
+- [ ] Does every principle carry a `Code Pair`: one line of right code and one line of wrong code on the card's example, separated by a semicolon? For a Decision, it is what the Review Point asks for against what it rejects. For a Model, it is the code the model predicts correctly against the code the Tempting Belief writes. The lecture's principle box closes with this pair, and readers learn the most from it. #2026_10_06_03_group_1
 
 - [ ] PROPER EXAMPLE: A principle about double curlies. Tempting Belief: `{{ }}` is special JSX syntax, a habit from Handlebars, Mustache, and Vue, which print values with double braces. Defect: `style="color: pink"`, written as a string, throws an error that says `style` expects a mapping from properties to values. #2026_10_06_01_group_1
 
@@ -104,7 +110,7 @@ Notes: The pre-lecture and the lecture are asked to respect the reader's reasoni
 ## Selection | 06 | Proofs and Verified Behavior #2026_09_26_21_group_1 revised by #2026_09_27_11_group_1 and #2026_10_06_01_group_4
 
 - [ ] Can each Required Lesson Proof be produced inside the Authorized Scope? When it needs a later concept, such as a re-render in a static-data lesson, redesign the proof or reroute the idea.
-- [ ] Do the proofs use the components and variables of the card's Code Experiment? The lesson then builds one example instead of several. When a proof needs another component, does it say why, and use an everyday name that passes the naming rules of `lecture-voice`? #2026_10_06_01_group_4
+- [ ] Do the proofs use the components and variables of the card's Code Experiment? The lesson then builds one example instead of several. Each proof adds to or changes that example; no two proofs print the same code. When a proof needs another component, does it say why, and use an everyday name that passes the naming rules of `lecture-voice`? #2026_10_06_01_group_4 revised by #2026_10_06_03_group_4
 - [ ] Is every behavior the map states reproduced in React 19 before the map relies on it? A small Node sandbox with `react`, `react-dom`, `jsdom`, `esbuild`, and `@babel/parser` is enough. Sources Read records the versions used. #2026_10_06_01_group_4
 - [ ] Is a quoted compiler, console, or error message either found in the corpus or reproduced in the sandbox? Any other result is described by its behavior. A claim that is not yet verified goes to Open Issues. #2026_09_27_11_group_1 revised by #2026_10_06_01_group_3
 
@@ -242,6 +248,7 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 - **Importance**: {the review finding, interview expectation, shipped bug, or broken later lesson it prevents}
 - **Review Point (Do | Prefer | Avoid | Do not | Condition)**: {Decision only: the code-review decision}
 - **Prediction**: {Model only: the behavior the reader can predict and check}
+- **Code Pair**: {right code; wrong code; one line each, on the card's example}
 - **Required Lesson Proof**: {code and visible evidence, on the card's example, inside the scope}
 
 ## Senior Answer
@@ -268,14 +275,14 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 ```
 
 - [ ] Does the owner column follow one rule per disposition? `Principle` and `Merged` rows name a principle handle. `Supporting` rows name this lesson (`Q{NN} #tag`). `Prerequisite` rows name an earlier lesson, and `Preview` and `Deferred` rows a later one, each as `Q{NN} #tag`. `Dropped` rows hold `none`. #2026_10_06_01_group_9
-- [ ] Does a `Decision` principle carry a Review Point and no Prediction, and a `Model` principle a Prediction and no Review Point?
+- [ ] Does a `Decision` principle carry a Review Point and no Prediction, and a `Model` principle a Prediction and no Review Point? Does every principle carry a Code Pair? #2026_10_06_03_group_1
 - [ ] Does the header keep the card's title, and do its tag, tier, and question equal bank row {NN} exactly, with the bank version named in `Bank Row`? #2026_10_05_07_group_1
 
 Notes: Maps in the `v_old_*` folders use older formats; read them only during the Archive Check. #2026_10_06_01_group_8
 
 ## Verification | 13 | Before the Map Is Handed On #2026_09_26_19_group_1 revised by #2026_10_05_09_group_1 and #2026_10_06_01_group_5
 
-- [ ] Does `node src/diagnose-map.mjs {nn}` report no failure? It checks the header against the bank, the sections and their order, the owner rule, the handles, the principle fields, the Terms rows, em-dashes, and hard wraps. It also compares the map with the other live maps: every map must date a term to the same first lesson, a `Recall` term must exist under the same name in the map it names, and a cited `Q{NN} \`handle\`` must exist. Last, it validates the inbox and fails while a `map` message is open. It lists long sentences in the scope and the Senior Answer, and checks that wait for a map not yet written, as indications to read, not as failures. #2026_10_06_01_group_5 revised by #2026_10_06_02_group_3
+- [ ] Does `node src/diagnose-map.mjs {nn}` report no failure? It checks the header against the bank, the sections and their order, the owner rule, the handles, the principle fields (including the Code Pair), the Terms rows, em-dashes, and hard wraps. It also compares the map with the other live maps: every map must date a term to the same first lesson, a `Recall` term must exist under the same name in the map it names, and a cited `Q{NN} \`handle\`` must exist. Last, it validates the inbox and fails while a `map` message is open. It lists long sentences in the scope and the Senior Answer, and checks that wait for a map not yet written, as indications to read, not as failures. #2026_10_06_01_group_5 revised by #2026_10_06_02_group_3 and #2026_10_06_03_group_1
 - [ ] Does a spot check of one page in Sources Read find each of its Recap, Pitfall, and Caveat items in the ledger?
 - [ ] During an audit, does a fresh Discovery pass, with the current map closed, find any idea the ledger lacks? Is Selection rerun for each one found?
 - [ ] Does every `Do not` point have a real scoped failure, and does every preference stay framed as a preference?

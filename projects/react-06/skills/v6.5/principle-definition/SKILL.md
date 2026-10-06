@@ -5,9 +5,9 @@ description: Guides the writing of every `> [!PRINCIPLE]` callout (title, defini
 
 # Principle Definition
 
-This skill governs everything inside the principle box: the title, the definition, the marginal glosses, and the code pair (`*We should do this:*` / `*We should not do this:*`) that closes a `Kind: Decision` box. Load it whenever a principle is drafted, in the Phase 1 blueprint or the Phase 2 lecture. The explanation below the box stays with principled-theory; the comment rules for code lines stay with code-blocks and code-comment-audit. #2026_10_04_09_group_1 revised by #2026_10_04_11_group_1
+This skill governs everything inside the principle box: the title, the definition, the marginal glosses, and the code pair (`*We should do this:*` / `*We should not do this:*`) that closes every box. Load it whenever a principle is drafted, in the Phase 1 blueprint or the Phase 2 lecture. The explanation below the box stays with principled-theory; the comment rules for code lines stay with code-blocks and code-comment-audit. #2026_10_04_09_group_1 revised by #2026_10_04_11_group_1 and #2026_10_06_03_group_1
 
-Notes: The steps guide the thinking; the shape of the box follows from the answers. The blueprint writes the answers for every principle as a `[principle-steps]` element right before its box (see pre-lecture), so the reasoning can be read and checked before Phase 2. The lecture carries only the finished box. The principle boxes of Lectures 1 to 13 are the shipped standard: plain sentences, side notes, and a code pair for every decision. #2026_10_04_10_group_1 revised by #2026_10_04_11_group_1
+Notes: The steps guide the thinking; the shape of the box follows from the answers. The blueprint writes the answers for every principle as a `[principle-steps]` element right before its box (see pre-lecture), so the reasoning can be read and checked before Phase 2. The lecture carries only the finished box. The principle boxes of Lectures 1 to 13 are the shipped standard: plain sentences, side notes, and a code pair in every box. #2026_10_04_10_group_1 revised by #2026_10_04_11_group_1 and #2026_10_06_03_group_1
 
 ## The Eight Steps | 01 | Thinking a Principle Through #2026_10_04_10_group_1
 
@@ -49,7 +49,7 @@ Notes: The steps guide the thinking; the shape of the box follows from the answe
 - [ ] Does the header use bold continuous numbering: `> **Principle N: Active Descriptive Title**`?
 - [ ] When Step 2 chose bullets, are they consecutive `> - ` lines, one continuous line each, with one blank `>` line before the list and one after it? The build renders them as a list inside the definition card. #2026_10_04_09_group_1
 - [ ] Are marginal glosses written as `> >> phrase : explanation`, one per line after the definition?
-- [ ] Does a `Kind: Decision` principle close its box with a code pair after the glosses: `*We should do this:*` / `*We should not do this:*` when the wrong code breaks, or `*It is best practice to do this:*` / `*Instead of doing this:*` when both versions run? Each code line sits in its own backticks inside the box, with its comment at the end of the line. A `Kind: Model` principle has no pair; its proof lives in the titled code blocks below the box. #2026_10_04_11_group_1
+- [ ] Does every principle close its box with a code pair after the glosses: `*We should do this:*` / `*We should not do this:*` when the wrong code breaks, or `*It is best practice to do this:*` / `*Instead of doing this:*` when both versions run? Each code line sits in its own backticks inside the box, with its comment at the end of the line. A `Kind: Decision` pair comes from the map's Review Point; a `Kind: Model` pair comes from the map's Code Pair: the code the model predicts correctly, against the code the Tempting Belief writes. #2026_10_04_11_group_1 revised by #2026_10_06_03_group_1
 - [ ] Is every line free of em-dashes and hard wraps?
 
 ## Golden Exemplar Bank | 03 | Finished Boxes #2026_09_26_13_group_1 revised by #2026_10_04_09_group_1, #2026_10_04_10_group_1, and #2026_10_04_11_group_1
@@ -328,8 +328,14 @@ Notes: A deep runtime rule rather than a syntax typo: the direct call compiles a
 > [!PRINCIPLE]
 > **Principle N: Pass Elements as Children Props**
 > When we place elements between a component's tags, React passes them to that component as a prop named `children`. React packages nested markup into the exact same props object as regular attributes. This allows a container to display dynamic content without hardcoding what that content must be.
+>
+> *We should do this:*
+> `function Card({ children }) { return <div className="card">{children}</div>; } // Nested heading appears`
+>
+> *We should not do this:*
+> `function Card() { return <div className="card" />; } // Nested heading never appears`
 
-Notes: The map said *"Whatever JSX you nest between a component's tags arrives in props under the key children"*; the box keeps the information and says it with active everyday verbs (*place*, *passes*). `Kind: Model`, so no code pair.
+Notes: The map said *"Whatever JSX you nest between a component's tags arrives in props under the key children"*; the box keeps the information and says it with active everyday verbs (*place*, *passes*). `Kind: Model`: the pair sets the belief's code (a container that ignores what it wraps) against the model's. #2026_10_06_03_group_1
 
 - [ ] PROPER EXAMPLE: A single rule in plain prose: #2026_10_04_09_group_1 revised by #2026_10_04_10_group_1 and #2026_10_04_11_group_1
 
@@ -347,7 +353,7 @@ Notes: One action, one defect, nothing to tell apart, so Step 2 gives plain sent
 
 ### The Paired Exception: Bullets for Two Things the Reader Mixes Up #2026_10_04_11_group_1
 
-Use these only when the code holds two real things the reader confuses (Step 2). Every other principle follows the standard shape above. When the map marks a paired principle `Kind: Decision`, its code pair follows the closing sentence, as in the standard boxes. #2026_10_04_11_group_1
+Use these only when the code holds two real things the reader confuses (Step 2). Every other principle follows the standard shape above. Its code pair follows the closing sentence, as in the standard boxes. #2026_10_04_11_group_1 revised by #2026_10_06_03_group_1
 
 - [ ] PROPER EXAMPLE: Paired properties (`e.currentTarget` vs `e.target`): #2026_10_04_02_group_1 revised by #2026_10_04_09_group_1 and #2026_10_04_11_group_1
 
@@ -406,8 +412,14 @@ Notes: Two owners, two bullets, and an exact defect (*"locks the field and ignor
 > Calling `setCount(count + 1)` three times in one click still reads the same render snapshot each time, so the counter moves by one, not three.
 >
 > >> render snapshot : the fixed copy of state a single render works with
+>
+> *We should do this:*
+> `setCount(count + 1); // One click, one request, reads this render's value`
+>
+> *We should not do this:*
+> `setCount(count + 1); setCount(count + 1); // Both read the same snapshot, so the count moves by one`
 
-Notes: `Kind: Model` callouts carry no code pair; the prediction is proved in titled code blocks below the box. Here the labels help, because both roles live in one line of code.
+Notes: A `Kind: Model` pair sets the belief's code against the model's; the full prediction is still proved in titled code blocks below the box. Here the labels help, because both roles live in one line of code. #2026_10_06_03_group_1
 
 ## Failing Drafts | 04 | What Goes Wrong and Why #2026_10_04_09_group_1
 
