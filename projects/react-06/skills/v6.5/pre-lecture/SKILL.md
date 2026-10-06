@@ -70,7 +70,7 @@ Notes: `01-01-map/` is the curriculum syllabus that establishes the progression 
 - [ ] Is premature syntax smuggling avoided, blueprinting only concepts, hooks, and primitives authorized for or prior to the current question (e.g. in `questions/questions.md` Version 3: zero `useState` before Q14, zero callback props/inverse data flow before Q13, zero `useEffect` before Q31)? #2026_10_05_04_group_1
 - [ ] Does the blueprint plan complete theoretical introduction sections (`### ...`, such as *What is a React Component?* or *The Three Trees Model*) before planning `### Principles of React: {Topic}`? #2026_09_25_03_group_1
 - [ ] Does the blueprint allocate exactly one `[principle]` element for every approved entry in `01-01-map-principles/{nn}.md`, preserving its order and planning its Required Lesson Proof, without independently adding, merging, or rediscovering principles? #2026_09_26_19_group_1 revised by #2026_09_26_21_group_2
-- [ ] Is each principle planned in two parts: a `[principle-steps]` element answering the eight steps of `principle-definition/SKILL.md`, followed by the finished `> [!PRINCIPLE]` callout (title, definition, glosses, and the code pair for a `Kind: Decision` principle) that those answers produce? Phase 2 copies the callout and leaves the steps in the blueprint. #2026_10_04_09_group_1 revised by #2026_10_04_10_group_1 and #2026_10_04_11_group_1
+- [ ] Is each principle planned as an optional `[principle-notes]` element followed by the finished `> [!PRINCIPLE]` callout (written under `principle-definition/SKILL.md` and its casebook, ending with its code pair)? Phase 2 copies the callout unchanged and leaves the notes in the blueprint. #2026_10_04_09_group_1 revised by #2026_10_04_10_group_1, #2026_10_04_11_group_1, and #2026_10_06_04_group_3
 - [ ] Is every bullet, paragraph, and table row authored as a single continuous line without manual line breaks or em-dashes?
 - [ ] Does the document maintain pure HTML/Markdown standards: using unicode glyphs (`→`, `≤`) and inline code spans (`` `y = f(x)` ``) rather than raw LaTeX syntax? #2026_09_22_09_group_1
 
@@ -143,7 +143,7 @@ Notes: Replaces standard industry terminology ("components") with an invented te
     * `[components]`: Rendered UI Canvas panel showing finished UI controls with 1-to-1 component file parity and flat element tags. #2026_09_26_04_group_1
     * `[files]`: File Explorer panel showing the project disk hierarchy.
     * `[component-code]`: Component Architecture panel in role mode (with `[role:]` entries).
-    * `[principle-steps]`: The eight-step reasoning behind one principle, placed directly before its `> [!PRINCIPLE]` callout; blueprint-only, never carried into the lecture. #2026_10_04_10_group_1
+    * `[principle-notes]`: Free notes behind one principle (what the reader expects, what the proofs show, the casebook case it learned from), placed directly before its `> [!PRINCIPLE]` callout; blueprint-only, never carried into the lecture. #2026_10_04_10_group_1 revised by #2026_10_06_04_group_3
     * `[figure]`: Standalone HTML figure reference.
     * `[callout]`: Alert box (`> [!TIP]`, `> [!KEY]`, `> [!WARNING]`, `> [!CAUTION]`).
     * `[glossary]`: Glossary entry formatted with `Term ◼ Definition`.
@@ -201,44 +201,27 @@ Notes: The substantive argument sits left of `◼`, and the pedagogical contract
 
 Notes: Fully literal, stays within the line ceiling, carries a plain trailing comment with zero tildes, and audits every introduced identifier. #2026_10_04_10_group_1
 
-## Pre-Element Taxonomy | 13B | Principle Steps Before Every Principle Box #2026_10_04_10_group_1
+## Pre-Element Taxonomy | 13B | Principle Notes Before a Principle Box #2026_10_04_10_group_1 revised by #2026_10_06_04_group_3
 
-- [ ] Does every principle carry a `[principle-steps]` element directly before its `> [!PRINCIPLE]` callout, with one short answer per step of `principle-definition/SKILL.md` (decision, shape, names, what breaks, technical words, title, beginner read, comparison)?
-- [ ] Is the callout that follows the direct result of those answers: plain sentences unless Step 2 found two look-alike things the reader mixes up, the defect from Step 4, side notes only for the words Step 5 marked as new and needed, and the code pair for a `Kind: Decision` principle? #2026_10_04_10_group_1 revised by #2026_10_04_11_group_1
-- [ ] Are the answers real reasoning about this principle, rather than restatements of the step names?
+- [ ] When a principle needed thought, does a `[principle-notes]` element before its box say, in a few plain lines, what the reader expects, what actually happens (from the verified proofs), and which casebook move the box takes? The notes have no fixed fields; they exist so a reviewer can see the reasoning before the lecture is written. #2026_10_06_04_group_3
 
-- [ ] PROPER EXAMPLE: Principle steps followed by the box they produce:
+- [ ] PROPER EXAMPLE: Notes followed by the box they explain: #2026_10_06_04_group_3
 
-> - [principle-steps] Principle 5:
->     - Step 1, the decision: turn a count into true or false before using `&&`.
->     - Step 2, the shape: plain sentences, because this is one rule (guard the count); the two versions of the code go in the code pair, not in bullets. `Kind: Decision`, so the box ends with the pair.
->     - Step 3, the names: the code names are enough, so no extra labels.
->     - Step 4, what breaks: an empty inbox shows a 0 in the header; true in production.
->     - Step 5, the technical words: `&&` was taught earlier in this lecture, so it stays; "falsy" is new and not needed, so the box says "true or false"; "rogue zero" and "explicit boolean guard" are new and needed, so both appear in the definition and get side notes with the same words.
->     - Step 6, the title: Guard Numeric Conditionals with Explicit Booleans to Prevent a Rogue Zero.
->     - Step 7, the beginner read: "primitive numbers as living DOM text nodes" is jargon, so the box says "always shows numbers as visible text".
->     - Step 8, the comparison: matches the rogue zero box in the principle-definition bank.
+> - [principle-notes] Principle 5: The reader reads `{count && <Badge />}` as "show the badge when there is a count" and expects nothing at zero. The proof shows a 0 on the page. Cause, in the reader's JavaScript: `&&` hands back the 0, and React shows numbers. Move from casebook Case 5: quote the code, say what it seems to mean, then what it does.
 >
 > > [!PRINCIPLE]
-> > **Principle 5: Guard Numeric Conditionals with Explicit Booleans to Prevent a Rogue Zero**
-> > React hides booleans and nullish values but always shows numbers as visible text. When we check a counter or an array length with logical AND (`&&`), we put an explicit boolean guard such as `count > 0` in front of it, so an empty inbox never shows a rogue zero.
-> >
-> > >> rogue zero : a 0 that shows on the screen by mistake when a count of zero reaches &&
-> > >> explicit boolean guard : a check such as count > 0 that turns a number into true or false
+> > **Principle 5: A Count of Zero Shows Up as 0 Next to `&&`**
+> > `{count && <Badge />}` reads like "show the badge when there is a count". When `count` is 0, the page shows a 0 instead of nothing. The reason is `&&` itself: when its left side is 0, it gives back that 0, and React shows numbers. With `{count > 0 && <Badge />}`, the left side is `false`, and React shows nothing for `false`.
 > >
 > > *We should do this:*
-> > `{unreadCount > 0 && (`
-> > `  <Badge count={unreadCount} /> // Guard turns zero into false`
-> > `)}`
+> > `{count > 0 && <Badge count={count} />} // nothing when count is 0`
 > >
 > > *We should not do this:*
-> > `{unreadCount && (`
-> > `  <Badge count={unreadCount} /> // Zero prints a visible 0`
-> > `)}`
+> > `{count && <Badge count={count} />} // shows 0 when count is 0`
 
-Notes: Every choice in the box can be traced to an answer above it, so a reviewer can see where a principle went wrong before the lecture is written.
+Notes: The notes record the reader's expectation and the proof, so the reviewer can check the box against both. #2026_10_06_04_group_3
 
-- [ ] COUNTER-EXAMPLE: Pattern to avoid: Steps answered by echoing their names (*"Step 2, the shape: bullets. Step 4, what breaks: the bug. Step 5, the technical words: checked."*). Notes: The answers carry no reasoning, so nothing in the box can be traced or checked.
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Notes that only label (*"Shape: prose. Defect: the bug. Terms: checked."*). Notes: They carry no reasoning, so nothing in the box can be checked against them. #2026_10_06_04_group_3
 
 ## Pre-Element Taxonomy | 14 | Host Element Visibility
 
@@ -314,7 +297,7 @@ Notes: Mechanically recites lines without explaining architectural decisions, le
     3. **Archetype Alignment**: Do Stages A through E and Stage D titles align with Archetype A or Archetype B?
     4. **Literal Code Blocks**: Does every `[code]` pre-element contain runnable code adhering to the 10-line ceiling and continuation attributes?
     5. **Audited Identifiers**: Does every code snippet include a what-this-introduces list auditing all tokens?
-    5B. **Principle Steps**: Does every principle carry its `[principle-steps]` answers before its finished box? #2026_10_04_10_group_1
+    5B. **Principle Boxes**: Does every principle box pass the reading test of `principle-definition/SKILL.md` and end with its code pair? #2026_10_04_10_group_1 revised by #2026_10_06_04_group_3
     6. **Substantive Arguments**: Do all `[p]` bullets carry actual technical derivations left of `◼`?
     7. **Technical Grading**: Does every `★` paragraph open with a preknowledge recap, and every `{old solution:}` pair with literal code?
     8. **Five-Stage Staging**: Are Stages A through E planned as concrete pre-elements with top-down assembly in Stage C?

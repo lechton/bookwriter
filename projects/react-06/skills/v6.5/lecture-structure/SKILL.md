@@ -154,34 +154,11 @@ Notes: Teaches specific syntax and engine rules (components, capitalization, pro
 - [ ] When a lecture covers multiple foundational syntax rules or invariants, does every declared rule receive dedicated mechanical derivation and code demonstration in theory?
 - [ ] In lectures establishing core grammar or architectural foundations, is the theory organized around numbered, boxed Principles (`> [!PRINCIPLE]`) that expand each approved rule through relevant code proof and engine deconstruction, using comparison only when it clarifies a real choice or failure? #2026_09_26_19_group_1
 - [ ] Do these boxed principles match `01-01-map-principles/{nn}.md` one-to-one in order and operational decision, with no downstream rediscovery of the principle set? #2026_09_26_19_group_1 revised by #2026_09_26_21_group_2
-- [ ] Is each principle box copied from the blueprint as finished, with its `[principle-steps]` reasoning left behind in the blueprint? #2026_10_04_10_group_1
+- [ ] Is each principle box copied unchanged from the blueprint, with its `[principle-notes]` left behind in the blueprint? #2026_10_04_10_group_1 revised by #2026_10_06_04_group_3
 - [ ] Are interior reference tables styled as full-width (`table.reference-table`) and kept modular?
 - [ ] Does the practical case study (Stage C) contain zero syntax tokens, props, HTML tags, or attributes that were not formally taught and grounded in theory first?
 
-- [ ] PROPER EXAMPLE: Autonomous boxed principle format from a JSX grammar lecture: #2026_09_26_21_group_3
-
-> > [!PRINCIPLE]
-> > **Principle N: Align Attribute Names with DOM Properties and Keywords**
-> > Attribute names in JSX follow camelCase DOM property conventions like `className` and `htmlFor`. This aligns JSX directly with browser DOM object properties and prevents collisions with JavaScript reserved keywords.
-> 
-> When the browser parses an HTML document, it instantiates JavaScript objects in memory. In JavaScript, `class` is a reserved keyword for classes, and `for` is a reserved keyword for loops. Decades before React existed, the native browser DOM API named these object properties `element.className` and `labelElement.htmlFor`.
-> 
-> | **HTML ATTRIBUTE**<br>(raw markup string) | **DOM PROPERTY**<br>(browser element object) | **REACT JSX ATTRIBUTE**<br>(transpiled object key) | **JAVASCRIPT COLLISION MECHANISM**<br>(engine rationale) |
-> | :--- | :--- | :--- | :--- |
-> | `class` | `element.className` | `className` | ECMAScript reserved keyword `class` used for OOP classes |
-> | `for` | `labelElement.htmlFor` | `htmlFor` | ECMAScript reserved keyword `for` used for iterative loops |
-> 
-> ```jsx title="DOM Property Alignment"
-> // JSX Source:
-> <label className="field" htmlFor="email-box">Email</label>
-> <input id="email-box" tabIndex={0} />
-> 
-> // Transpiled JavaScript Output:
-> _jsx("label", { className: "field", htmlFor: "email-box", children: "Email" });
-> _jsx("input", { id: "email-box", tabIndex: 0 });
-> ```
-
-Notes: Defines the principle in an authoritative box on line 1, derives DOM object and ECMAScript collision mechanics, provides a reference table, and demonstrates transpiled output before any multi-file case study begins.
+Notes: The box itself and the paragraph under it are shown, with failing and better versions and their analyses, in `skills/v6.5/principle-definition/examples.md`; this section only places them in the lecture. #2026_10_06_04_group_3
 
 ## Section Skeleton | 13 | Where You Will Meet This, Glossary & Summary #2026_09_21_19_group_1
 

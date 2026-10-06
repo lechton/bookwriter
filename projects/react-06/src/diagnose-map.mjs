@@ -9,7 +9,7 @@
    1. Header (title, tag, tier, question, bank version) against the live bank
    2. Sections present and in order
    3. Ledger dispositions, grouping, and the owner rule
-   4. Principle numbering, handles, fields per Kind, and a Code Pair
+   4. Principle numbering, handles, fields per Kind, and no box wording (Roles, Code Pair)
       of two code spans in every principle
    5. Terms rows (status, first lesson, refresher)
    6. Em-dashes and hard wraps
@@ -37,7 +37,9 @@ import { MAP_DIR, OWNER_RE, readBank, tableRows, sectionOf, readMapFacts, liveMa
 
 const SECTIONS = ['Authorized Scope', 'Sources Read', 'Candidate Ledger', 'Terms', 'Principles', 'Senior Answer', 'Reported Conflicts', 'Open Issues', 'Completion Gate'];
 const DISPOSITIONS = ['Principle', 'Merged', 'Supporting', 'Prerequisite', 'Preview', 'Deferred', 'Dropped'];
-const DECISION_FIELDS = ['Handle', 'Kind', 'Roles', 'Placement', 'Mechanism', 'Tempting Belief', 'Defect', 'Importance', 'Required Lesson Proof', 'Code Pair'];
+const DECISION_FIELDS = ['Handle', 'Kind', 'Placement', 'Mechanism', 'Tempting Belief', 'Defect', 'Importance', 'Required Lesson Proof'];
+// The map gives facts; the lecture author writes the box and its code pair (principle-definition casebook, Case 11).
+const RETIRED_FIELDS = ['Roles', 'Code Pair'];
 const REVIEW_LABELS = ['Do', 'Prefer', 'Avoid', 'Do not', 'Condition'];
 const HANDLE_RE = /^[a-z0-9]+(-[a-z0-9]+){1,3}$/;
 const CITATION_RE = /\bQ(\d{2,3}) `([a-z0-9]+(?:-[a-z0-9]+){1,3})`/g;
@@ -109,8 +111,7 @@ function diagnose(nn, bank, file = join(MAP_DIR, `${nn}.md`)) {
 		const id = `Principle ${b.n}`;
 		if (b.n !== i + 1) fails.push(`${id} is out of sequence (expected ${i + 1})`);
 		for (const f of DECISION_FIELDS) if (!b.fields.get(f)) fails.push(`${id} has no ${f}`);
-		const pair = b.fields.get('Code Pair');
-		if (pair && (pair.match(/`[^`]+`/g) || []).length < 2) fails.push(`${id} Code Pair needs two code spans, the right line and the wrong line`);
+		for (const f of RETIRED_FIELDS) if (b.fields.has(f)) fails.push(`${id} has a ${f} field; the map gives facts, and the lecture writes the box and its pair`);
 		const handle = (b.fields.get('Handle') || '').replace(/`/g, '');
 		if (handle) {
 			if (!HANDLE_RE.test(handle)) fails.push(`${id} handle "${handle}" is not two to four lowercase words joined by hyphens`);
@@ -123,8 +124,8 @@ function diagnose(nn, bank, file = join(MAP_DIR, `${nn}.md`)) {
 		if (kind === 'Decision') {
 			if (!review) fails.push(`${id} is a Decision without a Review Point`);
 			else {
-				const label = (review.match(/^Review Point \((.+)\)$/) || [])[1];
-				if (!REVIEW_LABELS.includes(label)) fails.push(`${id} Review Point label "${label || review}" is not one of ${REVIEW_LABELS.join(', ')}`);
+				const label = review === 'Review Point' ? b.fields.get(review).trim() : '';
+				if (!REVIEW_LABELS.includes(label)) fails.push(`${id} Review Point must be exactly one label (${REVIEW_LABELS.join(', ')}), written "- **Review Point**: Do"`);
 			}
 			if (hasPrediction) fails.push(`${id} is a Decision with a Prediction`);
 		} else if (kind === 'Model') {

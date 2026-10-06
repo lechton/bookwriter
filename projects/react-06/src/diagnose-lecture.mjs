@@ -7,7 +7,8 @@
    2. Sentence length profiles & 20-word cap compliance
    3. Line width (>80 chars) & block height (>10 lines)
    4. Curriculum dependency keyword checks (e.g. useState before Q16)
-   5. Ledger owners: every lesson that the principle map's Prerequisite
+   5. Every principle box ends with a code pair (fails otherwise)
+   6. Ledger owners: every lesson that the principle map's Prerequisite
       and Preview rows name is named in the lecture, and no lecture-stage
       handout message for the lesson is still open
 
@@ -548,6 +549,33 @@ function diagnoseFile(filename) {
 		}
 	} else {
 		console.log(`  \x1b[32m[PASS]\x1b[0m Invariant 9: Zero multi-line code in content (all multi-line code in fences or callouts)`);
+	}
+
+	const DO_LABEL = /^\*(?:We should do this|It is best practice to do this):\*/i;
+	const DONT_LABEL = /^\*(?:We should not do this|Instead of doing this):\*/i;
+	const unpairedBoxes = [];
+	for (let i = 0; i < lines.length; i++) {
+		if (!/^>\s*\[!PRINCIPLE\]/.test(lines[i])) continue;
+		let title = '';
+		let hasDo = false;
+		let hasDont = false;
+		let j = i + 1;
+		for (; j < lines.length && lines[j].startsWith('>'); j++) {
+			const t = lines[j].replace(/^>\s?/, '').trim();
+			const h = t.match(/^\*\*(Principle \d+)/);
+			if (h && !title) title = h[1];
+			if (DO_LABEL.test(t)) hasDo = true;
+			if (DONT_LABEL.test(t)) hasDont = true;
+		}
+		if (!hasDo || !hasDont) unpairedBoxes.push({ lineNum: i + 1, title: title || 'untitled box', missing: [!hasDo && 'right card', !hasDont && 'wrong card'].filter(Boolean).join(' and ') });
+		i = j - 1;
+	}
+	if (unpairedBoxes.length > 0) {
+		gateFailures++;
+		console.log(`  \x1b[31m[FAIL]\x1b[0m Invariant 10: PRINCIPLE_WITHOUT_CODE_PAIR (${unpairedBoxes.length} box(es)):`);
+		for (const b of unpairedBoxes) console.log(`    - [Line ${b.lineNum}] ${b.title}: no ${b.missing}`);
+	} else {
+		console.log(`  \x1b[32m[PASS]\x1b[0m Invariant 10: Every principle box ends with a code pair`);
 	}
 
 	// 6. Curriculum Dependency Keyword Check

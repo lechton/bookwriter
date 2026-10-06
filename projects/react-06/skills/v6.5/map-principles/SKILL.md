@@ -99,13 +99,14 @@ Notes: Importance decides membership, atomicity decides boundaries, and ownershi
 - [ ] Does every principle state its `Tempting Belief`? The belief is the wrong idea a capable developer brings to this code. It comes from an earlier habit: HTML attributes, another template language, plain JavaScript, an older React version, etc. The lesson uses it to explain why the wrong idea felt right. #2026_10_06_01_group_1
 - [ ] Does `Defect` hold only what someone can see: the screen, the console, DevTools, or the build output? The wrong idea itself belongs in `Tempting Belief`. #2026_10_06_01_group_1
 - [ ] For a `Model` principle, is the Defect the first visible surprise the belief produces? #2026_10_06_01_group_1
-- [ ] Does every principle carry a `Code Pair`: one line of right code and one line of wrong code on the card's example, separated by a semicolon? For a Decision, it is what the Review Point asks for against what it rejects. For a Model, it is the code the model predicts correctly against the code the Tempting Belief writes. The lecture's principle box closes with this pair, and readers learn the most from it. #2026_10_06_03_group_1
 
 - [ ] PROPER EXAMPLE: A principle about double curlies. Tempting Belief: `{{ }}` is special JSX syntax, a habit from Handlebars, Mustache, and Vue, which print values with double braces. Defect: `style="color: pink"`, written as a string, throws an error that says `style` expects a mapping from properties to values. #2026_10_06_01_group_1
 
 - [ ] COUNTER-EXAMPLE: The archived map 14, Principle 3. Its Defect reads: "A reader who pictures state as belonging to the function expects a click on one card to change both counts." This is a belief, and nobody can see it. The habit behind it, one variable outside the function shared by every call, is never named. So the lesson cannot explain why the idea felt right. #2026_10_06_01_group_1
 
 Notes: The pre-lecture and the lecture are asked to respect the reader's reasoning before they correct it. They can only do that when the map names the reasoning. #2026_10_06_01_group_1
+
+Notes: The map gives facts, not the box. It holds no roles and no code pair: the lecture author writes the box and its pair from these facts and the proofs, under `principle-definition` and its casebook (Case 11 shows a one-line pair copied from a map that made no sense on its own). #2026_10_06_04_group_4
 
 ## Selection | 06 | Proofs and Verified Behavior #2026_09_26_21_group_1 revised by #2026_09_27_11_group_1 and #2026_10_06_01_group_4
 
@@ -140,7 +141,7 @@ Notes: Only the maps see the whole syllabus at once. Settling first appearances 
 
 - [ ] Does each `Decision` principle's review point use the weakest label the evidence supports? `Do` is a required action. `Prefer` is a sound default. `Avoid` is a risk in some contexts. `Do not` is an action that is invalid or reliably harmful. `Condition` means the right choice depends on circumstances.
 - [ ] Is `Do not` kept for a real scoped failure: a compiler error, a runtime error, corrupted data, a broken contract, or a reliably harmful result?
-- [ ] When two choices are both valid, does the review point name the deciding condition instead of inventing a ban?
+- [ ] When two choices are both valid, is the label `Condition`, with the deciding condition named in Placement, instead of an invented ban? #2026_10_06_04_group_4
 - [ ] Does negative guidance add something the positive rule does not already say?
 
 - [ ] PROPER EXAMPLE: An unclosed JSX tag earns `Do not`, because the parser rejects it. `&&` against a ternary earns `Condition`, because both are valid for different branch shapes.
@@ -152,7 +153,7 @@ Notes: Only the maps see the whole syllabus at once. Settling first appearances 
 - [ ] Are the Authorized Scope and the Senior Answer written to `lecture-voice` Sections 05 and 06? That means common words, one idea per sentence, and short sentences. Authors copy the shape of what they read, so a dense map tends to produce a dense lecture. #2026_10_06_01_group_6
 - [ ] Does the Authorized Scope say what the lesson teaches and what it builds on? The list of what later lessons own already lives in the ledger's Preview and Deferred rows, so the scope leaves it out. #2026_10_06_01_group_6
 - [ ] Could a candidate say the Senior Answer aloud in an interview? The interviewer hears it once, so each sentence carries one point. #2026_10_06_01_group_6
-- [ ] Are Roles, Placement, Mechanism, Tempting Belief, and Defect written as short data fragments rather than finished sentences? The lecture author writes the definition from them; a ready sentence here tends to be pasted with synonyms swapped. #2026_10_04_09_group_1 revised by #2026_10_06_01_group_1
+- [ ] Are Placement, Mechanism, Tempting Belief, and Defect written as short data fragments rather than finished sentences? The lecture author writes the definition from them; a ready sentence here tends to be pasted with synonyms swapped. #2026_10_04_09_group_1 revised by #2026_10_06_01_group_1 and #2026_10_06_04_group_4
 - [ ] Are ledger rows grouped by disposition, in this order: Principle, Merged, Supporting, Prerequisite, Preview, Deferred, Dropped?
 - [ ] Is each paragraph, bullet, and table row one continuous line, with no em-dashes anywhere in the file? #2026_10_06_01_group_5
 
@@ -240,15 +241,13 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 ### Principle {N}: {Active title}
 - **Handle**: `{two-to-four-words}`
 - **Kind**: {Decision or Model}
-- **Roles**: {the things the reader must tell apart, as `name: what it does` fragments separated by semicolons}
 - **Placement**: {where the right code goes, and where it does not}
 - **Mechanism**: {the platform behavior that makes the rule true}
 - **Tempting Belief**: {the wrong idea, and the habit it comes from}
 - **Defect**: {what the screen, console, DevTools, or build shows, verified in React 19}
 - **Importance**: {the review finding, interview expectation, shipped bug, or broken later lesson it prevents}
-- **Review Point (Do | Prefer | Avoid | Do not | Condition)**: {Decision only: the code-review decision}
+- **Review Point**: {Decision only: Do, Prefer, Avoid, Do not, or Condition}
 - **Prediction**: {Model only: the behavior the reader can predict and check}
-- **Code Pair**: {right code; wrong code; one line each, on the card's example}
 - **Required Lesson Proof**: {code and visible evidence, on the card's example, inside the scope}
 
 ## Senior Answer
@@ -275,14 +274,14 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 ```
 
 - [ ] Does the owner column follow one rule per disposition? `Principle` and `Merged` rows name a principle handle. `Supporting` rows name this lesson (`Q{NN} #tag`). `Prerequisite` rows name an earlier lesson, and `Preview` and `Deferred` rows a later one, each as `Q{NN} #tag`. `Dropped` rows hold `none`. #2026_10_06_01_group_9
-- [ ] Does a `Decision` principle carry a Review Point and no Prediction, and a `Model` principle a Prediction and no Review Point? Does every principle carry a Code Pair? #2026_10_06_03_group_1
+- [ ] Does a `Decision` principle carry a Review Point and no Prediction, and a `Model` principle a Prediction and no Review Point? #2026_10_06_03_group_1 revised by #2026_10_06_04_group_4
 - [ ] Does the header keep the card's title, and do its tag, tier, and question equal bank row {NN} exactly, with the bank version named in `Bank Row`? #2026_10_05_07_group_1
 
 Notes: Maps in the `v_old_*` folders use older formats; read them only during the Archive Check. #2026_10_06_01_group_8
 
 ## Verification | 13 | Before the Map Is Handed On #2026_09_26_19_group_1 revised by #2026_10_05_09_group_1 and #2026_10_06_01_group_5
 
-- [ ] Does `node src/diagnose-map.mjs {nn}` report no failure? It checks the header against the bank, the sections and their order, the owner rule, the handles, the principle fields (including the Code Pair), the Terms rows, em-dashes, and hard wraps. It also compares the map with the other live maps: every map must date a term to the same first lesson, a `Recall` term must exist under the same name in the map it names, and a cited `Q{NN} \`handle\`` must exist. Last, it validates the inbox and fails while a `map` message is open. It lists long sentences in the scope and the Senior Answer, and checks that wait for a map not yet written, as indications to read, not as failures. #2026_10_06_01_group_5 revised by #2026_10_06_02_group_3 and #2026_10_06_03_group_1
+- [ ] Does `node src/diagnose-map.mjs {nn}` report no failure? It checks the header against the bank, the sections and their order, the owner rule, the handles, the principle fields, the Terms rows, em-dashes, and hard wraps. It also compares the map with the other live maps: every map must date a term to the same first lesson, a `Recall` term must exist under the same name in the map it names, and a cited `Q{NN} \`handle\`` must exist. Last, it validates the inbox and fails while a `map` message is open. It lists long sentences in the scope and the Senior Answer, and checks that wait for a map not yet written, as indications to read, not as failures. #2026_10_06_01_group_5 revised by #2026_10_06_02_group_3, #2026_10_06_03_group_1, and #2026_10_06_04_group_4
 - [ ] Does a spot check of one page in Sources Read find each of its Recap, Pitfall, and Caveat items in the ledger?
 - [ ] During an audit, does a fresh Discovery pass, with the current map closed, find any idea the ledger lacks? Is Selection rerun for each one found?
 - [ ] Does every `Do not` point have a real scoped failure, and does every preference stay framed as a preference?
