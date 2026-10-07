@@ -46,7 +46,7 @@ const CITATION_RE = /\bQ(\d{2,3}) `([a-z0-9]+(?:-[a-z0-9]+){1,3})`/g;
 const SENTENCE_CAP = 20;
 
 function isNone(value) {
-	return /^`?none`?\.?$/i.test((value || '').trim());
+	return /^`?none`?(?:$|[\s.;,:])/i.test((value || '').trim());
 }
 
 function sentences(paragraph) {

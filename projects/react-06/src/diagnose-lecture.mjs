@@ -564,7 +564,7 @@ function diagnoseFile(filename) {
 			const h = l.match(/^### Principle (\d+):/);
 			if (h) current = parseInt(h[1], 10);
 			const f = l.match(/^- \*\*Real Mistake\*\*: ?(.*)$/);
-			if (f && current !== null) realMistakes.set(current, !/^`?none`?\.?$/i.test(f[1].trim()));
+			if (f && current !== null) realMistakes.set(current, !/^`?none`?(?:$|[\s.;,:])/i.test(f[1].trim()));
 		}
 	}
 	for (let i = 0; i < lines.length; i++) {
