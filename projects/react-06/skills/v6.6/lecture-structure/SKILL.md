@@ -110,6 +110,16 @@ Notes: Placed on line 2, preserves the server tier tag, and quotes the bank ques
 - [ ] Is the document title on line 1 the single `# ` heading in the file?
 - [ ] Do the numbered opening beats lead immediately into the first `### ` heading with no orphan paragraphs between them?
 
+## Section Skeleton | 10B | Section Headings the Lesson Writes #2026_10_07_01_group_2
+
+- [ ] Is every section heading the lesson writes for itself (the first section and the theory section) one plain sentence in sentence case, the same title rule as a principle box (`principle-definition` Section 01)? Does it say what the section shows, with no riddle the reader must solve first? #2026_10_07_01_group_2
+- [ ] Do the fixed skeleton headings keep their exact wording from Section 07 (`Principles of React: {Topic}`, `Let's Design a Practical Example`, `Component Summary`, `Where you will meet this`, `Glossary`, `Beyond the basics`, `Summary`), and do step headings keep their Section 16 form? The blueprint mirrors the same headings. #2026_10_07_01_group_2
+
+- [ ] PROPER EXAMPLE: `### The like count changes, but the screen does not` (says what the reader is about to watch). #2026_10_07_01_group_2
+- [ ] PROPER EXAMPLE: `### Three steps from a click to the screen` (names the topic in plain words). #2026_10_07_01_group_2
+- [ ] COUNTER-EXAMPLE: `### A Like Button That Counts in Secret` (Title Case, and "in secret" is a riddle: who counts, and where?). #2026_10_07_01_group_2
+- [ ] COUNTER-EXAMPLE: `### A Like That Reaches the Server One Click Late` (Title Case, and "one click late" must be decoded before the reader knows the problem: the server receives the old count). #2026_10_07_01_group_2
+
 ## Section Skeleton | 11 | Standard Body Progression & Engine Mechanics #2026_09_20_04_group_4 revised by #2026_09_20_05_group_1, #2026_09_20_27_group_1, and #2026_09_25_03_group_1
 
 - [ ] Does the lecture body progress logically: (1) core engineering problem and native baseline, (2) foundational theoretical introduction (`### {Theoretical Concept}`), (3) autonomous principled theory (`### Principles of React: {Topic}`), (4) 5-stage practical example assembly, and (5) architectural comparison and review? #2026_09_25_03_group_1

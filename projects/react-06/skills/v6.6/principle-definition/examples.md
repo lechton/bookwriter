@@ -6,6 +6,8 @@ All seven cases come from one lesson, so their names (`count`, `setCount`, `Coun
 
 The rules these cases enforce are listed in `SKILL.md` beside this file.
 
+Approved titles are shown in sentence case, the title rule in `SKILL.md` Section 01. Failed drafts keep the case they were written in. #2026_10_07_01_group_1
+
 ## Case 1: Show How the Screen Gets Its Value (assignment does not update the screen) #2026_10_06_05_group_1
 
 **Context.** Lecture 14 (`useState`). The reader knows plain JavaScript, JSX, props, and event handlers (Lecture 13). The reader has just watched a counter variable grow in the console while the button keeps showing 0.
@@ -34,7 +36,7 @@ The rules these cases enforce are listed in `SKILL.md` beside this file.
 **Approved by the owner:**
 
 > [!PRINCIPLE]
-> **Principle N: The Screen Keeps the Value It Got When the Component Ran**
+> **Principle N: The screen keeps the value it got when the component ran**
 > When React runs a component, the `{count}` in its JSX puts the current value of `count` on the screen, for example 0. A click handler then changes `count` to 1, but nothing puts the new value on the screen. The screen changes only when React runs the component again, because only then is `{count}` read again. Changing a variable does not make React run the component. Calling a setter does, as Principle 3 shows.
 >
 > *We should do this:*
@@ -82,7 +84,7 @@ The rules these cases enforce are listed in `SKILL.md` beside this file.
 **Approved by the owner:**
 
 > [!PRINCIPLE]
-> **Principle N: Each Run of a Component Starts Its Variables Over**
+> **Principle N: Each run of a component starts its variables over**
 > React runs a component more than once: every time the screen must change. Each time, it calls the component's function again from its first line. So `let count = 0` runs again, and `count` is back to 0, whatever it held before. A plain variable inside a component never lasts from one run to the next.
 >
 > *We should do this:*
@@ -125,7 +127,7 @@ The rules these cases enforce are listed in `SKILL.md` beside this file.
 **Approved by the owner:**
 
 > [!PRINCIPLE]
-> **Principle N: `useState` Gives a Value That Lasts and a Function That Changes It**
+> **Principle N: `useState` gives a value that lasts and a function that changes it**
 > A value on the screen needs two things. It must keep its value from one run of the component to the next. And changing it must make React run the component again, so the screen shows the new value. A plain variable does neither. `useState` gives both, in one line: `const [count, setCount] = useState(0)`.
 >
 > - `count` is the state variable, the current value: 0 on the first run. We read it, and we never assign to it.
@@ -168,7 +170,7 @@ The rules these cases enforce are listed in `SKILL.md` beside this file.
 **Approved by the owner:**
 
 > [!PRINCIPLE]
-> **Principle N: React Keeps State Outside the Component and Matches It by Order**
+> **Principle N: React keeps state outside the component and matches it by order**
 > Each run calls the component's function from its first line, so `useState(0)` runs again on every run. We might expect it to set `count` back to 0, as `let count = 0` does. It does not. React keeps the value itself, outside our function. On the first run, `useState(0)` stores 0. On every later run, React ignores the 0 and returns the stored value.
 >
 > A component can call `useState` several times, once for each value. React never sees our names `count` or `isOn`. It matches each call to its stored value only by order: first call, second call. So the calls must come in the same order on every run, which means never inside an `if`.
@@ -210,7 +212,7 @@ The rules these cases enforce are listed in `SKILL.md` beside this file.
 **Approved by the owner:**
 
 > [!PRINCIPLE]
-> **Principle N: Each Copy of a Component on the Screen Keeps Its Own State**
+> **Principle N: Each copy of a component on the screen keeps its own state**
 > One component function can appear on the screen many times. A parent that returns `<Counter />` twice shows two counters. Both copies run the same function, with the same `useState(0)` line, so we might expect them to share one count. They do not. React keeps a separate set of stored values for each copy on the screen, called a component instance. A click on the first counter changes only the first count, and React runs only that copy again.
 >
 > >> component instance : one copy of a component on the screen, with its own stored values
@@ -255,7 +257,7 @@ The rules these cases enforce are listed in `SKILL.md` beside this file.
 **Approved by the owner:**
 
 > [!PRINCIPLE]
-> **Principle N: Pass an Expensive Starting Value as a Function**
+> **Principle N: Pass an expensive starting value as a function**
 > React uses the starting value of `useState` only on the first run and ignores it after that. In JavaScript, `f()` calls a function at once and passes its result, while `f` passes the function itself. Each run of the component executes the whole `useState` line. So `useState(createItems())` calls `createItems` on every run, and React throws each later result away. When `createItems` does slow work, that work is wasted on every run. `useState(createItems)` passes the function itself, an initializer function, and React calls it only on the first run. A cheap starting value such as `0` needs no function.
 >
 > >> initializer function : a function passed to useState that React calls once to make the starting value
@@ -297,7 +299,7 @@ The rules these cases enforce are listed in `SKILL.md` beside this file.
 **Approved by the owner:**
 
 > [!PRINCIPLE]
-> **Principle N: Call a Setter Only When the User Clicks**
+> **Principle N: Call a setter only when the user clicks**
 > We give a button a function to run on click with `onClick={...}`.
 > When does that function run? We expect it to run when the user clicks.
 > But `onClick={setCount(count + 1)}` runs the setter already when the component appears on the screen, not when the user clicks.

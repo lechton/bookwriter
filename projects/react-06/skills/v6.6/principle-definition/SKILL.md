@@ -12,6 +12,15 @@ Before writing a box, read `examples.md` beside this file. It holds only boxes t
 ## The Rules | 01 | What the Owner Enforced, Box by Box #2026_10_06_05_group_2
 
 - [ ] **Basics first.** Does the box first state, in its own plain sentence, the fact it stands on (what the code normally does, what the reader already knows) and what the reader expects? A fact the principle depends on never hides in a side clause. (Casebook Cases 2, 3, 6) #2026_10_06_05_group_2
+- [ ] **A title the reader understands at once.** Is the title one plain sentence in sentence case (capitalize only the first word and proper names; code stays in backticks)? Does it make one claim, in words the reader already has: what they see (the screen, the page, a click, a run of the component), and no word the lesson is still teaching (render, commit, trigger)? Does it name a thing or a moment, never an abstraction such as "what differs", and never join two claims with "so"? (Cases 2, 5, 7) #2026_10_07_01_group_1
+
+  - PROPER EXAMPLE: `Each run of a component starts its variables over` (one claim, words the reader has, a moment they can picture).
+  - PROPER EXAMPLE: `Call a setter only when the user clicks` (written by the owner; it names the moment).
+  - PROPER EXAMPLE: `Running a component again does not rebuild the page` (names the reader's fear and answers it).
+  - COUNTER-EXAMPLE: `The Commit Changes Only What Differs, So Typed Text Stays` (Title Case; "commit" is the word being taught; "what differs" is abstract; "so" joins two claims). The owner: "very cryptic".
+  - COUNTER-EXAMPLE: `A State Change Runs Its Component and Every Component Inside It` ("its component" leaves the reader asking which one).
+  - COUNTER-EXAMPLE: `Assigning a Local Variable Does Not Ask React to Render` (Case 1, the October 6 run: a machinery word, and React treated as a person who is asked).
+
 - [ ] **Then what really happens, step by step.** Does it say what happens in the order it happens, with things the reader can see: a value on the screen, a line that runs again, a message in the console? (Cases 1, 4) #2026_10_06_05_group_2
 - [ ] **Show, do not claim.** Does every "does not" come with the step that would make it happen? React is never a person who looks, wants, waits, or is asked. (Case 1) #2026_10_06_05_group_2
 - [ ] **General names.** Does the box use general names (`count`, `setCount`, `Counter`, a component, the screen) and nothing from the lesson's story: no component, variable, label, or character from the lesson's example? The story goes in the paragraph under the box. (Case 1) #2026_10_06_05_group_2
@@ -25,7 +34,7 @@ Before writing a box, read `examples.md` beside this file. It holds only boxes t
 
 These are checked by `diagnose-lecture` and the build. #2026_10_06_05_group_2
 
-- [ ] The box opens with `> [!PRINCIPLE]` and `> **Principle N: Title**`, numbered without gaps. #2026_10_06_05_group_2
+- [ ] The box opens with `> [!PRINCIPLE]` and `> **Principle N: Title in sentence case**`, numbered without gaps. #2026_10_06_05_group_2 revised by #2026_10_07_01_group_1
 - [ ] Side notes follow the text as `> >> phrase : explanation`, one per line. #2026_10_06_05_group_2
 - [ ] Bullets, used only when one piece of code holds two things the reader must tell apart, are `> - ` lines with a blank `>` line before and after the list. #2026_10_06_05_group_2
 - [ ] The box ends with its code. When the map's `Real Mistake` is filled, that is a pair: `*We should do this:*` / `*We should not do this:*` when the wrong code breaks, `*It is best practice to do this:*` / `*Instead of doing this:*` when both run. When it is `none`, the box ends with one `*We should do this:*` card. #2026_10_06_05_group_2 revised by #2026_10_06_09_group_2
