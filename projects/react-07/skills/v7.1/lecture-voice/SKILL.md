@@ -87,9 +87,10 @@ Notes: Respectful and empathetic. Introduces the trap as a possible scenario, va
 
 Notes: Patronizing and dogmatic. Universally projects an intellectual error onto every beginner as an inevitable character flaw rather than framing it as a possible, understandable scenario. #2026_09_27_05_group_1
 
-## Stance | 03 | Universal Everyday Engineering Problems #2026_09_20_27_group_1 revised by #2026_10_07_05_group_1
+## Stance | 03 | Universal Everyday Engineering Problems #2026_09_20_27_group_1 revised by #2026_10_07_05_group_1 and #2026_10_11_05_group_1
 
-- [ ] In code examples and component implementations, is the engineering problem grounded in universal, everyday web UI widgets that any basic computer user immediately recognizes (such as an item counter, a shopping cart, a message box, a like button, a ticket order, a search input, or a notification badge) rather than generic foo/bar placeholders or contrived industry jargon? #2026_10_07_05_group_1
+- [ ] In code examples and component implementations, is the engineering problem grounded in universal, everyday web UI widgets that any basic computer user immediately recognizes (such as an item counter, a shopping cart, a message box, a like button, a ticket order, or a search input) rather than generic foo/bar placeholders or contrived industry jargon? #2026_10_07_05_group_1 revised by #2026_10_11_05_group_1
+- [ ] Are the pieces inside those widgets the plain parts of a page that need no explaining: a title, a name, a date, a time, a colour, a counter, a photo? A niche UI element (a badge, a pill, a chip, a toast) makes the reader first picture what it looks like before the lesson can start. #2026_10_11_05_group_1
 - [ ] Does the prose avoid forced corporate or newsroom lore (no fictional publishing house, editorial desk, promotion booth, or newsroom workflow)? #2026_10_07_05_group_1
 - [ ] Are variable, component, and state names chosen from plain, universal vocabulary (such as `count`, `tickets`, `likes`, `message`, `items`, `title`, `active`) rather than specialized or idiosyncratic jargon (such as `byline`, `wire`, `masthead`, `freePasses`, `promotionDesk`)? #2026_10_07_05_group_1
 - [ ] If an engineer name is used for empathy, does it appear simply as a developer writing code, with zero workplace drama or fictional backstory? #2026_10_07_05_group_1
@@ -116,6 +117,12 @@ Notes: Clear, universal, everyday concept. Any human understands adding three ti
 > Clara builds a free pass promotion desk for readers at The National Times, using a `FreePasses` component connected to an editorial dispatch container.
 
 Notes: Cryptic, contrived fiction. "Free pass promotion desk" and "editorial dispatch" are bizarre jargon that alienates both beginners and experienced developers. #2026_10_07_05_group_1
+
+- [ ] COUNTER-EXAMPLE: A niche element as the lesson's problem (Lecture 7, first version):
+
+> A story without a badge gets an empty `<span class="badge">`, and once the badge has a background color, the reader sees an empty pill.
+
+Notes: The reader must first picture a badge, then a pill, before the defect lands. The same defect with a plain part of the page needs no picture: "A story without an author still shows the word 'By' with nothing after it." #2026_10_11_05_group_1
 
 ## Stance | 04 | The Reader's Code Is the Picture #2026_09_20_27_group_1 revised by #2026_10_10_01_group_7
 
@@ -194,7 +201,7 @@ Notes: One idea per sentence: physical basics first, trigger second, data collec
 - [ ] Is the eliminated manual boilerplate named so the relief is felt concretely?
 - [ ] Is the physical browser behavior described clearly?
 
-## Explaining Concepts | 10 | Behavior-First Definitions Over Dictionary Jargon #2026_09_21_04_group_1
+## Explaining Concepts | 10 | Behavior-First Definitions Over Dictionary Jargon #2026_09_21_04_group_1 revised by #2026_10_11_05_group_2
 
 - [ ] Does the text define concepts through runtime behavior rather than compressed academic dictionary definitions?
 - [ ] In bullet points and lists, are colon-appositive noun fragments avoided in favor of complete sentences naming physical files and actions?
@@ -209,6 +216,20 @@ Notes: Connects words to words; nothing runs, moves, or touches a pixel.
 - [ ] PROPER EXAMPLE: Definition grounded in runtime behavior:
 
 > With server-side rendering, your component runs on the server. It returns HTML. The server sends that HTML to the browser, and the reader sees your article text before any JavaScript has loaded.
+
+- [ ] Is a new mechanism spelled out on the reader's own code: what moves, from where, to where, and what the reader can picture? A one-line summary in the engine's terms is correct but cryptic to someone meeting the idea for the first time. #2026_10_11_05_group_2
+
+- [ ] COUNTER-EXAMPLE: Correct, but cryptic on first meeting:
+
+> React puts that `<h2>` into the props object of `CardContainer`, under the key `children`.
+
+Notes: "Props object" and "under the key" describe the engine. The reader is not told that the whole content between the tags moves, or where it ends up. #2026_10_11_05_group_2
+
+- [ ] PROPER EXAMPLE: The same mechanism spelled out:
+
+> Look at what sits between `<CardContainer>` and `</CardContainer>`: the whole line `<h2>Transit Accord</h2>`. React does not throw it away. It takes everything written between the opening tag and the closing tag and hands it to `CardContainer` as a prop. That prop is always called `children`; you do not choose the name. You can picture it like this: `<CardContainer>` the children are here `</CardContainer>`.
+
+Notes: The reader sees which code moves, who moves it, where it arrives, and what it is called, and gets a picture to keep. The compiled `_jsx` call can follow as confirmation. #2026_10_11_05_group_2
 
 Notes: Three short sentences, each one a physical event: code runs, HTML travels, the reader sees text.
 
