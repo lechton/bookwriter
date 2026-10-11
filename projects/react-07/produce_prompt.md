@@ -1,0 +1,31 @@
+Project: {PROJECT}. Lesson: {NN}. Work only on this lesson. All paths are relative to this project folder.
+
+Current folders (resolved by the script for this run; these are the only current version):
+- Skills: {SKILLS_DIR}
+- Pre-lectures: {PRE_DIR}
+- Lectures: {LEC_DIR}
+- Figures: {LEC_DIR}/figures
+
+The script may have already archived any earlier draft of this lesson. Write the pre-lecture {PRE_DIR}/{NN}.md and the lecture {LEC_DIR}/{NN}.md from scratch, with the figures the skills require, then build the HTML and PDF. Load the skills in the order given in {SKILLS_DIR}/README.md.
+
+Sources, in order:
+(a) The lesson map 01-01-map/{NN}.md and the principle map 01-01-map-principles/{NN}.md. The principle map is the contract: teach its principles in its order, and handle every other ledger row as its disposition says (Supporting: theory prose; Merged: concrete derivations, edge cases, and debates unpacked in theory or in the mandatory "### For the interview" section; Prerequisite: a one-line recall naming the owner lesson; Preview: one sentence naming the owner lesson). The contract governs architecture, invariants, and defects, not narrative names: replace any idiosyncratic story or component names from map fields with universal everyday UI elements. Treat its facts (placement, mechanism, defect, the Review Point label) as raw material; never paste its wording into a principle box. When a principle's Fix In names another principle, its question shows the failure and its answer shows that fix in the same cycle. Open the lecture with a short recall of what earlier lessons taught (a few words each, naming only earlier lessons) and a runway that teaches every new word or idea the questions will need. Then teach each map principle as one question cycle, in this order (lecture-structure Section 12C): `### Question N: {plain sentence}`, the scenario in prose and code, the bold question on its own line, `---`, `**ANSWER**`, the verdict starting with `**The code`, the answer on the reader's own code, the fix, an ASCII diagram where the order of events matters, and the principle box last. Follow the mandatory terminal skeleton: `### Where you will meet this`, `### For the interview` (opening with the repeated interview question via `> **The Interview Question:** [question]`, followed by the Hidden Signal, the Classic Trap, What is Actually Going On, and Where It Gets Tricky), `### Glossary`, `## Beyond the basics`, and `### Summary`.
+(b) The principle standard: {SKILLS_DIR}/principle-definition/SKILL.md and its casebook {SKILLS_DIR}/principle-definition/examples.md. Study the cases and adapt their moves; do not copy their wording, names, or length.
+(c) The official documentation the maps cite, in the corpus at {CORPUS}. Read it before writing.
+(d) Your own knowledge of the pain points good tutors and authors address on this topic.
+
+What you may read for consistency: the lectures and pre-lectures in the current folders above whose lesson number is lower than {NN}. Read them only to see what the series has already introduced and explained, so you build on it instead of repeating or contradicting it. Do not copy their content, and do not take their principles, structure, or wording as a model.
+
+What you must not read:
+- Any archive/ folder, anywhere in the project.
+- Any previous version folder: every lecture, pre-lecture, figure, or skills folder other than the current folders listed above, even when it holds the same lesson number.
+- Files from other projects in this workspace.
+
+Principles (most important): each box must be clearly read and understood on a first pass, clear like the water to both junior and senior developer. Run the Four Sequential Principle Passes in strict order (Pass 1 Casebook Alignment from examples.md; Pass 2 "Picture It" Test with observable code and screen facts; Pass 3 Plain JavaScript First for engine/lifecycle topics; Pass 4 Algorithmic & Build Gate only after Passes 1-3 pass). Write each box from the reader's own question (what they expect, what actually happens, what to write instead), in words they can picture; the casebook shows how. Bold key technical terms on first formal introduction in the box prose (`**batching**`, `**updater function**`, `**state variable**`). Use bullets only when the reader must tell two look-alike things apart. Every box states a rule the reader can follow, keeps the boundary the answer showed, and uses only words the runway or the answer already taught. Every box ends with its right card, plus a wrong card when the map names a Real Mistake.
+
+- make sure you consult your own knowledge (as an AI) on pain points raised by various tutorials and videos and other sources where charismatic tutors or authors try to address these issues, as general context considering before responding
+- the most important instruction: make sure the language of the whole text and the language of the principles AND the explanations of the principles, all conform to easy-to-read standards, with exceptional clarity!
+- make sure all elements, variable names, and components use universal, everyday vocabulary a basic english speaker would recognise (e.g. quantity, count, tickets, items, score, title, message, user, name, active). Do not preserve idiosyncratic, contrived, or newsroom scenario names from the maps (such as "free passes", "promotion desk", "byline", "wire", "masthead", or fictional publishing houses). Ground code examples in universal web UI widgets (item counters, ticket orders, shopping carts, like buttons, comment inputs) that any person understands immediately.
+- Make sure you remind shortly to the reader complex JS operations you introduce for the first time in the series of questions, e.g. what is a ternary conditional operator, what is destructuring etc. Of course this is not to happen in all lectures, but in the first where they appear
+
+Gates: first run the reading gates of {SKILLS_DIR}/verification/SKILL.md Section 21 and report one line per gate, naming what you found and fixed. Only then run `node src/diagnose-lecture.mjs {NN}` and `node src/build-lectures.mjs`. Report the exact output, including any DRAFT PASS lines or failures. Do not claim a clean pass. Change no file other than this lesson's own deliverables.

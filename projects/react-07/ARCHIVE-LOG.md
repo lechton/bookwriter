@@ -1,0 +1,136 @@
+# ARCHIVE-LOG — projects/react-07
+
+Project seeded from `projects/react-06` (latest versions: pre-lectures v7, lectures v7, skills v6.7), renumbered as pre-lectures v1, lectures v1, and skills v7.1. The `archive/` subfolders inside `01-01-md-PRE-lectures/v1/` and `01-02-md-LECTURES/v1/` came over with the v6-era retirement snapshots described in `projects/react-06/ARCHIVE-LOG.md`.
+
+Retirements performed inside react-07 itself are logged below.
+- 2026-10-10 07:14 | archive Q17 | manual | 01-01-md-PRE-lectures/v1/17.md -> 01-01-md-PRE-lectures/v1/archive/17-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/17-b.md -> 01-02-md-LECTURES/v1/archive/17-b-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/17-c.md -> 01-02-md-LECTURES/v1/archive/17-c-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/17-d.md -> 01-02-md-LECTURES/v1/archive/17-d-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/17-e.md -> 01-02-md-LECTURES/v1/archive/17-e-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/17.md -> 01-02-md-LECTURES/v1/archive/17-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/figures/17-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/17-01-code-assembly-pipeline-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/figures/17-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/17-02-architecture-audit-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-b.html -> 01-03-md-lectures-HTML/v1/archive/17-b-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-c.html -> 01-03-md-lectures-HTML/v1/archive/17-c-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-d.html -> 01-03-md-lectures-HTML/v1/archive/17-d-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-e-max-teal.html -> 01-03-md-lectures-HTML/v1/archive/17-e-max-teal-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-e.html -> 01-03-md-lectures-HTML/v1/archive/17-e-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-max.html -> 01-03-md-lectures-HTML/v1/archive/17-max-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17.html -> 01-03-md-lectures-HTML/v1/archive/17-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-d.pdf -> 01-04-md-lectures-PDF/v1/archive/17-d-2026-10-10-0714.pdf
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-e-max-teal-page-1.png -> 01-04-md-lectures-PDF/v1/archive/17-e-max-teal-page-1-2026-10-10-0714.png
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-e-max-teal.pdf -> 01-04-md-lectures-PDF/v1/archive/17-e-max-teal-2026-10-10-0714.pdf
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-e.pdf -> 01-04-md-lectures-PDF/v1/archive/17-e-2026-10-10-0714.pdf
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max-page-1.png -> 01-04-md-lectures-PDF/v1/archive/17-max-page-1-2026-10-10-0714.png
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max.pdf -> 01-04-md-lectures-PDF/v1/archive/17-max-2026-10-10-0714.pdf
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17.pdf -> 01-04-md-lectures-PDF/v1/archive/17-2026-10-10-0714.pdf
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/01.md -> 01-01-md-PRE-lectures/v1/archive/01-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/01.md -> 01-02-md-LECTURES/v1/archive/01-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/01-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/01-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/01-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/01-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/01.html -> 01-03-md-lectures-HTML/v1/archive/01-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/01-max-page-1.png -> 01-04-md-lectures-PDF/v1/archive/01-max-page-1-2026-10-10-1034.png
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/01.pdf -> 01-04-md-lectures-PDF/v1/archive/01-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/02.md -> 01-01-md-PRE-lectures/v1/archive/02-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/02.md -> 01-02-md-LECTURES/v1/archive/02-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/02-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/02-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/02-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/02-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/02.html -> 01-03-md-lectures-HTML/v1/archive/02-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/02.pdf -> 01-04-md-lectures-PDF/v1/archive/02-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/03.md -> 01-01-md-PRE-lectures/v1/archive/03-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/03.md -> 01-02-md-LECTURES/v1/archive/03-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/03-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/03-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/03-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/03-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/03.html -> 01-03-md-lectures-HTML/v1/archive/03-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/03.pdf -> 01-04-md-lectures-PDF/v1/archive/03-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/04.md -> 01-01-md-PRE-lectures/v1/archive/04-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/04.md -> 01-02-md-LECTURES/v1/archive/04-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/04-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/04-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/04-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/04-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/04.html -> 01-03-md-lectures-HTML/v1/archive/04-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/04.pdf -> 01-04-md-lectures-PDF/v1/archive/04-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/05.md -> 01-01-md-PRE-lectures/v1/archive/05-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/05.md -> 01-02-md-LECTURES/v1/archive/05-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/05-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/05-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/05-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/05-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/05.html -> 01-03-md-lectures-HTML/v1/archive/05-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/05.pdf -> 01-04-md-lectures-PDF/v1/archive/05-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/06.md -> 01-01-md-PRE-lectures/v1/archive/06-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/06.md -> 01-02-md-LECTURES/v1/archive/06-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/06-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/06-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/06-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/06-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/06.html -> 01-03-md-lectures-HTML/v1/archive/06-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/06.pdf -> 01-04-md-lectures-PDF/v1/archive/06-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/08.md -> 01-01-md-PRE-lectures/v1/archive/08-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/08.md -> 01-02-md-LECTURES/v1/archive/08-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/08-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/08-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/08-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/08-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/08.html -> 01-03-md-lectures-HTML/v1/archive/08-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/08.pdf -> 01-04-md-lectures-PDF/v1/archive/08-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/09.md -> 01-01-md-PRE-lectures/v1/archive/09-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/09.md -> 01-02-md-LECTURES/v1/archive/09-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/09-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/09-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/09-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/09-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/09.html -> 01-03-md-lectures-HTML/v1/archive/09-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/09.pdf -> 01-04-md-lectures-PDF/v1/archive/09-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/10.md -> 01-01-md-PRE-lectures/v1/archive/10-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/10.md -> 01-02-md-LECTURES/v1/archive/10-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/10-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/10-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/10-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/10-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/10.html -> 01-03-md-lectures-HTML/v1/archive/10-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/10.pdf -> 01-04-md-lectures-PDF/v1/archive/10-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/11.md -> 01-01-md-PRE-lectures/v1/archive/11-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/11.md -> 01-02-md-LECTURES/v1/archive/11-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/11-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/11-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/11-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/11-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/11.html -> 01-03-md-lectures-HTML/v1/archive/11-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/11.pdf -> 01-04-md-lectures-PDF/v1/archive/11-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q12 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/12.md -> 01-01-md-PRE-lectures/v1/archive/12-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q12 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/12.md -> 01-02-md-LECTURES/v1/archive/12-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q12 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/12-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/12-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q12 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/12-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/12-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q12 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/12.html -> 01-03-md-lectures-HTML/v1/archive/12-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q13 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/13.md -> 01-01-md-PRE-lectures/v1/archive/13-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q13 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/13.md -> 01-02-md-LECTURES/v1/archive/13-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q13 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/13-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/13-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q13 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/13-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/13-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q13 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/13.html -> 01-03-md-lectures-HTML/v1/archive/13-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q14 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/14.md -> 01-02-md-LECTURES/v1/archive/14-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q14 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/14-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/14-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q14 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/14-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/14-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q14 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/14.html -> 01-03-md-lectures-HTML/v1/archive/14-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q15 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/15.md -> 01-01-md-PRE-lectures/v1/archive/15-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q15 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/15.md -> 01-02-md-LECTURES/v1/archive/15-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q15 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/15-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/15-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q15 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/15-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/15-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q15 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/15.html -> 01-03-md-lectures-HTML/v1/archive/15-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q16 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/16.md -> 01-01-md-PRE-lectures/v1/archive/16-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q16 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/16.md -> 01-02-md-LECTURES/v1/archive/16-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q16 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/16-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/16-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q16 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/16-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/16-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q16 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/16.html -> 01-03-md-lectures-HTML/v1/archive/16-2026-10-10-1034.html
+- 2026-10-11 08:59 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-11-0859.md
+- 2026-10-11 08:59 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-11-0859.md
+- 2026-10-11 08:59 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-11-0859.html
+- 2026-10-11 08:59 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-11-0859.html
+- 2026-10-11 08:59 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-11-0859.html
+- 2026-10-11 08:59 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-11-0859.pdf
+- 2026-10-11 10:34 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-11-1034.md
+- 2026-10-11 10:34 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-11-1034.md
+- 2026-10-11 10:34 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-11-1034.html
+- 2026-10-11 10:34 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-11-1034.html
+- 2026-10-11 10:34 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-11-1034.html
+- 2026-10-11 10:34 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-11-1034.pdf
+- 2026-10-11 10:58 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-11-1058.md
+- 2026-10-11 10:58 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-11-1058.md
+- 2026-10-11 10:58 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-11-1058.html
+- 2026-10-11 10:58 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-11-1058.html
+- 2026-10-11 10:58 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-11-1058.html
+- 2026-10-11 10:58 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-11-1058.pdf
