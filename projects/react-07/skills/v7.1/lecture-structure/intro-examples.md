@@ -41,7 +41,7 @@ The standard these examples carry is `SKILL.md` Section 12 beside this file.
 >
 > Imperative code tells the browser how to change the page, one command at a time. Declarative code describes what the page should show, and React does the changing.
 
-**Why it works.** Two proper terms, each named next to the code it describes. The reader starts from code they already know (`querySelector`, `textContent`). The change from 3 to 4 makes the difference visible: who has to act when the value changes. The title example confirms the idea with a different element. The closing sentences state both terms as one contrast.
+**Why it works.** Two proper terms, each named next to the code it describes. The reader starts from code they already know (`querySelector`, `textContent`). The change from 3 to 4 makes the difference visible: who has to act when the value changes. The title example confirms the idea with a different element. The closing sentences state both terms as one contrast. The section also shows the theme move when React offers no rival way: the question is how the page changes when a value changes, and the two options are the habit without React and what React does (`SKILL.md` Section 12). #2026_10_12_01_group_1
 
 ## Failed: the Lecture 1 runway section
 

@@ -254,10 +254,11 @@ Notes: Every word of the box comes from the plan: the queue and the updater from
 
 - [ ] COUNTER-EXAMPLE: Notes that name a casebook move and nothing else: "Principle 1: The reader expects four renders. Move from casebook Case 1." Notes: No code, no verdict, no needs. The Lecture 17 box built from them carried a side note for `setTimeout`, which no question, answer, or runway section had used. #2026_10_10_01_group_3
 
-## Pre-Element Taxonomy | 13C | The Recall List and the Runway #2026_10_10_01_group_3 revised by #2026_10_11_01_group_3
+## Pre-Element Taxonomy | 13C | The Recall List and the Runway #2026_10_10_01_group_3 revised by #2026_10_11_01_group_3 and #2026_10_12_01_group_1
 
 A gap is an idea a box uses that the reader has never met. The blueprint closes every gap before the first question: earlier lessons are recalled in one line each, and new ideas are taught in runway sections. Inside the cycle, the answer then recalls the idea in a few words instead of teaching it in the middle of a fix. #2026_10_10_01_group_3
 
+- [ ] Does the first section open with the map's `## Theme and Options`: a `[p]` for the theme, one code element per option with the sentence on who decides what, and a `[p]` naming the option this lesson teaches (`lecture-structure` Section 12)? #2026_10_12_01_group_1
 - [ ] Does the first section end with a recall list: one `[recall]` bullet per earlier lesson the cycles stand on, each a bold label with its lecture number and two or three sentences in the lesson's story? Does every `Prerequisite` ledger row and every `Recall` term the cycles use appear in it? #2026_10_10_01_group_3
 - [ ] Does the recall list name only lessons that come before this one? A later lesson is one sentence of preview in the text, never a recall bullet. #2026_10_11_01_group_3
 - [ ] Does every Needs line of every cycle that is not a recall match a `[runway]` element in a runway section (`### {plain sentence}`, between the first section and `### Principles of React: {Topic}`)? Does each runway section teach its ideas from what the reader already knows, with a code fence or diagram where the idea is a code form? #2026_10_10_01_group_3

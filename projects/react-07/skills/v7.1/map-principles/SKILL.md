@@ -130,6 +130,21 @@ Notes: The pre-lecture and the lecture respect the reader's reasoning before the
 
 Notes: The map gives facts, not the box. It holds no roles and no code: the lecture author writes the box and its cards from these facts and the proofs, under `principle-definition` and its casebook (each card must stand alone, with its declaration as well as the change). #2026_10_06_04_group_4 revised by #2026_10_06_09_group_1
 
+## Selection | 05B | The Theme and Its Options #2026_10_12_01_group_2
+
+The lecture opens with a general question every developer meets, shows the real ways to answer it, and says which one the lesson teaches (`lecture-structure` Section 12). The map decides these, so the lecture author follows them instead of inventing options while writing. #2026_10_12_01_group_2
+
+- [ ] Does `## Theme and Options` state the theme as one plain question a developer meets on a real page, of which this lesson's topic is one answer? #2026_10_12_01_group_2
+- [ ] Does it list each real option: its name, the shortest code that shows it, the lesson that teaches it (`Q{NN} #tag`, this lesson, or a later one), and the situation where it fits? A real option is one an earlier lesson taught or one React offers. A later lesson's option is listed with its owner, and the lecture names it in one sentence. #2026_10_12_01_group_2
+- [ ] Is the option this lesson teaches marked, and do its principles show it at work: its forms and the mistakes readers really make with it? #2026_10_12_01_group_2
+- [ ] When React offers no rival way, are the options the habit without React and what React does instead? Is no option invented to make the list longer? #2026_10_12_01_group_2
+
+- [ ] PROPER EXAMPLE: Map 07. Theme: how does one card component show different content each time? Option 1, a prop (`<ContentCard name="Paul" />`, Q06 `#props`): fits when the card decides the content's shape, such as a price tag with a name and a price. Option 2, `children` (`<ContentCard><p>My name is Paul</p></ContentCard>`, this lesson): fits when the caller decides the content. Both together: a `title` prop with the body as children. #2026_10_12_01_group_2
+
+- [ ] COUNTER-EXAMPLE: A third option, "copy the card's markup for every story", added so the list has three. Nobody who knows components (Q02) writes it, and the lecture would spend a paragraph on a choice no reader faces. #2026_10_12_01_group_2
+
+Notes: The theme is not a principle. It frames the lesson; the principles answer the questions the chosen option raises. `node src/diagnose-map.mjs` does not check this section, so the Sense Test reads it (Section 13). #2026_10_12_01_group_2
+
 ## Selection | 06 | Proofs and Verified Behavior #2026_09_26_21_group_1 revised by #2026_09_27_11_group_1 and #2026_10_06_01_group_4
 
 - [ ] Can each Required Lesson Proof be produced inside the Authorized Scope? When it needs a later concept, such as a re-render in a static-data lesson, redesign the proof or reroute the idea.
@@ -240,6 +255,11 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 ## Authorized Scope
 {What the lesson teaches and what it builds on, in short plain sentences drawn from the card.}
 
+## Theme and Options
+- **Theme**: {the general question a developer meets on a real page, in plain words}
+- **Option**: {name}: `{shortest code}` | {Q{NN} #tag, or this lesson} | {when it fits} (one line per real option)
+- **This lesson teaches**: {the option name}
+
 ## Sources Read
 - `learn/{page}.md`: {blocks read}
 - `reference/{path}.md`: {sections read}
@@ -314,6 +334,7 @@ The scripts check form: fields, owners, terms, and links. A principle that makes
 - [ ] Read each principle's Reader Question, Reader Expects, React Does, and Real Mistake alone, with the docs closed. Would a beginner who has only the earlier lessons ask this question? Does React Does answer it, step by step, in the order things happen? #2026_10_06_09_group_1
 - [ ] When Real Mistake is filled, would a reader really write that code, out of a habit they really have? #2026_10_06_09_group_1
 - [ ] Taken in order, do the principles answer the interview question the way the Senior Answer does? #2026_10_06_09_group_1
+- [ ] Read `## Theme and Options` alone. Would a developer recognise the theme from a real page? Is every option one the reader knows or React offers, and is each shown with a situation where it fits? #2026_10_12_01_group_2
 - [ ] When a model's `Fix In` names a later principle, read the two as two questions a reader asks one after the other. Does the first end with a fix the reader can write, and does the second add a case the first did not show? #2026_10_10_01_group_1
 
 - [ ] PROPER EXAMPLE: Map 15, Principle 1, as written in Section 05. A beginner does ask how the 1 gets onto the screen. React Does answers it in three steps. Changing the page by hand is what plain JavaScript taught them. #2026_10_06_09_group_1

@@ -57,7 +57,7 @@ Digests: `skills/old-instructions/AUTHOR-BRIEF.md` and `skills/old-instructions/
     1. Document Title: `# Lecture {n}: {Short Title}` on line 1.
     2. Interview Question Callout: `> INTERVIEW QUESTION | ...` on line 2.
     3. The opening problem: 2 or 3 numbered lines, bare under the callout (`lecture-voice` Section 15). #2026_10_11_04_group_2
-    4. First Section: `### {plain sentence}` introducing the engineering challenge, the questions the lecture answers, and the recall list of earlier lessons the questions stand on (Section 12). #2026_10_10_01_group_5
+    4. First Section: `### {plain sentence}` opening with the theme, its options, and the one this chapter teaches, then the questions the lecture answers and the recall list of earlier lessons the questions stand on (Section 12). #2026_10_10_01_group_5 revised by #2026_10_12_01_group_1
     5. Runway: one to three `### {plain sentence}` sections that teach every new idea and code form the question cycles need, before the first question (Section 12). #2026_10_10_01_group_5
     6. Principled Theory: `### Principles of React: {Topic}`, followed directly by one question cycle per approved principle-map entry, in its order, each ending in its `> [!PRINCIPLE]` callout (Section 12C). #2026_09_26_19_group_1 revised by #2026_10_10_01_group_5 and #2026_10_11_04_group_3
     7. Practical Example Section:
@@ -124,13 +124,51 @@ Notes: Placed on line 2, preserves the server tier tag, and quotes the bank ques
 
 ## Section Skeleton | 11 | Standard Body Progression & Engine Mechanics #2026_09_20_04_group_4 revised by #2026_09_20_05_group_1, #2026_09_20_27_group_1, and #2026_09_25_03_group_1
 
-- [ ] Does the lecture body progress logically: (1) the engineering problem with its recall list, (2) the runway that teaches what the questions need, (3) the question cycles under `### Principles of React: {Topic}`, (4) 5-stage practical example assembly, and (5) the closing sections? #2026_09_25_03_group_1 revised by #2026_10_10_01_group_5
+- [ ] Does the lecture body progress logically: (1) the theme, its options, and the recall list, (2) the runway that teaches what the questions need, (3) the question cycles under `### Principles of React: {Topic}`, (4) 5-stage practical example assembly, and (5) the closing sections? #2026_09_25_03_group_1 revised by #2026_10_10_01_group_5 and #2026_10_12_01_group_1
 - [ ] Are underlying browser engine consequences explicitly deconstructed (for example, showing how replacing HTML with `innerHTML` wipes input focus and resets CSS transitions, whereas React reconciliation preserves node identity and focus)? #2026_09_20_27_group_1
 - [ ] Are friction cards placed at the end of the topic after walking through the broken attempt, engine behavior, and working code? #2026_09_21_03_group_1 revised by #2026_09_21_08_group_1 and #2026_09_21_09_group_1
 
-## Section Skeleton | 12 | The Recall List and the Runway Before the Questions #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1, #2026_09_25_03_group_1, #2026_10_10_01_group_5, #2026_10_11_01_group_3, #2026_10_11_04_group_1, and #2026_10_11_06_group_3
+## Section Skeleton | 12 | The Recall List and the Runway Before the Questions #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1, #2026_09_25_03_group_1, #2026_10_10_01_group_5, #2026_10_11_01_group_3, #2026_10_11_04_group_1, #2026_10_11_06_group_3, and #2026_10_12_01_group_1
 
 The first section and the runway are the lesson's introduction. They teach the ideas the questions stand on, by their proper names (`children`, props, declarative, imperative), starting from what the reader already knows. When the reader understands the introduction, every answer can go deeper instead of starting from zero. The introduction teaches; it does not advertise the lesson or talk about interviews. #2026_10_11_04_group_1
+
+The first section opens with the lesson's theme: the general question every developer meets, of which this lesson's topic is one answer. It shows the real ways to answer it and says which one this chapter teaches. The reader then meets the chapter's idea as a choice they understand, not as a feature dropped on them. The theme and its options come from the map's `## Theme and Options` (`map-principles` Section 05B). #2026_10_12_01_group_1
+
+- [ ] Does the first section open with the theme, in plain words, starting from a page or a piece of code the reader knows? #2026_10_12_01_group_1
+- [ ] Does it show each real option with its shortest code (the call and, where the difference sits inside the component, the inside too), say in one sentence who decides what in each, and then say which option this chapter teaches? A real option is one the reader knows from an earlier lesson or one React offers. A later lesson's option is named in one sentence with its lecture, never taught here. #2026_10_12_01_group_1
+- [ ] Is every option shown fairly, with the situation where it fits? The chapter's option is not better everywhere, and an earlier option is never shown only so it can fail. #2026_10_12_01_group_1
+- [ ] When React offers no rival way for the topic, are the options the reader's habit without React and what React does instead (`intro-examples.md`, Example 1: imperative and declarative)? No option is invented to fill the list. #2026_10_12_01_group_1
+- [ ] Do the questions then show the chosen option at work (its forms and the mistakes readers really make with it), and does the closing comparison table return to the options of the introduction (Section 25)? #2026_10_12_01_group_1
+
+- [ ] PROPER EXAMPLE: Lecture 7's first section, built from the owner's sketch (2026-10-12). The last paragraph keeps the owner's sentence: #2026_10_12_01_group_1
+
+> Every website shows the same kind of card many times. A shop shows each product in the same frame, and a blog shows each story in the same box. The design stays the same; only the content changes. So every React developer meets the same question: how does one card component show different content each time?
+>
+> React gives two answers. The first one you know from Lecture 6: the card takes a prop and places the value in its own markup.
+>
+> ```jsx
+> <ContentCard name="Paul" />
+> ```
+>
+> Inside `ContentCard`, the code is `<p>My name is {name}</p>`. The card decides what the content looks like, and the caller only gives the value.
+>
+> The second answer is to write the content between the card's tags:
+>
+> ```jsx
+> <ContentCard>
+>   <p>My name is Paul</p>
+> </ContentCard>
+> ```
+>
+> React takes everything between `<ContentCard>` and `</ContentCard>` and hands it to the card as a prop named `children`. Inside the card, the code is just `{children}`. Here the caller writes the content, and the card only gives the design around it.
+>
+> In this chapter, we write one React component that keeps the design the same and lets each story decide its own content. In React, this approach is enabled by a prop named `children`. We will see it with one child, with several, with none, and together with props, and at the end we will see when each answer fits.
+
+Notes: The reader knows the question before the answer, sees both options on the same card with the same name, and knows which one the chapter follows. The prop option is not a straw man: a card whose content always has the same shape (a price tag with a name and a price) is right to use props. #2026_10_12_01_group_1
+
+- [ ] COUNTER-EXAMPLE: Lecture 7's first section before (2026-10-11): it opened on the news site, gave the chapter's sentence, and went on "Before we get there, let's see why the props from Lecture 6 are not enough." Notes: The only other option appears so it can fail, and the reader never learns when props are the better answer. #2026_10_12_01_group_1
+
+- [ ] COUNTER-EXAMPLE: "There are three ways to show different content in a card: props, `children`, or copying the card's markup for every story." Notes: Nobody would copy the markup once they know components (Lecture 2). The third option was invented to make a list of three, and it teaches the reader nothing about the choice. #2026_10_12_01_group_1
 
 - [ ] Does the first section name the questions the lecture answers (two or three, in bold, in the reader's words) and end with the recall list from the blueprint: one bold-led bullet per earlier lesson the questions stand on, with its lecture number and two or three sentences in the lesson's story? #2026_10_10_01_group_5
 - [ ] Does the recall list name only lessons that come before this one? A later lesson is one sentence of preview in the text, never a recall bullet (`pre-lecture` Section 13C). #2026_10_11_01_group_3
@@ -143,17 +181,9 @@ The first section and the runway are the lesson's introduction. They teach the i
     3. **Say who does what.** Each sentence says plainly whether the browser, React, or our code acts.
     4. **Confirm with a second tiny example.** A second, different snippet shows the same idea working again, and one closing sentence states the idea as a rule.
     5. **Only the words the idea needs.** The text starts teaching in its first sentence and stops when the idea is clear.
-- [ ] PROPER EXAMPLE: Lecture 7's first section after the opening lines. The second sentence is the owner's: #2026_10_11_06_group_3
+- [ ] PROPER EXAMPLE: Lecture 7's first section, above (theme and options). Every code fence comes after a sentence that says what it shows. #2026_10_11_06_group_3 revised by #2026_10_12_01_group_1
 
-> On a news site, every story is shown with the same design: the same border, the same spacing, the same layout. Only the content changes. One story has a title and an author's name, another a title and a photo, another only a title.
->
-> In this chapter, we write one React component that keeps the design the same and lets each story decide its own content. In React, this approach is enabled by a prop named `children`.
->
-> Before we get there, let's see why the props from Lecture 6 are not enough.
-
-Notes: The reader knows where the chapter goes and why the next code matters before seeing it. The example that follows has a purpose. #2026_10_11_06_group_3
-
-- [ ] COUNTER-EXAMPLE: The same section before: "With what Lecture 6 taught, you would write the news card with one prop for each piece it shows:", then the code. Notes: A cold drop. The reader sees code without knowing what the chapter is about or what the code is for (`intro-examples.md`, "Failed: the Lecture 7 cold drop"). #2026_10_11_06_group_3
+- [ ] COUNTER-EXAMPLE: The first Lecture 7 section: "With what Lecture 6 taught, you would write the news card with one prop for each piece it shows:", then the code. Notes: A cold drop. The reader sees code without knowing what the chapter is about or what the code is for (`intro-examples.md`, "Failed: the Lecture 7 cold drop"). #2026_10_11_06_group_3
 
 - [ ] Do the introduction's sections read like the approved examples in `intro-examples.md` beside this file? The examples show moves: take the moves, never their topic, names, or code. #2026_10_11_04_group_1
 
@@ -468,10 +498,10 @@ Notes: The names describe the functional role of the element, ensuring the name 
 - [ ] Are standard genealogical terms used when describing component relationships across prose, figures, and UI panels (`parent`, `child`, `nested child`, `grandchild`, `ancestor`, `descendant`, and `terminal UI control`)?
 - [ ] Are informal or idiosyncratic terms like `leaf component` or `outer shell wrapper` avoided?
 
-## Closing Tables | 25 | Closing Table Placement & Contrast
+## Closing Tables | 25 | Closing Table Placement & Contrast #2026_10_12_01_group_1
 
 - [ ] Does the lecture end with the comparison table as the definitive final block of the Markdown file, placed directly under `### Summary`?
-- [ ] Is the table centered on a genuine technical contrast comparing the primary mechanism against its nearest alternative?
+- [ ] Does the table compare the options of the introduction (the map's `## Theme and Options`), with a row that says when each one fits, so the lesson ends on the question it opened with? Lecture 7's table compares a prop and `children` and ends on "use a prop when the card decides the content's shape, `children` when the caller does". #2026_10_12_01_group_1
 - [ ] In lectures where no direct alternative exists, is a structured "What to Remember" matrix used mapping core terms to operational invariants?
 - [ ] In the summary comparative decision blocks (under `**DO THIS:**` and `**DO NOT DO THIS:**`), are code blocks kept strictly comment-free, obeying workspace law that keeps summary decision cards stark and uncluttered? #2026_10_03_04_group_1
 
