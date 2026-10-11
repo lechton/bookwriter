@@ -198,11 +198,11 @@ Notes: The substantive argument sits left of `◼`, and the pedagogical contract
 >
 > ```jsx title="App.jsx"
 > export default function App() {
->   return <EditionForm onPublish={handlePublishLetter} />; // Passes submission handler downward to boundary
+>   return <OrderForm onSubmit={handlePlaceOrder} />; // Passes submission handler downward to boundary
 > }
 > ```
 >
-> ◼ **The what-this-introduces list:** 1. `EditionForm`: the child boundary receiving one prop. 2. `onPublish`: the connecting action prop carrying the submission pathway. 3. `return` with a single mounting tag: the lean parent shape.
+> ◼ **The what-this-introduces list:** 1. `OrderForm`: the child boundary receiving one prop. 2. `onSubmit`: the connecting action prop carrying the submission pathway. 3. `return` with a single mounting tag: the lean parent shape.
 
 Notes: Fully literal, stays within the line ceiling, carries a plain trailing comment with zero tildes, and audits every introduced identifier. #2026_10_04_10_group_1
 

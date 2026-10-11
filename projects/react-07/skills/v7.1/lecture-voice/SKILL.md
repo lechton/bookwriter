@@ -30,13 +30,13 @@ Notes: Speaks from inside the engine using invented abstractions; none of it app
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Disembodied textbook opening with premature abstractions and missing anchors:
 
-> In standard browser scripting, we manipulate interface nodes with imperative queries. To update a user's name on The National Times, a script must locate every matching HTML tag. The script checks that each node exists. Then, it manually overwrites the element text content. The browser document is treated as an external mutable database. It must be queried node by node whenever anything changes.
+> In standard browser scripting, we manipulate interface nodes with imperative queries. To update a user's name on a website, a script must locate every matching HTML tag. The script checks that each node exists. Then, it manually overwrites the element text content. The browser document is treated as an external mutable database. It must be queried node by node whenever anything changes.
 
 Notes: Cold and academic. Suffers from premature abstraction (taxonomic jargon before code), disembodied observer voice ("a script must locate/check" instead of developer at the keyboard), and missing tangible anchors (vague "matching HTML tag" rather than real markup). #2026_09_25_04_group_1
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Premature Rain of Details (Machine-Gun Syntax Dumping):
 
-> You assign Hellen Jones's breaking news title to a local variable: `const headline = 'Transit Strike Paralyzes Downtown'`. To display that title in the article header, you write `<h2>headline</h2>`. When the browser refreshes, the screen does not show the transit report, it renders the literal seven letters "headline". The variable exists in JavaScript memory, but static JSX treats the tag contents as plain character text.
+> You assign the recipe's title to a local variable: `const title = 'Lemon Pancakes'`. To display that title in the recipe header, you write `<h2>title</h2>`. When the browser refreshes, the screen does not show the recipe name, it renders the literal five letters "title". The variable exists in JavaScript memory, but static JSX treats the tag contents as plain character text.
 
 Notes: Disorienting and frantic. Throws a rain of micro-details at the reader in sentence one, dumping variable syntax, string literals, and markup debugging steps before establishing where the reader is or what high-level problem we are solving. A normal introduction provides a calm conceptual umbrella first. #2026_09_25_10_group_1
 
@@ -44,21 +44,21 @@ Notes: Disorienting and frantic. Throws a rain of micro-details at the reader in
 
 > In The National Times newsroom, articles and live dispatches arrive around the clock. When Hellen Jones files a breaking investigation into municipal transit, her headline, byline, and published timestamp exist as active variables in application memory. But for a reader arriving at the website, data residing in JavaScript memory remains invisible until it is projected into the visual structure of HTML elements. As the engineer authoring the article header component, your task is to weave those live JavaScript variables directly into the tags on screen without resorting to fragile string concatenation or manual DOM searching.
 
-Notes: Pretentious and overwrought. Wastes reader energy manufacturing atmospheric newsroom melodrama for an engineering reality that is universal to every website on earth. The National Times belongs in code identifiers and component files, never in decorative prose novelizations. #2026_09_25_10_group_1
+Notes: Pretentious and overwrought. Wastes reader energy manufacturing atmospheric newsroom melodrama for an engineering reality that is universal to every website on earth. A plain everyday setting is shown in the code itself, never in decorative prose. #2026_09_25_10_group_1
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Canned Retrospective Platitudes:
 
-> Think back to how you render data in traditional browser scripts. In plain JavaScript, you declare a variable holding an article headline:
+> Think back to how you render data in traditional browser scripts. In plain JavaScript, you declare a variable holding a recipe title:
 
 Notes: Formulaic and robotic. AI models default to recycling nostalgic icebreakers ("Think back to...", "Remember the days when...", "In traditional web development...") across sequential lectures. Authors must eliminate conversational warmup formulas. #2026_09_25_10_group_1
 
 - [ ] PROPER EXAMPLE: The 3-Sentence Universal Engineering Anchor and Paragraph 2 Keyboard Step:
 
-> Every web interface exists to display dynamic data (such as a user's name, an article headline, or the current time). In static HTML, all content is hardcoded as plain text, while in modern applications that data lives inside JavaScript variables. To connect the two, React introduces curly braces `{}`: an inline evaluation window that lets you project live JavaScript expressions directly into your markup.
+> Every web interface exists to display dynamic data (such as a user's name, a recipe title, or the current time). In static HTML, all content is hardcoded as plain text, while in modern applications that data lives inside JavaScript variables. To connect the two, React introduces curly braces `{}`: an inline evaluation window that lets you project live JavaScript expressions directly into your markup.
 > 
-> To see this in action on The National Times, you open your editor to build the article header component: `ArticleHeader.jsx`. You assign the journalist's title to a variable: `const headline = 'Transit Strike Paralyzes Downtown'`. If you attempt to display that title using standard markup like `<h2>headline</h2>`, the browser renders the literal word "headline" instead of the article title.
+> To see this in action on a recipe page, you open your editor to build the recipe header component: `RecipeHeader.jsx`. You assign the recipe's title to a variable: `const title = 'Lemon Pancakes'`. If you attempt to display that title using standard markup like `<h2>title</h2>`, the browser renders the literal word "title" instead of the recipe name.
 
-Notes: Perfect two-stage opening rhythm: (1) Sentence 1: Universal Web Reality (every website displays dynamic data from JavaScript variables). (2) Sentence 2: The Architectural Gap (static markup is hardcoded; manual synchronization is fragile). (3) Sentence 3: The React Mechanism (curly braces `{}` open an inline evaluation window). (4) Paragraph 2: Stepping to the keyboard. Only now do you introduce The National Times component (`ArticleHeader.jsx`), the variable (`headline`), and the physical friction on screen. Zero melodrama, zero canned platitudes, zero premature detail rain. #2026_09_25_10_group_1
+Notes: Perfect two-stage opening rhythm: (1) Sentence 1: Universal Web Reality (every website displays dynamic data from JavaScript variables). (2) Sentence 2: The Architectural Gap (static markup is hardcoded; manual synchronization is fragile). (3) Sentence 3: The React Mechanism (curly braces `{}` open an inline evaluation window). (4) Paragraph 2: Stepping to the keyboard. Only now do you introduce the recipe component (`RecipeHeader.jsx`), the variable (`title`), and the physical friction on screen. Zero melodrama, zero canned platitudes, zero premature detail rain. #2026_09_25_10_group_1
 
 - [ ] PROPER EXAMPLE: Written from the developer at the keyboard:
 
@@ -216,7 +216,7 @@ Notes: Connects words to words; nothing runs, moves, or touches a pixel.
 
 - [ ] PROPER EXAMPLE: Definition grounded in runtime behavior:
 
-> With server-side rendering, your component runs on the server. It returns HTML. The server sends that HTML to the browser, and the reader sees your article text before any JavaScript has loaded.
+> With server-side rendering, your component runs on the server. It returns HTML. The server sends that HTML to the browser, and the reader sees your page text before any JavaScript has loaded.
 
 - [ ] Is a new mechanism spelled out on the reader's own code: what moves, from where, to where, and what the reader can picture? A one-line summary in the engine's terms is correct but cryptic to someone meeting the idea for the first time. #2026_10_11_05_group_2
 
@@ -228,7 +228,7 @@ Notes: "Props object" and "under the key" describe the engine. The reader is not
 
 - [ ] PROPER EXAMPLE: The same mechanism spelled out:
 
-> Look at what sits between `<CardContainer>` and `</CardContainer>`: the whole line `<h2>Transit Accord</h2>`. React does not throw it away. It takes everything written between the opening tag and the closing tag and hands it to `CardContainer` as a prop. That prop is always called `children`; you do not choose the name. You can picture it like this: `<CardContainer>` the children are here `</CardContainer>`.
+> Look at what sits between `<CardContainer>` and `</CardContainer>`: the whole line `<h2>New Park Opens Today</h2>`. React does not throw it away. It takes everything written between the opening tag and the closing tag and hands it to `CardContainer` as a prop. That prop is always called `children`; you do not choose the name. You can picture it like this: `<CardContainer>` the children are here `</CardContainer>`.
 
 Notes: The reader sees which code moves, who moves it, where it arrives, and what it is called, and gets a picture to keep. The compiled `_jsx` call can follow as confirmation. #2026_10_11_05_group_2
 
@@ -367,14 +367,14 @@ Notes: Opens with `> [!TIP]`, leads with bold label, and frames how to discuss t
 > > **How does JSX compile nested children under the hood?**
 > >
 > > When nesting elements in JSX:
-> > `<ArticleBox>
-> >   <Headline title="Breaking" />
-> > </ArticleBox>`
+> > `<RecipeBox>
+> >   <Heading text="Lemon Pancakes" />
+> > </RecipeBox>`
 > >
 > > The JSX compiler converts the inner tag directly into a prop named `children`:
-> > `_jsx(ArticleBox, {
-> >   children: _jsx(Headline, {
-> >     title: "Breaking"
+> > `_jsx(RecipeBox, {
+> >   children: _jsx(Heading, {
+> >     text: "Lemon Pancakes"
 > >   })
 > > })`
 > >
@@ -576,7 +576,7 @@ Notes: One sentence holding two systems, two engines, and a verdict.
 > 
 > Notice what happened: the parent handed its private updater function `setRoomId` to the child under the prop `onSelect`. The component `ChannelSelector` does not own state, and it does not know what `roomId` is used for. It only holds a telephone line called `onSelect`.
 > 
-> When the reporter clicks a button, the native browser `onClick` fires and calls `onSelect(room)`. Because `onSelect` points directly to `setRoomId`, that call immediately executes `setRoomId('politics')` back in the parent component `ChatWorkspace`.
+> When the user clicks a button, the native browser `onClick` fires and calls `onSelect(room)`. Because `onSelect` points directly to `setRoomId`, that call immediately executes `setRoomId('politics')` back in the parent component `ChatWorkspace`.
 > 
 > This is standard **inverse data flow**: data flows down through props (`activeRoom`), and user actions flow up through callbacks (`onSelect`).
 
@@ -584,7 +584,7 @@ Notes: Asks reader's question, traces back to parent JSX binding, clarifies stat
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Dismissive hand-waving with an untraced prop:
 
-> Look at the button click handler on line 6: `onClick={() => onSelect(room)}`. When a reporter clicks a channel button, this handler does not connect to websockets, fetch messages, or touch DOM nodes. It simply invokes onSelect with the chosen room name. The parent updates roomId, and React handles the rest.
+> Look at the button click handler on line 6: `onClick={() => onSelect(room)}`. When a user clicks a channel button, this handler does not connect to websockets, fetch messages, or touch DOM nodes. It simply invokes onSelect with the chosen room name. The parent updates roomId, and React handles the rest.
 
 Notes: Uses "simply invokes", leaves `onSelect` untraced, and describes parent updates as telepathy.
 
@@ -626,12 +626,12 @@ Notes: Opens with provocation question, describes disaster, states code invarian
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Cryptic shorthand:
 
-> We write `import { ArticleList } from './ArticleComponents.jsx'`. Here we use curly braces because `ArticleList` is a named export from a shared module.
+> We write `import { ProductList } from './ProductComponents.jsx'`. Here we use curly braces because `ProductList` is a named export from a shared module.
 
-Notes: Leaves an unexplained mismatch between a plural file name and a singular import, never mentions `ArticleCard`, and treats curly braces as an arbitrary rule.
+Notes: Leaves an unexplained mismatch between a plural file name and a singular import, never mentions `ProductCard`, and treats curly braces as an arbitrary rule.
 
 - [ ] PROPER EXAMPLE: Explaining the full architectural relationship:
 
-> In `App.jsx`, we write `import { ArticleList } from './ArticleComponents.jsx'`. The file name is `ArticleComponents.jsx` in the plural because it encodes two components, not one (`ArticleList` and `ArticleCard`). Because multiple components share this file, they cannot use a single default export and must be declared as named exports, which is why this import requires curly braces: `{ ArticleList }`. The parent imports only `ArticleList` as the feed container; `ArticleCard` is composed internally inside that file and does not need to be imported here.
+> In `App.jsx`, we write `import { ProductList } from './ProductComponents.jsx'`. The file name is `ProductComponents.jsx` in the plural because it encodes two components, not one (`ProductList` and `ProductCard`). Because multiple components share this file, they cannot use a single default export and must be declared as named exports, which is why this import requires curly braces: `{ ProductList }`. The parent imports only `ProductList` as the list container; `ProductCard` is composed internally inside that file and does not need to be imported here.
 
 Notes: States count and names upfront, explains why curly braces exist for shared files, and clarifies parent import boundaries.

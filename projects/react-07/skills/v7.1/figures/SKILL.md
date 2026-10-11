@@ -79,7 +79,7 @@ Notes: A plain bulleted list wrapped in a border; contains no graphical substrat
 
 ## Graphic Design Standards | 08 | Authentic UI Elements
 
-- [ ] When rendering UI mockups inside figures, are authentic, believable interface elements displayed (newsroom headlines, subscriber pills, search inputs, publish buttons)?
+- [ ] When rendering UI mockups inside figures, are authentic, believable interface elements displayed (product names with prices, to-do items with checkboxes, search inputs, save buttons)?
 - [ ] Are abstract meta-descriptors (such as boxes labeled "UI Component Goes Here") avoided in favor of realistic copy?
 
 ## Palette & Surface System | 09 | Semantic Color Coding

@@ -384,16 +384,16 @@ Notes: Inviting, concise, and uncluttered; component names belong in the File Ex
 
 - [ ] PROPER EXAMPLE: Professional, cohesive 3-step component assembly:
 
-> ### Step 1: First, we construct the news banner container <BreakingNewsBanner.jsx>
-> ### Step 2: Next, we build the interactive alert input <LiveFeedSubscriber.jsx>
-> ### Step 3: Finally, we compose the live newsroom feed <NewsroomFeed.jsx>
+> ### Step 1: First, we construct the weather card container <WeatherCard.jsx>
+> ### Step 2: Next, we build the interactive city search <CitySearch.jsx>
+> ### Step 3: Finally, we compose the weekly forecast page <ForecastPage.jsx>
 
 Notes: 3 steps; each file represents an authentic component with a load-bearing architectural role; zero trivial helper files.
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Artificial 4-file shredding and trivial helper components:
 
-> ### Step 1: First, we construct the outer container <NewsAlert.jsx>
-> ### Step 2: Next, we build the headline text <AlertHeadline.jsx>
+> ### Step 1: First, we construct the outer container <WeatherAlert.jsx>
+> ### Step 2: Next, we build the title text <AlertTitle.jsx>
 > ### Step 3: Then, we declare the input control <AlertControls.jsx>
 > ### Step 4: Finally, we mount the feature inside <App.jsx>
 
@@ -436,30 +436,30 @@ Notes: Forces 4 files by extracting a 2-line `<h2>` and a single `<input>` into 
 
 - [ ] PROPER EXAMPLE: Components named with everyday words:
 
-> `SearchBar`, `ArticleTitle`, `SearchSummary`, `CommentSection`, `FeedbackPortal`
+> `SearchBar`, `RecipeTitle`, `SearchSummary`, `CommentSection`, `FeedbackPortal`
 
 Notes: Each name conveys an immediate mental image, allowing the reader to understand the component's role before inspecting its code.
 
 ## Component Naming | 22 | Avoid Noun Pileups and Visual Shape Slang
 
 - [ ] Does the naming avoid combining three or more nouns into a single component name?
-- [ ] Are components named after what they represent in the application rather than visual shapes or internal jargon (`Badge`, `Ticker`, `Prompter`, `WireCategory`)?
+- [ ] Are components named after what they represent in the application rather than visual shapes or internal jargon (`Badge`, `Ticker`, `Prompter`, `ShelfCategory`)?
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Piling up nouns and visual shape slang:
 
-> `SearchResultsBadge`, `WireStatsBadge`, `ArticlePrompter`, `FeedbackSwitcher`
+> `SearchResultsBadge`, `ForecastStatsBadge`, `RecipePrompter`, `FeedbackSwitcher`
 
 Notes: Piles up nouns and relies on visual shape jargon rather than meaningful application roles.
 
 ## Component Naming | 23 | Name by Role, Not HTML Tags
 
 - [ ] Are components named after their functional role in the user interface rather than raw HTML tags or table coordinates (avoiding `...Row`, `...Cell`, `...Div`, `...Span`):
-    * `...Item` for individual list entries (such as `ArticleItem` or `CartItem`).
+    * `...Item` for individual list entries (such as `TodoItem` or `CartItem`).
     * `...Header` for section dividers (such as `CategoryHeader`).
 
 - [ ] PROPER EXAMPLE: Naming by role instead of HTML tags:
 
-> `ArticleItem` instead of `ArticleRow`, `CartItem` instead of `CartItemRow`, `CategoryHeader` instead of `CategoryRow`
+> `TodoItem` instead of `TodoRow`, `CartItem` instead of `CartItemRow`, `CategoryHeader` instead of `CategoryRow`
 
 Notes: The names describe the functional role of the element, ensuring the name remains accurate even if markup is refactored from table rows to list elements.
 
@@ -528,7 +528,7 @@ Notes: The single long code span wraps mid-expression across narrow column bound
 
 > ```markdown
 > | **Purity Guarantee** | Strictly pure function: `y = f(x)` with identical inputs producing identical JSX |
-> | **Component Hierarchy** | Top-down tree flow: NewsLayout → ArticleGrid → StoryCard |
+> | **Component Hierarchy** | Top-down tree flow: ShopLayout → ProductGrid → ProductCard |
 > ```
 
 Notes: Uses standard code spans and unicode arrows that render natively without raw dollar signs or LaTeX commands.
@@ -537,7 +537,7 @@ Notes: Uses standard code spans and unicode arrows that render natively without 
 
 > ```markdown
 > | **Purity Guarantee** | Strictly pure function: $y = f(x)$ with identical inputs producing identical JSX |
-> | **Component Hierarchy** | Top-down tree flow: NewsLayout $\rightarrow$ ArticleGrid $\rightarrow$ StoryCard |
+> | **Component Hierarchy** | Top-down tree flow: ShopLayout $\rightarrow$ ProductGrid $\rightarrow$ ProductCard |
 > ```
 
 Notes: Emits raw unrendered dollar signs (`$y = f(x)$`) and broken LaTeX backslash commands (`\rightarrow`) into the output document.

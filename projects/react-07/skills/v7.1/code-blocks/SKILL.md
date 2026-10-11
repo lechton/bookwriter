@@ -67,7 +67,7 @@ Notes: Uses a cluttered, unregistered filename that does not exist in the projec
 
 > ```jsx
 > <button
->   formAction={() => saveArticle(article)}
+>   formAction={() => saveNote(note)}
 >   disabled={pending}
 > >
 >   Save
@@ -79,7 +79,7 @@ Notes: Each attribute occupies its own line, keeping the snippet comfortably bel
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Unbroken single-line attribute lists:
 
 > ```jsx
-> <button formAction={() => saveArticle(article)} disabled={pending} style={{ marginTop: 12, padding: '6px 14px' }}>Save</button>
+> <button formAction={() => saveNote(note)} disabled={pending} style={{ marginTop: 12, padding: '6px 14px' }}>Save</button>
 > ```
 
 Notes: Far exceeds 80 characters, forcing accidental mid-attribute line wraps that break visual editor alignment in PDF layout.
@@ -118,9 +118,9 @@ Notes: Complete, focused, 7 lines total, easily scanned and deconstructed in a s
 >   const badgeColor = tier === 'premium' ? 'gold' : 'blue';
 >   return (
 >     <header className="site-header">
->       <h1>The National Times</h1>
+>       <h1>Corner Shop</h1>
 >       <ReaderGreeting readerName={readerName} />
->       <SubscriberBadge tier={tier} color={badgeColor} />
+>       <MemberBadge tier={tier} color={badgeColor} />
 >       <button onClick={() => setOpen(!open)}>Menu</button>
 >       {open && <NavMenu onLogout={onLogout} />}
 >     </header>
@@ -153,7 +153,7 @@ Notes: 14 lines long, combines 3 distinct UI concerns, exceeds the 10-line budge
 > *(prose deconstructing parent state and prop passing)*
 > 
 > ```jsx title="FeedbackPortal.jsx" startLine="6" continues="top"
->       <ArticleCorrectionForm />
+>       <FeedbackForm />
 >     </div>
 >   );
 > }
@@ -185,9 +185,9 @@ Notes: The first block opens with `continues="bottom"`, and the closing block pi
 
 > ```js title="Transpiled Expression Output"
 > const output = _jsxs("article", { // Packages container with child descriptors
->   className: "dispatch-card",
+>   className: "recipe-card",
 >   children: [
->     _jsx("h2", { children: headline }), // Passes live variable to headline text node
+>     _jsx("h2", { children: title }), // Passes live variable to title text node
 >     _jsx("img", { src: avatarUrl }), // Passes dynamic image path to src prop
 >     _jsxs("p", { children: [readTime, " min"] })
 >   ]
@@ -203,9 +203,9 @@ Notes:
 
 > ```js title="Transpiled Expression Output"
 > ~const output = _jsxs("article", {~ // Packages container with child descriptors
->   className: "dispatch-card",
+>   className: "recipe-card",
 >   children: [
->     ~_jsx("h2", { children: headline }),~ // Passes variable to text node
+>     ~_jsx("h2", { children: title }),~ // Passes variable to text node
 >     ~_jsx("img", { src: avatarUrl }),~ // Passes live string to image source
 >     ~_jsxs("p", { children: [readTime, " min"] })~ // Concatenates child array
 >   ]
@@ -274,7 +274,7 @@ Notes: Eight words each, and nothing the code did not already say; the value of 
 - [ ] PROPER EXAMPLE: Explaining concrete runtime mechanics and avoided performance penalties #2026_10_03_06_group_1:
 
 > ```jsx
-> const articles = [ // Declared outside App to avoid recreating array on each render
+> const products = [ // Declared outside App to avoid recreating array on each render
 > ```
 
 Notes: Concrete, explains the architectural reason for placing data outside the component (avoiding array reallocation on every render cycle).
@@ -282,7 +282,7 @@ Notes: Concrete, explains the architectural reason for placing data outside the 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Abstract academic labels without operational cause or consequence #2026_10_03_06_group_1:
 
 > ```jsx
-> const articles = [ // Static collection outside render
+> const products = [ // Static collection outside render
 > ```
 
 Notes: Uses clinical textbook jargon ("collection", "static") that merely names what the object is in the abstract without explaining why it sits outside the component or what runtime penalty it avoids.
@@ -324,8 +324,8 @@ Notes: Comments explain the physical role in natural English with single bold ke
 - [ ] PROPER EXAMPLE (THE CONTRAST EXCEPTION): Contrasting anti-patterns against valid patterns:
 
 > ```jsx
-> const title = props.headline; // **WRONG:** bypasses declared component contracts
-> const { headline } = props;  // **RIGHT:** unpacks declared prop explicitly
+> const title = props.title; // **WRONG:** bypasses declared component contracts
+> const { title } = props;   // **RIGHT:** unpacks declared prop explicitly
 > ```
 
 Notes: The `**WRONG:**` and `**RIGHT:**` tags are permitted here because the block explicitly contrasts an anti-pattern against the correct pattern.
@@ -386,14 +386,14 @@ Notes: Missing the external directive header, and duplicates instructions as int
 > > **How does JSX compile nested children under the hood?**
 > >
 > > When nesting elements in JSX:
-> > `<ArticleBox>
-> >   <Headline title="Breaking" />
-> > </ArticleBox>`
+> > `<RecipeBox>
+> >   <Heading text="Lemon Pancakes" />
+> > </RecipeBox>`
 > >
 > > The JSX compiler converts the inner tag directly into a prop named `children`:
-> > `_jsx(ArticleBox, {
-> >   children: _jsx(Headline, {
-> >     title: "Breaking"
+> > `_jsx(RecipeBox, {
+> >   children: _jsx(Heading, {
+> >     text: "Lemon Pancakes"
 > >   })
 > > })`
 > >

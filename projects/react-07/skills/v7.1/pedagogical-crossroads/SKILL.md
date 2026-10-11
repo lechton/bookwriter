@@ -21,8 +21,8 @@ Every codebase is full of technical forks: patterns where React or JavaScript of
 ## Code Staging | 02 | Visual-First Option Declaration & Consistent Vocabulary #2026_09_21_12_group_1 revised by #2026_09_21_14_group_1 and #2026_09_22_11_group_1
 
 - [ ] Are options declared upfront in an unordered bullet list with teal arrow markers (`- **Option 1...` and `- **Option 2...`), previewing the concrete syntax tokens before showing code blocks? #2026_09_22_11_group_1
-    * - **Option 1 (The Foundational / Rigid Way)**: Names the pattern and previews the syntax tokens (e.g. receiving the full `props` object and accessing properties via dot notation `props.headline`).
-    * - **Option 2 (The Modern Idiomatic / Composable Way)**: Names the pattern and previews the syntax tokens (e.g. unpacking variables directly in the parameter list using object destructuring `{ headline }`).
+    * - **Option 1 (The Foundational / Rigid Way)**: Names the pattern and previews the syntax tokens (e.g. receiving the full `props` object and accessing properties via dot notation `props.title`).
+    * - **Option 2 (The Modern Idiomatic / Composable Way)**: Names the pattern and previews the syntax tokens (e.g. unpacking variables directly in the parameter list using object destructuring `{ title }`).
 - [ ] Is consistent vocabulary maintained across the entire crossroad, avoiding shifting metaphors:
     * In the introductory list: use **Option 1 (The Foundational Way)** and **Option 2 (The Modern Idiomatic Way)**.
     * In code block titles: use `Option 1: The Foundational Way (<syntax>)` and `Option 2: The Modern Idiomatic Way (<syntax>)`.
@@ -42,17 +42,17 @@ Every codebase is full of technical forks: patterns where React or JavaScript of
 > To read that data, you have two clear options:
 >
 > ```jsx title="Baseline Option: The Explicit Props Object"
-> export default function ArticleHeader(props) {
->   return <h2 className="headline-text">{props.headline}</h2>;
+> export default function RecipeHeader(props) {
+>   return <h2 className="title-text">{props.title}</h2>;
 > }
 > ```
 >
-> In this baseline pattern, the function receives the complete props object. To read the title, you must write props.headline. This works, but typing props. across larger components creates unnecessary clutter.
+> In this baseline pattern, the function receives the complete props object. To read the title, you must write props.title. This works, but typing props. across larger components creates unnecessary clutter.
 > In modern React, we choose the unpacked pattern using JavaScript parameter destructuring:
 >
 > ```jsx title="Modern Unpacked Option"
-> export default function ArticleHeader({ headline }) {
->   return <h2 className="headline-text">{headline}</h2>;
+> export default function RecipeHeader({ title }) {
+>   return <h2 className="title-text">{title}</h2>;
 > }
 > ```
 
@@ -68,22 +68,22 @@ Notes: Announces options vaguely without an upfront roadmap, and continually shi
 > First, examine Option 1 with rigid configuration props:
 >
 > ```jsx title="Option 1: The Rigid Way (Individual Props)"
-> export default function ArticleBox({ headline, body, tier }) {
+> export default function InfoBox({ title, body, tier }) {
 >   return (
 >     <div className={`box ${tier || 'standard'}`}>
->       <h2>{headline}</h2> // Rigid headline **PROP**
+>       <h2>{title}</h2> // Rigid title **PROP**
 >       <p>{body}</p>       // Cannot accept quotes or **EMBEDS**
 >     </div>
 >   );
 > }
 > ```
 >
-> In Option 1, `ArticleBox` cannot render an image, an audio player, or a styled pull quote without modifying the component file. Every new editorial layout requires editing `ArticleBox` and adding more props.
+> In Option 1, `InfoBox` cannot render an image, an audio player, or a styled pull quote without modifying the component file. Every new layout requires editing `InfoBox` and adding more props.
 >
 > Next, examine Option 2 with composable children and attribute forwarding:
 >
 > ```jsx title="Option 2: The Composable Way (children + ...rest)"
-> export default function ArticleBox({ children, tier = 'standard', ...rest }) {
+> export default function InfoBox({ children, tier = 'standard', ...rest }) {
 >   return (
 >     <div className={`box ${tier}`} {...rest}>
 >       {children} // Flexible **CHILDREN** slot projects arbitrary elements
@@ -92,7 +92,7 @@ Notes: Announces options vaguely without an upfront roadmap, and continually shi
 > }
 > ```
 >
-> In Option 2, `ArticleBox` acts as an open, composable shell. It renders whatever markup or nested components you place inside it without needing new props.
+> In Option 2, `InfoBox` acts as an open, composable shell. It renders whatever markup or nested components you place inside it without needing new props.
 
 ## Archetype Inspirations | 03 | Canonical Pedagogical Crossroads #2026_09_21_12_group_1
 
@@ -103,33 +103,33 @@ When child components receive data, junior developers frequently wonder where `{
 
 > **Option A: Explicit `props` Object (The Engine Reality)**
 > ```jsx
-> export default function ArticleHeader(props) {
->   return <h2 className="headline-text">{props.headline}</h2>;
+> export default function RecipeHeader(props) {
+>   return <h2 className="title-text">{props.title}</h2>;
 > }
 > ```
 > *Engine Reality*: React calls your component function with a single object containing every attribute declared on the JSX tag.
 >
 > **Option B: Parameter Destructuring (Modern Idiomatic Standard)**
 > ```jsx
-> export default function ArticleHeader({ headline }) {
->   return <h2 className="headline-text">{headline}</h2>;
+> export default function RecipeHeader({ title }) {
+>   return <h2 className="title-text">{title}</h2>;
 > }
 > ```
-> *Engine Reality*: JavaScript curly braces in the parameter list unpack `headline` immediately at the function boundary, avoiding repeated `props.` dot notation.
+> *Engine Reality*: JavaScript curly braces in the parameter list unpack `title` immediately at the function boundary, avoiding repeated `props.` dot notation.
 
 ### Crossroad 2: Passing Prop Values — Static String Literals vs Dynamic Expression Windows
 Beginners frequently confuse quotes `""` with curly braces `{}` when passing props downward.
 
 > **Option A: Static String Literal**
 > ```jsx
-> <ArticleHeader headline="Global Climate Summit Reaches Accord" />
+> <RecipeHeader title="Lemon Pancakes" />
 > ```
 > *Engine Reality*: Quotes pass a literal string primitive directly into the props object.
 >
 > **Option B: Dynamic Expression Window**
 > ```jsx
-> const currentHeadline = "Global Climate Summit Reaches Accord";
-> <ArticleHeader headline={currentHeadline} />
+> const currentTitle = "Lemon Pancakes";
+> <RecipeHeader title={currentTitle} />
 > ```
 > *Engine Reality*: Curly braces create an evaluation window that evaluates the identifier or expression in JavaScript memory before passing the result.
 
@@ -138,10 +138,10 @@ Developers often wonder why React codebases wrap multi-line JSX returns in paren
 
 > **Option A: Naked Return (The Silent ASI Blank)**
 > ```jsx
-> export default function ArticleHeader({ headline }) {
+> export default function RecipeHeader({ title }) {
 >   return 
->     <header className="article-header">
->       <h2>{headline}</h2>
+>     <header className="recipe-header">
+>       <h2>{title}</h2>
 >     </header>;
 > }
 > ```
@@ -149,10 +149,10 @@ Developers often wonder why React codebases wrap multi-line JSX returns in paren
 >
 > **Option B: Parenthesized Return (Guaranteed Block Protection)**
 > ```jsx
-> export default function ArticleHeader({ headline }) {
+> export default function RecipeHeader({ title }) {
 >   return (
->     <header className="article-header">
->       <h2>{headline}</h2>
+>     <header className="recipe-header">
+>       <h2>{title}</h2>
 >     </header>
 >   );
 > }
@@ -164,10 +164,10 @@ Explaining component separation in abstract terms ("clean code", "maintainabilit
 
 > **Option A: The Monolithic Parent (Coupled Template)**
 > ```jsx
-> export default function ArticleCard() {
+> export default function RecipeCard() {
 >   return (
 >     <article className="card">
->       <header><span className="pill">News</span><h2>Accord Signed</h2></header>
+>       <header><span className="pill">Breakfast</span><h2>Lemon Pancakes</h2></header>
 >       <p>By Elena Rostova</p>
 >     </article>
 >   );
@@ -176,11 +176,11 @@ Explaining component separation in abstract terms ("clean code", "maintainabilit
 >
 > **Option B: Decomposed Orchestrator (Single Responsibility Components)**
 > ```jsx
-> export default function ArticleCard() {
+> export default function RecipeCard() {
 >   return (
 >     <article className="card">
->       <ArticleHeader headline="Accord Signed" />
->       <ArticleAuthor author="Elena Rostova" />
+>       <RecipeHeader title="Lemon Pancakes" />
+>       <RecipeAuthor author="Elena Rostova" />
 >     </article>
 >   );
 > }

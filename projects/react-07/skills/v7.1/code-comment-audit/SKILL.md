@@ -22,12 +22,12 @@ This skill governs post-edit scanning and calibration of code comments across le
 - [ ] PROPER EXAMPLE: Auditing an introductory theory block for targeted comments:
 
 > ```jsx title="Parent Callback Delegation"
-> export default function ArticleCard({ article, ~onSelect~ }) { // Callback prop passed down from parent
+> export default function ProductCard({ product, ~onSelect~ }) { // Callback prop passed down from parent
 >   return (
->     <article className="article-card">
->       <h3>{article.title}</h3>
->       <button type="button" onClick=~{() => onSelect(article.id)}~> // Inline arrow function delays execution until user clicks
->         Read Story
+>     <article className="product-card">
+>       <h3>{product.title}</h3>
+>       <button type="button" onClick=~{() => onSelect(product.id)}~> // Inline arrow function delays execution until user clicks
+>         View Item
 >       </button>
 >     </article>
 >   );
@@ -82,12 +82,12 @@ Notes: Violates the workspace rule prohibiting code comments inside comparative 
 
 | Construct | Correct Code with Target Token | Why only that token is wrapped | What NOT to do (The Underline Everything Trap) |
 | :--- | :--- | :--- | :--- |
-| **Child Component Tag** | `<article>~<EditorialByline />~</article>` | Anchors pointer tail to the nested component. | `~<article><EditorialByline /></article>~` |
+| **Child Component Tag** | `<article>~<ProductPrice />~</article>` | Anchors pointer tail to the nested component. | `~<article><ProductPrice /></article>~` |
 | **Prop / Event Binding** | `<button onClick=~{handleSave}~>` | Anchors pointer tail to the callback handler. | `~<button onClick={handleSave}>~` |
-| **Prop Destructuring** | `function Card({ ~edition~ }) {` | Anchors pointer tail to the input property. | `~function Card({ edition }) {~` |
+| **Prop Destructuring** | `function Card({ ~price~ }) {` | Anchors pointer tail to the input property. | `~function Card({ price }) {~` |
 | **Default Prop / Fallback** | `onSelect = ~() => {}~` | Anchors pointer tail to the default fallback value. | Leaving line untargeted, dropping bubble into the left margin. |
 | **Ternary Condition** | `const cls = ~isLong~ ? 'deep' : 'quick';` | Anchors pointer tail to the controlling flag. | `~const cls = isLong ? 'deep' : 'quick';~` |
-| **Console Payload** | `console.log(~'Article loaded'~);` | Anchors pointer tail to the logged argument. | `~console.log('Article loaded');~` |
+| **Console Payload** | `console.log(~'Product loaded'~);` | Anchors pointer tail to the logged argument. | `~console.log('Product loaded');~` |
 | **Data Collection Item** | `~{ id: 'tech', title: 'Tech' }~` | Anchors speech bubble across the entire data record summarizing the collection. | Isolating an arbitrary inner string like `~'tech'~` when the comment summarizes the object. |
 | **General Statement** | `function App() { // Root coordinator` | **No tildes!** Pointer rests at line indentation. | `~function App() {~ // Root coordinator` |
 | **Return Shell** | `return <main className="feed">; // Shell` | **No tildes!** Comment explains layout structure. | `~return <main className="feed">;~` |
@@ -95,34 +95,34 @@ Notes: Violates the workspace rule prohibiting code comments inside comparative 
 - [ ] PROPER EXAMPLE: Proper pointer positioning and placement across imports, data, and logs:
 
 > ```jsx title="App.jsx" startLine="1" continues="bottom"
-> import ~ArticleCard~ from './components/ArticleCard.jsx'; // Imports child card
+> import ~ProductCard~ from './components/ProductCard.jsx'; // Imports child card
 > 
-> const articles = [
->   { id: 'art-1', title: 'City Transit Expands' },
->   ~{ id: 'art-2', title: 'Clean Energy Accord' }~ // Static article collection
+> const products = [
+>   { id: 'p-1', title: 'Green Apples' },
+>   ~{ id: 'p-2', title: 'Brown Bread' }~ // Static product collection
 > ];
 > 
 > export default function App() {
 >   function handleSelect(id) {
->     console.log(~'Selected article:', id~); // Logs selected article identifier
+>     console.log(~'Selected product:', id~); // Logs selected product identifier
 >   }
 > ```
 
-Notes: The import comment points directly at `ArticleCard`; the data comment sits at the end of the last value summarizing the collection; the log comment attaches to the actual `console.log` line and wraps only `'Selected article:', id`.
+Notes: The import comment points directly at `ProductCard`; the data comment sits at the end of the last value summarizing the collection; the log comment attaches to the actual `console.log` line and wraps only `'Selected product:', id`.
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Misplaced comments and untargeted lines:
 
 > ```jsx title="App.jsx" startLine="1" continues="bottom"
-> import ArticleCard from './components/ArticleCard.jsx'; // Imports child card
+> import ProductCard from './components/ProductCard.jsx'; // Imports child card
 > 
-> const articles = [ // Static article collection
->   { id: 'art-1', title: 'City Transit Expands' },
->   { id: 'art-2', title: 'Clean Energy Accord' }
+> const products = [ // Static product collection
+>   { id: 'p-1', title: 'Green Apples' },
+>   { id: 'p-2', title: 'Brown Bread' }
 > ];
 > 
 > export default function App() {
->   function handleSelect(id) { // Logs selected article identifier
->     console.log('Selected article:', id);
+>   function handleSelect(id) { // Logs selected product identifier
+>     console.log('Selected product:', id);
 >   }
 > ```
 
@@ -139,14 +139,14 @@ Notes: Lacks target tokens (`~target~`), leaving pointer tails misaligned at the
 
 | # | Pedagogical Case | Target Token & Code Line | Explanatory Speech Bubble Comment |
 | :--- | :--- | :--- | :--- |
-| 1 | **Anti-Pattern / Trap** | `~articleCount~ = articleCount + 1;` | `// **WRONG:** mutates outside variable during render` |
-| 2 | **Safe Mutation Fix** | `const list = ~[...stories, { id: 'ad' }]~;` | `// Fresh local array copy avoids mutating props` |
-| 3 | **Console Log Target** | `console.log(~'render Article:', itemNumber~);` | `// StrictMode invokes this twice during development` |
+| 1 | **Anti-Pattern / Trap** | `~itemCount~ = itemCount + 1;` | `// **WRONG:** mutates outside variable during render` |
+| 2 | **Safe Mutation Fix** | `const list = ~[...items, { id: 'extra' }]~;` | `// Fresh local array copy avoids mutating props` |
+| 3 | **Console Log Target** | `console.log(~'render Product:', itemNumber~);` | `// StrictMode invokes this twice during development` |
 | 4 | **Event Handler Reference** | `<button type="button" onClick=~{handleSave}~>` | `// Uncalled function reference runs only on click` |
-| 5 | **Delayed Callback with Arg** | `onClick=~{() => onSelect(story.id)}~` | `// Inline arrow delays execution until user clicks` |
+| 5 | **Delayed Callback with Arg** | `onClick=~{() => onSelect(item.id)}~` | `// Inline arrow delays execution until user clicks` |
 | 6 | **Event Propagation Halt** | `e.~stopPropagation~();` | `// Halts event bubbling to protect parent card` |
 | 7 | **Browser Default Cancellation** | `e.~preventDefault~();` | `// Cancels native browser full-page reload on submit` |
-| 8 | **Multiline Data Collection** | `const ~articles~ = [` | `// Declared outside App to avoid recreating array on each render` |
+| 8 | **Multiline Data Collection** | `const ~products~ = [` | `// Declared outside App to avoid recreating array on each render` |
 | 9 | **Declarative Dynamic Class** | `const ~cls~ = isLong ? 'badge-depth' : 'badge-quick';` | `// Pure ternary calculation resolves class in JSX` |
 | 10 | **Import Boundary Definition** | `import ~StatusBadge~ from './StatusBadge.jsx';` | `// Imports child badge presentation boundary` |
 
@@ -158,13 +158,13 @@ Notes: Explains clearly why parentheses are omitted and what React will do when 
 
 - [ ] PROPER EXAMPLE: Explaining concrete runtime mechanics and avoided re-allocation #2026_10_03_06_group_1:
 
-> `const ~articles~ = [ // Declared outside App to avoid recreating array on each render`
+> `const ~products~ = [ // Declared outside App to avoid recreating array on each render`
 
 Notes: Explains the concrete mechanical reason for placing data outside the component (preventing fresh array allocation on every render cycle).
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Abstract academic labels without operational cause or consequence #2026_10_03_06_group_1:
 
-> `const ~articles~ = [ // Static collection outside render`
+> `const ~products~ = [ // Static collection outside render`
 
 Notes: Uses clinical textbook jargon ("collection", "static") that merely names what the object is in the abstract without explaining why it sits outside the component or what runtime penalty it avoids.
 
@@ -191,9 +191,9 @@ Notes: Telegram shorthand merely repeats an event or role in 1 word, giving the 
 - [ ] PROPER EXAMPLE: Indented speech bubble aligning with nested JSX:
 
 > ```jsx
->       <ArticleCard
->         key={story.id}
->         article={story}
+>       <ProductCard
+>         key={item.id}
+>         product={item}
 >         onSelect=~{handleSelect}~ // Passes handler reference downward without calling it
 >       />
 > ```
@@ -204,9 +204,9 @@ Notes: The comment on `onSelect` attaches directly to its attribute line and inh
 
 > ```jsx
 >       // Passes handler reference downward without calling it
->       <ArticleCard
->         key={story.id}
->         article={story}
+>       <ProductCard
+>         key={item.id}
+>         product={item}
 >         onSelect={handleSelect}
 >       />
 > ```
@@ -215,7 +215,7 @@ Notes: Placing the comment as a standalone full line above the component detache
 
 ## Pointer Targeting & Offset Calibration | 05 | Pixel-Accurate Pointer Tails
 
-- [ ] Does EVERY comment wrap its specific newsworthy target token in tildes (`~target~`)? #2026_10_03_03_group_1
+- [ ] Does EVERY comment wrap the specific token it explains in tildes (`~target~`)? #2026_10_03_03_group_1
 - [ ] Does the balloon comment's upward pointer tail point directly at the exact word or phrase being commented on, rather than defaulting to the left edge of the code container? #2026_10_03_02_group_1
 - [ ] Is the targeted word or phrase wrapped in tildes (`~target~`) or bold markers (`**target**`) before the trailing `//` comment, enabling the compiler to compute `--token-offset` to the center of the token? #2026_10_03_02_group_1
 - [ ] When a target token is analyzed, does the compiler use the page column benchmark (column 36 for editor blocks, column 30 for principle cards) to decide between Left Starting Point and Right Starting Point? #2026_10_03_02_group_1
@@ -230,13 +230,13 @@ Notes: With the target token at column 33 (<= 36), the compiler uses Left Starti
 
 - [ ] PROPER EXAMPLE: Right Starting Point for token on the right side of the page (colIndex > 36):
 
-> `export default function ArticleCard({ article, ~onSelect~ }) { // Callback prop passed down from parent`
+> `export default function ProductCard({ product, ~onSelect~ }) { // Callback prop passed down from parent`
 
 Notes: With `onSelect` at column 51 (> 36), the compiler uses Right Starting Point via `.cmt-bubble-right`, anchoring the bubble from the right (`--right-edge`) with a 24px shoulder and pointing directly at `onSelect`.
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Leaving the target unmarked when commenting on a specific token:
 
-> `<button onClick={openArticle(id)}> // Evaluates immediately on page load during render`
+> `<button onClick={openProduct(id)}> // Evaluates immediately on page load during render`
 
 Notes: Without target markers, the pointer tail falls back to the left indent of `<button`, missing the actual expression being discussed.
 
@@ -248,7 +248,7 @@ Notes: Without target markers, the pointer tail falls back to the left indent of
 
 - [ ] PROPER EXAMPLE: Crisp dotted underline in slate shade with descender clearance:
 
-> `export default function ArticleCard({ article, ~onSelect~ }) { // Callback prop passed down from parent`
+> `export default function ProductCard({ product, ~onSelect~ }) { // Callback prop passed down from parent`
 
 Notes: The target token `onSelect` receives a 2.5px dotted underline in `#64748b` with `padding-bottom: 3.5px`, and the bubble maintains an 11px vertical clearance with a clean minimal distance between the pointer tip and the dotted line.
 
@@ -268,12 +268,12 @@ Notes: In the "do" card, `{handlePublish}` receives a green dotted line; in the 
 - [ ] PROPER EXAMPLE: Compact multi-line element under 10 lines:
 
 > ```jsx title="Naive Execution Attempt"
-> function ArticleCard({ title, id }) {
->   function openArticle(articleId) {
->     console.log('Opened article:', articleId);
+> function ProductCard({ title, id }) {
+>   function openProduct(productId) {
+>     console.log('Opened product:', productId);
 >   }
 >   return (
->     <button onClick=~{openArticle(id)}~> // Evaluates immediately on page load during render
+>     <button onClick=~{openProduct(id)}~> // Evaluates immediately on page load during render
 >       Read {title}
 >     </button>
 >   );

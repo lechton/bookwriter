@@ -21,33 +21,33 @@ Digests: `skills/old-instructions/instructions.md` (rendered UI canvas, file exp
 
 - [ ] PROPER EXAMPLE: Multi-component UI canvas with 1-to-1 file parity and flat element tags: #2026_09_26_04_group_1
 
-> ```components title="national-times - Rendered UI Canvas"
+> ```components title="corner-shop - Rendered UI Canvas"
 > App.jsx | none | shell |
->   NewsHeader.jsx | none | header | [elem:h1.title: The National Times] ;; [elem:span.edition: Morning Edition]
->   EditorialFeed.jsx | none | branch | [elem:h2.section-title: Lead Stories]
->     ArticleCard.jsx | none | card | [elem:span.kicker: Breaking News] ;; [elem:h3.headline: Union Ratifies Accord] ;; [elem:p.byline: By Marcus Rivera]
->     ArticleCard.jsx | none | card | [elem:span.kicker: Metro Transit] ;; [elem:h3.headline: Transit Accord Finalized] ;; [elem:p.byline: By Marcus Rivera]
+>   ShopHeader.jsx | none | header | [elem:h1.title: Corner Shop] ;; [elem:span.hours: Open until 8 PM]
+>   ProductList.jsx | none | branch | [elem:h2.section-title: Fresh Today]
+>     ProductCard.jsx | none | card | [elem:span.label: Fruit] ;; [elem:h3.name: Green Apples] ;; [elem:p.price: $3 a bag]
+>     ProductCard.jsx | none | card | [elem:span.label: Bakery] ;; [elem:h3.name: Brown Bread] ;; [elem:p.price: $2 a loaf]
 > ```
 
 Notes: Demonstrates complete 1-to-1 structural parity with the files panel. Every component is represented as an indented node, terminal UI controls display flat web-inspector element badges separated by ` ;; `, and layout containers leave Field 4 empty so children naturally form their visual interior.
 
 - [ ] COUNTER-EXAMPLE 1 (The Monolithic Collapse Fallacy): Collapsing multi-component hierarchy into a single root node with recursive nested brackets: #2026_09_26_04_group_1
 
-> ```components title="national-times - Rendered UI Canvas"
-> App.jsx | none | shell | [elem:div.national-times-layout: [elem:header.news-header: [elem:h1.title: The National Times]] ;; [elem:div.editorial-feed: [elem:div.article-card: [elem:h3: Union Ratifies Accord]]]]
+> ```components title="corner-shop - Rendered UI Canvas"
+> App.jsx | none | shell | [elem:div.shop-layout: [elem:header.shop-header: [elem:h1.title: Corner Shop]] ;; [elem:div.product-list: [elem:div.product-card: [elem:h3: Green Apples]]]]
 > ```
 
-Notes: Destroys the component mental model by erasing `NewsHeader.jsx`, `EditorialFeed.jsx`, and `ArticleCard.jsx` from the canvas. The parser regex cannot process recursive brackets, causing raw syntax like `[elem:header...` and `]]]]` to leak directly onto the rendered page.
+Notes: Destroys the component mental model by erasing `ShopHeader.jsx`, `ProductList.jsx`, and `ProductCard.jsx` from the canvas. The parser regex cannot process recursive brackets, causing raw syntax like `[elem:header...` and `]]]]` to leak directly onto the rendered page.
 
 - [ ] COUNTER-EXAMPLE 2 (The Empty Container Tag Trap): Placing invisible CSS layout wrapper tags in Field 4 of container components: #2026_09_26_04_group_1
 
-> ```components title="national-times - Rendered UI Canvas"
-> App.jsx | none | shell | [elem:div.national-times-layout]
->   EditorialColumn.jsx | none | card | [elem:section.editorial-grid]
->     EditorialLead.jsx | none | generic | [elem:h2.headline: Global Markets Rally] ;; [elem:p.summary: Tech indices surged three percent on opening bell.]
+> ```components title="corner-shop - Rendered UI Canvas"
+> App.jsx | none | shell | [elem:div.shop-layout]
+>   ProductColumn.jsx | none | card | [elem:section.product-grid]
+>     FeaturedProduct.jsx | none | generic | [elem:h2.name: Strawberries] ;; [elem:p.summary: Picked this morning on a local farm.]
 > ```
 
-Notes: Renders an empty dashed box sitting directly on top of the child component card. CSS layout containers (`<section className="editorial-grid">`, `<div className="layout">`) have no textual or visual substrate of their own. Forcing them into Field 4 generates visual clutter and confuses learners. When a component exists to orchestrate layout, leave Field 4 empty.
+Notes: Renders an empty dashed box sitting directly on top of the child component card. CSS layout containers (`<section className="product-grid">`, `<div className="layout">`) have no textual or visual substrate of their own. Forcing them into Field 4 generates visual clutter and confuses learners. When a component exists to orchestrate layout, leave Field 4 empty.
 
 ## Rendered UI Canvas | 02 | Canvas Syntax and Four-Field Structure
 
@@ -55,7 +55,7 @@ Notes: Renders an empty dashed box sitting directly on top of the child componen
 - [ ] Is Field 1 written as a bare filename (`App.jsx`, `Header.jsx`, `cart.js`), avoiding manual path prefixes?
 - [ ] Is Field 2 written as `none` (or kept brief) when no props are passed?
 - [ ] Does Field 3 use a supported visual kind (`shell`, `header`, `navigation`, `profile`, `badge`, `counter`, `card`, `form`, `table`, `button`, `branch`, `instances`, `generic`)?
-- [ ] Does Field 4 wrap rendered elements with their semantic DOM tag descriptor using flat `[elem:tag:content]` or `[elem:tag]` (e.g. `[elem:h1: Headline]`, `[elem:span.tier-tag: PRO]`), separating multiple sibling elements with ` ;; ` and strictly avoiding recursive nested brackets? #2026_09_22_02_group_1, #2026_09_26_04_group_1
+- [ ] Does Field 4 wrap rendered elements with their semantic DOM tag descriptor using flat `[elem:tag:content]` or `[elem:tag]` (e.g. `[elem:h1: Title]`, `[elem:span.tier-tag: PRO]`), separating multiple sibling elements with ` ;; ` and strictly avoiding recursive nested brackets? #2026_09_22_02_group_1, #2026_09_26_04_group_1
 - [ ] When a component functions solely as a structural layout container whose visual output is formed entirely by mounted child components, is Field 4 left blank? #2026_09_26_04_group_1
 - [ ] Do semantic elements automatically inherit authentic styling without requiring redundant nested sub-tags (e.g. writing `[elem:button: Refresh Feed]` rather than `[elem:button: [btn: Refresh Feed]]`)? #2026_09_22_07_group_1
 - [ ] Does every `[elem:tag:...]` include appropriate top clearance separating it from the component title above? #2026_09_22_02_group_1
@@ -78,11 +78,11 @@ Notes: Renders an empty dashed box sitting directly on top of the child componen
 
 - [ ] PROPER EXAMPLE: Files panel for a form-actions topic:
 
-> ```files title="national-times: File Explorer"
+> ```files title="corner-shop: File Explorer"
 > src/
->   App.jsx | parent | Top-level layout container mounting the newsroom workspace
+>   App.jsx | parent | Top-level layout container mounting the shop page
 >   components/
->     ArticleEditor.jsx | boundary | Renders declarative form with action and formAction overrides
+>     OrderForm.jsx | boundary | Renders declarative form with action and formAction overrides
 > ```
 
 Notes: Names real files, assigns architectural roles, and describes responsibilities in a single scan.
