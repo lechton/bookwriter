@@ -88,7 +88,7 @@ Each project's full authoring law, briefs, checklists, figure systems, and skill
 
 - Never hard-wrap. One continuous line per paragraph, bullet, or prompt, in every file.
 - Lectures are TTS-safe: no code, no symbols a synthetic voice cannot read, no em-dashes; a standalone lesson that never addresses whoever commissioned it.
-- Organic Lexical Audit (OLA): introduce new terms through visceral, real-world, high-stakes scenarios where the newbie would physically hit a wall without the concept.
+- Organic Lexical Audit (OLA): introduce each new term in a concrete case the reader recognizes, named together with the shortest code or example that shows it.
 - Typology tagging: every interview question carries its curriculum typology (`❱ CORE`, `❱❱ MORE`, `❱❱❱ ADVANCED`), formatted as `> INTERVIEW QUESTION | ❱ CORE | [Question text]`.
 - Zero code comments in summary snippets; use `right`/`wrong` fence tags with `**DO THIS:**` / `**DO NOT DO THIS:**` headers above the block.
 - Zero em-dashes. Zero hard-wraps.

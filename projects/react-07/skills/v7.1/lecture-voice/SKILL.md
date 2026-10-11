@@ -5,7 +5,7 @@ description: Governs the voice, stance, narrative flow, and technical-descriptio
 
 # Lecture Voice
 
-This skill governs how a production lecture speaks: the author's stance, the reader the prose serves, the way concepts are defined, the standard for technical descriptions, the rhythm of sentences, the opening beats, callouts, and vocabulary. It applies to every sentence of lecture prose, from the first opening beat to the last line of the summary. Structural rules such as section skeletons, tables, and code-block mechanics live in `lecture-structure` and `code-blocks`.
+This skill governs how a production lecture speaks: the author's stance, the reader the prose serves, the way concepts are defined, the standard for technical descriptions, the rhythm of sentences, the opening lines, callouts, and vocabulary. It applies to every sentence of lecture prose, from the first opening line to the last line of the summary. Structural rules such as section skeletons, tables, and code-block mechanics live in `lecture-structure` and `code-blocks`.
 
 Digests: `skills/old-instructions/instructions.md` (stance, empathy, lexical audit, lecture format, opening ladder, callouts) and `skills/old-instructions/AUTHOR-BRIEF.md`.
 
@@ -263,7 +263,7 @@ Notes: Explains why the split matters: build tools stay on the machine, minimizi
 ## Lecture Openings | 14 | The Line-2 Interview Question Callout
 
 - [ ] Is the `> INTERVIEW QUESTION | ...` callout placed on line 2 immediately after the title header with no blank line between them?
-- [ ] Is the callout followed by exactly one blank line before the opening beats?
+- [ ] Is the callout followed by exactly one blank line before the opening lines? #2026_10_11_04_group_2
 - [ ] Does the callout use exact pattern spacing and recognized typology tagging (`❱ CORE`, `❱❱ MORE`, `❱❱❱ ADVANCED`)?
 
 - [ ] PROPER EXAMPLE: Exact callout pattern:
@@ -272,39 +272,40 @@ Notes: Explains why the split matters: build tools stay on the machine, minimizi
 
 Notes: Anchored directly on line 2 with exact spacing and typology tagging.
 
-## Lecture Openings | 15 | The Seven Numbered Opening Beats
+## Lecture Openings | 15 | The Opening Problem #2026_10_11_04_group_2
 
-- [ ] Does the lecture body open with exactly 7 numbered beats progressing from Scene to Promise:
-    1. **Scene**: The everyday app and the person using it (Section 03). #2026_10_10_01_group_7
-    2. **Setup**: Concrete action taken by the user.
-    3. **Surprising Action**: What the application code attempts to do.
-    4. **Question**: The central failure or unexpected behavior.
-    5. **Danger**: Tangible impact on readers or the business.
-    6. **Mystery**: Architectural reason why the code fell short.
-    7. **Promise**: What today's lecture unlocks in plain language.
-- [ ] Is each beat written as one continuous markdown line under 20 words?
-- [ ] Are numbers (`1.` to `7.`) used rather than bullet points, presenting the beats bare under the callout?
+The opening is the problem the reader recognizes, told in two or three numbered lines. The introduction right after it does the teaching, so the opening only sets up the problem. #2026_10_11_04_group_2
 
-- [ ] PROPER EXAMPLE: Opening beats where every noun has one clear identity:
+- [ ] Does the lecture body open with 2 or 3 numbered lines, bare under the callout, each one continuous line under 20 words? #2026_10_11_04_group_2
+    1. What the reader is building, in the everyday app (Section 03). #2026_10_10_01_group_7
+    2. What goes wrong, or what the reader cannot do yet.
+    3. Optional: the question, asked plainly.
 
-> `1. You built a news website called The National Times, and real readers are using it right now.`
-> `2. A journalist types a new headline into the page and saves it.`
-> `3. Your code has one job: print the headline to the console every time it changes.`
-> `4. Why does the code print only once?`
-> `5. Readers keep seeing the wrong headline.`
-> `6. Something in your code read the headline once, then stopped looking.`
-> `7. Today, the print will follow every change.`
+- [ ] PROPER EXAMPLE: Lecture 14. #2026_10_11_04_group_2
 
-Notes: One actor, one screen, one line of code, one observable mystery, and a promise that motivates without spoiling the mechanism.
+> `1. You built a like button that adds one to a counter.`
+> `2. You click it, and the console shows the new number, but the button still shows 0.`
+> `3. Why does the screen not change when the variable does?`
 
-## Lecture Openings | 16 | Opening-Beat Clarity (The Identity Rule)
+Notes: One thing being built, one failure the reader can see, one question. No new term appears; the introduction names state right after. Take the shape, never the lines: each lesson's opening comes from its own problem.
 
-- [ ] Does every noun in every beat refer strictly to a human person, visible screen item, code element, or machine event?
+- [ ] COUNTER-EXAMPLE: Lecture 7, written to the old seven beats. #2026_10_11_04_group_2
+
+> `4. Why does every minor design update require editing, complicating, and risking the shared card component?`
+> `5. Unused prop tags leave empty placeholder elements on screen, while conflicting layout flags tangle into unmaintainable conditional code.`
+> `6. The card component tried to predict every layout permutation instead of letting callers nest custom elements inside an open slot.`
+> `7. Today we master container composition with the children prop, forward remaining attributes with rest syntax, and secure overridable defaults.`
+
+Notes: Seven long lines before anything is taught: a danger line, a mystery line, and a promise that lists three mechanisms the reader has not learned.
+
+## Lecture Openings | 16 | Opening-Line Clarity (The Identity Rule)
+
+- [ ] Does every noun in every opening line refer strictly to a human person, visible screen item, code element, or machine event? #2026_10_11_04_group_2
 - [ ] Are ambiguous or overloaded words avoided?
-- [ ] Is mechanism jargon (`state`, `props`, `hook`, `render`, `reconcile`) kept out of the opening beats in favor of visible behavior?
+- [ ] Do the opening lines use only terms from earlier lessons (props in Lecture 7, for example), leaving every new term to the introduction? #2026_10_11_04_group_2
 - [ ] Are everyday verbs preferred over technical terms ("change" over "mutate", "show" over "render")?
 
-- [ ] COUNTER-EXAMPLE: Pattern to avoid: Opening beats with ambiguous words:
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Opening lines with ambiguous words:
 
 > `1. The newsroom desk is live.`
 > `2. An editor rewrites the breaking headline.`
@@ -312,18 +313,6 @@ Notes: One actor, one screen, one line of code, one observable mystery, and a pr
 > `4. Why only one print?`
 
 Notes: "Desk" could be furniture or a component; "live" could mean deployed or streaming; "editor" could be a human or software; "log" could be a file or verb.
-
-## Lecture Openings | 17 | Holding Back the Mechanism
-
-- [ ] Is the technical API or solution name kept out of the opening beats, letting the lecture body build the solution?
-- [ ] Does beat 7 end on the promise of the unlocked capability in plain English without revealing hook or library names?
-- [ ] Does the opening lead directly into action rather than administrative background?
-
-- [ ] COUNTER-EXAMPLE: Pattern to avoid: Spoiling the mechanism in opening beats:
-
-> `7. Today you learn how React's declarative component model eliminates manual DOM queries and keeps your entire user interface synchronized automatically.`
-
-Notes: Reveals the mechanism prematurely, leaving no mystery for the lecture body.
 
 ## Callout System | 18 | Callout Types and Strategic Use
 
@@ -412,36 +401,24 @@ Notes: Opening question is 7 words; the card names where the form sits and what 
 
 Notes: Callout provides the quotable rule in plain words; the paragraph proves why it holds with the code and the console. #2026_10_10_01_group_7
 
-## Vocabulary & Baptisms | 22 | Five-Step Progression for Introducing New Terms
+## Vocabulary & Baptisms | 22 | New Terms Are Named Together With Their Code #2026_10_11_04_group_1
 
-- [ ] Are new technical terms introduced through the 5-step progression:
-    1. **Context**: A concrete application scenario where a limitation occurs.
-    2. **Naive Attempt**: The plausible initial solution and why it falls short.
-    3. **Architectural Need**: The mechanical requirement that must be fulfilled.
-    4. **Naming the Term**: Introducing the official industry term.
-    5. **Summary**: A concise summary of operational behavior.
+- [ ] Is every new term introduced to the standard of `lecture-structure` Section 12: named together with the shortest code that shows it, with who does what said plainly, and confirmed by a second tiny example? #2026_10_11_04_group_1
+- [ ] Does a large mechanism first show the problem it solves, in the reader's own code, while a small term (a prop name, a syntax form) is simply named and shown? #2026_10_11_04_group_1
+- [ ] PROPER EXAMPLE: `lecture-structure/intro-examples.md`, Example 1: **imperative** arrives with the two `querySelector` lines, **declarative** with `<p>{count}</p>`, and a page title confirms the difference. #2026_10_11_04_group_1
 
-- [ ] PROPER EXAMPLE: Five-step progression in action:
+## Vocabulary & Baptisms | 23 | Decoding Foundational Primitives #2026_09_20_25_group_1 revised by #2026_10_11_04_group_1
 
-> You have 2,000 stories in memory but the screen shows 20. Rebuilding all 2,000 matching objects every time one story changes is slow. React needs a way to reuse what it already built and touch only what changed. The mechanism that decides what to reuse is called **reconciliation**. It compares the new element tree with the old one and reuses DOM nodes wherever type and key match.
+- [ ] When introducing foundational React primitives (`component`, `props`, `JSX`, curly braces, `state`), does the text decode them in plain words: #2026_10_11_04_group_1
+    1. **Every symbol**: what the curly braces, the destructuring, or the tag means.
+    2. **Both sides of passing**: who writes the value and who receives it.
+    3. **Browser or React**: which parts are native DOM elements and which are our components.
 
-Notes: Follows full sequence from context to operational summary.
+- [ ] PROPER EXAMPLE: Lecture 6, passing one prop. #2026_10_11_04_group_1
 
-## Vocabulary & Baptisms | 23 | Four Educational Dimensions for Foundational Primitives #2026_09_20_25_group_1
+> The parent writes `<Greeting name="Ann" />`. React collects the attribute into an object, `{ name: "Ann" }`, and passes it to `Greeting` as its first argument. The child writes `function Greeting({ name })`: the braces unpack the `name` key from that object into a variable. Inside the markup, `<p>Hello, {name}</p>` shows "Hello, Ann".
 
-- [ ] When introducing foundational React primitives (`component`, `props`, `JSX`, `{}` evaluation window, `state`), are they explained across four dimensions:
-    1. **Everyday Meaning & Etymology**: What the word stands for in plain JavaScript.
-    2. **Syntactic Mechanics & Punctuation**: Explicit decoding of symbols (destructuring, curly braces).
-    3. **The Two Halves of Passing**: Decoding both left-side receiver and right-side provider.
-    4. **Platform vs Framework Distinction**: Distinguishing native DOM elements from React functions.
-
-- [ ] PROPER EXAMPLE: Introducing `props` and JSX evaluation:
-
-> The component function `ReaderGreeting` receives its input data through a single parameter called **props** (short for properties). Rather than writing `props.readerName` throughout the function body, the signature uses JavaScript **object destructuring** directly inside the parentheses: `({ readerName })`. This unpacks the `readerName` property straight into a local variable.
->
-> Inside the markup, the curly braces around `{readerName}` establish an **evaluation window** that steps out of static HTML structure and into live JavaScript execution. When React evaluates this component, it reads the current value of `readerName` and projects it straight into the text content of the span, eliminating manual string concatenation and DOM lookups.
-
-Notes: Covers etymology, JavaScript object reality, punctuation decoding, and browser outcome.
+Notes: Each symbol is decoded where it appears, the parent's side and the child's side are both shown, and every sentence says who acts: the parent writes, React collects and passes, the child unpacks.
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Dropping a primitive without baptism:
 

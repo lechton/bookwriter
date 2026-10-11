@@ -76,7 +76,7 @@ Notes: Breaks the dense block into three focused movements: (1) native HTML tags
 - [ ] Is the complete anatomical skeleton preserved as required by the build compiler (`src/build-lectures.mjs`):
     1. **Title Line**: `# Lecture {n}: {Short Title}`
     2. **Line 2 Callout**: `> INTERVIEW QUESTION | ❱ TIER | {Question text}`
-    3. **Hook Ladder**: 7 numbered beats opening the lesson with an authentic newsroom dilemma (The National Times).
+    3. **Opening Lines**: 2 or 3 numbered lines setting up the problem (`lecture-voice` Section 15). #2026_10_11_04_group_2
     4. **Section 1**: Imperative/naive friction section containing a historical code snippet and the `[!WILD]` friction card.
     5. **Section 2**: Conceptual mechanism bridge introducing the core React primitive before code assembly.
     6. **Section 3 (`### Let's Design a Practical Example`)**: The 5-stage progressive guided build:

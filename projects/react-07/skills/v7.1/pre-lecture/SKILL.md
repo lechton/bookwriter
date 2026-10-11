@@ -44,7 +44,6 @@ Notes: `01-01-map/` is the curriculum syllabus that establishes the progression 
 ## Methodology & Philosophy | 02 | Grounding From Known Concepts to New Mechanics
 
 - [ ] Is every new mechanism grounded in foundational concepts the student already understands, establishing a clear bridge from the familiar to the unfamiliar?
-- [ ] Are form-state transitions anchored in concrete browser reality: contrasting the classic pain of manual `e.preventDefault()` (required to halt native full-page reloads that wipe memory) with modern React 19 form actions (which intercept submits automatically and provide structured `FormData`)?
 - [ ] Is grounding tactile and verifiable: explaining what the user types, how the native browser buffer behaves, and how React processes the action?
 
 ## Methodology & Philosophy | 03 | Developer-at-the-Keyboard Stance
@@ -153,10 +152,11 @@ Notes: Replaces standard industry terminology ("components") with an invented te
     * `[glossary]`: Glossary entry formatted with `Term ◼ Definition`.
     * `[comparison]`: Architectural comparison matrix.
     * `[beyond-basics]`: Advanced topic bullet under `## Beyond the basics` carrying a live link to the official documentation `(see [react.dev/...](https://react.dev/...))`. #2026_09_21_33_group_1
-    * `[ladder-1]` through `[ladder-7]`: The 7 sequential opening beats.
+    * `[ladder-1]` through `[ladder-3]`: The 2 or 3 opening lines (`lecture-voice` Section 15). #2026_10_11_04_group_2
     * `[interview]`: Planning elements under `### For the interview` starting with repeating the interview question on top (`> **The Interview Question:** [question]`), followed by (1) The Hidden Signal, (2) The Classic Trap, (3) What is Actually Going On, and (4) Where It Gets Tricky. #2026_10_07_03_group_1 revised by #2026_10_07_04_group_1 and #2026_10_07_06_group_1
     * Summary family: `[review-title]`, `[review-subtitle]`, `[numbered-review-point]`, `[never-rule]`, `[always-rule]`, `[if-then-rule]`, `[comparison-table]`.
-- [ ] Do the 7 ladder beats follow the canonical opening sequence: `[ladder-1]` Scene, `[ladder-2]` Setup, `[ladder-3]` Surprising Action, `[ladder-4]` Question, `[ladder-5]` Danger, `[ladder-6]` Mystery, `[ladder-7]` Promise?
+- [ ] Do the ladder lines follow the opening of `lecture-voice` Section 15: `[ladder-1]` what the reader is building, `[ladder-2]` what goes wrong or what the reader cannot do yet, and optionally `[ladder-3]` the question asked plainly? #2026_10_11_04_group_2
+- [ ] Are the first section and runway sections of the blueprint written fresh for each lesson to the introduction standard of `lecture-structure` Section 12, instead of edited from an older blueprint? Lecture 7's old blueprint kept its interview lead-in line through two rebuilds, because each rebuild edited it instead of rewriting it. #2026_10_11_04_group_1
 - [ ] Are `[glossary]` entries planned under `### Glossary` with 4 to 6 core terms formatted as `- [glossary] Term ◼ Plain-English definition and concrete engineering role.`?
 
 ## Pre-Element Taxonomy | 12 | `[p]` Bullets Carry Substantive Derivations

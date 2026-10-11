@@ -53,18 +53,11 @@ Notes: Leads with a bold title, defines the mechanism in plain English, and prov
 - [ ] Does every runtime concept satisfy the three-part explanation: (1) what you write, (2) what manual boilerplate is removed, and (3) what the browser physically does?
 - [ ] Does the prose avoid the disembodied internal engine voice, focusing on what appears in the reader's editor and browser?
 
-## Pedagogy & Voice Gates | 06 | Typology Tagging and Seven Opening Beats
+## Pedagogy & Voice Gates | 06 | Typology Tagging and the Opening Problem
 
 - [ ] Does line 2 contain the interview question callout: `> INTERVIEW QUESTION | {tier} | {question text}`?
-- [ ] Does the body open immediately with 7 numbered beats progressing from Scene to Promise: #2026_10_07_05_group_1
-    1. Scene (everyday user on a live web interface)
-    2. Setup (concrete screen element or user interaction)
-    3. Surprising Action (what code attempts)
-    4. Question (central doubt or failure)
-    5. Danger (tangible reader/business impact)
-    6. Mystery (architectural root cause)
-    7. Promise (what today unlocks in plain words)
-- [ ] Is each beat under 20 words, with every noun referring to a single clear entity and zero mechanism terms appearing in beat 7?
+- [ ] Does the body open immediately with 2 or 3 numbered lines: what the reader is building, what goes wrong, and optionally the question (`lecture-voice` Section 15)? #2026_10_07_05_group_1 revised by #2026_10_11_04_group_2
+- [ ] Is each line under 20 words, with every noun referring to a single clear entity and no term the lesson has not taught yet? #2026_10_11_04_group_2
 
 ## Pedagogy & Voice Gates | 07 | Empathetic Anticipation Without Meta-Labels
 
@@ -186,6 +179,7 @@ Notes: Leads with a bold title, defines the mechanism in plain English, and prov
 Read the lecture as its reader will, top to bottom, before any script runs. The reading gates come first because no script can tell whether a question makes sense or an answer is true; the mechanical gates come last and only confirm form. Write the result of each reading gate as one line in the completion report, naming what was read and what was found or fixed. #2026_10_10_01_group_4
 
 - [ ] **Reading gates, in this order, before any script:** #2026_10_10_01_group_4
+    0. **An introduction a reader can follow**: Could a reader who knows only the earlier lessons follow the first section and the runway on one read? Is every new term shown in code next to its name, and does the text start teaching in its first sentence (`lecture-structure` Section 12 and `intro-examples.md`)? #2026_10_11_04_group_1
     1. **Questions a reader asks**: Is every question one a reader at this point would ask, in the lesson's story, and is every claim in it true for the code shown, including counts of clicks, renders, and values? #2026_10_10_01_group_4
     2. **Answers that follow**: Does every verdict match what the code does, and does every answer explain it in the order things happen, recalling runway and earlier ideas in a few words and ending in what the reader sees? #2026_10_10_01_group_4
     3. **Boxes from their cycle**: Does every principle box pass Passes 1 to 3 of `skills/v7.1/principle-definition/SKILL.md` Section 01B in order (casebook alignment, the "Picture It" test, plain JavaScript first)? Does it hold nothing its question, answer, and runway did not show, end with the cycle's fix as its right card, and equal its blueprint box? #2026_09_26_11_group_1 revised by #2026_10_04_10_group_1, #2026_10_06_03_group_1, #2026_10_06_04_group_3, #2026_10_07_02_group_1, and #2026_10_10_01_group_4
@@ -202,7 +196,7 @@ Read the lecture as its reader will, top to bottom, before any script runs. The 
     14. **Division of labor**: Code shows syntax, comments give the value or the visible result, prose explains why.
 - [ ] **Mechanical gates, only after the reading gates pass:** #2026_10_10_01_group_4
     1. **Curriculum dependency**: Zero premature syntax; hooks and patterns follow question order.
-    2. **Skeleton order**: Title → Question → 7 Beats → First Section with recall list → Runway → Principles with question cycles → `### Let's Design a Practical Example` → Where You Will Meet This → For the Interview → Glossary → Beyond the Basics → Summary → Closing Table. #2026_09_25_03_group_1 revised by #2026_10_07_03_group_1, #2026_10_07_06_group_1, and #2026_10_10_01_group_5
+    2. **Skeleton order**: Title → Question → 2 or 3 Opening Lines → First Section with recall list → Runway → Principles with question cycles → `### Let's Design a Practical Example` → Where You Will Meet This → For the Interview → Glossary → Beyond the Basics → Summary → Closing Table. #2026_09_25_03_group_1 revised by #2026_10_07_03_group_1, #2026_10_07_06_group_1, and #2026_10_10_01_group_5
     3. **Five-stage assembly**: Stages A through E present, and the Stage D panel matches Archetype A or B.
     4. **Line ceilings**: Every code snippet ≤ 10 lines with valid continuation attributes.
     5. **Comments**: Every narrative body code block (≥3 lines) carries end-of-line comments on its load-bearing lines, and no `//` comment follows JSX markup (`code-blocks` Section 09). #2026_09_21_30_group_1 revised by #2026_10_10_01_group_8

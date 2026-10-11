@@ -56,10 +56,10 @@ Digests: `skills/old-instructions/AUTHOR-BRIEF.md` and `skills/old-instructions/
 - [ ] Is every production lecture assembled in this top-to-bottom sequence:
     1. Document Title: `# Lecture {n}: {Short Title}` on line 1.
     2. Interview Question Callout: `> INTERVIEW QUESTION | ...` on line 2.
-    3. The 7 Numbered Opening Beats (bare under the callout).
+    3. The opening problem: 2 or 3 numbered lines, bare under the callout (`lecture-voice` Section 15). #2026_10_11_04_group_2
     4. First Section: `### {plain sentence}` introducing the engineering challenge, the questions the lecture answers, and the recall list of earlier lessons the questions stand on (Section 12). #2026_10_10_01_group_5
     5. Runway: one to three `### {plain sentence}` sections that teach every new idea and code form the question cycles need, before the first question (Section 12). #2026_10_10_01_group_5
-    6. Principled Theory: `### Principles of React: {Topic}`, a short lead-in, then one question cycle per approved principle-map entry, in its order, each ending in its `> [!PRINCIPLE]` callout (Section 12C). #2026_09_26_19_group_1 revised by #2026_10_10_01_group_5
+    6. Principled Theory: `### Principles of React: {Topic}`, followed directly by one question cycle per approved principle-map entry, in its order, each ending in its `> [!PRINCIPLE]` callout (Section 12C). #2026_09_26_19_group_1 revised by #2026_10_10_01_group_5 and #2026_10_11_04_group_3
     7. Practical Example Section:
        - `### Let's Design a Practical Example`: Open the practical example section with this exact clean heading, avoiding trailing component names. #2026_09_21_11_group_1
        - Stage A: Scaffold UI Canvas (` ```components `) and File Explorer (` ```files `).
@@ -109,7 +109,7 @@ Notes: Placed on line 2, preserves the server tier tag, and quotes the bank ques
 - [ ] Is `### ` used as the standard heading level for all lecture sections and assembly steps so they flow inline without forcing page breaks?
 - [ ] Is `## ` reserved exclusively for major structural milestones requiring a forced page break in the PDF (such as `## Beyond the basics`)?
 - [ ] Is the document title on line 1 the single `# ` heading in the file?
-- [ ] Do the numbered opening beats lead immediately into the first `### ` heading with no orphan paragraphs between them?
+- [ ] Do the numbered opening lines lead immediately into the first `### ` heading with no orphan paragraphs between them? #2026_10_11_04_group_2
 
 ## Section Skeleton | 10B | Section Headings the Lesson Writes #2026_10_07_01_group_2
 
@@ -128,39 +128,22 @@ Notes: Placed on line 2, preserves the server tier tag, and quotes the bank ques
 - [ ] Are underlying browser engine consequences explicitly deconstructed (for example, showing how replacing HTML with `innerHTML` wipes input focus and resets CSS transitions, whereas React reconciliation preserves node identity and focus)? #2026_09_20_27_group_1
 - [ ] Are friction cards placed at the end of the topic after walking through the broken attempt, engine behavior, and working code? #2026_09_21_03_group_1 revised by #2026_09_21_08_group_1 and #2026_09_21_09_group_1
 
-## Section Skeleton | 12 | The Recall List and the Runway Before the Questions #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1, #2026_09_25_03_group_1, #2026_10_10_01_group_5, and #2026_10_11_01_group_3
+## Section Skeleton | 12 | The Recall List and the Runway Before the Questions #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1, #2026_09_25_03_group_1, #2026_10_10_01_group_5, #2026_10_11_01_group_3, and #2026_10_11_04_group_1
+
+The first section and the runway are the lesson's introduction. They teach the ideas the questions stand on, by their proper names (`children`, props, declarative, imperative), starting from what the reader already knows. When the reader understands the introduction, every answer can go deeper instead of starting from zero. The introduction teaches; it does not advertise the lesson or talk about interviews. #2026_10_11_04_group_1
 
 - [ ] Does the first section name the questions the lecture answers (two or three, in bold, in the reader's words) and end with the recall list from the blueprint: one bold-led bullet per earlier lesson the questions stand on, with its lecture number and two or three sentences in the lesson's story? #2026_10_10_01_group_5
 - [ ] Does the recall list name only lessons that come before this one? A later lesson is one sentence of preview in the text, never a recall bullet (`pre-lecture` Section 13C). #2026_10_11_01_group_3
 - [ ] Do the runway sections, between the first section and `### Principles of React: {Topic}`, teach every new idea and code form the questions use (the blueprint's `[runway]` elements), so no question, answer, or box teaches an idea for the first time? #2026_10_10_01_group_5
 - [ ] Does the text avoid jumping directly from high-level problem motivation into the practical code assembly section?
 - [ ] In foundational lectures, does the runway introduce and deconstruct syntax primitives before they appear in multi-file code examples or formal principles?
-- [ ] In 3 to 4 focused paragraphs, does a runway section address:
-    1. What limitation in plain HTML or vanilla JavaScript does this feature solve?
-    2. What is the React mechanism, how is it written, and what happens under the hood?
-    3. What surprise does the reader meet, left as a question the principles answer? #2026_10_06_03_group_4
-    4. Which core mental model anchors the student's understanding before formal principles?
-
-- [ ] PROPER EXAMPLE: Grounded mechanism bridge from Lecture 1:
-
-> ### Components as Reusable Blueprints
-> 
-> In plain HTML, you structure documents using native tags like the `<header>`, `<article>`, and `<button>` elements. 
-> 
-> However, native HTML tags know nothing about your application logic or subscriber data. Traditionally, developers had to copy and paste HTML markup across separate templates. Then, they attached external JavaScript scripts to add interactive behavior. This separation split structure from logic, creating fragmented and fragile codebases.
-> 
-> To solve this fragmentation, React unifies markup, style, and logic into a single cohesive structure. This mechanism is called a **component**. A component is a self-contained, reusable JavaScript function. It accepts input data called **props** and returns markup describing a piece of the user interface.
-> 
-> In React, every component function name must start with a capital letter. **Capitalization** is a strict compiler requirement. It tells React that `<SiteHeader />` is your custom component, while `<header>` is a built-in browser DOM tag. Components can be **nested** inside one another. This allows you to assemble complex pages out of small, focused building blocks.
-> 
-> To see this in action on The National Times, we organize our site header into three distinct files:
-> 1. The **parent component** `SiteHeader.jsx` acts as the orchestrating container.
-> 2. The **child component** `ReaderGreeting.jsx` renders the personalized welcome message.
-> 3. The **child component** `SubscriberInfo.jsx` displays the subscriber tier details.
-> 
-> Both child components receive the subscriber's name through the prop `readerName` passed directly from their parent.
-
-Notes: Teaches specific syntax and engine rules (components, capitalization, props, nesting) and smoothly bridges into the files of Stage A.
+- [ ] Is the introduction written to these five standards? #2026_10_11_04_group_1
+    1. **One idea at a time.** Each paragraph and each code fence carries one new idea.
+    2. **Name it and show it.** The idea's proper name comes with the shortest code that shows it.
+    3. **Say who does what.** Each sentence says plainly whether the browser, React, or our code acts.
+    4. **Confirm with a second tiny example.** A second, different snippet shows the same idea working again, and one closing sentence states the idea as a rule.
+    5. **Only the words the idea needs.** The text starts teaching in its first sentence and stops when the idea is clear.
+- [ ] Do the introduction's sections read like the approved examples in `intro-examples.md` beside this file? The examples show moves: take the moves, never their topic, names, or code. #2026_10_11_04_group_1
 
 ## Section Skeleton | 12B | Autonomous Theory, Boxed Principles, and Multi-Invariant Coverage #2026_09_24_01_group_1
 
@@ -177,7 +160,7 @@ Notes: The box is governed by `skills/v7.1/principle-definition/` (rules and the
 
 Each map principle reaches the reader as one cycle: a question the reader would ask, with code they could write; the answer, which explains what happens; and the box, which turns the answer into a rule for production code. The cycle is written from the blueprint's `[question-cycle]` plan. #2026_10_10_01_group_5
 
-- [ ] Does `### Principles of React: {Topic}` open with a short lead-in that tells the reader how the cycles work (the question starts from code, the answer shows what React does, the box gives the rule), and then hold the cycles in map order? #2026_10_10_01_group_5
+- [ ] Does `### Principles of React: {Topic}` go straight into Question 1, with the cycles in map order? The introduction has already taught what the cycles need, so a paragraph that explains the cycle format or lists what interviewers test only delays the first question. Lecture 7 opened its principles with "In technical interviews, engineering candidates are closely evaluated on container composition..." and a description of the cycle, which the reader did not need. #2026_10_10_01_group_5 revised by #2026_10_11_04_group_3
 - [ ] Does each cycle follow this order? #2026_10_10_01_group_5
     1. `### Question N: {plain sentence}`.
     2. The scenario in prose: the situation in the lesson's story, the code in a fence, and what the screen or console shows, told as sentences.
