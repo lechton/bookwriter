@@ -186,7 +186,7 @@ function diagnoseFile(filename) {
 			// Check for inline comment (//, <!--, or #) which build-lectures turns into speech bubbles
 			const trimmed = line.trim();
 			if (trimmed.length > 0) {
-				if ((line.includes('//') && !line.includes('://')) || line.includes('<!--') || line.match(/#\s+\S+/)) {
+				if ((line.includes('//') && !line.includes('://')) || line.includes('{/*') || line.includes('<!--') || line.match(/#\s+\S+/)) {
 					currentBlock.comments++;
 				}
 			}
@@ -314,7 +314,7 @@ function diagnoseFile(filename) {
 			const l = block.lines[j];
 			const lineNum = block.startLineNum + 1 + j;
 			const trimmed = l.trim();
-			const hasComment = (l.includes('//') && !l.includes('://')) || l.includes('<!--') || l.match(/#\s+\S+/);
+			const hasComment = (l.includes('//') && !l.includes('://')) || l.includes('{/*') || l.includes('<!--') || l.match(/#\s+\S+/);
 			const tildeCount = (l.match(/~/g) || []).length;
 			if (tildeCount % 2 !== 0) {
 				malformedTildes.push({ lineNum, text: trimmed, title: block.title });
