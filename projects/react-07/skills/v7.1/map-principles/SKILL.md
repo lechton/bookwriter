@@ -54,7 +54,7 @@ Notes: A new bank version can move a topic to a new number. Comparing the tag an
 
 Notes: Discovery is wide on purpose, and Selection narrows it. A rejected idea stays visible in the ledger. An idea never found is an invisible gap.
 
-## Selection | 03 | Ownership Through the Syllabus #2026_09_26_21_group_1 revised by #2026_10_05_09_group_1 and #2026_10_06_01_group_7
+## Selection | 03 | Ownership Through the Syllabus #2026_09_26_21_group_1 revised by #2026_10_05_09_group_1, #2026_10_06_01_group_7, and #2026_10_11_06_group_2
 
 - [ ] Is each idea routed to the lesson whose card makes it a main subject? A main subject appears in the card's Topic Tag, Core Truth, Mechanism, or Code Experiment.
 - [ ] Is every card in `01-01-map/` searched for each route, not only the neighbouring cards? Read the Topic Tag, Core Truth, Mechanism, and Scope Boundary lines.
@@ -63,6 +63,7 @@ Notes: Discovery is wide on purpose, and Selection narrows it. A rejected idea s
 - [ ] Is an idea owned by an earlier lesson recorded as `Prerequisite`, so the lesson recalls it instead of numbering it again?
 - [ ] When an earlier lesson owns a decision but this lesson's API is the first to make breaking it visible or worse, is the new failure kept here? Record the decision as `Prerequisite`, and the new failure as a candidate of its own that faces the importance test: `Principle` when it passes, `Supporting` otherwise. #2026_10_06_03_group_2
 - [ ] Is an idea owned by a later lesson recorded as `Preview` when this lesson's code touches it, and as `Deferred` when the lesson can leave it out?
+- [ ] When the bank question names an idea an earlier lesson owns, is it answered as an application inside one of this lesson's principles instead of a principle of its own? The bank question says what the lecture covers, not how many questions it asks. Bank row 7 asks how "default values work"; Lecture 6 owns defaults, so Lecture 7 shows `className = ''` inside the answer about joining classes. #2026_10_11_06_group_2
 - [ ] Does every owner name its lesson by number and topic tag from the live bank, as in `Q17 #state_updates`? A later bank version that moves the topic then leaves a visible mismatch. #2026_10_05_09_group_1
 - [ ] When the cards route an idea to this lesson but another map already numbers it, is the conflict listed in Reported Conflicts? #2026_10_06_01_group_3
 
@@ -78,15 +79,15 @@ Notes: Discovery is wide on purpose, and Selection narrows it. A rejected idea s
 
 Notes: First mention is not ownership. A passing mention earns a preview; the main subject earns the principle.
 
-## Selection | 04 | Importance, Kind, and Atomicity #2026_09_26_21_group_1 revised by #2026_10_06_01_group_7
+## Selection | 04 | Importance, Kind, and Atomicity #2026_09_26_21_group_1 revised by #2026_10_06_01_group_7 and #2026_10_11_06_group_1
 
 - [ ] Does each owned idea pass at least one importance question? Would a senior reviewer flag its absence? Would an interviewer expect it in a complete answer? Would a developer without it ship a visible bug, or carry a model that breaks a later lesson?
 - [ ] Is an owned idea that fails every importance question recorded as `Supporting` when the theory needs it, or `Dropped` when it is trivia?
 - [ ] Are setup facts, API names, definitions, and restatements of the question kept as `Supporting`? They become principles only when a beginner would ask about them or get them wrong. #2026_10_06_09_group_1
 - [ ] Is a principle marked `Decision` when it tells a developer what to check, choose, keep, or avoid in code? Is it marked `Model` when it is a mental model that later decisions rest on?
 - [ ] Does every `Model` principle carry a `Prediction`: a behavior the reader can predict with the model and check in the console, DevTools, or on screen?
-- [ ] Are two ideas split when code can pass one and fail the other, and each failure needs a different fix?
-- [ ] Are two ideas merged, with a `Merged` row, when they share the same decision, cause, failure, and fix? A mistake and its remedy are one idea.
+- [ ] Are two ideas split only when the reader meets them in different situations and would ask two different questions? #2026_10_11_06_group_1
+- [ ] Are two ideas merged, with a `Merged` row, when they share the same decision, cause, failure, and fix? A mistake and its remedy are one idea. A problem that appears inside the fix is part of the same idea too: the answer shows the first fix, what it still gets wrong, and the final code. #2026_10_11_06_group_1
 - [ ] Are the principles ordered so each one can be explained with the prerequisites and the principles before it? Are they numbered only after every idea has a disposition?
 
 - [ ] PROPER EXAMPLE: `learn/your-first-component.md` carries a `<Pitfall>` against defining a component inside another component. Reviewers flag it and it causes real bugs, so it becomes a principle in the lesson that owns component definition. The ledger notes that the card never names it.
@@ -97,16 +98,18 @@ Notes: First mention is not ownership. A passing mention earns a preview; the ma
 
 - [ ] COUNTER-EXAMPLE: The author merges every idea that shares a keyword and drops everything the card does not name. An official Pitfall disappears, and the list shrinks to whatever felt tidy.
 
+- [ ] COUNTER-EXAMPLE: Map 07 split `spread-order-wins` and `default-fills-slot`. Question 4 ended on the fix `className={'card ' + className}`, which the author knew prints `class="card undefined"` when the caller passes no class, so that Question 5 could fix it with `className = ''`. The reader never asks a second question here: it is one answer that ends one step later. #2026_10_11_06_group_1
+
 Notes: Importance decides membership, atomicity decides boundaries, and ownership decides the lesson. The number of principles is whatever survives these tests. It has no target or typical value, and other lessons' totals are not evidence.
 
-## Selection | 05 | The Reader's Question, What They Expect, and What React Does #2026_10_06_09_group_1 (replaces Tempting Belief and Defect, #2026_10_06_01_group_1)
+## Selection | 05 | The Reader's Question, What They Expect, and What React Does #2026_10_06_09_group_1 (replaces Tempting Belief and Defect, #2026_10_06_01_group_1) revised by #2026_10_11_06_group_1
 
 - [ ] Does every principle start from a `Reader Question`: what a beginner at this point of the course would actually ask, in their own words? "I call `setCount(1)`. How does the 1 get onto the screen?" is a reader's question. "What is the render phase?" is a doc heading. #2026_10_06_09_group_1
 - [ ] Does `Reader Expects` give the beginner's own answer and the habit it comes from: plain JavaScript, HTML, another framework, an earlier lesson, etc.? The guess may be right. When it is right, the principle explains how it comes true, and nothing is invented to make it fail. #2026_10_06_09_group_1
 - [ ] Does `React Does` say what really happens, in the order it happens, ending in something the reader can see: the screen, the console, DevTools, or the build output? #2026_10_06_09_group_1
 - [ ] Is `Real Mistake` filled only with code readers really write at this point, and with what the screen, console, or build then shows, reproduced in React 19? When readers make no such mistake, does it say `none`? Code written only so that it fails is not a real mistake. #2026_10_06_09_group_1
 - [ ] Does the box follow from `Real Mistake`? When it is filled, the lecture shows the mistake as the box's second card. When it is `none`, the box shows one card: the code that does the job. #2026_10_06_09_group_1
-- [ ] When a `Model` principle has a filled `Real Mistake`, does it name `Fix In`: the handle of a later `Decision` principle in this map whose Placement holds the fix, or `this principle` when the model's own Placement already is code the reader knows and that fixes the mistake (map 15, `setter-to-screen`: the handler calls the setter instead of writing to the page)? The lecture teaches each principle as one question cycle (question, answer, prescriptive box). The model's cycle shows the mistake, explains it, and shows the fix, so its box can end with the fix as the right card and the mistake as the wrong one. Without `Fix In`, the model's box either asks for code the reader has not seen yet or swallows the next principle. #2026_10_10_01_group_1
+- [ ] When a `Model` principle has a filled `Real Mistake`, does it name `Fix In`? It is normally `this principle`: the cycle shows the mistake and the fix, in as many steps as the fix really takes (map 15, `setter-to-screen`: the handler calls the setter instead of writing to the page). It names a later `Decision` principle only when that principle answers a new question the reader asks in a new situation (map 17 below). #2026_10_11_06_group_1 The lecture teaches each principle as one question cycle (question, answer, prescriptive box). The model's cycle shows the mistake, explains it, and shows the fix, so its box can end with the fix as the right card and the mistake as the wrong one. Without `Fix In`, the model's box either asks for code the reader has not seen yet or swallows the next principle. #2026_10_10_01_group_1
 - [ ] Does the `Decision` principle named by a `Fix In` add a case the model's cycle does not show: its own `Real Mistake`, its boundary (`Condition`), or both? When it adds nothing, the two are one idea, so merge them under the importance and atomicity rules of Section 04. #2026_10_10_01_group_1
 
 - [ ] PROPER EXAMPLE: Map 17. `queue-in-order` is a Model whose Real Mistake is three `setPasses(passes + 1)` calls; it carries `Fix In: updater-from-previous`. Lecture cycle 2 shows the three calls, explains the queue, and shows `p => p + 1` as the fix, after the runway has taught the updater form. `updater-from-previous` then adds what cycle 2 did not show: the request counter that ends at `-1` after an `await`, and the boundary that a plain value is fine for one update per click. #2026_10_10_01_group_1
@@ -266,7 +269,7 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 - **React Does**: {what really happens, in order, ending in what the reader can see, verified in React 19}
 - **Placement**: {where the right code goes, and where it does not}
 - **Real Mistake**: {code readers really write here and what it shows, verified in React 19; or `none`}
-- **Fix In**: {Model with a filled Real Mistake only: the handle of the later Decision principle that holds the fix, or `this principle`}
+- **Fix In**: {Model with a filled Real Mistake only: normally `this principle`; the handle of a later Decision principle only when it answers a new question in a new situation}
 - **Importance**: {the review finding, interview expectation, shipped bug, or broken later lesson it prevents}
 - **Review Point**: {Decision only: Do, Prefer, Avoid, Do not, or Condition}
 - **Prediction**: {Model only: the behavior the reader can predict and check}
@@ -311,7 +314,7 @@ The scripts check form: fields, owners, terms, and links. A principle that makes
 - [ ] Read each principle's Reader Question, Reader Expects, React Does, and Real Mistake alone, with the docs closed. Would a beginner who has only the earlier lessons ask this question? Does React Does answer it, step by step, in the order things happen? #2026_10_06_09_group_1
 - [ ] When Real Mistake is filled, would a reader really write that code, out of a habit they really have? #2026_10_06_09_group_1
 - [ ] Taken in order, do the principles answer the interview question the way the Senior Answer does? #2026_10_06_09_group_1
-- [ ] Read each model with its `Fix In` principle as two questions a reader asks one after the other. Does the first end with a fix the reader can write, and does the second add a case the first did not show? #2026_10_10_01_group_1
+- [ ] When a model's `Fix In` names a later principle, read the two as two questions a reader asks one after the other. Does the first end with a fix the reader can write, and does the second add a case the first did not show? #2026_10_10_01_group_1
 
 - [ ] PROPER EXAMPLE: Map 15, Principle 1, as written in Section 05. A beginner does ask how the 1 gets onto the screen. React Does answers it in three steps. Changing the page by hand is what plain JavaScript taught them. #2026_10_06_09_group_1
 

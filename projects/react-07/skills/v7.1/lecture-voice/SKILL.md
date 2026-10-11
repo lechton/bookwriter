@@ -87,10 +87,11 @@ Notes: Respectful and empathetic. Introduces the trap as a possible scenario, va
 
 Notes: Patronizing and dogmatic. Universally projects an intellectual error onto every beginner as an inevitable character flaw rather than framing it as a possible, understandable scenario. #2026_09_27_05_group_1
 
-## Stance | 03 | Universal Everyday Engineering Problems #2026_09_20_27_group_1 revised by #2026_10_07_05_group_1 and #2026_10_11_05_group_1
+## Stance | 03 | Universal Everyday Engineering Problems #2026_09_20_27_group_1 revised by #2026_10_07_05_group_1, #2026_10_11_05_group_1, and #2026_10_11_06_group_3
 
 - [ ] In code examples and component implementations, is the engineering problem grounded in universal, everyday web UI widgets that any basic computer user immediately recognizes (such as an item counter, a shopping cart, a message box, a like button, a ticket order, or a search input) rather than generic foo/bar placeholders or contrived industry jargon? #2026_10_07_05_group_1 revised by #2026_10_11_05_group_1
 - [ ] Are the pieces inside those widgets the plain parts of a page that need no explaining: a title, a name, a date, a time, a colour, a counter, a photo? A niche UI element (a badge, a pill, a chip, a toast) makes the reader first picture what it looks like before the lesson can start. #2026_10_11_05_group_1
+- [ ] Is every word the reader sees in an example plain B2 English too: titles, summaries, alt text, labels, and component names? A newspaper headline ("Transit Accord Reached") makes the reader decode words while trying to follow the code; "New Park Opens Today" is read at a glance. #2026_10_11_06_group_3
 - [ ] Does the prose avoid forced corporate or newsroom lore (no fictional publishing house, editorial desk, promotion booth, or newsroom workflow)? #2026_10_07_05_group_1
 - [ ] Are variable, component, and state names chosen from plain, universal vocabulary (such as `count`, `tickets`, `likes`, `message`, `items`, `title`, `active`) rather than specialized or idiosyncratic jargon (such as `byline`, `wire`, `masthead`, `freePasses`, `promotionDesk`)? #2026_10_07_05_group_1
 - [ ] If an engineer name is used for empathy, does it appear simply as a developer writing code, with zero workplace drama or fictional backstory? #2026_10_07_05_group_1
@@ -447,17 +448,22 @@ Notes: Each symbol is decoded where it appears, the parent's side and the child'
 
 Notes: Calls `readerName` an "explicit prop" without explaining what a prop is or how the child receives it.
 
-## Vocabulary & Baptisms | 24 | Standard React Vocabulary vs Corporate Jargon #2026_09_20_26_group_1
+## Vocabulary & Baptisms | 24 | Standard React Vocabulary vs Corporate Jargon #2026_09_20_26_group_1 revised by #2026_10_11_06_group_3
 
 - [ ] Does the text use standard React and web platform terminology as established in official documentation?
 - [ ] Does the prose avoid pseudo-academic buzzwords or reifying routine patterns into fake proper nouns?
 - [ ] Is natural React phrasing ("passing props", "receiving props") preferred over legalistic corporate jargon ("establishing a contract")?
+- [ ] Is an idea about how a page looks told in everyday words instead of designer or other-framework terms? #2026_10_11_06_group_3
 
-## Vocabulary & Baptisms | 25 | The Two-Tier Convention Protocol: Prune First, Decode Second ([!CONVENTION]) #2026_09_21_27_group_1
+- [ ] COUNTER-EXAMPLE: "`CardContainer` renders only the outer visual frame and exposes an open slot with `{children}`." Notes: "Frame" and "slot" are designer and Vue words; React has no slots, and the reader must translate both. #2026_10_11_06_group_3
 
-- [ ] Does the prose avoid idiosyncratic newspaper jargon ("byline", "lede", "dateline", "ticker", "slug") in favor of everyday B2 vocabulary ("article", "journalist", "headline", "news alert", "news feed")? #2026_09_22_04_group_1
+- [ ] PROPER EXAMPLE: "On a news site, every story is shown with the same design: the same border, the same spacing, the same layout. Only the content changes." Notes: The owner's wording for Lecture 7: the design stays the same, the content changes. #2026_10_11_06_group_3
+
+## Vocabulary & Baptisms | 25 | The Two-Tier Convention Protocol: Prune First, Decode Second ([!CONVENTION]) #2026_09_21_27_group_1 revised by #2026_10_11_06_group_3
+
+- [ ] Does the lesson leave a specialist world instead of translating it? A setting whose words need replacing (a newsroom, an editorial desk) keeps producing them; a plain everyday setting (a shop, a to-do list, a weather page, a list of stories with titles and dates) never raises them. #2026_09_22_04_group_1 revised by #2026_10_11_06_group_3
 - [ ] Is the Two-Tier Convention Protocol followed:
-    * **Tier 1 (First Priority: Prune & Replace)**: Replace domain conventions with self-evident everyday English terms across text and figures (e.g. "byline" ➔ "journalist profile", "masthead" ➔ "site header"). #2026_09_22_04_group_1
+    * **Tier 1 (First Priority: Prune & Replace)**: Replace domain conventions with self-evident everyday English terms across text and figures (e.g. "masthead" ➔ "site header", "byline" ➔ "author"). #2026_09_22_04_group_1 revised by #2026_10_11_06_group_3
     * **Tier 2 (Fallback: Inescapable Industry Standard)**: Retain the convention only if it is a universal frontend standard developers must recognize in interviews and libraries ("slug", "accordion", "toast", "drawer").
 - [ ] When an inescapable convention is retained, is it decoded using an explicit `> [!CONVENTION]` callout covering Physical Origin, Web Engineering Reality, and Operational Justification?
 
@@ -478,7 +484,7 @@ Notes: "Masthead" is easily replaced with "site header" across text and figures,
 
 > Declares the site header container and single source of reader data truth.
 
-## Vocabulary & Baptisms | 26 | The Kindergarten Noun Standard (Basic Variables & Zero Subculture Jargon) #2026_09_27_07_group_1
+## Vocabulary & Baptisms | 26 | The Kindergarten Noun Standard (Basic Variables & Zero Subculture Jargon) #2026_09_27_07_group_1 revised by #2026_10_11_06_group_3
 
 - [ ] Are all component props, variables, function parameters, and attribute identifiers named using basic, everyday human nouns that an ordinary person outside of tech understands without explanation (`name`, `title`, `job`, `author`, `date`, `count`, `label`, `text`, `color`)?
 - [ ] Are specialized subculture terms from design systems, corporate software architectures, or niche publishing permanently avoided in lesson code, comments, and prose?
@@ -490,15 +496,15 @@ Notes: "Masthead" is easily replaced with "site header" across text and figures,
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Importing specialized design-system or enterprise jargon into basic React examples:
 
 > `<CardContainer tone="urgent" surface="raised">`
-> `  <h2>Dispatch</h2>`
+> `  <h2>New Park Opens Today</h2>`
 > `</CardContainer>`
 
 Notes: "Tone" and "surface" are specialized design-system abstractions that confuse students learning fundamental React prop mechanics.
 
 - [ ] PROPER EXAMPLE: Grounding props in basic, universally understood everyday words:
 
-> `<CardContainer color="red" title="Breaking News">`
-> `  <h2>Dispatch</h2>`
+> `<CardContainer color="red" title="Today">`
+> `  <h2>New Park Opens Today</h2>`
 > `</CardContainer>`
 
 Notes: Uses elementary words ("color", "title") that require zero design-system translation.

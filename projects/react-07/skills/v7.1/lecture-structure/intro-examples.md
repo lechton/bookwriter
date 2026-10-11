@@ -62,3 +62,15 @@ The standard these examples carry is `SKILL.md` Section 12 beside this file.
 > In technical interviews, engineering candidates are closely evaluated on container composition, the opaque structure of `children`, clean attribute forwarding with rest and spread, attribute evaluation order, and fallback defaults in destructuring. In each question cycle below, the scenario presents concrete code, the bold question names the developer's uncertainty, the answer traces what the runtime executes, and the principle box formalizes that answer into an engineering rule.
 
 **Why it failed.** It teaches nothing. It lists five topics the reader has not learned yet and describes the lesson's format instead of starting it.
+
+## Failed: the Lecture 7 cold drop #2026_10_11_06_group_3
+
+> ### One card component cannot predict every story
+>
+> With what Lecture 6 taught, you would write the news card with one prop for each piece it shows:
+>
+> ```jsx
+> function NewsCard({ title, badgeText, author }) { ... }
+> ```
+
+**Why it failed.** The first sentence drops the reader into code without saying what the chapter is about or what the code is for. The owner's fix: one warm paragraph on the page the reader knows (every story has the same design, only the content changes), one sentence on where the chapter goes, and then the example with its purpose ("let's see why the props from Lecture 6 are not enough"). The badge in the code was a second problem (`lecture-voice` Section 03).

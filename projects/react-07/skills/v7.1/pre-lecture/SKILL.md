@@ -206,7 +206,7 @@ Notes: The substantive argument sits left of `◼`, and the pedagogical contract
 
 Notes: Fully literal, stays within the line ceiling, carries a plain trailing comment with zero tildes, and audits every introduced identifier. #2026_10_04_10_group_1
 
-## Pre-Element Taxonomy | 13B | The Question Cycle Before a Principle Box #2026_10_04_10_group_1 revised by #2026_10_06_04_group_3 and #2026_10_10_01_group_3
+## Pre-Element Taxonomy | 13B | The Question Cycle Before a Principle Box #2026_10_04_10_group_1 revised by #2026_10_06_04_group_3, #2026_10_10_01_group_3, and #2026_10_11_06_group_1
 
 The lecture teaches each map principle as one question cycle: the reader's question with its code, the answer, and the box that turns the answer into a rule. The `[question-cycle]` element plans that cycle from the map, so a reviewer can check the question, the answer, and the box against each other before any lecture prose exists. #2026_10_10_01_group_3
 
@@ -215,7 +215,7 @@ The lecture teaches each map principle as one question cycle: the reader's quest
     2. **Code and result**: the code the reader writes and what the screen or console then shows, from the map's `Required Lesson Proof` or `Real Mistake`, verified in React 19.
     3. **Verdict**: the code works, or it does not do what the reader wanted. A filled `Real Mistake` gives "does not"; `none` gives "works".
     4. **Answer**: what React does, in the order it happens (the map's `React Does`), ending in what the reader sees.
-    5. **Fix**: when the verdict is "does not", the code that fixes it, from the principle named by the map's `Fix In`. Name where the reader learned that code's form: a runway section of this lecture or an earlier lecture. When the verdict is "works", write `none`.
+    5. **Fix**: when the verdict is "does not", the code that fixes it, from the principle named by the map's `Fix In` (normally this one). When the first fix has a catch, list the steps: the junior fix, what it still gets wrong, the senior fix (`lecture-structure` Section 12C). #2026_10_11_06_group_1 Name where the reader learned that code's form: a runway section of this lecture or an earlier lecture. When the verdict is "works", write `none`.
     6. **Rule**: what the box tells the reader to do, and its boundary: when the rule does not apply (the map's `Condition` Review Point, or the case the next question takes).
     7. **Needs**: every idea or code form the question, answer, fix, or box uses that this lecture has not taught yet in an earlier cycle, each with where it is taught: a runway section title, or "Lecture N". A need with no place to be taught stops the blueprint.
     8. **Diagram**: the ASCII diagram the answer uses, with what it shows, or `none`.

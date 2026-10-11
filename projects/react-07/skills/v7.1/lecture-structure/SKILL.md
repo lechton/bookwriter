@@ -128,7 +128,7 @@ Notes: Placed on line 2, preserves the server tier tag, and quotes the bank ques
 - [ ] Are underlying browser engine consequences explicitly deconstructed (for example, showing how replacing HTML with `innerHTML` wipes input focus and resets CSS transitions, whereas React reconciliation preserves node identity and focus)? #2026_09_20_27_group_1
 - [ ] Are friction cards placed at the end of the topic after walking through the broken attempt, engine behavior, and working code? #2026_09_21_03_group_1 revised by #2026_09_21_08_group_1 and #2026_09_21_09_group_1
 
-## Section Skeleton | 12 | The Recall List and the Runway Before the Questions #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1, #2026_09_25_03_group_1, #2026_10_10_01_group_5, #2026_10_11_01_group_3, and #2026_10_11_04_group_1
+## Section Skeleton | 12 | The Recall List and the Runway Before the Questions #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1, #2026_09_25_03_group_1, #2026_10_10_01_group_5, #2026_10_11_01_group_3, #2026_10_11_04_group_1, and #2026_10_11_06_group_3
 
 The first section and the runway are the lesson's introduction. They teach the ideas the questions stand on, by their proper names (`children`, props, declarative, imperative), starting from what the reader already knows. When the reader understands the introduction, every answer can go deeper instead of starting from zero. The introduction teaches; it does not advertise the lesson or talk about interviews. #2026_10_11_04_group_1
 
@@ -139,10 +139,22 @@ The first section and the runway are the lesson's introduction. They teach the i
 - [ ] In foundational lectures, does the runway introduce and deconstruct syntax primitives before they appear in multi-file code examples or formal principles?
 - [ ] Is the introduction written to these five standards? #2026_10_11_04_group_1
     1. **One idea at a time.** Each paragraph and each code fence carries one new idea.
-    2. **Name it and show it.** The idea's proper name comes with the shortest code that shows it.
+    2. **Say what it is for, then name it and show it.** One or two warm sentences say what the reader is about to do and why, then the idea's proper name comes with the shortest code that shows it. An example never drops in cold. #2026_10_11_06_group_3
     3. **Say who does what.** Each sentence says plainly whether the browser, React, or our code acts.
     4. **Confirm with a second tiny example.** A second, different snippet shows the same idea working again, and one closing sentence states the idea as a rule.
     5. **Only the words the idea needs.** The text starts teaching in its first sentence and stops when the idea is clear.
+- [ ] PROPER EXAMPLE: Lecture 7's first section after the opening lines. The second sentence is the owner's: #2026_10_11_06_group_3
+
+> On a news site, every story is shown with the same design: the same border, the same spacing, the same layout. Only the content changes. One story has a title and an author's name, another a title and a photo, another only a title.
+>
+> In this chapter, we write one React component that keeps the design the same and lets each story decide its own content. In React, this approach is enabled by a prop named `children`.
+>
+> Before we get there, let's see why the props from Lecture 6 are not enough.
+
+Notes: The reader knows where the chapter goes and why the next code matters before seeing it. The example that follows has a purpose. #2026_10_11_06_group_3
+
+- [ ] COUNTER-EXAMPLE: The same section before: "With what Lecture 6 taught, you would write the news card with one prop for each piece it shows:", then the code. Notes: A cold drop. The reader sees code without knowing what the chapter is about or what the code is for (`intro-examples.md`, "Failed: the Lecture 7 cold drop"). #2026_10_11_06_group_3
+
 - [ ] Do the introduction's sections read like the approved examples in `intro-examples.md` beside this file? The examples show moves: take the moves, never their topic, names, or code. #2026_10_11_04_group_1
 
 ## Section Skeleton | 12B | Autonomous Theory, Boxed Principles, and Multi-Invariant Coverage #2026_09_24_01_group_1
@@ -156,7 +168,7 @@ The first section and the runway are the lesson's introduction. They teach the i
 
 Notes: The box is governed by `skills/v7.1/principle-definition/` (rules and the casebook of approved boxes) and the question and answer around it by `skills/v7.1/principled-theory/`; this section only places them in the lecture. #2026_10_06_04_group_3 revised by #2026_10_06_05_group_4 and #2026_10_10_01_group_5
 
-## Section Skeleton | 12C | The Question Cycle #2026_10_10_01_group_5
+## Section Skeleton | 12C | The Question Cycle #2026_10_10_01_group_5 revised by #2026_10_11_06_group_1
 
 Each map principle reaches the reader as one cycle: a question the reader would ask, with code they could write; the answer, which explains what happens; and the box, which turns the answer into a rule for production code. The cycle is written from the blueprint's `[question-cycle]` plan. #2026_10_10_01_group_5
 
@@ -168,7 +180,7 @@ Each map principle reaches the reader as one cycle: a question the reader would 
     4. A `---` line, then `**ANSWER**` on its own line.
     5. The verdict: a bold sentence that starts with `**The code` and says whether it does what the reader wanted, followed by one plain sentence naming the cause.
     6. The answer in prose: what happens, in the order it happens, ending in what the reader sees. Ideas from the runway or an earlier lecture are recalled in a few words, not taught again.
-    7. When the verdict is "does not", the fix: the corrected code, and why it gives the right result.
+    7. When the verdict is "does not", the fix: the corrected code, and why it gives the right result. When the obvious fix has a catch, the answer keeps going instead of handing the catch to a new question: the fix a junior developer writes first, what it still gets wrong, and the code a senior developer writes. #2026_10_11_06_group_1
     8. An ASCII diagram when the sequence is easier to see than to read (Section 07).
     9. The `> [!PRINCIPLE]` box.
 - [ ] Does the scenario tell what the code does in sentences, instead of a bullet list that repeats each line of the code? #2026_10_10_01_group_5
@@ -219,6 +231,16 @@ Each map principle reaches the reader as one cycle: a question the reader would 
 Notes: The scenario is told in sentences, the code comments give the values, the question is one sentence, the verdict names the cause, and the answer recalls the queue and the updater in a few words because the runway taught them. The fix appears before the box, so the box's right card is code the reader has just seen work. #2026_10_10_01_group_5
 
 - [ ] HALF WAY EXAMPLE: Lecture 17, Question 1. The cycle has every part, but the answer is three bold-led bullets ("It does not update line by line", "It waits for the handler to finish", "It updates the screen once") for three steps that simply follow one another; plain sentences would carry them with less weight. #2026_10_10_01_group_5
+
+- [ ] Is every fix the answer presents one the author believes is complete? A fix the author knows is incomplete is shown as the junior step inside the same answer, never left as the answer so that the next question can repair it. A new question starts only when the reader would ask something new, in a new situation. #2026_10_11_06_group_1
+
+- [ ] COUNTER-EXAMPLE: Lecture 7, Questions 4 and 5. Question 4 ended on `className={'card ' + className}` as the fix. Question 5 then showed that this fix prints `class="card undefined"` when the caller passes no class, and repaired it with `className = ''`. The reader asked nothing new; Question 5 existed only because the map numbered it. #2026_10_11_06_group_1
+
+- [ ] PROPER EXAMPLE: The same problem answered in one cycle, from junior to senior: #2026_10_11_06_group_1
+
+> To keep both classes, a first fix joins them by hand: `className={'card ' + className}`. A story with `className="featured"` now gets `class="card featured"`. But a story that passes no class gets `class="card undefined"`, because `className` is `undefined` and `+` turns it into the text "undefined". An experienced developer adds the default from Lecture 6 in the parameter list, `className = ''`, so a missing class becomes an empty string and the story gets `class="card "`.
+
+Notes: One question, one answer that ends one step later. The default is recalled from Lecture 6 in a few words, not taught as a new principle. #2026_10_11_06_group_1
 
 - [ ] COUNTER-EXAMPLE: Lecture 17, Question 2. Under the code came three bullets that repeated it line by line ("First, you call `setTickets(tickets + 1)` expecting to add the first ticket", "Right below it, you call..."), which the reader had just read. Question 3 of the same lecture asked about "multiple clicks", while the bug it showed comes from one click. #2026_10_10_01_group_5
 
