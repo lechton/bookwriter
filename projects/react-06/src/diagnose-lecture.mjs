@@ -214,7 +214,7 @@ function diagnoseFile(filename) {
 			inFence = !inFence;
 			continue;
 		}
-		if (inFence || line === '' || line.startsWith('#') || line.startsWith('|') || line.startsWith('> INTERVIEW QUESTION')) continue;
+		if (inFence || line === '' || line.startsWith('#') || line.startsWith('|') || line.startsWith('> INTERVIEW QUESTION') || line.startsWith('> **The Interview Question:**') || line.startsWith('> **Interview Question:**')) continue;
 
 		// Extract prose text from paragraphs and alert cards
 		let text = line;

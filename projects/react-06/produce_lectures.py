@@ -50,6 +50,8 @@ from pathlib import Path
 # ----------------------------------------------------------------------------- paths
 
 PROJECT = Path(__file__).resolve().parent
+WORKSPACE = PROJECT.parent.parent
+PROMPT_TEMPLATE = PROJECT / "produce_prompt.md"
 QUESTIONS_MD = PROJECT / "questions" / "questions.md"
 
 def resolve_skills_dir(project_dir: Path):
@@ -188,85 +190,71 @@ def parse_question_row(n):
 
 # ----------------------------------------------------------------------------- prompt
 
-def build_prompt(n, row):
-    answered = answered_questions()
-    answered_list = ", ".join(str(a) for a in answered) or "none yet"
-    # Nearest answered lectures below n: the continuity anchors the agent may cite.
-    below = [a for a in answered if a < n]
-    prev_ref = (f"the most recent earlier lecture(s) "
-                + " and ".join(f"{LEC_REL}/{bn(p)}.md" for p in below[-2:])
-                + " for voice, world, and continuity") if below else \
-               "no earlier lectures exist yet, so this is the opening lecture of the course"
-    # A blueprint may already exist without a production lecture (an interrupted run).
-    pre_path = PRE_DIR / f"{bn(n)}.md"
-    pre_note = (f"A Phase 1 blueprint already exists at {PRE_REL}/{bn(n)}.md from an earlier "
-                f"interrupted run. Treat it as a draft: audit it against the pre-lecture skill "
-                f"(especially its Staging law and its Quality Gate), answer the eight steps of "
-                f"{SKILLS_REL}/principle-definition/SKILL.md afresh in a [principle-steps] element "
-                f"for every principle, and rewrite each principle box the answers do not support; "
-                f"only then expand it into the production lecture."
-                if pre_path.is_file() else
-                f"No blueprint exists yet: author {PRE_REL}/{bn(n)}.md from scratch.")
-    # Mandatory bootstrapping: the agy CLI session starts outside the project (its command
-    # tool begins in the scratch workspace), so the agent must cd into the project as its
-    # first action. Added after Q16: that session spent its whole turn on `find` commands,
-    # exited 0 with zero deliverables, and only the verification floors caught it.
-    bootstrap = (f"Your working directory is this project: {PROJECT}. "
-                 f"Your FIRST command must be `cd {PROJECT} && pwd && ls`: verify that "
-                 f"questions/, {SKILLS_REL}/, {PRE_REL}/, {LEC_REL}/, and "
-                 f"src/build-lectures.mjs are visible before reading anything else. "
-                 f"The project path is given to you: locating the project or questions.md "
-                 f"with `find` is avoided as it wastes context. Complete the session only "
-                 f"after background tasks have terminated and "
-                 f"{PRE_REL}/{bn(n)}.md, {LEC_REL}/{bn(n)}.md, and "
-                 f"{PDF_REL}/{bn(n)}.pdf exist on disk, verified by you with "
-                 f"`ls -la` on those exact paths.")
+def resolve_corpus():
+    """Absolute corpus path from the workspace config (`node tools/resolve.mjs corpus`)."""
+    try:
+        proc = subprocess.run(["node", "tools/resolve.mjs", "corpus"], cwd=str(WORKSPACE),
+                              capture_output=True, text=True, timeout=30)
+    except FileNotFoundError:
+        sys.exit("FATAL: node not found; it is needed to resolve the corpus path")
+    path = proc.stdout.strip()
+    if proc.returncode != 0 or not path:
+        sys.exit("FATAL: the corpus key is not configured: " + (proc.stderr.strip() or "no output")
+                 + "\nSet it in bookwriter-project.local.json at the workspace root.")
+    if not Path(path).is_dir():
+        sys.exit(f"FATAL: the corpus folder does not exist: {path}")
+    return path
 
-    return f"""ppp — proceed immediately, execute everything, ask no confirmation questions.
 
-You are the production agent for the react-lecture-06 course (React 19 interview lectures, 180-question bank, The National Times world). The question bank was scanned algorithmically: a question counts as answered only when its production lecture exists on disk. Questions already answered: {answered_list}. Your task in this session is exactly one question, the next unanswered one, Q{n}, taken end to end. Do not start, sketch, or touch any other question.
+def build_prompt(n, row, corpus):
+    """The session header (question row, working-directory check) followed by the editable
+    template in PROMPT_TEMPLATE with its placeholders filled for this run."""
+    if not PROMPT_TEMPLATE.is_file():
+        sys.exit(f"FATAL: prompt template not found: {PROMPT_TEMPLATE}")
+    body = PROMPT_TEMPLATE.read_text(encoding="utf-8").strip()
+    values = {
+        "PROJECT": PROJECT.name.replace("-", " ").title(),
+        "NN": bn(n),
+        "SKILLS_DIR": SKILLS_REL,
+        "PRE_DIR": PRE_REL,
+        "LEC_DIR": LEC_REL,
+        "CORPUS": corpus,
+    }
+    for key, value in values.items():
+        body = body.replace("{" + key + "}", value)
+    leftover = sorted(set(re.findall(r"\{[A-Z_]+\}", body)))
+    if leftover:
+        sys.exit(f"FATAL: unknown placeholder(s) in {PROMPT_TEMPLATE.name}: {', '.join(leftover)}")
+    # The agy session starts outside the project, so the agent must cd in first. Added after
+    # Q16: that session spent its whole turn on `find` and exited 0 with zero deliverables.
+    header = f"""ppp: proceed immediately, execute everything, ask no confirmation questions.
+
+Your FIRST command must be `cd {PROJECT} && pwd && ls`. Do not search for the project with `find`. Finish only after {PRE_REL}/{bn(n)}.md, {LEC_REL}/{bn(n)}.md, and {PDF_REL}/{bn(n)}.pdf exist, checked with `ls -la` on those paths.
 
 The question row, verbatim from questions/questions.md:
 - Number: {n}
 - Tier: {row['tier']}
 - Topic tag: {row['topic']}
 - Question (copy verbatim into the lecture callout): {row['question']}
-- Hook (the seed of the opening scenario; grow it, never replace it): {row['hook']}
-
-The proper instruction system is the {SKILLS_REL}/ folder. Read {SKILLS_REL}/README.md first: it fixes the load order, and every skill below is one {SKILLS_REL}/<name>/SKILL.md file of numbered principles evaluated as questions with PROPER, HALF WAY, and COUNTER examples. The files in {SKILLS_REL}/old-instructions/ are a frozen archive of the legacy instructions and are not current standards; do not follow them.
-
-Read, in this order, before writing anything:
-1. questions/questions.md (your row and the rows around it) and questions/topics.md; questions/archive/ and questions/drafts/ hold earlier and proposed versions of the bank and are not current, so do not read them
-2. {SKILLS_REL}/README.md (the load order and the rule-tag registry)
-3. For the principles, before the blueprint: the `### Principles of React` sections of {LEC_REL}/04.md and {LEC_REL}/13.md (every new principle box should look like theirs: plain sentences, side notes, and a code pair for each decision), then {SKILLS_REL}/principle-definition/SKILL.md, read in full (its eight steps guide the thinking behind each principle; its Golden Exemplar Bank shows finished boxes), then the map 01-01-map-principles/{bn(n)}.md (if it exists), read as data: its fields tell you which decisions to teach and in what order, never the wording
-4. For the pre-lecture: {SKILLS_REL}/pre-lecture/SKILL.md, {SKILLS_REL}/principled-theory/SKILL.md, {SKILLS_REL}/lecture-voice/SKILL.md, {SKILLS_REL}/lecture-structure/SKILL.md, {SKILLS_REL}/ui-panels/SKILL.md
-5. For the lecture: {SKILLS_REL}/lecture-structure/SKILL.md, {SKILLS_REL}/principled-theory/SKILL.md, {SKILLS_REL}/lecture-voice/SKILL.md, {SKILLS_REL}/code-blocks/SKILL.md, {SKILLS_REL}/ui-panels/SKILL.md, {SKILLS_REL}/figures/SKILL.md
-6. For calling it done: {SKILLS_REL}/verification/SKILL.md and {SKILLS_REL}/build/SKILL.md
-7. {prev_ref}
-
-{bootstrap}
-
-The shipped standard to match is {LEC_REL}/04.md (with its blueprint {PRE_REL}/04.md): the Rendered UI Canvas opening the practical example, the files scaffold, the assembly pipeline figure, top-down Step 1-4 construction where Step 1 builds the parent and establishes every child contract, the calm professor narration (notice-moves with line addresses, per-step recaps, no template questions), clean end-of-line annotations in the assembly fences, the Component Summary section with its Component Role panel, the Architecture Audit table, the closing summary family and comparison table. The working lectures carry plain trailing comments; this session drafts the same way, with zero tildes. The `~token~` markers are added later by the code-comment-audit pass in 02-01-md-revised/, a folder this session never reads.
-
-Deliverables, in this exact order:
-1. Phase 1 pre-lecture: {PRE_REL}/{bn(n)}.md, following {SKILLS_REL}/pre-lecture/SKILL.md exactly, with a [principle-steps] element answering the eight steps of {SKILLS_REL}/principle-definition/SKILL.md before each finished principle box, including the staging standards (the five practical example stages and the panel elements planned as concrete pre-elements, each Step bullet carrying the narration itself, not a summary) and the full Quality Gate self-audit at the end. {pre_note}
-2. Phase 2 production lecture: {LEC_REL}/{bn(n)}.md, carrying the blueprint's finished principle boxes unchanged (the [principle-steps] answers stay in the blueprint), following {SKILLS_REL}/principled-theory/SKILL.md (the explanation, cards, and substrate under each box), {SKILLS_REL}/lecture-structure/SKILL.md (skeleton order, five-stage practical example, naming, closing table), {SKILLS_REL}/lecture-voice/SKILL.md (stance, definitions with the default and the law, the numbered opening beats), {SKILLS_REL}/code-blocks/SKILL.md (10-line ceiling, continuation attributes, comment standards), {SKILLS_REL}/ui-panels/SKILL.md (the panel modes), and {SKILLS_REL}/figures/SKILL.md. The mandatory html-figure file(s) go under {LEC_REL}/figures/, cloned from the closest proven archetype in {LEC_REL}/figures/templates/.
-3. Diagnostic & Build: run `node src/diagnose-lecture.mjs {bn(n)}` (Phase 1 draft mode, without `--audit`) from the project root and fix your files until it ends without `[GATE FAILED]`. Invariants 1-3 print `[DRAFT PASS]` by design in this mode; do not run `--audit` and do not add `~token~` markers in this session. Then run `node src/build-lectures.mjs` from the project root. Read the build output; fix every warn by editing your own files and rebuild. A clean build with zero warnings is the mechanical definition of done. The same build regenerates the combined course-reader deck.
-4. Stop after confirming all three exist: {PRE_REL}/{bn(n)}.md, {LEC_REL}/{bn(n)}.md, {PDF_REL}/{bn(n)}.pdf.
-
-When a term you use was already introduced by an earlier answered lecture, cite it as (see Lecture N) instead of re-teaching it; the answered list above is your citation map.
-
-Hard rules: one continuous line per paragraph (never hard-wrap), zero em-dashes, no screenshots or pdftoppm scans (text and build output only), and never modify any lecture, prelecture, figure, question row, skill, or build script other than Q{n}'s own deliverables."""
+- Hook (the seed of the opening scenario; grow it, never replace it): {row['hook']}"""
+    return header + "\n\n" + body
 
 
 def archive_for_rewrite(n):
-    """Move every file of an existing lecture (blueprint, lecture, figures, HTML, PDF, revised
-    copies) into their archive folders before a forced rewrite, so the new session authors from
-    scratch instead of inheriting the old draft. Delegates to archive_lecture.py, which never
-    deletes or overwrites."""
+    """Move every existing file of a lecture (blueprint, lecture, figures, HTML, PDF, revised
+    copies) into their archive folders before a session starts, so the session writes from
+    scratch, as the prompt template promises. Runs on every launch (a forced rewrite, or an
+    unanswered lesson that kept a blueprint or figures from an interrupted run). Delegates to
+    archive_lecture.py, which never deletes or overwrites."""
     import archive_lecture
-    moves = archive_lecture.archive(n, version=LEC_VERSION or None, reason="produce_lectures --force")
+    moves = archive_lecture.archive(n, version=LEC_VERSION or None, reason="produce_lectures: archive before writing")
     return [dest for _, dest in moves]
+
+
+def archive_lecture_plan(n):
+    """The moves archive_for_rewrite would make, without moving anything (for --dry-run)."""
+    import archive_lecture
+    return archive_lecture.archive(n, version=LEC_VERSION or None, dry_run=True)
 
 
 # ----------------------------------------------------------------------------- agy runner
@@ -327,13 +315,14 @@ def preflight_model(agy, model):
     return None
 
 
-def run_agy(agy, model, effort, timeout_min, skip_permissions, prompt, log_path, t0):
+def run_agy(agy, model, effort, timeout_min, skip_permissions, prompt, corpus, log_path, t0):
     """One fresh agy process for one iteration, in stream-json mode: every event the CLI
     emits (session init, each step update, the final result) is summarized to the console
     with an elapsed timestamp the moment it arrives, the raw event line goes to the log
     verbatim, and a heartbeat prints every HEARTBEAT_SEC seconds of silence. Returns exit code."""
     cmd = [agy, "--prompt", prompt, "--model", model,
            "--add-dir", str(PROJECT),
+           "--add-dir", corpus,
            "--output-format", "stream-json"]
     if effort:
         cmd += ["--effort", effort]
@@ -505,6 +494,8 @@ def main():
     if not SKILLS_README.is_file():
         sys.exit(f"FATAL: the skills instruction system is missing ({SKILLS_REL}/README.md not found)")
 
+    corpus = resolve_corpus()
+
     answered = answered_questions()
     answered_set = set(answered)
     scan_mode = True   # dynamic mode: after each success, find the next unanswered question
@@ -570,7 +561,7 @@ def main():
     row = parse_question_row(n)
     if row is None:
         sys.exit(f"FATAL: question Q{n} not found in {QUESTIONS_MD}")
-    prompt = build_prompt(n, row)
+    prompt = build_prompt(n, row, corpus)
 
     if args.dry_run:
         print("\n=== DRY RUN — nothing will be invoked ===")
@@ -581,10 +572,15 @@ def main():
         for k, v in row.items():
             print(f"  {k:8}: {v}")
         print(f"\nagy command: {args.agy} --prompt <see below> --model {args.model}"
-              f" --add-dir {PROJECT}"
+              f" --add-dir {PROJECT} --add-dir {corpus}"
               f"{' --effort ' + args.effort if args.effort else ''}"
               f"{' --dangerously-skip-permissions' if not args.no_skip_permissions else ''}"
               f" --print-timeout {args.timeout_min}m  (cwd: {PROJECT})")
+        existing = archive_lecture_plan(n)
+        if existing:
+            print(f"\nBefore launch, archive_lecture.py would archive {len(existing)} file(s) of Q{n}:")
+            for src, dest in existing:
+                print(f"  {src.relative_to(PROJECT)} -> {dest.relative_to(PROJECT)}")
         print("\n=== PROMPT ===\n")
         print(prompt)
         print("\n=== END DRY RUN ===")
@@ -603,10 +599,9 @@ def main():
             results.append((n, "no-question-row", 0, None, "row missing in questions.md"))
             break
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        if args.force:
-            for dest in archive_for_rewrite(n):
-                print(f"    archived for rewrite: {dest.relative_to(PROJECT)}")
-        prompt = build_prompt(n, row)
+        for dest in archive_for_rewrite(n):
+            print(f"    archived before writing: {dest.relative_to(PROJECT)}")
+        prompt = build_prompt(n, row, corpus)
         log_path = LOG_DIR / f"q{bn(n)}_{stamp}.log"
 
         print(f"[{produced + 1}/{chapters}] Q{n} — tier {row['tier']} — {row['topic']}")
@@ -621,7 +616,7 @@ def main():
 
         t0 = time.time()
         code = run_agy(args.agy, args.model, args.effort, args.timeout_min,
-                       not args.no_skip_permissions, prompt, log_path, t0)
+                       not args.no_skip_permissions, prompt, corpus, log_path, t0)
         elapsed = time.time() - t0
 
         if code != 0:

@@ -56,9 +56,9 @@ Notes: Leads with a bold title, defines the mechanism in plain English, and prov
 ## Pedagogy & Voice Gates | 06 | Typology Tagging and Seven Opening Beats
 
 - [ ] Does line 2 contain the interview question callout: `> INTERVIEW QUESTION | {tier} | {question text}`?
-- [ ] Does the body open immediately with 7 numbered beats progressing from Scene to Promise:
-    1. Scene (The National Times newsroom)
-    2. Setup (concrete user/journalist action)
+- [ ] Does the body open immediately with 7 numbered beats progressing from Scene to Promise: #2026_10_07_05_group_1
+    1. Scene (everyday user on a live web interface)
+    2. Setup (concrete screen element or user interaction)
     3. Surprising Action (what code attempts)
     4. Question (central doubt or failure)
     5. Danger (tangible reader/business impact)
@@ -158,14 +158,15 @@ Notes: Leads with a bold title, defines the mechanism in plain English, and prov
 - [ ] Does every entry provide all 4 fields with child components indented by 2 spaces?
 - [ ] Does each role summary follow the four-beat rhythm in serif prose with varied cadences?
 
-## Structure & Panel Gates | 18 | Standard Closing Sequence #2026_09_25_03_group_1
+## Structure & Panel Gates | 18 | Standard Closing Sequence #2026_09_25_03_group_1 revised by #2026_10_07_03_group_1, #2026_10_07_04_group_1, and #2026_10_07_06_group_1
 
 - [ ] Does the lecture conclude with the standard closing sections in exact order:
     1. `### Where you will meet this`: 3 to 5 concrete real-world use cases.
-    2. `### Glossary`: 4 to 6 core terms formatted as `- **Term**: Plain-English definition and concrete engineering role`, with zero orphan terms (every glossary term introduced and grounded in previous text). #2026_09_25_03_group_1
-    3. `## Beyond the basics`: 4 to 8 authoritative bullets with live links. #2026_09_21_32_group_1
-    4. `### Summary`: Opens with a bold technical title, followed by `❒ {Subtitle}` categories and bolded decision rules (`➔ ALWAYS ...`, `➔ NEVER ...`, `➔ IF ... THEN ...`). #2026_09_21_19_group_1
-    5. Closing Comparison Table: Three-column comparative matrix as the final block of the Markdown file.
+    2. `### For the interview`: Opens with `> **The Interview Question:** [question]` followed by the 4 beats (The Hidden Signal, The Classic Trap, What is Actually Going On, Where It Gets Tricky). #2026_10_07_06_group_1
+    3. `### Glossary`: 4 to 6 core terms formatted as `- **Term**: Plain-English definition and concrete engineering role`, with zero orphan terms (every glossary term introduced and grounded in previous text). #2026_09_25_03_group_1
+    4. `## Beyond the basics`: 4 to 8 authoritative bullets with live links. #2026_09_21_32_group_1
+    5. `### Summary`: Opens with a bold technical title, followed by `❒ {Subtitle}` categories and bolded decision rules (`➔ ALWAYS ...`, `➔ NEVER ...`, `➔ IF ... THEN ...`). #2026_09_21_19_group_1
+    6. Closing Comparison Table: Three-column comparative matrix as the final block of the Markdown file.
 
 ## Compiler & Visual Verification | 19 | The Mechanical Build Gate
 
@@ -185,7 +186,7 @@ Notes: Leads with a bold title, defines the mechanism in plain English, and prov
 - [ ] Are all pre-flight quality checks verified before claiming completion:
     1. **Curriculum Dependency Invariant**: Zero premature syntax smuggling; hooks and patterns strictly adhere to question order.
     2. **Archetype Alignment**: Five-stage practical example and Stage D panel align with Archetype A or Archetype B.
-    3. **Skeleton Order**: Title → Question → 7 Beats → Problem Opener → Theory-First Conceptual Foundation → Principled Theory → `### Let's Design a Practical Example` → Where You Will Meet This → Glossary → Beyond the Basics → Summary → Closing Table. #2026_09_25_03_group_1
+    3. **Skeleton Order**: Title → Question → 7 Beats → Problem Opener → Theory-First Conceptual Foundation → Principled Theory → `### Let's Design a Practical Example` → Where You Will Meet This → For the Interview → Glossary → Beyond the Basics → Summary → Closing Table. #2026_09_25_03_group_1 revised by #2026_10_07_03_group_1 and #2026_10_07_06_group_1
     4. **Line Ceilings**: Every code snippet ≤ 10 lines with valid continuation attributes.
     5. **Division of Labor**: Code shows syntax, comments show line mechanics, prose explains mental models.
     6. **Comment Density & Speech Bubbles**: Every narrative body code block (≥3 lines) carries inline comments on load-bearing lines with bold keywords. #2026_09_21_30_group_1
@@ -202,9 +203,9 @@ Notes: Leads with a bold title, defines the mechanism in plain English, and prov
     17. **Pure HTML/Markdown Standard**: Unicode glyphs (→, ≤) and code spans used instead of raw LaTeX math. #2026_09_22_09_group_1
     18. **Callout Code Formatting**: Syntax snippets inside callouts separated onto dedicated display lines. #2026_09_22_10_group_1
     19. **Autonomous Theory & Multi-Invariant Coverage**: Zero ungrounded syntax in Stage C; all declared invariants derived in Section 2. #2026_09_24_01_group_1
-    20. **Boxes a Beginner Gets on One Read**: Does every principle box follow the rules of `skills/v6.6/principle-definition/SKILL.md` (basics first, then what happens step by step, general names, no riddles, no words the reader lacks, code that stands alone), compared against the approved boxes in its casebook `examples.md`? Is the box identical in the blueprint and the lecture? Is the claim shown below the box in titled code blocks whose output the proofs verified? #2026_09_26_11_group_1 revised by #2026_10_04_10_group_1, #2026_10_06_03_group_1, and #2026_10_06_04_group_3
+    20. **Boxes a Beginner Gets on One Read**: Does every principle box pass the Four Sequential Principle Passes of `skills/v6.6/principle-definition/SKILL.md` Section 01B in strict order: Pass 1 (Benchmark Casebook Alignment from `examples.md`), Pass 2 (The "Picture It" Test with observable code and screen facts), Pass 3 (Plain JavaScript First for engine/lifecycle topics), and Pass 4 (Algorithmic & Build Pass)? Is the box identical in the blueprint and the lecture? Is the claim shown below the box in titled code blocks whose output the proofs verified? #2026_09_26_11_group_1 revised by #2026_10_04_10_group_1, #2026_10_06_03_group_1, #2026_10_06_04_group_3, and #2026_10_07_02_group_1
     21. **Zero-Gap Knowledge Flow & Commentary Quality**: All glossary terms and callouts are grounded in prior text; case studies provide meaningful pedagogical lessons instead of mechanical line recitation. #2026_09_25_03_group_1
-    22. **Professional Idiom & Example Elegance**: Case study models an authentic, elegant component that a professional tutorial or senior engineer would design, capturing the essence of the mechanism while strictly avoiding contrived toy widgets, trivial 2-line helper files, or unnatural imports. #2026_09_25_05_group_1
+    22. **Professional Idiom & Example Elegance**: Case study models an authentic, elegant component that a professional tutorial or senior engineer would design, capturing the essence of the mechanism while strictly avoiding contrived toy widgets, trivial 2-line helper files, or unnatural imports; does it use universal everyday vocabulary (tickets, items, likes, messages, count) rather than contrived industry or newsroom jargon (free pass promotion desk, byline, wire)? #2026_09_25_05_group_1 revised by #2026_10_07_05_group_1
     23. **Two-Map Scope & Principle Traceability**: Has `01-01-map/{nn}.md` been consulted for scope, has `01-01-map-principles/{nn}.md` been consulted for the exact principle set, does every lecture principle trace one-to-one to that approved map, does every `Prerequisite` row appear as a one-line recall and every `Preview` row as one sentence, each naming the owner lesson, and do `Deferred` rows stay out? Does `node src/diagnose-lecture.mjs {nn}` list no ledger owner the lecture never names? Is every `New` JavaScript form in the map's Terms table with refresher `yes` explained where it first appears, and is no claim from the map's Open Issues quoted as fact? Does `node src/handout.mjs {nn}` show no open message for this lesson, and does each forward promise in the lecture have a `promise` message? #2026_09_25_06_group_1 revised by #2026_09_26_19_group_1, #2026_09_26_21_group_2, #2026_10_06_01_group_2, #2026_10_06_01_group_3, #2026_10_06_02_group_5, and #2026_10_06_03_group_2
     24. **Map Ownership & Authentic Contrasts**: Does each lecture principle stay within the decision its map entry owns, leaving decisions owned by other lessons to the ledger's `Prerequisite` and `Preview` rows, and do comparative anti-patterns represent authentic mistakes in this topic rather than generic strawmen? #2026_09_26_17_group_1 revised by #2026_09_26_19_group_1 and #2026_09_26_21_group_2
 

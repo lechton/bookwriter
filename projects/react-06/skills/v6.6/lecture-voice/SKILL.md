@@ -87,13 +87,35 @@ Notes: Respectful and empathetic. Introduces the trap as a possible scenario, va
 
 Notes: Patronizing and dogmatic. Universally projects an intellectual error onto every beginner as an inevitable character flaw rather than framing it as a possible, understandable scenario. #2026_09_27_05_group_1
 
-## Stance | 03 | Application-First Engineering Problems #2026_09_20_27_group_1
+## Stance | 03 | Universal Everyday Engineering Problems #2026_09_20_27_group_1 revised by #2026_10_07_05_group_1
 
-- [ ] In code examples and component implementations, is the engineering problem grounded in authentic production models from The National Times rather than generic foo/bar placeholders? #2026_09_25_10_group_1
-- [ ] Is tangible developer pain established before introducing framework mechanics or browser APIs?
-- [ ] Does the prose avoid theatrical fiction or narrative storytelling about the newsroom, keeping The National Times strictly as an authentic domain model for files, components, and data structures? #2026_09_25_10_group_1
-- [ ] Are character names drawn strictly from the approved whitelist (`John Miller`, `Leo Smith`, `James Cooper`, `Ann Brooks`, `Clara Foster`, `Hellen Jones`, `Julian`)? #2026_09_22_05_group_1
+- [ ] In code examples and component implementations, is the engineering problem grounded in universal, everyday web UI widgets that any basic computer user immediately recognizes (such as an item counter, a shopping cart, a message box, a like button, a ticket order, a search input, or a notification badge) rather than generic foo/bar placeholders or contrived industry jargon? #2026_10_07_05_group_1
+- [ ] Does the prose avoid forced corporate or newsroom lore (no fictional publishing house, editorial desk, promotion booth, or newsroom workflow)? #2026_10_07_05_group_1
+- [ ] Are variable, component, and state names chosen from plain, universal vocabulary (such as `count`, `tickets`, `likes`, `message`, `items`, `title`, `active`) rather than specialized or idiosyncratic jargon (such as `byline`, `wire`, `masthead`, `freePasses`, `promotionDesk`)? #2026_10_07_05_group_1
+- [ ] If an engineer name is used for empathy, does it appear simply as a developer writing code, with zero workplace drama or fictional backstory? #2026_10_07_05_group_1
 - [ ] Are applications and scenarios staged one by one with dedicated sentences, avoiding compound "X or Y" scenario cramming? #2026_09_21_06_group_1
+
+- [ ] PROPER EXAMPLE: Universal everyday UI widget with plain names:
+
+> ```jsx
+> export default function TicketOrder() {
+>   const [tickets, setTickets] = useState(0);
+>   function addThree() {
+>     setTickets(t => t + 1);
+>     setTickets(t => t + 1);
+>     setTickets(t => t + 1);
+>   }
+>   return <button onClick={addThree}>Tickets: {tickets}</button>;
+> }
+> ```
+
+Notes: Clear, universal, everyday concept. Any human understands adding three tickets to an order. Zero newsroom jargon. #2026_10_07_05_group_1
+
+- [ ] COUNTER-EXAMPLE: Contrived domain hybrid and idiosyncratic jargon:
+
+> Clara builds a free pass promotion desk for readers at The National Times, using a `FreePasses` component connected to an editorial dispatch container.
+
+Notes: Cryptic, contrived fiction. "Free pass promotion desk" and "editorial dispatch" are bizarre jargon that alienates both beginners and experienced developers. #2026_10_07_05_group_1
 
 ## Stance | 04 | Physical Metaphors for Paradigm Shifts #2026_09_20_27_group_1
 

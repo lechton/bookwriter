@@ -29,10 +29,11 @@ Notes: Approved examples of the paragraph under the box will be added to `princi
 - [ ] Does the wrong card show the map's `Real Mistake`, a mistake developers really make in this topic, not a strawman or a trivial typo? #2026_09_26_06_group_1 revised by #2026_10_06_05_group_3 and #2026_10_06_09_group_2
 - [ ] When the map's `Real Mistake` is `none`, does the box end with the right card alone, instead of a wrong card made up to complete a pair? #2026_10_06_05_group_3 revised by #2026_10_06_09_group_2
 
-## Map Traceability | 04 | The Map Decides the Principles #2026_09_26_19_group_1 revised by #2026_10_06_05_group_3
+## Map Traceability | 04 | The Map Decides the Principles #2026_09_26_19_group_1 revised by #2026_10_06_05_group_3 and #2026_10_07_05_group_1
 
 - [ ] Do the lecture's principles and their order come from the approved `01-01-map-principles/{nn}.md`, one box per map principle, none added, merged, or split? #2026_09_26_19_group_1 revised by #2026_10_06_05_group_3
 - [ ] Are the map's `Prerequisite` rows one-line recalls and its `Preview` rows one sentence, each naming the owner lesson? #2026_09_26_21_group_2 revised by #2026_10_06_05_group_3
+- [ ] **The map contract is architecture, not story.** The map contract governs the architectural principles, their order, ledger dispositions, mechanisms, and runtime defects. The illustrative story names, component names, or fictional setups in the map's Friction and Under the Hood fields are scratch scaffolding; authors must replace any idiosyncratic or contrived map names (such as "free passes", "promotion desk", or newsroom CMS entities) with universal, everyday UI elements (such as `TicketOrder`, `ShoppingCart`, `LikeCounter`, `ItemQuantity`). #2026_10_07_05_group_1
 
 ## After the Principles | 05 | Zero New Concepts #2026_09_24_02_group_1 revised by #2026_10_06_05_group_3
 

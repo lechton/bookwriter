@@ -442,6 +442,27 @@ function inline(s, allowDisplayCode = false) {
 	// Restore &nbsp;
 	out = out.replace(/&amp;nbsp;/gi, '&nbsp;');
 
+	// Macro for badge: [badge:Principle 01] or [badge:Principle 1]
+	out = out.replace(/\[badge:\s*([^\]]+)\]/gi, '<span class="principle-badge">$1</span>');
+
+	// Restore span tags (e.g. <span class="principle-badge">...</span>)
+	out = out.replace(/&lt;span(\s+class="[^"]*")?&gt;([\s\S]*?)&lt;\/span&gt;/gi, '<span$1>$2</span>');
+
+	// Restore div tags (e.g. <div class="table-code-snippet">...)
+	out = out.replace(/&lt;div(\s+class="[^"]*")?&gt;([\s\S]*?)&lt;\/div&gt;/gi, (_, cls, content) => {
+		const classAttr = cls || '';
+		if (classAttr.includes('table-code-snippet')) {
+			let codeBody = content.replace(/^&lt;code&gt;([\s\S]*?)&lt;\/code&gt;$/i, '$1').replace(/^<code>([\s\S]*?)<\/code>$/i, '$1');
+			const lines = codeBody.split('<br>');
+			const highlighted = lines.map(ln => {
+				const raw = ln.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+				return `<div class="code-line">${tokenizeLine(raw).replace(/&amp;nbsp;/g, '&nbsp;')}</div>`;
+			}).join('');
+			return `<div${classAttr}>${highlighted}</div>`;
+		}
+		return `<div${classAttr}>${content}</div>`;
+	});
+
 	// Restore stashed inline/display code.
 	// For display code, absorb any immediately trailing punctuation (., :, ,) so it does not leave an orphaned mark on the line below.
 	out = out.replace(/\u0000CODE(\d+)\u0000(\.|\:|,)?/g, (_, i, punct) => {
@@ -1007,7 +1028,8 @@ function render(blocks, currentMdFile = '') {
 			const isStep = /^Step\s+(\d+)/i.test(b.text.trim());
 			const isExample = /^(?:LET'S DESIGN A PRACTICAL EXAMPLE|Let's Design a Practical Example|Practical Example)/i.test(b.text.trim());
 			const isLessons = /^(?:Lessons from the Experiment|Component Summary)\b/i.test(b.text.trim());
-			let extra = isGlossary ? ' glossary-section' : (isSummary ? ' summary-section' : (isStep ? ' step-section' : (isExample ? ' example-section' : (isLessons ? ' lessons-section' : ''))));
+			const isInterview = /^For the interview\b/i.test(b.text.trim());
+			let extra = isGlossary ? ' glossary-section' : (isSummary ? ' summary-section' : (isStep ? ' step-section' : (isExample ? ' example-section' : (isLessons ? ' lessons-section' : (isInterview ? ' interview-section' : '')))));
 			html += `<div class="keep-together${extra}">\n`;
 			inH3 = true;
 		}

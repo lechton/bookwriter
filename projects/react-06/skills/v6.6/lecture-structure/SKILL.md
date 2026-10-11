@@ -44,7 +44,7 @@ Digests: `skills/old-instructions/AUTHOR-BRIEF.md` and `skills/old-instructions/
 ## Workflow & Phases | 06 | Topic Fidelity and Architectural Independence
 
 - [ ] Is each lecture dedicated strictly to answering its assigned interview question from the question bank?
-- [ ] Does the lecture expand the specific hook and domain scenario assigned to the question rather than replacing it with generic examples?
+- [ ] Does the lecture expand the specific hook and engineering challenge assigned to the question from the question bank, grounding it in universal everyday UI elements (such as item counters, ticket orders, shopping carts, or like buttons) while strictly replacing any idiosyncratic newsroom or contrived domain lore with clean, common vocabulary? #2026_09_21_02_group_1 revised by #2026_10_07_05_group_1
 - [ ] Are component architectures, code setups, and figures designed specifically for the assigned mechanism rather than copied from adjacent lectures?
 - [ ] Does the lecture respect the Curriculum Dependency Law, restricting code syntax, hooks, and references to what has been formally introduced up to that question (e.g. in `questions/questions.md` Version 3: no `useState` before Q14, no callback props before Q13, no `useEffect` before Q31)? #2026_09_21_02_group_1 revised by #2026_09_21_06_group_1 and #2026_10_05_04_group_1
 - [ ] Is the lecture governed by both maps: `01-01-map/{nn}.md` for syllabus scope and `01-01-map-principles/{nn}.md` for the exact operational principle set and order? #2026_09_25_06_group_1 revised by #2026_09_26_19_group_1
@@ -170,14 +170,88 @@ Notes: Teaches specific syntax and engine rules (components, capitalization, pro
 
 Notes: The box is governed by `skills/v6.6/principle-definition/` (rules and the casebook of approved boxes) and the paragraph under it by `skills/v6.6/principled-theory/`; this section only places them in the lecture. #2026_10_06_04_group_3 revised by #2026_10_06_05_group_4
 
-## Section Skeleton | 13 | Where You Will Meet This, Glossary & Summary #2026_09_21_19_group_1
+## Section Skeleton | 13 | Where You Will Meet This, For the Interview, Glossary & Summary #2026_09_21_19_group_1 revised by #2026_10_07_03_group_1, #2026_10_07_04_group_1, and #2026_10_07_06_group_1
 
 - [ ] Is `### Where you will meet this` placed immediately after Stage E, including 3 to 5 concise real-world use cases?
-- [ ] Is `### Glossary` placed immediately after `Where you will meet this`, defining 4 to 6 core terms formatted on single lines as `- **Term**: Plain-English definition and concrete engineering role.`?
+- [ ] Is `### For the interview` placed immediately after `Where you will meet this`? #2026_10_07_03_group_1
+- [ ] Does `### For the interview` start by repeating the interview question on top, formatted on one continuous line as a blockquote: `> **The Interview Question:** [Question text verbatim from line 2]`? #2026_10_07_04_group_1
+- [ ] Does `### For the interview` deconstruct the interview dynamic across four distinct, battle-tested beats: #2026_10_07_03_group_1 revised by #2026_10_07_06_group_1
+      1. **The Hidden Signal**: What the interviewer is really probing (differentiating junior syntax recitation from senior systems understanding of the runtime loop).
+      2. **The Classic Trap**: The primary misconception candidates blurt out (and why it fails physically on the whiteboard).
+      3. **What is Actually Going On**: The concrete physical reality delivered through intuitive mental models and clear physical analogies (such as the restaurant order slip or local constant frame), stripping away all bureaucratic compiler jargon. #2026_10_07_06_group_1
+      4. **Where It Gets Tricky**: Practical, high-stakes edge cases, asynchronous pauses (`await`), race conditions, and runtime boundary protections (such as `StrictMode` double-invocation). #2026_10_07_06_group_1
+- [ ] Is `### Glossary` placed immediately after `For the interview`, defining 4 to 6 core terms formatted on single lines as `- **Term**: Plain-English definition and concrete engineering role.`?
 - [ ] Is `### Summary` placed immediately after the Glossary, written as a practical review of when to write this code and why it matters?
 - [ ] Is the summary structured with an authoritative bold title on line 1, followed by `❒ {Subtitle}` category headings and `➔ {DECISION_RULE}` lines formatted as independent paragraphs separated by blank lines?
 - [ ] Are actionable decision rules emphasized on dedicated lines starting with `➔` using bold keywords?
 - [ ] Are nested sub-points or secondary notes rendered as `<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) ...` on continuous lines?
+
+- [ ] PROPER EXAMPLE: Living exemplar of battle-tested interview coaching from Lecture 17:
+
+> ```markdown
+> ### For the interview
+> 
+> > **The Interview Question:** How does React queue multiple state updates, and when do you need an updater function?
+> 
+> **1. The Hidden Signal**
+> 
+> The interviewer is not testing whether you know arrow function syntax. They are probing whether you understand React's render loop and batching pipeline. A junior developer assumes state setters trigger immediate micro-renders. A senior engineer steps to the whiteboard and draws the update queue. They explain that setters do not compute state inside the click handler. Instead, setters append instructions to an internal FIFO queue. React waits until the handler finishes, enters the render phase, and reduces that queue.
+> 
+> **2. The Classic Trap**
+> 
+> The classic trap appears when an interviewer writes three consecutive setter calls on the board. Candidates often guess the count increments by three. When told it only increments by one, they claim React debounced or ignored two calls. That explanation fails the interview. React never ignores your setter calls. It faithfully appends three separate replace instructions to the queue. Because all three calls read the initial snapshot value of zero, all three queue the instruction replace with one. Another fatal trap is placing network requests or analytics calls inside an updater function. Because updaters execute during render, StrictMode runs them twice in development, triggering duplicate network requests and corrupted logs.
+> 
+> **3. What is Actually Going On**
+> 
+> Think of React like a waiter taking your order. When you order dinner, the waiter does not sprint to the kitchen after every dish you mention. They wait until you finish speaking, then take the whole ticket back to the chef once.
+> 
+> Calling `setCount(count + 1)` three times asks the waiter for dish number one three times. The kitchen cooks that single dish once.
+> 
+> Passing an updater like `c => c + 1` tells the waiter to add one more to the plate. React runs down that ticket in order, computing three items for your final meal.
+> 
+> Reach for an updater whenever your next value depends on other updates in the same handler. Also use updaters after an async pause, where user interactions have already changed the state.
+> 
+> **4. Where It Gets Tricky**
+> 
+> *What does React render if you call `setCount(count + 5)`, then `setCount(c => c + 1)`, then `setCount(42)` from zero?*
+> 
+> The final rendered count is 42. React evaluates the queue in strict sequential order during the next render pass. First, `count + 5` queues a replacement with 5. Next, the updater receives 5 and returns 6. Finally, 42 replaces the running calculation completely, discarding earlier results.
+> 
+> *Why are updater functions critical when setting state after an await?*
+> 
+> An async function pauses execution while network requests resolve. During that pause, user interactions can trigger other renders, leaving the snapshot stale. If two async requests resolve and call `setCount(count + 1)`, both read the stale zero. One ticket increment is permanently lost. An updater function bypasses the stale closure and reads the live pending total from React memory.
+> 
+> *Why does StrictMode run updater functions twice in development?*
+> 
+> React runs updaters twice to detect accidental side effects. Because React processes updaters during render, impure functions cause silent state corruption and memory leaks. If an updater modifies an external object or array, running it twice produces double entries. This intentional double run surfaces the corruption in development before it reaches production.
+> ```
+
+Notes: Commentary on what makes this living exemplar work:
+1. *The Spoken Reality*: Beat 3 replaces bureaucratic compiler terminology ("layout thrashing", "receiving running pending total") with an instant, physical mental model (the restaurant waiter running the ticket to the chef once).
+2. *Disproving Myths with Physics*: Beat 2 dismantles the hand-waving myth that React "debounces" setters, proving with exact queue arithmetic why three calls produce 1.
+3. *Real Stakes in Edge Cases*: Beat 4 demonstrates physical data loss (lost ticket purchase when multiple async requests finish out of order) and real-world development traps (`StrictMode` double-invocation exposing impure mutations).
+
+- [ ] COUNTER-EXAMPLE: Bureaucratic compiler jargon, abstract summaries, and sports colloquialisms:
+
+> ```markdown
+> ### For the interview
+> 
+> **1. The Hidden Signal**
+> 
+> Interviewers ask this question to probe whether you understand React's batching model and execution pipeline. A junior candidate assumes setters re-render immediately.
+> 
+> **2. The Classic Trap**
+> 
+> The common wrong answer is that calling setCount three times will increment by three.
+> 
+> **3. The 60-Second Senior Response**
+> 
+> React batches updates to prevent visual layout thrashing within a single user action. Passing a plain value queues a replacement instruction, while an updater function queues a calculation that receives the running pending total...
+> 
+> **4. Follow-Up Curveballs**
+> 
+> What happens if you mix setters? The screen shows 42.
+> ```
 
 - [ ] PROPER EXAMPLE: Summary decision rules and subtitles separated by blank lines:
 

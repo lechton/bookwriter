@@ -30,11 +30,21 @@ Before writing a box, read `examples.md` beside this file. It holds only boxes t
 - [ ] **Code that stands alone.** Does each card include the lines it needs to be read alone (the declaration as well as the change), and does its comment say what the reader would see? (Cases 1, 3) #2026_10_06_05_group_2
 - [ ] **True.** Is every claim true in React 19 and shown by the lesson's verified proofs? #2026_10_06_05_group_2
 
+## The Four Sequential Principle Passes | 01B | Strict Verification Order #2026_10_07_02_group_1
+
+Never proceed to the next pass until the preceding pass is checked. The algorithmic pass is forbidden until the human legibility passes pass. #2026_10_07_02_group_1
+
+- [ ] **Pass 1: Benchmark Casebook Alignment.** Have you carefully studied the approved examples and failed drafts in `examples.md`? Does this box adopt an approved move from the owner's cases and strictly avoid the rejected patterns (no glossaries, no machinery words, general names only)? *(ONLY if Pass 1 is checked, proceed to Pass 2)* #2026_10_07_02_group_1
+- [ ] **Pass 2: The "Picture It" Test (Observable Reality).** Can a tired reader instantly picture what is on the screen or which line is running in the editor? Are abstract claims ("what differs", "state drift across cycles") replaced with physical observations (the button shows 0, the next line runs)? *(ONLY if Pass 2 is checked, proceed to Pass 3)* #2026_10_07_02_group_1
+- [ ] **Pass 3: Plain JavaScript First (For Engine & Lifecycle Topics).** When the principle explains how React runs code or updates state, does it start with the plain JavaScript execution fact before introducing any framework behavior or React label? (`count` is just a constant number 0 in this function call; never open with "called a snapshot" or "stored in React's queue"). *(ONLY if Pass 3 is checked, proceed to Pass 4)* #2026_10_07_02_group_1
+- [ ] **Pass 4: Algorithmic & Build Pass (The Mechanical Gate).** ONLY if Passes 1–3 pass: Does `node src/diagnose-lecture.mjs {NN}` report 0 invariant failures, and does `node src/build-lectures.mjs` compile clean HTML and PDF? #2026_10_07_02_group_1
+
 ## Syntax the Build Needs | 02 | Mechanics Only #2026_10_06_05_group_2
 
 These are checked by `diagnose-lecture` and the build. #2026_10_06_05_group_2
 
 - [ ] The box opens with `> [!PRINCIPLE]` and `> **Principle N: Title in sentence case**`, numbered without gaps. #2026_10_06_05_group_2 revised by #2026_10_07_01_group_1
+- [ ] Key technical terms are bolded on their first formal introduction in the box prose (such as `**batching**`, `**updater function**`, `**state variable**`), matching any accompanying side notes (`> >> phrase : ...`) and subsequent Glossary entries. #2026_10_07_05_group_2
 - [ ] Side notes follow the text as `> >> phrase : explanation`, one per line. #2026_10_06_05_group_2
 - [ ] Bullets, used only when one piece of code holds two things the reader must tell apart, are `> - ` lines with a blank `>` line before and after the list. #2026_10_06_05_group_2
 - [ ] The box ends with its code. When the map's `Real Mistake` is filled, that is a pair: `*We should do this:*` / `*We should not do this:*` when the wrong code breaks, `*It is best practice to do this:*` / `*Instead of doing this:*` when both run. When it is `none`, the box ends with one `*We should do this:*` card. #2026_10_06_05_group_2 revised by #2026_10_06_09_group_2
