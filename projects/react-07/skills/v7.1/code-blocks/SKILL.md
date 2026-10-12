@@ -33,7 +33,7 @@ Notes: Uses the `jsx` language tag, closes cleanly, and provides a runnable comp
 - [ ] Does the opening code fence include a `title="..."` attribute whenever the default filename does not match the actual file name?
 - [ ] Are derived defaults relied upon when suitable (`jsx` yields `App.jsx`, `tsx` yields `App.tsx`, `js` yields `App.js`, and `ts` yields `App.ts`), with titles specified whenever introducing other files?
 - [ ] Do runnable project snippets use registered filenames from the lecture's file tree (such as `title="SearchBar.jsx"`)?
-- [ ] Do historical or pre-React 19 comparisons use explicit conceptual titles without `.jsx` extensions (such as `title="Historical Pattern"` or `title="Naive Implementation"`), avoiding compiler warnings on unregistered files?
+- [ ] Do historical or pre-React 19 comparisons use explicit conceptual titles without `.jsx` extensions (such as `title="Historical Pattern"` or `title="Naive Implementation"`)? A conceptual title is for code that is not a real project file. A snippet that lives in a real project file keeps the file's name on its tab. #2026_10_12_05_group_1
 
 - [ ] PROPER EXAMPLE: Overriding the default tab with a recognized project filename:
 

@@ -108,3 +108,52 @@ The standard these examples carry is `SKILL.md` Section 12 beside this file.
 > ```
 
 **Why it failed.** The first sentence drops the reader into code without saying what the chapter is about or what the code is for. The owner's fix: one warm paragraph on the page the reader knows (every story has the same design, only the content changes), one sentence on where the chapter goes, and then the example with its purpose ("let's see why the props from Lecture 6 are not enough"). The badge in the code was a second problem (`lecture-voice` Section 03).
+
+## Example 3: File names in the introduction #2026_10_12_05_group_1
+
+**Context.** Lecture 8. The reader knows one file, `App.jsx`. The lesson moves a component into its own file, so here the file names carry the idea: the reader must see which code lives in which file. It quotes Lecture 8's own opening, so it leaves this file before Lecture 8 is rebuilt from scratch.
+
+**Failed: Lecture 8's opening (2026-10-12)**
+
+> The second way is ES modules, which this chapter teaches. You move each component into its own file, export it from that file, and import it where it is needed:
+>
+> ```jsx title="Dedicated component export"
+> export default function ArticleCard({ title }) {
+>   return <article className="card">{title}</article>; // exported component
+> }
+> ```
+>
+> Then you import the component into your application shell:
+>
+> ```jsx title="Importing the component"
+> import ArticleCard from './components/ArticleCard.jsx'; // imported from file
+> ```
+
+**Why it failed.** The tabs say "Dedicated component export" and "Importing the component", so the reader cannot tell which code lives in which file, in the one lesson where that is the point. And the path `./components/ArticleCard.jsx` shows a folder named `components` that nobody introduced.
+
+**Proper: the same opening with the evaluation applied**
+
+> Your project starts as one file, `App.jsx`. When a component moves out, it goes into a folder named `components` that sits next to `App.jsx`:
+>
+> ```
+> src/
+>   App.jsx
+>   components/
+>     ArticleCard.jsx
+> ```
+>
+> The card now lives in its own file, `ArticleCard.jsx`:
+>
+> ```jsx title="ArticleCard.jsx"
+> export default function ArticleCard({ title }) {
+>   return <article className="card">{title}</article>;
+> }
+> ```
+>
+> And `App.jsx` imports it by its path:
+>
+> ```jsx title="App.jsx"
+> import ArticleCard from './components/ArticleCard.jsx';
+> ```
+
+**Why it works.** The evaluation came first: two files need their names, so the folder structure leads in plain words and a small tree, and only then do the real file names appear on the tabs. Every path the reader meets has already been introduced.
