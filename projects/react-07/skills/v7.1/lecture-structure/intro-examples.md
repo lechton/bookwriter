@@ -43,6 +43,40 @@ The standard these examples carry is `SKILL.md` Section 12 beside this file.
 
 **Why it works.** Two proper terms, each named next to the code it describes. The reader starts from code they already know (`querySelector`, `textContent`). The change from 3 to 4 makes the difference visible: who has to act when the value changes. The title example confirms the idea with a different element. The closing sentences state both terms as one contrast. The section also shows the theme move when React offers no rival way: the question is how the page changes when a value changes, and the two options are the habit without React and what React does (`SKILL.md` Section 12). #2026_10_12_01_group_1
 
+## Example 2: Content between the tags #2026_10_12_02_group_1
+
+**Context.** Lecture 7. The reader knows props from Lecture 6 and is meeting `children` for the first time. This case shows how far to explain a piece of code: the owner's direction, a version that said too little, and a version that said too much. It quotes Lecture 7's own topic, so it leaves this file before Lecture 7 is rebuilt from scratch.
+
+**The owner's direction (2026-10-12)**
+
+> When we add code between `<CardContainer>` ADD INFORMATION HERE `</CardContainer>`, all the information in between is encoded by React automatically inside a property named `children`. As opposed to props, where we write `<CardContainer mytitle="INFORMATION ADDED HERE">`.
+
+**Why it works.** It points into the code: here is the place between the tags, this is what fills it, this is what React does with it, and this is the name it gets. Then it sets the new idea against the one the reader knows: with a prop, the information sits in an attribute whose name we choose; with `children`, it sits between the tags and the name is always `children`. Nothing about the engine is needed yet.
+
+**Failed: too short (Lecture 7, 2026-10-12)**
+
+> React takes everything between the tags and hands it to the card as a prop named `children`.
+
+**Why it failed.** The code fence came first and then the shortest true sentence. The reader is not shown the place between the tags, is not told that it holds any content at all, and gets no contrast with the prop they know. The sentence is correct, but it summarizes instead of explaining.
+
+**Failed: correct, but cryptic (Lecture 7, 2026-10-11)**
+
+> React puts that `<h2>` into the props object of `CardContainer`, under the key `children`.
+
+**Why it failed.** "Props object" and "under the key" describe the engine. The reader is not told that the whole content between the tags moves, or where it ends up.
+
+**Better, still missing the contrast (Lecture 7, 2026-10-11)**
+
+> Look at what sits between `<CardContainer>` and `</CardContainer>`: the whole line `<h2>New Park Opens Today</h2>`. React does not throw it away. It takes everything written between the opening tag and the closing tag and hands it to `CardContainer` as a prop. That prop is always called `children`; you do not choose the name. You can picture it like this: `<CardContainer>` the children are here `</CardContainer>`.
+
+**Why it is not enough.** It points into the code and gives a picture to keep, but it never sets `children` against the prop the reader knows (`title="..."` in an attribute, with a name we choose). The difference is what makes the idea stick.
+
+**Too much (the opposite fault, written for this file)**
+
+> Between the tags, React collects the content into `props.children`. One child arrives as a single element, several arrive as an array, text arrives as a string, and the compiled `_jsx` call passes it as the last property of the props object.
+
+**Why it fails.** Every fact is true, but four of them are for later questions. The reader meets arrays, strings, and the compiled call before understanding the one thing this paragraph is for: the content between the tags arrives as a prop named `children`.
+
 ## Failed: the Lecture 1 runway section
 
 > ### Components as Reusable Blueprints

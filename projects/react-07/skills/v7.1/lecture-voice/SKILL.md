@@ -218,21 +218,9 @@ Notes: Connects words to words; nothing runs, moves, or touches a pixel.
 
 > With server-side rendering, your component runs on the server. It returns HTML. The server sends that HTML to the browser, and the reader sees your page text before any JavaScript has loaded.
 
-- [ ] Is a new mechanism spelled out on the reader's own code: what moves, from where, to where, and what the reader can picture? A one-line summary in the engine's terms is correct but cryptic to someone meeting the idea for the first time. #2026_10_11_05_group_2
-
-- [ ] COUNTER-EXAMPLE: Correct, but cryptic on first meeting:
-
-> React puts that `<h2>` into the props object of `CardContainer`, under the key `children`.
-
-Notes: "Props object" and "under the key" describe the engine. The reader is not told that the whole content between the tags moves, or where it ends up. #2026_10_11_05_group_2
-
-- [ ] PROPER EXAMPLE: The same mechanism spelled out:
-
-> Look at what sits between `<CardContainer>` and `</CardContainer>`: the whole line `<h2>New Park Opens Today</h2>`. React does not throw it away. It takes everything written between the opening tag and the closing tag and hands it to `CardContainer` as a prop. That prop is always called `children`; you do not choose the name. You can picture it like this: `<CardContainer>` the children are here `</CardContainer>`.
-
-Notes: The reader sees which code moves, who moves it, where it arrives, and what it is called, and gets a picture to keep. The compiled `_jsx` call can follow as confirmation. #2026_10_11_05_group_2
-
 Notes: Three short sentences, each one a physical event: code runs, HTML travels, the reader sees text.
+
+- [ ] Is a new mechanism spelled out on the reader's own code: what moves, from where, to where, and what the reader can picture? A one-line summary in the engine's terms is correct but cryptic to someone meeting the idea for the first time. Examples: `lecture-structure/intro-examples.md`, "Example 2: Content between the tags". #2026_10_11_05_group_2 revised by #2026_10_12_02_group_1
 
 ## Explaining Concepts | 11 | The Native Default and Framework Behavior #2026_09_20_03_group_1 revised by #2026_09_20_27_group_1
 

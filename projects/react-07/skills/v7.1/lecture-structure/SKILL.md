@@ -128,7 +128,7 @@ Notes: Placed on line 2, preserves the server tier tag, and quotes the bank ques
 - [ ] Are underlying browser engine consequences explicitly deconstructed (for example, showing how replacing HTML with `innerHTML` wipes input focus and resets CSS transitions, whereas React reconciliation preserves node identity and focus)? #2026_09_20_27_group_1
 - [ ] Are friction cards placed at the end of the topic after walking through the broken attempt, engine behavior, and working code? #2026_09_21_03_group_1 revised by #2026_09_21_08_group_1 and #2026_09_21_09_group_1
 
-## Section Skeleton | 12 | The Recall List and the Runway Before the Questions #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1, #2026_09_25_03_group_1, #2026_10_10_01_group_5, #2026_10_11_01_group_3, #2026_10_11_04_group_1, #2026_10_11_06_group_3, and #2026_10_12_01_group_1
+## Section Skeleton | 12 | The Recall List and the Runway Before the Questions #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1, #2026_09_25_03_group_1, #2026_10_10_01_group_5, #2026_10_11_01_group_3, #2026_10_11_04_group_1, #2026_10_11_06_group_3, #2026_10_12_01_group_1, and #2026_10_12_02_group_1
 
 The first section and the runway are the lesson's introduction. They teach the ideas the questions stand on, by their proper names (`children`, props, declarative, imperative), starting from what the reader already knows. When the reader understands the introduction, every answer can go deeper instead of starting from zero. The introduction teaches; it does not advertise the lesson or talk about interviews. #2026_10_11_04_group_1
 
@@ -180,7 +180,7 @@ Notes: The reader knows the question before the answer, sees both options on the
     2. **Say what it is for, then name it and show it.** One or two warm sentences say what the reader is about to do and why, then the idea's proper name comes with the shortest code that shows it. An example never drops in cold. #2026_10_11_06_group_3
     3. **Say who does what.** Each sentence says plainly whether the browser, React, or our code acts.
     4. **Confirm with a second tiny example.** A second, different snippet shows the same idea working again, and one closing sentence states the idea as a rule.
-    5. **Only the words the idea needs.** The text starts teaching in its first sentence and stops when the idea is clear.
+    5. **Explain the code while you show it.** Point into the code and say what it does: the place where something goes, what fills it, and how it differs from what the reader already knows. Say it fully once, without engine details the reader does not need yet (`intro-examples.md`, "Example 2: Content between the tags"). #2026_10_12_02_group_1
 - [ ] PROPER EXAMPLE: Lecture 7's first section, above (theme and options). Every code fence comes after a sentence that says what it shows. #2026_10_11_06_group_3 revised by #2026_10_12_01_group_1
 
 - [ ] COUNTER-EXAMPLE: The first Lecture 7 section: "With what Lecture 6 taught, you would write the news card with one prop for each piece it shows:", then the code. Notes: A cold drop. The reader sees code without knowing what the chapter is about or what the code is for (`intro-examples.md`, "Failed: the Lecture 7 cold drop"). #2026_10_11_06_group_3
