@@ -840,7 +840,7 @@ function parseBlocks(md) {
 			// Match `> [!TYPE]` optionally followed by more text on the same line.
 			// The body is everything after the `]` (trimmed); if the `]` ended the
 			// first line, the body is the remaining joined lines.
-			const alert = joined.match(/^\[!(NOTE|TIP|KEY|WARNING|CAUTION|WILD|GROUNDING|CONVENTION|PRINCIPLE)\]\s*([\s\S]*)$/);
+			const alert = joined.match(/^\[!(NOTE|TIP|KEY|WARNING|CAUTION|WILD|GROUNDING|CONVENTION|PRINCIPLE|WAYS)\]\s*([\s\S]*)$/);
 			if (alert) {
 				out.push({ t: 'callout', kind: alert[1].toLowerCase(), text: alert[2].trim() });
 			} else {
@@ -1497,6 +1497,16 @@ function render(blocks, currentMdFile = '') {
 						break;
 					}
 				}
+				// WAYS: the categorical-clarity reminder. The text after `[!WAYS]` is the
+				// title ("Two ways to ..."); every following paragraph is one way and
+				// keeps its own line.
+				if (b.kind === 'ways') {
+					const [titleText, ...items] = b.text.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+					const lamp = '<svg class="ways-lamp" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>';
+					const itemsHtml = items.map((it) => `<p class="ways-item">${inline(it, true)}</p>`).join('\n  ');
+					html += `<aside class="callout callout-ways">\n  <p class="ways-title">${lamp}<span>${inline(titleText || '', true)}</span></p>\n  ${itemsHtml}\n</aside>\n`;
+					break;
+				}
 				// Each alert type gets an on-brand eyebrow label. TIP is the project's
 				// signature (interview-prep framing) → "Interview Tip"; the others use
 				// GitHub-standard labels for when authors reach for them.
@@ -1748,7 +1758,7 @@ function checkLecture(file, md) {
 
 	if (!/^# Lecture \d+: \S/.test(lines[0] || '')) warns.push(`title line is not "# Lecture {n}: {Short Title}"`);
 	if (!/^>\s*INTERVIEW QUESTION\s*\|\s*❱+\s*[A-Z]+(\s*\(Server\))?\s*\|/.test(lines[1] || '')) warns.push(`line 2 is not the "> INTERVIEW QUESTION | ❱ TIER |" callout`);
-	if (!/\[!(TIP|NOTE|KEY|WARNING|CAUTION|WILD|GROUNDING|CONVENTION|PRINCIPLE)\]/.test(md)) warns.push(`no alert callout ([!TIP] etc.) anywhere in the lecture`);
+	if (!/\[!(TIP|NOTE|KEY|WARNING|CAUTION|WILD|GROUNDING|CONVENTION|PRINCIPLE|WAYS)\]/.test(md)) warns.push(`no alert callout ([!TIP] etc.) anywhere in the lecture`);
 	if (!/```(?:components|component-code)/.test(md)) warns.push(`no "components" Rendered UI Canvas or "component-code" panel found in the lecture`);
 	if (!/```(?:figure|html-figure)/.test(md)) warns.push(`no "html-figure" HTML figure panel (mandatory in every lecture; embed at least one 01-02-md-LECTURES/figures/ RCE panel)`);
 
