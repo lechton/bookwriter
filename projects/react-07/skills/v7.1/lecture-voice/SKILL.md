@@ -91,7 +91,7 @@ Notes: Patronizing and dogmatic. Universally projects an intellectual error onto
 
 - [ ] In code examples and component implementations, is the engineering problem grounded in universal, everyday web UI widgets that any basic computer user immediately recognizes (such as an item counter, a shopping cart, a message box, a like button, a ticket order, or a search input) rather than generic foo/bar placeholders or contrived industry jargon? #2026_10_07_05_group_1 revised by #2026_10_11_05_group_1
 - [ ] Are the pieces inside those widgets the plain parts of a page that need no explaining: a title, a name, a date, a time, a colour, a counter, a photo? A niche UI element (a badge, a pill, a chip, a toast) makes the reader first picture what it looks like before the lesson can start. #2026_10_11_05_group_1
-- [ ] Is every word the reader sees in an example plain B2 English too: titles, summaries, alt text, labels, and component names? A newspaper headline ("Transit Accord Reached") makes the reader decode words while trying to follow the code; "New Park Opens Today" is read at a glance. #2026_10_11_06_group_3
+- [ ] Is every word the reader sees in an example plain B2 English too: titles, summaries, alt text, labels, and component names? (The technical terms the lesson teaches follow Section 22.) #2026_10_12_03_group_1 A newspaper headline ("Transit Accord Reached") makes the reader decode words while trying to follow the code; "New Park Opens Today" is read at a glance. #2026_10_11_06_group_3
 - [ ] Does the prose avoid forced corporate or newsroom lore (no fictional publishing house, editorial desk, promotion booth, or newsroom workflow)? #2026_10_07_05_group_1
 - [ ] Are variable, component, and state names chosen from plain, universal vocabulary (such as `count`, `tickets`, `likes`, `message`, `items`, `title`, `active`) rather than specialized or idiosyncratic jargon (such as `byline`, `wire`, `masthead`, `freePasses`, `promotionDesk`)? #2026_10_07_05_group_1
 - [ ] If an engineer name is used for empathy, does it appear simply as a developer writing code, with zero workplace drama or fictional backstory? #2026_10_07_05_group_1
@@ -137,7 +137,7 @@ Notes: The reader must first picture a badge, then a pill, before the defect lan
 ## Language & Readability | 05 | The Reader-Centered Standard (CEFR B2 & Active Voice)
 
 - [ ] Is the text written in plain upper-intermediate English (CEFR B2) using common words and direct Subject-Verb-Object structures?
-- [ ] Are rare or esoteric terms replaced with everyday vocabulary?
+- [ ] Are rare or esoteric words replaced with everyday vocabulary? The technical terms the lesson teaches stay, each with its plain meaning (Section 22). #2026_10_12_03_group_1
 - [ ] Is language simplified without degrading technical depth or accuracy?
 - [ ] **The Anti-Pompous-Dressing Standard (Canonical Nouns + Plain Human Verbs)**: Does the text strictly ban inflated, pseudo-intellectual corporate and academic phrasing used to artificially dress up technical concepts? Are canonical technical nouns (`props`, `state`, `declarative UI`, `virtual DOM`) coupled directly with simple, everyday human verbs (`store`, `pass`, `display`, `check`, `read`), avoiding empty rhetorical padding: #2026_09_26_12_group_1
     * ✕ `"lives authoritatively in memory"` ➔ `stored in JavaScript variables`
@@ -411,7 +411,22 @@ Notes: Opening question is 7 words; the card names where the form sits and what 
 
 Notes: Callout provides the quotable rule in plain words; the paragraph proves why it holds with the code and the console. #2026_10_10_01_group_7
 
-## Vocabulary & Baptisms | 22 | New Terms Are Named Together With Their Code #2026_10_11_04_group_1
+## Vocabulary & Baptisms | 22 | New Terms Are Named Together With Their Code #2026_10_11_04_group_1 revised by #2026_10_12_03_group_1
+
+This book prepares the reader for interviews. An interviewer expects the exact term (imperative and declarative, HTML and the DOM, props and `children`, render and commit), and then expects the candidate to explain it. So the lesson teaches both together: the term the interviewer uses, and plain words that show the reader understands it. Plain words alone leave the reader unable to name the idea; the term alone leaves the reader unable to explain it. #2026_10_12_03_group_1
+
+- [ ] Is every idea an interviewer can ask about named by its exact technical term, bold at its first use, with its meaning in plain words in the same sentence or the next one? Does the term stay the same everywhere after that: in the text, the questions, the boxes, the `[!WAYS]` box, the table, and the Glossary? #2026_10_12_03_group_1
+- [ ] When a term's origin explains it, does one sentence give the origin? *Imperative* comes from the Latin *imperare*, "to command" (the root of *emperor*); *declarative* from *declarare*, "to make clear, to announce". An origin that explains nothing (`children`, `className`) is left out. #2026_10_12_03_group_1
+
+- [ ] PROPER EXAMPLE: The term, its plain meaning, and its origin together (the owner's wording, 2026-10-12): #2026_10_12_03_group_1
+
+> This is called **imperative programming**: you give the browser every command yourself. The word comes from the Latin *imperare*, "to command", the same root as *emperor*. Like an emperor, your code orders every step: find this element, set that text.
+
+Notes: The reader can say the term in an interview, explain it in one sentence, and remember it through the picture of the emperor. #2026_10_12_03_group_1
+
+- [ ] COUNTER-EXAMPLE: Plain words only (Lecture 1's two-ways box, 2026-10-12): "(1) Change the page with **commands** (plain JavaScript)… (2) Change the page with a **description** (this chapter)…" Notes: "Commands" and "description" are the writer's words. The reader leaves the box unable to name the idea, and "the page" hides the DOM, which the reader must also name. #2026_10_12_03_group_1
+
+- [ ] COUNTER-EXAMPLE: The term only: "React uses **declarative** programming." Notes: The reader can repeat the word but cannot say what it means. #2026_10_12_03_group_1
 
 - [ ] Is every new term introduced to the standard of `lecture-structure` Section 12: named together with the shortest code that shows it, with who does what said plainly, and confirmed by a second tiny example? #2026_10_11_04_group_1
 - [ ] Does a large mechanism first show the problem it solves, in the reader's own code, while a small term (a prop name, a syntax form) is simply named and shown? #2026_10_11_04_group_1
@@ -472,14 +487,16 @@ Notes: "Masthead" is easily replaced with "site header" across text and figures,
 
 > Declares the site header container and single source of reader data truth.
 
-## Vocabulary & Baptisms | 26 | The Kindergarten Noun Standard (Basic Variables & Zero Subculture Jargon) #2026_09_27_07_group_1 revised by #2026_10_11_06_group_3
+## Vocabulary & Baptisms | 26 | The Kindergarten Noun Standard (Basic Variables & Zero Subculture Jargon) #2026_09_27_07_group_1 revised by #2026_10_11_06_group_3 and #2026_10_12_03_group_1
+
+This section covers the names we choose in example code: props, variables, parameters, and component names. It never replaces a technical term the lesson teaches; those are named exactly, with their plain meaning (Section 22). #2026_10_12_03_group_1
 
 - [ ] Are all component props, variables, function parameters, and attribute identifiers named using basic, everyday human nouns that an ordinary person outside of tech understands without explanation (`name`, `title`, `job`, `author`, `date`, `count`, `label`, `text`, `color`)?
 - [ ] Are specialized subculture terms from design systems, corporate software architectures, or niche publishing permanently avoided in lesson code, comments, and prose?
 - [ ] **The Banned Subculture Jargon List**: Are the following idiosyncratic terms strictly excluded from props, variables, and explanations:
     * **Banned Design-System / Corporate Jargon**: `tone`, `variant`, `intent`, `elevation`, `surface`, `payload`, `orchestrator`, `manifest`, `telemetry`.
     * **Banned Publishing Jargon**: `masthead` (use `site header`, `top bar`, or `title banner`), `lede` (use `intro`), `slug` (use `path` or `url` unless specifically teaching routing slugs).
-- [ ] **The 8-Year-Old Reality Test**: If a normal human being outside of tech would not immediately know what the noun means in daily life without a technical explanation, is it rejected in favor of an elementary equivalent (`color` instead of `tone`, `kind` or `type` instead of `variant`, `site header` instead of `masthead`)?
+- [ ] **The 8-Year-Old Reality Test**: If a normal human being outside of tech would not immediately know what the noun means in daily life without a technical explanation, is it rejected in favor of an elementary equivalent (`color` instead of `tone`, `kind` or `type` instead of `variant`, `site header` instead of `masthead`)? The test applies to the names we choose, not to terms such as imperative, the DOM, or props. #2026_10_12_03_group_1
 
 - [ ] COUNTER-EXAMPLE: Pattern to avoid: Importing specialized design-system or enterprise jargon into basic React examples:
 

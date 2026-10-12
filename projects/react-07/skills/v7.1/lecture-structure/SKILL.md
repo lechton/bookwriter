@@ -128,7 +128,7 @@ Notes: Placed on line 2, preserves the server tier tag, and quotes the bank ques
 - [ ] Are underlying browser engine consequences explicitly deconstructed (for example, showing how replacing HTML with `innerHTML` wipes input focus and resets CSS transitions, whereas React reconciliation preserves node identity and focus)? #2026_09_20_27_group_1
 - [ ] Are friction cards placed at the end of the topic after walking through the broken attempt, engine behavior, and working code? #2026_09_21_03_group_1 revised by #2026_09_21_08_group_1 and #2026_09_21_09_group_1
 
-## Section Skeleton | 12 | The Recall List and the Runway Before the Questions #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1, #2026_09_25_03_group_1, #2026_10_10_01_group_5, #2026_10_11_01_group_3, #2026_10_11_04_group_1, #2026_10_11_06_group_3, #2026_10_12_01_group_1, and #2026_10_12_02_group_1
+## Section Skeleton | 12 | The Recall List and the Runway Before the Questions #2026_09_20_24_group_1 revised by #2026_09_20_25_group_1, #2026_09_25_03_group_1, #2026_10_10_01_group_5, #2026_10_11_01_group_3, #2026_10_11_04_group_1, #2026_10_11_06_group_3, #2026_10_12_01_group_1, #2026_10_12_02_group_1, and #2026_10_12_03_group_1
 
 The first section and the runway are the lesson's introduction. They teach the ideas the questions stand on, by their proper names (`children`, props, declarative, imperative), starting from what the reader already knows. When the reader understands the introduction, every answer can go deeper instead of starting from zero. The introduction teaches; it does not advertise the lesson or talk about interviews. #2026_10_11_04_group_1
 
@@ -137,6 +137,20 @@ The first section opens with the lesson's theme: the general question every deve
 - [ ] Does the first section open with the theme, in plain words, starting from a page or a piece of code the reader knows? #2026_10_12_01_group_1
 - [ ] Does it show each real option with its shortest code (the call and, where the difference sits inside the component, the inside too), say in one sentence who decides what in each, and then say which option this chapter teaches? A real option is one the reader knows from an earlier lesson or one React offers. A later lesson's option is named in one sentence with its lecture, never taught here. #2026_10_12_01_group_1
 - [ ] Is every option shown fairly, with the situation where it fits? The chapter's option is not better everywhere, and an earlier option is never shown only so it can fail. #2026_10_12_01_group_1
+- [ ] After the options are explained, does a `> [!WAYS] {title}` box sum them up (the blueprint's `[ways]` element), one numbered paragraph per option, each separated by a blank `>` line? Does every line repeat the same frame, name the option by its exact technical term in bold, say where it comes from (an earlier lecture, plain JavaScript, or this chapter), and explain it in plain words (`lecture-voice` Section 22)? #2026_10_12_03_group_1
+
+- [ ] PROPER EXAMPLE: The owner's frame for Lecture 1 (2026-10-12): #2026_10_12_03_group_1
+
+> > [!WAYS] Two ways to update the DOM when a value changes
+> >
+> > (1) Update the DOM with **imperative programming** (plain JavaScript): you give the browser every command yourself, finding each element and setting its text.
+> >
+> > (2) Update the DOM with **declarative programming** (this chapter): you declare what each element should show, and React updates the DOM to match.
+
+Notes: The same frame twice makes the difference stand out. Each line gives the term an interviewer expects and the meaning a candidate can say aloud. #2026_10_12_03_group_1
+
+- [ ] COUNTER-EXAMPLE: "(1) Change the page with **commands** (plain JavaScript)… (2) Change the page with a **description** (this chapter)…" Notes: The writer's own words replaced the terms, so the box teaches nothing the reader can name in an interview (`lecture-voice` Section 22). #2026_10_12_03_group_1
+
 - [ ] When React offers no rival way for the topic, are the options the reader's habit without React and what React does instead (`intro-examples.md`, Example 1: imperative and declarative)? No option is invented to fill the list. #2026_10_12_01_group_1
 - [ ] Do the questions then show the chosen option at work (its forms and the mistakes readers really make with it), and does the closing comparison table return to the options of the introduction (Section 25)? #2026_10_12_01_group_1
 
@@ -177,7 +191,7 @@ Notes: The reader knows the question before the answer, sees both options on the
 - [ ] In foundational lectures, does the runway introduce and deconstruct syntax primitives before they appear in multi-file code examples or formal principles?
 - [ ] Is the introduction written to these five standards? #2026_10_11_04_group_1
     1. **One idea at a time.** Each paragraph and each code fence carries one new idea.
-    2. **Say what it is for, then name it and show it.** One or two warm sentences say what the reader is about to do and why, then the idea's proper name comes with the shortest code that shows it. An example never drops in cold. #2026_10_11_06_group_3
+    2. **Say what it is for, then name it and show it.** One or two warm sentences say what the reader is about to do and why, then the idea's proper name comes with the shortest code that shows it: the exact term an interviewer uses, with its meaning in plain words (`lecture-voice` Section 22). An example never drops in cold. #2026_10_11_06_group_3 revised by #2026_10_12_03_group_1
     3. **Say who does what.** Each sentence says plainly whether the browser, React, or our code acts.
     4. **Confirm with a second tiny example.** A second, different snippet shows the same idea working again, and one closing sentence states the idea as a rule.
     5. **Explain the code while you show it.** Point into the code and say what it does: the place where something goes, what fills it, and how it differs from what the reader already knows. Say it fully once, without engine details the reader does not need yet (`intro-examples.md`, "Example 2: Content between the tags"). #2026_10_12_02_group_1

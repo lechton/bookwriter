@@ -130,12 +130,12 @@ Notes: The pre-lecture and the lecture respect the reader's reasoning before the
 
 Notes: The map gives facts, not the box. It holds no roles and no code: the lecture author writes the box and its cards from these facts and the proofs, under `principle-definition` and its casebook (each card must stand alone, with its declaration as well as the change). #2026_10_06_04_group_4 revised by #2026_10_06_09_group_1
 
-## Selection | 05B | The Theme and Its Options #2026_10_12_01_group_2
+## Selection | 05B | The Theme and Its Options #2026_10_12_01_group_2 revised by #2026_10_12_03_group_1
 
 The lecture opens with a general question every developer meets, shows the real ways to answer it, and says which one the lesson teaches (`lecture-structure` Section 12). The map decides these, so the lecture author follows them instead of inventing options while writing. #2026_10_12_01_group_2
 
 - [ ] Does `## Theme and Options` state the theme as one plain question a developer meets on a real page, of which this lesson's topic is one answer? #2026_10_12_01_group_2
-- [ ] Does it list each real option: its name, the shortest code that shows it, the lesson that teaches it (`Q{NN} #tag`, this lesson, or a later one), and the situation where it fits? A real option is one an earlier lesson taught or one React offers. A later lesson's option is listed with its owner, and the lecture names it in one sentence. #2026_10_12_01_group_2
+- [ ] Does it list each real option: its exact technical term (imperative programming, props, `children`), never a word the writer made up, then the shortest code that shows it, the lesson that teaches it (`Q{NN} #tag`, this lesson, or a later one), and the situation where it fits? A real option is one an earlier lesson taught or one React offers. A later lesson's option is listed with its owner, and the lecture names it in one sentence. #2026_10_12_01_group_2 revised by #2026_10_12_03_group_1
 - [ ] Is the option this lesson teaches marked, and do its principles show it at work: its forms and the mistakes readers really make with it? #2026_10_12_01_group_2
 - [ ] When React offers no rival way, are the options the habit without React and what React does instead? Is no option invented to make the list longer? #2026_10_12_01_group_2
 
@@ -257,7 +257,7 @@ Notes: The ledger records what this lesson decides about an idea. A handout reco
 
 ## Theme and Options
 - **Theme**: {the general question a developer meets on a real page, in plain words}
-- **Option**: {name}: `{shortest code}` | {Q{NN} #tag, or this lesson} | {when it fits} (one line per real option)
+- **Option**: {exact technical term}: `{shortest code}` | {Q{NN} #tag, or this lesson} | {when it fits} (one line per real option)
 - **This lesson teaches**: {the option name}
 
 ## Sources Read
