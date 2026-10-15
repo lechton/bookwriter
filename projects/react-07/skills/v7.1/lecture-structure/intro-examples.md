@@ -41,7 +41,7 @@ The standard these examples carry is `SKILL.md` Section 12 beside this file.
 >
 > Imperative code tells the browser how to change the page, one command at a time. Declarative code describes what the page should show, and React does the changing.
 
-**Why it works.** Two proper terms, each named next to the code it describes. The reader starts from code they already know (`querySelector`, `textContent`). The change from 3 to 4 makes the difference visible: who has to act when the value changes. The title example confirms the idea with a different element. The closing sentences state both terms as one contrast. The section also shows the theme move when React offers no rival way: the question is how the page changes when a value changes, and the two options are the habit without React and what React does (`SKILL.md` Section 12). #2026_10_12_01_group_1 A rewrite can add one sentence of origin to each term, as the owner asked on 2026-10-12: *imperative* from the Latin *imperare*, "to command" (the root of *emperor*), and *declarative* from *declarare*, "to make clear, to announce" (`lecture-voice` Section 22). #2026_10_12_03_group_1
+**Why it works.** Two proper terms, each named next to the code it describes. The reader starts from code they already know (`querySelector`, `textContent`). The change from 3 to 4 makes the difference visible: who has to act when the value changes. The title example confirms the idea with a different element. The closing sentences state both terms as one contrast. The section also shows a theme that passes the pertinence test: imperative and declarative are two ways developers really write UI code, and an interviewer asks when each fits (`SKILL.md` Section 12). #2026_10_12_01_group_1 revised by #2026_10_12_07_group_1 A rewrite can add one sentence of origin to each term, as the owner asked on 2026-10-12: *imperative* from the Latin *imperare*, "to command" (the root of *emperor*), and *declarative* from *declarare*, "to make clear, to announce" (`lecture-voice` Section 22). #2026_10_12_03_group_1
 
 ## Example 2: Content between the tags #2026_10_12_02_group_1
 
@@ -109,7 +109,7 @@ The standard these examples carry is `SKILL.md` Section 12 beside this file.
 
 **Why it failed.** The first sentence drops the reader into code without saying what the chapter is about or what the code is for. The owner's fix: one warm paragraph on the page the reader knows (every story has the same design, only the content changes), one sentence on where the chapter goes, and then the example with its purpose ("let's see why the props from Lecture 6 are not enough"). The badge in the code was a second problem (`lecture-voice` Section 03).
 
-## Example 3: File names in the introduction #2026_10_12_05_group_1
+## Example 3: File names in the introduction #2026_10_12_05_group_1 revised by #2026_10_12_06_group_1
 
 **Context.** Lecture 8. The reader knows one file, `App.jsx`. The lesson moves a component into its own file, so here the file names carry the idea: the reader must see which code lives in which file. It quotes Lecture 8's own opening, so it leaves this file before Lecture 8 is rebuilt from scratch.
 
@@ -135,11 +135,11 @@ The standard these examples carry is `SKILL.md` Section 12 beside this file.
 
 > Your project starts as one file, `App.jsx`. When a component moves out, it goes into a folder named `components` that sits next to `App.jsx`:
 >
-> ```
+> ```files title="Project folders: File Explorer"
 > src/
->   App.jsx
+>   App.jsx | parent | The starter file, which imports the card by its path
 >   components/
->     ArticleCard.jsx
+>     ArticleCard.jsx | child | The card component, moved into its own file
 > ```
 >
 > The card now lives in its own file, `ArticleCard.jsx`:
@@ -156,4 +156,4 @@ The standard these examples carry is `SKILL.md` Section 12 beside this file.
 > import ArticleCard from './components/ArticleCard.jsx';
 > ```
 
-**Why it works.** The evaluation came first: two files need their names, so the folder structure leads in plain words and a small tree, and only then do the real file names appear on the tabs. Every path the reader meets has already been introduced.
+**Why it works.** The evaluation came first: two files need their names, so the folder structure leads in plain words and in the same File Explorer panel the case study opens with, and only then do the real file names appear on the tabs. Every path the reader meets has already been introduced, and the reader meets disk structure in one familiar panel from the first page to the case study. A plain ` ```ascii ` tree here (Lecture 8, 2026-10-12) taught the same layout in a second, unrelated style.

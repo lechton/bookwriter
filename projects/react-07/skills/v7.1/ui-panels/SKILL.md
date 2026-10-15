@@ -75,6 +75,7 @@ Notes: Renders an empty dashed box sitting directly on top of the child componen
 - [ ] Is every file tagged with its architectural role: `parent`, `boundary`, `consumer`, `button`, `state`, or `child`?
 - [ ] Does each file include a concise physical description answering what the file manages in daily practice?
 - [ ] Are filenames tailored specifically to the lecture's topic rather than copied from adjacent lectures?
+- [ ] When an introduction shows the folder structure (`lecture-structure` Section 12), does its ` ```files ` panel keep the full `filename | role | description` syntax, with descriptions in the introduction's plain words? A file row without a role renders with the "Directory" badge. #2026_10_12_06_group_1
 
 - [ ] PROPER EXAMPLE: Files panel for a form-actions topic:
 
