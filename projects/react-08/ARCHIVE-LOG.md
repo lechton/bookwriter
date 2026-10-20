@@ -1,0 +1,583 @@
+# ARCHIVE-LOG — projects/react-08
+
+Project seeded from `projects/react-06` (latest versions: pre-lectures v7, lectures v7, skills v6.7), renumbered as pre-lectures v1, lectures v1, and skills v7.1. The `archive/` subfolders inside `01-01-md-PRE-lectures/v1/` and `01-02-md-LECTURES/v1/` came over with the v6-era retirement snapshots described in `projects/react-06/ARCHIVE-LOG.md`.
+
+Retirements performed inside react-08 itself are logged below.
+- 2026-10-10 07:14 | archive Q17 | manual | 01-01-md-PRE-lectures/v1/17.md -> 01-01-md-PRE-lectures/v1/archive/17-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/17-b.md -> 01-02-md-LECTURES/v1/archive/17-b-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/17-c.md -> 01-02-md-LECTURES/v1/archive/17-c-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/17-d.md -> 01-02-md-LECTURES/v1/archive/17-d-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/17-e.md -> 01-02-md-LECTURES/v1/archive/17-e-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/17.md -> 01-02-md-LECTURES/v1/archive/17-2026-10-10-0714.md
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/figures/17-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/17-01-code-assembly-pipeline-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-02-md-LECTURES/v1/figures/17-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/17-02-architecture-audit-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-b.html -> 01-03-md-lectures-HTML/v1/archive/17-b-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-c.html -> 01-03-md-lectures-HTML/v1/archive/17-c-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-d.html -> 01-03-md-lectures-HTML/v1/archive/17-d-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-e-max-teal.html -> 01-03-md-lectures-HTML/v1/archive/17-e-max-teal-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-e.html -> 01-03-md-lectures-HTML/v1/archive/17-e-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-max.html -> 01-03-md-lectures-HTML/v1/archive/17-max-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17.html -> 01-03-md-lectures-HTML/v1/archive/17-2026-10-10-0714.html
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-d.pdf -> 01-04-md-lectures-PDF/v1/archive/17-d-2026-10-10-0714.pdf
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-e-max-teal-page-1.png -> 01-04-md-lectures-PDF/v1/archive/17-e-max-teal-page-1-2026-10-10-0714.png
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-e-max-teal.pdf -> 01-04-md-lectures-PDF/v1/archive/17-e-max-teal-2026-10-10-0714.pdf
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-e.pdf -> 01-04-md-lectures-PDF/v1/archive/17-e-2026-10-10-0714.pdf
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max-page-1.png -> 01-04-md-lectures-PDF/v1/archive/17-max-page-1-2026-10-10-0714.png
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max.pdf -> 01-04-md-lectures-PDF/v1/archive/17-max-2026-10-10-0714.pdf
+- 2026-10-10 07:14 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17.pdf -> 01-04-md-lectures-PDF/v1/archive/17-2026-10-10-0714.pdf
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/01.md -> 01-01-md-PRE-lectures/v1/archive/01-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/01.md -> 01-02-md-LECTURES/v1/archive/01-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/01-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/01-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/01-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/01-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/01.html -> 01-03-md-lectures-HTML/v1/archive/01-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/01-max-page-1.png -> 01-04-md-lectures-PDF/v1/archive/01-max-page-1-2026-10-10-1034.png
+- 2026-10-10 10:34 | archive Q1 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/01.pdf -> 01-04-md-lectures-PDF/v1/archive/01-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/02.md -> 01-01-md-PRE-lectures/v1/archive/02-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/02.md -> 01-02-md-LECTURES/v1/archive/02-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/02-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/02-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/02-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/02-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/02.html -> 01-03-md-lectures-HTML/v1/archive/02-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q2 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/02.pdf -> 01-04-md-lectures-PDF/v1/archive/02-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/03.md -> 01-01-md-PRE-lectures/v1/archive/03-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/03.md -> 01-02-md-LECTURES/v1/archive/03-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/03-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/03-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/03-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/03-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/03.html -> 01-03-md-lectures-HTML/v1/archive/03-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q3 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/03.pdf -> 01-04-md-lectures-PDF/v1/archive/03-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/04.md -> 01-01-md-PRE-lectures/v1/archive/04-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/04.md -> 01-02-md-LECTURES/v1/archive/04-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/04-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/04-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/04-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/04-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/04.html -> 01-03-md-lectures-HTML/v1/archive/04-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q4 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/04.pdf -> 01-04-md-lectures-PDF/v1/archive/04-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/05.md -> 01-01-md-PRE-lectures/v1/archive/05-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/05.md -> 01-02-md-LECTURES/v1/archive/05-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/05-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/05-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/05-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/05-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/05.html -> 01-03-md-lectures-HTML/v1/archive/05-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q5 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/05.pdf -> 01-04-md-lectures-PDF/v1/archive/05-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/06.md -> 01-01-md-PRE-lectures/v1/archive/06-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/06.md -> 01-02-md-LECTURES/v1/archive/06-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/06-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/06-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/06-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/06-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/06.html -> 01-03-md-lectures-HTML/v1/archive/06-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q6 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/06.pdf -> 01-04-md-lectures-PDF/v1/archive/06-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q7 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/08.md -> 01-01-md-PRE-lectures/v1/archive/08-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/08.md -> 01-02-md-LECTURES/v1/archive/08-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/08-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/08-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/08-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/08-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/08.html -> 01-03-md-lectures-HTML/v1/archive/08-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q8 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/08.pdf -> 01-04-md-lectures-PDF/v1/archive/08-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/09.md -> 01-01-md-PRE-lectures/v1/archive/09-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/09.md -> 01-02-md-LECTURES/v1/archive/09-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/09-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/09-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/09-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/09-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/09.html -> 01-03-md-lectures-HTML/v1/archive/09-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q9 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/09.pdf -> 01-04-md-lectures-PDF/v1/archive/09-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/10.md -> 01-01-md-PRE-lectures/v1/archive/10-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/10.md -> 01-02-md-LECTURES/v1/archive/10-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/10-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/10-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/10-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/10-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/10.html -> 01-03-md-lectures-HTML/v1/archive/10-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q10 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/10.pdf -> 01-04-md-lectures-PDF/v1/archive/10-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/11.md -> 01-01-md-PRE-lectures/v1/archive/11-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/11.md -> 01-02-md-LECTURES/v1/archive/11-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/11-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/11-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/11-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/11-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/11.html -> 01-03-md-lectures-HTML/v1/archive/11-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q11 | archive lectures before 17 (user request) | 01-04-md-lectures-PDF/v1/11.pdf -> 01-04-md-lectures-PDF/v1/archive/11-2026-10-10-1034.pdf
+- 2026-10-10 10:34 | archive Q12 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/12.md -> 01-01-md-PRE-lectures/v1/archive/12-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q12 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/12.md -> 01-02-md-LECTURES/v1/archive/12-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q12 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/12-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/12-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q12 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/12-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/12-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q12 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/12.html -> 01-03-md-lectures-HTML/v1/archive/12-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q13 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/13.md -> 01-01-md-PRE-lectures/v1/archive/13-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q13 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/13.md -> 01-02-md-LECTURES/v1/archive/13-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q13 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/13-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/13-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q13 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/13-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/13-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q13 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/13.html -> 01-03-md-lectures-HTML/v1/archive/13-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q14 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/14.md -> 01-02-md-LECTURES/v1/archive/14-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q14 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/14-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/14-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q14 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/14-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/14-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q14 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/14.html -> 01-03-md-lectures-HTML/v1/archive/14-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q15 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/15.md -> 01-01-md-PRE-lectures/v1/archive/15-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q15 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/15.md -> 01-02-md-LECTURES/v1/archive/15-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q15 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/15-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/15-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q15 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/15-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/15-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q15 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/15.html -> 01-03-md-lectures-HTML/v1/archive/15-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q16 | archive lectures before 17 (user request) | 01-01-md-PRE-lectures/v1/16.md -> 01-01-md-PRE-lectures/v1/archive/16-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q16 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/16.md -> 01-02-md-LECTURES/v1/archive/16-2026-10-10-1034.md
+- 2026-10-10 10:34 | archive Q16 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/16-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/16-01-code-assembly-pipeline-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q16 | archive lectures before 17 (user request) | 01-02-md-LECTURES/v1/figures/16-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/16-02-architecture-audit-2026-10-10-1034.html
+- 2026-10-10 10:34 | archive Q16 | archive lectures before 17 (user request) | 01-03-md-lectures-HTML/v1/16.html -> 01-03-md-lectures-HTML/v1/archive/16-2026-10-10-1034.html
+- 2026-10-11 08:59 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-11-0859.md
+- 2026-10-11 08:59 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-11-0859.md
+- 2026-10-11 08:59 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-11-0859.html
+- 2026-10-11 08:59 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-11-0859.html
+- 2026-10-11 08:59 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-11-0859.html
+- 2026-10-11 08:59 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-11-0859.pdf
+- 2026-10-11 10:34 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-11-1034.md
+- 2026-10-11 10:34 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-11-1034.md
+- 2026-10-11 10:34 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-11-1034.html
+- 2026-10-11 10:34 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-11-1034.html
+- 2026-10-11 10:34 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-11-1034.html
+- 2026-10-11 10:34 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-11-1034.pdf
+- 2026-10-11 10:58 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-11-1058.md
+- 2026-10-11 10:58 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-11-1058.md
+- 2026-10-11 10:58 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-11-1058.html
+- 2026-10-11 10:58 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-11-1058.html
+- 2026-10-11 10:58 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-11-1058.html
+- 2026-10-11 10:58 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-11-1058.pdf
+- 2026-10-11 12:14 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-11-1214.md
+- 2026-10-11 12:14 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-11-1214.md
+- 2026-10-11 12:14 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-11-1214.html
+- 2026-10-11 12:14 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-11-1214.html
+- 2026-10-11 12:14 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-11-1214.html
+- 2026-10-11 12:14 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-11-1214.pdf
+- 2026-10-11 12:50 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-11-1250.md
+- 2026-10-11 12:50 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-11-1250.md
+- 2026-10-11 12:50 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-11-1250.html
+- 2026-10-11 12:50 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-11-1250.html
+- 2026-10-11 12:50 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-11-1250.html
+- 2026-10-11 12:50 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-11-1250.pdf
+- 2026-10-11 13:37 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-11-1337.md
+- 2026-10-11 13:37 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-11-1337.md
+- 2026-10-11 13:37 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-11-1337.html
+- 2026-10-11 13:37 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-11-1337.html
+- 2026-10-11 13:37 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-11-1337.html
+- 2026-10-11 13:37 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-11-1337.pdf
+- 2026-10-11 14:26 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-11-1426.md
+- 2026-10-11 14:26 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-11-1426.md
+- 2026-10-11 14:26 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-11-1426.html
+- 2026-10-11 14:26 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-11-1426.html
+- 2026-10-11 14:26 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-11-1426.html
+- 2026-10-11 14:26 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-11-1426.pdf
+- 2026-10-12 02:18 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-12-0218.md
+- 2026-10-12 02:18 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-12-0218.md
+- 2026-10-12 02:18 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-12-0218.html
+- 2026-10-12 02:18 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-12-0218.html
+- 2026-10-12 02:18 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-12-0218.html
+- 2026-10-12 02:18 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-12-0218.pdf
+- 2026-10-12 02:59 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-12-0259.md
+- 2026-10-12 02:59 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-12-0259.md
+- 2026-10-12 02:59 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-12-0259.html
+- 2026-10-12 02:59 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-12-0259.html
+- 2026-10-12 02:59 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-12-0259.html
+- 2026-10-12 02:59 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-12-0259.pdf
+- 2026-10-12 03:22 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-12-0322.md
+- 2026-10-12 03:22 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-12-0322.md
+- 2026-10-12 03:22 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-12-0322.html
+- 2026-10-12 03:22 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-12-0322.html
+- 2026-10-12 03:22 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-12-0322.html
+- 2026-10-12 03:22 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-12-0322.pdf
+- 2026-10-12 03:34 | archive Q1 | manual | 01-01-md-PRE-lectures/v1/01.md -> 01-01-md-PRE-lectures/v1/archive/01-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q1 | manual | 01-02-md-LECTURES/v1/01.md -> 01-02-md-LECTURES/v1/archive/01-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q1 | manual | 01-02-md-LECTURES/v1/figures/01-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/01-01-code-assembly-pipeline-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q1 | manual | 01-02-md-LECTURES/v1/figures/01-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/01-02-architecture-audit-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q1 | manual | 01-03-md-lectures-HTML/v1/01.html -> 01-03-md-lectures-HTML/v1/archive/01-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q1 | manual | 01-04-md-lectures-PDF/v1/01.pdf -> 01-04-md-lectures-PDF/v1/archive/01-2026-10-12-0334.pdf
+- 2026-10-12 03:34 | archive Q2 | manual | 01-01-md-PRE-lectures/v1/02.md -> 01-01-md-PRE-lectures/v1/archive/02-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q2 | manual | 01-02-md-LECTURES/v1/02.md -> 01-02-md-LECTURES/v1/archive/02-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q2 | manual | 01-02-md-LECTURES/v1/figures/02-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/02-01-code-assembly-pipeline-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q2 | manual | 01-02-md-LECTURES/v1/figures/02-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/02-02-architecture-audit-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q2 | manual | 01-03-md-lectures-HTML/v1/02.html -> 01-03-md-lectures-HTML/v1/archive/02-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q2 | manual | 01-04-md-lectures-PDF/v1/02.pdf -> 01-04-md-lectures-PDF/v1/archive/02-2026-10-12-0334.pdf
+- 2026-10-12 03:34 | archive Q3 | manual | 01-01-md-PRE-lectures/v1/03.md -> 01-01-md-PRE-lectures/v1/archive/03-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q3 | manual | 01-02-md-LECTURES/v1/03.md -> 01-02-md-LECTURES/v1/archive/03-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q3 | manual | 01-02-md-LECTURES/v1/figures/03-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/03-01-code-assembly-pipeline-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q3 | manual | 01-02-md-LECTURES/v1/figures/03-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/03-02-architecture-audit-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q3 | manual | 01-03-md-lectures-HTML/v1/03.html -> 01-03-md-lectures-HTML/v1/archive/03-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q3 | manual | 01-04-md-lectures-PDF/v1/03.pdf -> 01-04-md-lectures-PDF/v1/archive/03-2026-10-12-0334.pdf
+- 2026-10-12 03:34 | archive Q4 | manual | 01-01-md-PRE-lectures/v1/04.md -> 01-01-md-PRE-lectures/v1/archive/04-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q4 | manual | 01-02-md-LECTURES/v1/04.md -> 01-02-md-LECTURES/v1/archive/04-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q4 | manual | 01-02-md-LECTURES/v1/figures/04-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/04-01-code-assembly-pipeline-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q4 | manual | 01-02-md-LECTURES/v1/figures/04-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/04-02-architecture-audit-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q4 | manual | 01-03-md-lectures-HTML/v1/04.html -> 01-03-md-lectures-HTML/v1/archive/04-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q4 | manual | 01-04-md-lectures-PDF/v1/04.pdf -> 01-04-md-lectures-PDF/v1/archive/04-2026-10-12-0334.pdf
+- 2026-10-12 03:34 | archive Q5 | manual | 01-01-md-PRE-lectures/v1/05.md -> 01-01-md-PRE-lectures/v1/archive/05-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q5 | manual | 01-02-md-LECTURES/v1/05.md -> 01-02-md-LECTURES/v1/archive/05-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q5 | manual | 01-02-md-LECTURES/v1/figures/05-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/05-01-code-assembly-pipeline-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q5 | manual | 01-02-md-LECTURES/v1/figures/05-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/05-02-architecture-audit-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q5 | manual | 01-03-md-lectures-HTML/v1/05.html -> 01-03-md-lectures-HTML/v1/archive/05-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q5 | manual | 01-04-md-lectures-PDF/v1/05.pdf -> 01-04-md-lectures-PDF/v1/archive/05-2026-10-12-0334.pdf
+- 2026-10-12 03:34 | archive Q6 | manual | 01-01-md-PRE-lectures/v1/06.md -> 01-01-md-PRE-lectures/v1/archive/06-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q6 | manual | 01-02-md-LECTURES/v1/06.md -> 01-02-md-LECTURES/v1/archive/06-2026-10-12-0334.md
+- 2026-10-12 03:34 | archive Q6 | manual | 01-02-md-LECTURES/v1/figures/06-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/06-01-code-assembly-pipeline-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q6 | manual | 01-02-md-LECTURES/v1/figures/06-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/06-02-architecture-audit-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q6 | manual | 01-03-md-lectures-HTML/v1/06.html -> 01-03-md-lectures-HTML/v1/archive/06-2026-10-12-0334.html
+- 2026-10-12 03:34 | archive Q6 | manual | 01-04-md-lectures-PDF/v1/06.pdf -> 01-04-md-lectures-PDF/v1/archive/06-2026-10-12-0334.pdf
+- 2026-10-12 03:56 | archive Q1 | manual | 01-01-md-PRE-lectures/v1/01.md -> 01-01-md-PRE-lectures/v1/archive/01-2026-10-12-0356.md
+- 2026-10-12 03:56 | archive Q1 | manual | 01-02-md-LECTURES/v1/01.md -> 01-02-md-LECTURES/v1/archive/01-2026-10-12-0356.md
+- 2026-10-12 03:56 | archive Q1 | manual | 01-02-md-LECTURES/v1/figures/01-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/01-01-code-assembly-pipeline-2026-10-12-0356.html
+- 2026-10-12 03:56 | archive Q1 | manual | 01-02-md-LECTURES/v1/figures/01-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/01-02-architecture-audit-2026-10-12-0356.html
+- 2026-10-12 03:56 | archive Q1 | manual | 01-03-md-lectures-HTML/v1/01.html -> 01-03-md-lectures-HTML/v1/archive/01-2026-10-12-0356.html
+- 2026-10-12 03:56 | archive Q1 | manual | 01-04-md-lectures-PDF/v1/01.pdf -> 01-04-md-lectures-PDF/v1/archive/01-2026-10-12-0356.pdf
+- 2026-10-12 04:05 | archive Q1 | manual | 01-01-md-PRE-lectures/v1/01.md -> 01-01-md-PRE-lectures/v1/archive/01-2026-10-12-0405.md
+- 2026-10-12 04:05 | archive Q1 | manual | 01-02-md-LECTURES/v1/01.md -> 01-02-md-LECTURES/v1/archive/01-2026-10-12-0405.md
+- 2026-10-12 04:05 | archive Q1 | manual | 01-02-md-LECTURES/v1/figures/01-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/01-01-code-assembly-pipeline-2026-10-12-0405.html
+- 2026-10-12 04:05 | archive Q1 | manual | 01-02-md-LECTURES/v1/figures/01-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/01-02-architecture-audit-2026-10-12-0405.html
+- 2026-10-12 04:05 | archive Q1 | manual | 01-03-md-lectures-HTML/v1/01.html -> 01-03-md-lectures-HTML/v1/archive/01-2026-10-12-0405.html
+- 2026-10-12 04:05 | archive Q1 | manual | 01-04-md-lectures-PDF/v1/01.pdf -> 01-04-md-lectures-PDF/v1/archive/01-2026-10-12-0405.pdf
+- 2026-10-15 | purge | manual | every archive folder of react-08 emptied (01-01-map, pre-lectures, lectures, figures, HTML, PDF, questions) and the map folders v_old_01 to v_old_07 removed; the entries above describe files that now live only in projects/react-07, whose archives hold the same files
+- 2026-10-15 07:05 | archive Q1 | manual | 01-01-md-PRE-lectures/v1/01.md -> 01-01-md-PRE-lectures/v1/archive/01-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q1 | manual | 01-02-md-LECTURES/v1/01.md -> 01-02-md-LECTURES/v1/archive/01-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q1 | manual | 01-02-md-LECTURES/v1/figures/01-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/01-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q1 | manual | 01-02-md-LECTURES/v1/figures/01-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/01-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q1 | manual | 01-03-md-lectures-HTML/v1/01.html -> 01-03-md-lectures-HTML/v1/archive/01-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q1 | manual | 01-04-md-lectures-PDF/v1/01.pdf -> 01-04-md-lectures-PDF/v1/archive/01-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q2 | manual | 01-01-md-PRE-lectures/v1/02.md -> 01-01-md-PRE-lectures/v1/archive/02-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q2 | manual | 01-02-md-LECTURES/v1/02.md -> 01-02-md-LECTURES/v1/archive/02-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q2 | manual | 01-02-md-LECTURES/v1/figures/02-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/02-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q2 | manual | 01-02-md-LECTURES/v1/figures/02-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/02-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q2 | manual | 01-03-md-lectures-HTML/v1/02.html -> 01-03-md-lectures-HTML/v1/archive/02-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q2 | manual | 01-04-md-lectures-PDF/v1/02.pdf -> 01-04-md-lectures-PDF/v1/archive/02-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q3 | manual | 01-01-md-PRE-lectures/v1/03.md -> 01-01-md-PRE-lectures/v1/archive/03-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q3 | manual | 01-02-md-LECTURES/v1/03.md -> 01-02-md-LECTURES/v1/archive/03-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q3 | manual | 01-02-md-LECTURES/v1/figures/03-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/03-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q3 | manual | 01-02-md-LECTURES/v1/figures/03-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/03-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q3 | manual | 01-03-md-lectures-HTML/v1/03.html -> 01-03-md-lectures-HTML/v1/archive/03-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q3 | manual | 01-04-md-lectures-PDF/v1/03.pdf -> 01-04-md-lectures-PDF/v1/archive/03-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q4 | manual | 01-01-md-PRE-lectures/v1/04.md -> 01-01-md-PRE-lectures/v1/archive/04-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q4 | manual | 01-02-md-LECTURES/v1/04.md -> 01-02-md-LECTURES/v1/archive/04-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q4 | manual | 01-02-md-LECTURES/v1/figures/04-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/04-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q4 | manual | 01-02-md-LECTURES/v1/figures/04-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/04-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q4 | manual | 01-03-md-lectures-HTML/v1/04.html -> 01-03-md-lectures-HTML/v1/archive/04-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q4 | manual | 01-04-md-lectures-PDF/v1/04.pdf -> 01-04-md-lectures-PDF/v1/archive/04-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q5 | manual | 01-01-md-PRE-lectures/v1/05.md -> 01-01-md-PRE-lectures/v1/archive/05-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q5 | manual | 01-02-md-LECTURES/v1/05.md -> 01-02-md-LECTURES/v1/archive/05-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q5 | manual | 01-02-md-LECTURES/v1/figures/05-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/05-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q5 | manual | 01-02-md-LECTURES/v1/figures/05-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/05-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q5 | manual | 01-03-md-lectures-HTML/v1/05.html -> 01-03-md-lectures-HTML/v1/archive/05-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q5 | manual | 01-04-md-lectures-PDF/v1/05.pdf -> 01-04-md-lectures-PDF/v1/archive/05-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q6 | manual | 01-01-md-PRE-lectures/v1/06.md -> 01-01-md-PRE-lectures/v1/archive/06-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q6 | manual | 01-02-md-LECTURES/v1/06.md -> 01-02-md-LECTURES/v1/archive/06-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q6 | manual | 01-02-md-LECTURES/v1/figures/06-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/06-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q6 | manual | 01-02-md-LECTURES/v1/figures/06-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/06-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q6 | manual | 01-03-md-lectures-HTML/v1/06.html -> 01-03-md-lectures-HTML/v1/archive/06-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q6 | manual | 01-04-md-lectures-PDF/v1/06.pdf -> 01-04-md-lectures-PDF/v1/archive/06-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q7 | manual | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q7 | manual | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q7 | manual | 01-02-md-LECTURES/v1/figures/07-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/07-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q7 | manual | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q7 | manual | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q8 | manual | 01-01-md-PRE-lectures/v1/08.md -> 01-01-md-PRE-lectures/v1/archive/08-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q8 | manual | 01-02-md-LECTURES/v1/08.md -> 01-02-md-LECTURES/v1/archive/08-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q8 | manual | 01-02-md-LECTURES/v1/figures/08-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/08-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q8 | manual | 01-02-md-LECTURES/v1/figures/08-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/08-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q8 | manual | 01-03-md-lectures-HTML/v1/08.html -> 01-03-md-lectures-HTML/v1/archive/08-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q8 | manual | 01-04-md-lectures-PDF/v1/08.pdf -> 01-04-md-lectures-PDF/v1/archive/08-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q9 | manual | 01-01-md-PRE-lectures/v1/09.md -> 01-01-md-PRE-lectures/v1/archive/09-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q9 | manual | 01-02-md-LECTURES/v1/09.md -> 01-02-md-LECTURES/v1/archive/09-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q9 | manual | 01-02-md-LECTURES/v1/figures/09-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/09-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q9 | manual | 01-02-md-LECTURES/v1/figures/09-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/09-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q9 | manual | 01-03-md-lectures-HTML/v1/09.html -> 01-03-md-lectures-HTML/v1/archive/09-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q9 | manual | 01-04-md-lectures-PDF/v1/09.pdf -> 01-04-md-lectures-PDF/v1/archive/09-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q10 | manual | 01-01-md-PRE-lectures/v1/10.md -> 01-01-md-PRE-lectures/v1/archive/10-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q10 | manual | 01-02-md-LECTURES/v1/10.md -> 01-02-md-LECTURES/v1/archive/10-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q10 | manual | 01-02-md-LECTURES/v1/figures/10-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/10-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q10 | manual | 01-02-md-LECTURES/v1/figures/10-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/10-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q10 | manual | 01-03-md-lectures-HTML/v1/10.html -> 01-03-md-lectures-HTML/v1/archive/10-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q10 | manual | 01-04-md-lectures-PDF/v1/10.pdf -> 01-04-md-lectures-PDF/v1/archive/10-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q11 | manual | 01-01-md-PRE-lectures/v1/11.md -> 01-01-md-PRE-lectures/v1/archive/11-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q11 | manual | 01-02-md-LECTURES/v1/11.md -> 01-02-md-LECTURES/v1/archive/11-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q11 | manual | 01-02-md-LECTURES/v1/figures/11-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/11-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q11 | manual | 01-02-md-LECTURES/v1/figures/11-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/11-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q11 | manual | 01-03-md-lectures-HTML/v1/11.html -> 01-03-md-lectures-HTML/v1/archive/11-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q11 | manual | 01-04-md-lectures-PDF/v1/11.pdf -> 01-04-md-lectures-PDF/v1/archive/11-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q12 | manual | 01-01-md-PRE-lectures/v1/12.md -> 01-01-md-PRE-lectures/v1/archive/12-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q12 | manual | 01-02-md-LECTURES/v1/12.md -> 01-02-md-LECTURES/v1/archive/12-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q12 | manual | 01-02-md-LECTURES/v1/figures/12-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/12-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q12 | manual | 01-02-md-LECTURES/v1/figures/12-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/12-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q12 | manual | 01-03-md-lectures-HTML/v1/12.html -> 01-03-md-lectures-HTML/v1/archive/12-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q12 | manual | 01-04-md-lectures-PDF/v1/12.pdf -> 01-04-md-lectures-PDF/v1/archive/12-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q13 | manual | 01-01-md-PRE-lectures/v1/13.md -> 01-01-md-PRE-lectures/v1/archive/13-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q13 | manual | 01-02-md-LECTURES/v1/13.md -> 01-02-md-LECTURES/v1/archive/13-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q13 | manual | 01-02-md-LECTURES/v1/figures/13-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/13-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q13 | manual | 01-02-md-LECTURES/v1/figures/13-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/13-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13.html -> 01-03-md-lectures-HTML/v1/archive/13-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q13 | manual | 01-04-md-lectures-PDF/v1/13.pdf -> 01-04-md-lectures-PDF/v1/archive/13-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q14 | manual | 01-01-md-PRE-lectures/v1/14.md -> 01-01-md-PRE-lectures/v1/archive/14-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q14 | manual | 01-02-md-LECTURES/v1/14.md -> 01-02-md-LECTURES/v1/archive/14-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q14 | manual | 01-02-md-LECTURES/v1/figures/14-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/14-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q14 | manual | 01-02-md-LECTURES/v1/figures/14-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/14-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q14 | manual | 01-03-md-lectures-HTML/v1/14.html -> 01-03-md-lectures-HTML/v1/archive/14-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q14 | manual | 01-04-md-lectures-PDF/v1/14.pdf -> 01-04-md-lectures-PDF/v1/archive/14-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q15 | manual | 01-01-md-PRE-lectures/v1/15.md -> 01-01-md-PRE-lectures/v1/archive/15-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q15 | manual | 01-02-md-LECTURES/v1/15.md -> 01-02-md-LECTURES/v1/archive/15-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q15 | manual | 01-02-md-LECTURES/v1/figures/15-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/15-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q15 | manual | 01-02-md-LECTURES/v1/figures/15-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/15-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q15 | manual | 01-03-md-lectures-HTML/v1/15.html -> 01-03-md-lectures-HTML/v1/archive/15-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q15 | manual | 01-04-md-lectures-PDF/v1/15.pdf -> 01-04-md-lectures-PDF/v1/archive/15-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q16 | manual | 01-01-md-PRE-lectures/v1/16.md -> 01-01-md-PRE-lectures/v1/archive/16-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q16 | manual | 01-02-md-LECTURES/v1/16.md -> 01-02-md-LECTURES/v1/archive/16-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q16 | manual | 01-02-md-LECTURES/v1/figures/16-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/16-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q16 | manual | 01-02-md-LECTURES/v1/figures/16-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/16-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q16 | manual | 01-03-md-lectures-HTML/v1/16.html -> 01-03-md-lectures-HTML/v1/archive/16-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q16 | manual | 01-04-md-lectures-PDF/v1/16.pdf -> 01-04-md-lectures-PDF/v1/archive/16-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q17 | manual | 01-01-md-PRE-lectures/v1/17.md -> 01-01-md-PRE-lectures/v1/archive/17-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q17 | manual | 01-02-md-LECTURES/v1/17.md -> 01-02-md-LECTURES/v1/archive/17-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q17 | manual | 01-02-md-LECTURES/v1/figures/17-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/17-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q17 | manual | 01-02-md-LECTURES/v1/figures/17-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/17-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-max-blue.html -> 01-03-md-lectures-HTML/v1/archive/17-max-blue-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-max-teal.html -> 01-03-md-lectures-HTML/v1/archive/17-max-teal-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17-max.html -> 01-03-md-lectures-HTML/v1/archive/17-max-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q17 | manual | 01-03-md-lectures-HTML/v1/17.html -> 01-03-md-lectures-HTML/v1/archive/17-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max-blue.pdf -> 01-04-md-lectures-PDF/v1/archive/17-max-blue-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max-page-1.png -> 01-04-md-lectures-PDF/v1/archive/17-max-page-1-2026-10-15-0705.png
+- 2026-10-15 07:05 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max-page-2.png -> 01-04-md-lectures-PDF/v1/archive/17-max-page-2-2026-10-15-0705.png
+- 2026-10-15 07:05 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max-teal-page-1.png -> 01-04-md-lectures-PDF/v1/archive/17-max-teal-page-1-2026-10-15-0705.png
+- 2026-10-15 07:05 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max-teal-page-2.png -> 01-04-md-lectures-PDF/v1/archive/17-max-teal-page-2-2026-10-15-0705.png
+- 2026-10-15 07:05 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max-teal.pdf -> 01-04-md-lectures-PDF/v1/archive/17-max-teal-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17-max.pdf -> 01-04-md-lectures-PDF/v1/archive/17-max-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q17 | manual | 01-04-md-lectures-PDF/v1/17.pdf -> 01-04-md-lectures-PDF/v1/archive/17-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q18 | manual | 01-02-md-LECTURES/v1/18.md -> 01-02-md-LECTURES/v1/archive/18-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q18 | manual | 01-02-md-LECTURES/v1/figures/18-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/18-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q18 | manual | 01-03-md-lectures-HTML/v1/18.html -> 01-03-md-lectures-HTML/v1/archive/18-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q18 | manual | 01-04-md-lectures-PDF/v1/18.pdf -> 01-04-md-lectures-PDF/v1/archive/18-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q19 | manual | 01-01-md-PRE-lectures/v1/19.md -> 01-01-md-PRE-lectures/v1/archive/19-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q19 | manual | 01-02-md-LECTURES/v1/19.md -> 01-02-md-LECTURES/v1/archive/19-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q19 | manual | 01-02-md-LECTURES/v1/figures/19-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/19-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q19 | manual | 01-02-md-LECTURES/v1/figures/19-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/19-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q19 | manual | 01-03-md-lectures-HTML/v1/19.html -> 01-03-md-lectures-HTML/v1/archive/19-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q19 | manual | 01-04-md-lectures-PDF/v1/19.pdf -> 01-04-md-lectures-PDF/v1/archive/19-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q20 | manual | 01-01-md-PRE-lectures/v1/20.md -> 01-01-md-PRE-lectures/v1/archive/20-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q20 | manual | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q20 | manual | 01-02-md-LECTURES/v1/figures/20-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/20-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q20 | manual | 01-02-md-LECTURES/v1/figures/20-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/20-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-10-15-0705.pdf
+- 2026-10-15 07:05 | archive Q21 | manual | 01-01-md-PRE-lectures/v1/21.md -> 01-01-md-PRE-lectures/v1/archive/21-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q21 | manual | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-10-15-0705.md
+- 2026-10-15 07:05 | archive Q21 | manual | 01-02-md-LECTURES/v1/figures/21-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/21-01-code-assembly-pipeline-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q21 | manual | 01-02-md-LECTURES/v1/figures/21-02-architecture-audit.html -> 01-02-md-LECTURES/v1/figures/archive/21-02-architecture-audit-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-10-15-0705.html
+- 2026-10-15 07:05 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-10-15-0705.pdf
+- 2026-10-15 | archive maps | manual | 01-01-map-principles/01.md to 21.md -> 01-01-map-principles/v_old_08/ (the react-07 maps, before the anchor-and-thread rewrite)
+- 2026-10-15 12:13 | archive cards | before the plain-names rewrite (#2026_10_15_07_group_1) | 01-01-map/01.md to 180.md copied -> 01-01-map/archive/NN-2026-10-15-1213.md (live cards then edited in place, names only)
+- 2026-10-15 12:19 | archive Q2 | plain names rewrite (#2026_10_15_08_group_1) | 01-02-md-LECTURES/v1/02.md -> 01-02-md-LECTURES/v1/archive/02-2026-10-15-1219.md
+- 2026-10-15 12:19 | archive Q2 | plain names rewrite (#2026_10_15_08_group_1) | 01-02-md-LECTURES/v1/figures/02-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/02-01-code-assembly-pipeline-2026-10-15-1219.html
+- 2026-10-15 12:19 | archive Q2 | plain names rewrite (#2026_10_15_08_group_1) | 01-03-md-lectures-HTML/v1/02.html -> 01-03-md-lectures-HTML/v1/archive/02-2026-10-15-1219.html
+- 2026-10-15 12:19 | archive Q2 | plain names rewrite (#2026_10_15_08_group_1) | 01-04-md-lectures-PDF/v1/02.pdf -> 01-04-md-lectures-PDF/v1/archive/02-2026-10-15-1219.pdf
+- 2026-10-15 12:19 | archive Q3 | plain names rewrite (#2026_10_15_08_group_1) | 01-02-md-LECTURES/v1/03.md -> 01-02-md-LECTURES/v1/archive/03-2026-10-15-1219.md
+- 2026-10-15 12:19 | archive Q3 | plain names rewrite (#2026_10_15_08_group_1) | 01-02-md-LECTURES/v1/figures/03-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/03-01-code-assembly-pipeline-2026-10-15-1219.html
+- 2026-10-15 12:19 | archive Q3 | plain names rewrite (#2026_10_15_08_group_1) | 01-03-md-lectures-HTML/v1/03.html -> 01-03-md-lectures-HTML/v1/archive/03-2026-10-15-1219.html
+- 2026-10-15 12:19 | archive Q3 | plain names rewrite (#2026_10_15_08_group_1) | 01-04-md-lectures-PDF/v1/03.pdf -> 01-04-md-lectures-PDF/v1/archive/03-2026-10-15-1219.pdf
+- 2026-10-15 12:19 | archive Q4 | plain names rewrite (#2026_10_15_08_group_1) | 01-02-md-LECTURES/v1/04.md -> 01-02-md-LECTURES/v1/archive/04-2026-10-15-1219.md
+- 2026-10-15 12:19 | archive Q4 | plain names rewrite (#2026_10_15_08_group_1) | 01-02-md-LECTURES/v1/figures/04-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/04-01-code-assembly-pipeline-2026-10-15-1219.html
+- 2026-10-15 12:19 | archive Q4 | plain names rewrite (#2026_10_15_08_group_1) | 01-03-md-lectures-HTML/v1/04.html -> 01-03-md-lectures-HTML/v1/archive/04-2026-10-15-1219.html
+- 2026-10-15 12:19 | archive Q4 | plain names rewrite (#2026_10_15_08_group_1) | 01-04-md-lectures-PDF/v1/04.pdf -> 01-04-md-lectures-PDF/v1/archive/04-2026-10-15-1219.pdf
+- 2026-10-15 12:19 | archive Q5 | plain names rewrite (#2026_10_15_08_group_1) | 01-02-md-LECTURES/v1/05.md -> 01-02-md-LECTURES/v1/archive/05-2026-10-15-1219.md
+- 2026-10-15 12:19 | archive Q5 | plain names rewrite (#2026_10_15_08_group_1) | 01-02-md-LECTURES/v1/figures/05-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/05-01-code-assembly-pipeline-2026-10-15-1219.html
+- 2026-10-15 12:19 | archive Q5 | plain names rewrite (#2026_10_15_08_group_1) | 01-03-md-lectures-HTML/v1/05.html -> 01-03-md-lectures-HTML/v1/archive/05-2026-10-15-1219.html
+- 2026-10-15 12:19 | archive Q5 | plain names rewrite (#2026_10_15_08_group_1) | 01-04-md-lectures-PDF/v1/05.pdf -> 01-04-md-lectures-PDF/v1/archive/05-2026-10-15-1219.pdf
+- 2026-10-15 13:32 | archive Q1 | make room for the audited copy from the lesson folder (revision-only code audit) | 02-01-md-revised/v1/01.md -> 02-01-md-revised/v1/archive/01-2026-10-15-1332.md
+- 2026-10-15 13:32 | archive Q1 | make room for the audited copy from the lesson folder (revision-only code audit) | 02-02-md-revised-html/v1/01.html -> 02-02-md-revised-html/v1/archive/01-2026-10-15-1332.html
+- 2026-10-15 13:32 | archive Q1 | make room for the audited copy from the lesson folder (revision-only code audit) | 02-03-md-revised-pdf/v1/01.pdf -> 02-03-md-revised-pdf/v1/archive/01-2026-10-15-1332.pdf
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/03-classic.html -> 03-02-md-revised-2-html/v1/archive/03-classic-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/03-ink.html -> 03-02-md-revised-2-html/v1/archive/03-ink-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/03-original.html -> 03-02-md-revised-2-html/v1/archive/03-original-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/03-sections-2.html -> 03-02-md-revised-2-html/v1/archive/03-sections-2-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/03-sections-3.html -> 03-02-md-revised-2-html/v1/archive/03-sections-3-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/03-sections.html -> 03-02-md-revised-2-html/v1/archive/03-sections-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/03.html -> 03-02-md-revised-2-html/v1/archive/03-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/03-classic.pdf -> 03-03-md-revised-2-pdf/v1/archive/03-classic-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/03-ink.pdf -> 03-03-md-revised-2-pdf/v1/archive/03-ink-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/03-original.pdf -> 03-03-md-revised-2-pdf/v1/archive/03-original-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/03-sections-2.pdf -> 03-03-md-revised-2-pdf/v1/archive/03-sections-2-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/03-sections-3.pdf -> 03-03-md-revised-2-pdf/v1/archive/03-sections-3-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/03-sections.pdf -> 03-03-md-revised-2-pdf/v1/archive/03-sections-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q3 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/03.pdf -> 03-03-md-revised-2-pdf/v1/archive/03-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/10-classic.html -> 03-02-md-revised-2-html/v1/archive/10-classic-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/10-ink.html -> 03-02-md-revised-2-html/v1/archive/10-ink-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/10-original.html -> 03-02-md-revised-2-html/v1/archive/10-original-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/10-sections-2.html -> 03-02-md-revised-2-html/v1/archive/10-sections-2-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/10-sections-3.html -> 03-02-md-revised-2-html/v1/archive/10-sections-3-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/10-sections.html -> 03-02-md-revised-2-html/v1/archive/10-sections-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/10.html -> 03-02-md-revised-2-html/v1/archive/10-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/10-classic.pdf -> 03-03-md-revised-2-pdf/v1/archive/10-classic-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/10-ink.pdf -> 03-03-md-revised-2-pdf/v1/archive/10-ink-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/10-original.pdf -> 03-03-md-revised-2-pdf/v1/archive/10-original-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/10-sections-2.pdf -> 03-03-md-revised-2-pdf/v1/archive/10-sections-2-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/10-sections-3.pdf -> 03-03-md-revised-2-pdf/v1/archive/10-sections-3-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/10-sections.pdf -> 03-03-md-revised-2-pdf/v1/archive/10-sections-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q10 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/10.pdf -> 03-03-md-revised-2-pdf/v1/archive/10-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/11-classic.html -> 03-02-md-revised-2-html/v1/archive/11-classic-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/11-ink.html -> 03-02-md-revised-2-html/v1/archive/11-ink-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/11-original.html -> 03-02-md-revised-2-html/v1/archive/11-original-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/11-sections-2.html -> 03-02-md-revised-2-html/v1/archive/11-sections-2-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/11-sections-3.html -> 03-02-md-revised-2-html/v1/archive/11-sections-3-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/11-sections.html -> 03-02-md-revised-2-html/v1/archive/11-sections-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-02-md-revised-2-html/v1/11.html -> 03-02-md-revised-2-html/v1/archive/11-2026-10-17-1047.html
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/11-classic.pdf -> 03-03-md-revised-2-pdf/v1/archive/11-classic-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/11-ink.pdf -> 03-03-md-revised-2-pdf/v1/archive/11-ink-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/11-original.pdf -> 03-03-md-revised-2-pdf/v1/archive/11-original-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/11-sections-2.pdf -> 03-03-md-revised-2-pdf/v1/archive/11-sections-2-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/11-sections-3.pdf -> 03-03-md-revised-2-pdf/v1/archive/11-sections-3-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/11-sections.pdf -> 03-03-md-revised-2-pdf/v1/archive/11-sections-2026-10-17-1047.pdf
+- 2026-10-17 10:47 | archive Q11 | retire the trial themes of revision 2; only the original theme stays | 03-03-md-revised-2-pdf/v1/11.pdf -> 03-03-md-revised-2-pdf/v1/archive/11-2026-10-17-1047.pdf
+- 2026-10-17 16:02 | archive Q10 | before writing the example data in full | 04-01-md-revised-3/v1/10.md -> 04-01-md-revised-3/v1/archive/10-2026-10-17-1602.md
+- 2026-10-17 16:02 | archive Q10 | before writing the example data in full | 04-02-md-revised-3-html/v1/10-original-margins.html -> 04-02-md-revised-3-html/v1/archive/10-original-margins-2026-10-17-1602.html
+- 2026-10-17 16:02 | archive Q10 | before writing the example data in full | 04-02-md-revised-3-html/v1/10.html -> 04-02-md-revised-3-html/v1/archive/10-2026-10-17-1602.html
+- 2026-10-17 16:02 | archive Q10 | before writing the example data in full | 04-03-md-revised-3-pdf/v1/10-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/10-original-margins-2026-10-17-1602.pdf
+- 2026-10-17 16:02 | archive Q10 | before writing the example data in full | 04-03-md-revised-3-pdf/v1/10.pdf -> 04-03-md-revised-3-pdf/v1/archive/10-2026-10-17-1602.pdf
+- 2026-10-17 16:02 | archive Q11 | before writing the example data in full | 04-01-md-revised-3/v1/11.md -> 04-01-md-revised-3/v1/archive/11-2026-10-17-1602.md
+- 2026-10-17 16:02 | archive Q11 | before writing the example data in full | 04-02-md-revised-3-html/v1/11-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-original-margins-2026-10-17-1602.html
+- 2026-10-17 16:02 | archive Q11 | before writing the example data in full | 04-02-md-revised-3-html/v1/11.html -> 04-02-md-revised-3-html/v1/archive/11-2026-10-17-1602.html
+- 2026-10-17 16:02 | archive Q11 | before writing the example data in full | 04-03-md-revised-3-pdf/v1/11-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-original-margins-2026-10-17-1602.pdf
+- 2026-10-17 16:02 | archive Q11 | before writing the example data in full | 04-03-md-revised-3-pdf/v1/11.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-2026-10-17-1602.pdf
+- 2026-10-17 16:24 | archive Q1 | before wording the labels by who acts | 04-01-md-revised-3/v1/01.md -> 04-01-md-revised-3/v1/archive/01-2026-10-17-1624.md
+- 2026-10-17 16:24 | archive Q1 | before wording the labels by who acts | 04-02-md-revised-3-html/v1/01-original-margins.html -> 04-02-md-revised-3-html/v1/archive/01-original-margins-2026-10-17-1624.html
+- 2026-10-17 16:24 | archive Q1 | before wording the labels by who acts | 04-02-md-revised-3-html/v1/01.html -> 04-02-md-revised-3-html/v1/archive/01-2026-10-17-1624.html
+- 2026-10-17 16:24 | archive Q1 | before wording the labels by who acts | 04-03-md-revised-3-pdf/v1/01-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-original-margins-2026-10-17-1624.pdf
+- 2026-10-17 16:24 | archive Q1 | before wording the labels by who acts | 04-03-md-revised-3-pdf/v1/01.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-2026-10-17-1624.pdf
+- 2026-10-17 16:31 | archive Q1 | owner asked to archive the revision 3 lesson 01 | 04-01-md-revised-3/v1/01.md -> 04-01-md-revised-3/v1/archive/01-2026-10-17-1631.md
+- 2026-10-17 16:31 | archive Q1 | owner asked to archive the revision 3 lesson 01 | 04-02-md-revised-3-html/v1/01-original-margins.html -> 04-02-md-revised-3-html/v1/archive/01-original-margins-2026-10-17-1631.html
+- 2026-10-17 16:31 | archive Q1 | owner asked to archive the revision 3 lesson 01 | 04-02-md-revised-3-html/v1/01.html -> 04-02-md-revised-3-html/v1/archive/01-2026-10-17-1631.html
+- 2026-10-17 16:31 | archive Q1 | owner asked to archive the revision 3 lesson 01 | 04-03-md-revised-3-pdf/v1/01-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-original-margins-2026-10-17-1631.pdf
+- 2026-10-17 16:31 | archive Q1 | owner asked to archive the revision 3 lesson 01 | 04-03-md-revised-3-pdf/v1/01.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-2026-10-17-1631.pdf
+- 2026-10-17 16:51 | archive Q1 | before the radical rewrite: new running example and a simpler structure | 04-01-md-revised-3/v1/01.md -> 04-01-md-revised-3/v1/archive/01-2026-10-17-1651.md
+- 2026-10-17 16:51 | archive Q1 | before the radical rewrite: new running example and a simpler structure | 04-02-md-revised-3-html/v1/01-original-margins.html -> 04-02-md-revised-3-html/v1/archive/01-original-margins-2026-10-17-1651.html
+- 2026-10-17 16:51 | archive Q1 | before the radical rewrite: new running example and a simpler structure | 04-02-md-revised-3-html/v1/01.html -> 04-02-md-revised-3-html/v1/archive/01-2026-10-17-1651.html
+- 2026-10-17 16:51 | archive Q1 | before the radical rewrite: new running example and a simpler structure | 04-03-md-revised-3-pdf/v1/01-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-original-margins-2026-10-17-1651.pdf
+- 2026-10-17 16:51 | archive Q1 | before the radical rewrite: new running example and a simpler structure | 04-03-md-revised-3-pdf/v1/01.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-2026-10-17-1651.pdf
+- 2026-10-17 17:07 | archive Q1 | before the radically simple rework: the cart with one count, the note box only in section 3 | 04-01-md-revised-3/v1/01.md -> 04-01-md-revised-3/v1/archive/01-2026-10-17-1707.md
+- 2026-10-17 17:07 | archive Q1 | before the radically simple rework: the cart with one count, the note box only in section 3 | 04-02-md-revised-3-html/v1/01-original-margins.html -> 04-02-md-revised-3-html/v1/archive/01-original-margins-2026-10-17-1707.html
+- 2026-10-17 17:07 | archive Q1 | before the radically simple rework: the cart with one count, the note box only in section 3 | 04-02-md-revised-3-html/v1/01.html -> 04-02-md-revised-3-html/v1/archive/01-2026-10-17-1707.html
+- 2026-10-17 17:07 | archive Q1 | before the radically simple rework: the cart with one count, the note box only in section 3 | 04-03-md-revised-3-pdf/v1/01-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-original-margins-2026-10-17-1707.pdf
+- 2026-10-17 17:07 | archive Q1 | before the radically simple rework: the cart with one count, the note box only in section 3 | 04-03-md-revised-3-pdf/v1/01.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-2026-10-17-1707.pdf
+- 2026-10-17 17:17 | archive Q1 | owner asked to reverse the rewrites; the cart version retired | 04-01-md-revised-3/v1/01.md -> 04-01-md-revised-3/v1/archive/01-2026-10-17-1717.md
+- 2026-10-17 17:17 | archive Q1 | owner asked to reverse the rewrites; the cart version retired | 04-02-md-revised-3-html/v1/01-original-margins.html -> 04-02-md-revised-3-html/v1/archive/01-original-margins-2026-10-17-1717.html
+- 2026-10-17 17:17 | archive Q1 | owner asked to reverse the rewrites; the cart version retired | 04-02-md-revised-3-html/v1/01.html -> 04-02-md-revised-3-html/v1/archive/01-2026-10-17-1717.html
+- 2026-10-17 17:17 | archive Q1 | owner asked to reverse the rewrites; the cart version retired | 04-03-md-revised-3-pdf/v1/01-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-original-margins-2026-10-17-1717.pdf
+- 2026-10-17 17:17 | archive Q1 | owner asked to reverse the rewrites; the cart version retired | 04-03-md-revised-3-pdf/v1/01.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-2026-10-17-1717.pdf
+- 2026-10-17 17:17 | restore Q1 | owner asked to reverse the rewrites; the lesson as it was | 04-01-md-revised-3/v1/archive/01-2026-10-17-1651.md -> 04-01-md-revised-3/v1/01.md
+- 2026-10-17 17:17 | restore Q1 | owner asked to reverse the rewrites; the lesson as it was | 04-02-md-revised-3-html/v1/archive/01-2026-10-17-1651.html -> 04-02-md-revised-3-html/v1/01.html
+- 2026-10-17 17:17 | restore Q1 | owner asked to reverse the rewrites; the lesson as it was | 04-02-md-revised-3-html/v1/archive/01-original-margins-2026-10-17-1651.html -> 04-02-md-revised-3-html/v1/01-original-margins.html
+- 2026-10-17 17:17 | restore Q1 | owner asked to reverse the rewrites; the lesson as it was | 04-03-md-revised-3-pdf/v1/archive/01-2026-10-17-1651.pdf -> 04-03-md-revised-3-pdf/v1/01.pdf
+- 2026-10-17 17:17 | restore Q1 | owner asked to reverse the rewrites; the lesson as it was | 04-03-md-revised-3-pdf/v1/archive/01-original-margins-2026-10-17-1651.pdf -> 04-03-md-revised-3-pdf/v1/01-original-margins.pdf
+- 2026-10-18 11:55 | archive Q3 | replaced by the rewrite from the 03b/10b rules (theory first, paper theme) | 04-01-md-revised-3/v1/03.md -> 04-01-md-revised-3/v1/archive/03-2026-10-18-1155.md
+- 2026-10-18 11:55 | archive Q3 | replaced by the rewrite from the 03b/10b rules (theory first, paper theme) | 04-02-md-revised-3-html/v1/03-original-margins.html -> 04-02-md-revised-3-html/v1/archive/03-original-margins-2026-10-18-1155.html
+- 2026-10-18 11:55 | archive Q3 | replaced by the rewrite from the 03b/10b rules (theory first, paper theme) | 04-02-md-revised-3-html/v1/03.html -> 04-02-md-revised-3-html/v1/archive/03-2026-10-18-1155.html
+- 2026-10-18 11:55 | archive Q3 | replaced by the rewrite from the 03b/10b rules (theory first, paper theme) | 04-03-md-revised-3-pdf/v1/03-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/03-original-margins-2026-10-18-1155.pdf
+- 2026-10-18 11:55 | archive Q3 | replaced by the rewrite from the 03b/10b rules (theory first, paper theme) | 04-03-md-revised-3-pdf/v1/03.pdf -> 04-03-md-revised-3-pdf/v1/archive/03-2026-10-18-1155.pdf
+- 2026-10-18 11:55 | archive Q10 | replaced by the rewrite from the 03b/10b rules (theory first, paper theme) | 04-01-md-revised-3/v1/10.md -> 04-01-md-revised-3/v1/archive/10-2026-10-18-1155.md
+- 2026-10-18 11:55 | archive Q10 | replaced by the rewrite from the 03b/10b rules (theory first, paper theme) | 04-02-md-revised-3-html/v1/10-original-margins.html -> 04-02-md-revised-3-html/v1/archive/10-original-margins-2026-10-18-1155.html
+- 2026-10-18 11:55 | archive Q10 | replaced by the rewrite from the 03b/10b rules (theory first, paper theme) | 04-02-md-revised-3-html/v1/10.html -> 04-02-md-revised-3-html/v1/archive/10-2026-10-18-1155.html
+- 2026-10-18 11:55 | archive Q10 | replaced by the rewrite from the 03b/10b rules (theory first, paper theme) | 04-03-md-revised-3-pdf/v1/10-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/10-original-margins-2026-10-18-1155.pdf
+- 2026-10-18 11:55 | archive Q10 | replaced by the rewrite from the 03b/10b rules (theory first, paper theme) | 04-03-md-revised-3-pdf/v1/10.pdf -> 04-03-md-revised-3-pdf/v1/archive/10-2026-10-18-1155.pdf
+- 2026-10-18 12:29 | archive Q1 | rebuilt with the two-theme revision 3 build | 04-02-md-revised-3-html/v1/01-original-margins.html -> 04-02-md-revised-3-html/v1/archive/01-original-margins-2026-10-18-1229.html
+- 2026-10-18 12:29 | archive Q1 | rebuilt with the two-theme revision 3 build | 04-02-md-revised-3-html/v1/01.html -> 04-02-md-revised-3-html/v1/archive/01-2026-10-18-1229.html
+- 2026-10-18 12:29 | archive Q1 | rebuilt with the two-theme revision 3 build | 04-03-md-revised-3-pdf/v1/01-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-original-margins-2026-10-18-1229.pdf
+- 2026-10-18 12:29 | archive Q1 | rebuilt with the two-theme revision 3 build | 04-03-md-revised-3-pdf/v1/01.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-2026-10-18-1229.pdf
+- 2026-10-18 12:29 | archive Q11 | rebuilt with the two-theme revision 3 build | 04-02-md-revised-3-html/v1/11-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-original-margins-2026-10-18-1229.html
+- 2026-10-18 12:29 | archive Q11 | rebuilt with the two-theme revision 3 build | 04-02-md-revised-3-html/v1/11.html -> 04-02-md-revised-3-html/v1/archive/11-2026-10-18-1229.html
+- 2026-10-18 12:29 | archive Q11 | rebuilt with the two-theme revision 3 build | 04-03-md-revised-3-pdf/v1/11-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-original-margins-2026-10-18-1229.pdf
+- 2026-10-18 12:29 | archive Q11 | rebuilt with the two-theme revision 3 build | 04-03-md-revised-3-pdf/v1/11.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-2026-10-18-1229.pdf
+- 2026-10-18 13:08 | archive Q11 | before the rewrite to the 03/10 format: theory first, the principle route, the example at the end | 04-01-md-revised-3/v1/11.md -> 04-01-md-revised-3/v1/archive/11-2026-10-18-1308.md
+- 2026-10-18 13:08 | archive Q11 | before the rewrite to the 03/10 format: theory first, the principle route, the example at the end | 04-02-md-revised-3-html/v1/11-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-original-margins-2026-10-18-1308.html
+- 2026-10-18 13:08 | archive Q11 | before the rewrite to the 03/10 format: theory first, the principle route, the example at the end | 04-02-md-revised-3-html/v1/11-paper.html -> 04-02-md-revised-3-html/v1/archive/11-paper-2026-10-18-1308.html
+- 2026-10-18 13:08 | archive Q11 | before the rewrite to the 03/10 format: theory first, the principle route, the example at the end | 04-02-md-revised-3-html/v1/11.html -> 04-02-md-revised-3-html/v1/archive/11-2026-10-18-1308.html
+- 2026-10-18 13:08 | archive Q11 | before the rewrite to the 03/10 format: theory first, the principle route, the example at the end | 04-03-md-revised-3-pdf/v1/11-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-original-margins-2026-10-18-1308.pdf
+- 2026-10-18 13:08 | archive Q11 | before the rewrite to the 03/10 format: theory first, the principle route, the example at the end | 04-03-md-revised-3-pdf/v1/11-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-paper-2026-10-18-1308.pdf
+- 2026-10-18 13:08 | archive Q11 | before the rewrite to the 03/10 format: theory first, the principle route, the example at the end | 04-03-md-revised-3-pdf/v1/11.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-2026-10-18-1308.pdf
+- 2026-10-18 13:44 | archive Q11 | the articles draft of the 03/10 format, replaced by the inbox rewrite with the What is going on box | 04-01-md-revised-3/v1/11.md -> 04-01-md-revised-3/v1/archive/11-2026-10-18-1344.md
+- 2026-10-18 13:44 | archive Q11 | the articles draft of the 03/10 format, replaced by the inbox rewrite with the What is going on box | 04-02-md-revised-3-html/v1/11-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-original-margins-2026-10-18-1344.html
+- 2026-10-18 13:44 | archive Q11 | the articles draft of the 03/10 format, replaced by the inbox rewrite with the What is going on box | 04-02-md-revised-3-html/v1/11-paper.html -> 04-02-md-revised-3-html/v1/archive/11-paper-2026-10-18-1344.html
+- 2026-10-18 13:44 | archive Q11 | the articles draft of the 03/10 format, replaced by the inbox rewrite with the What is going on box | 04-02-md-revised-3-html/v1/11.html -> 04-02-md-revised-3-html/v1/archive/11-2026-10-18-1344.html
+- 2026-10-18 13:44 | archive Q11 | the articles draft of the 03/10 format, replaced by the inbox rewrite with the What is going on box | 04-03-md-revised-3-pdf/v1/11-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-original-margins-2026-10-18-1344.pdf
+- 2026-10-18 13:44 | archive Q11 | the articles draft of the 03/10 format, replaced by the inbox rewrite with the What is going on box | 04-03-md-revised-3-pdf/v1/11-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-paper-2026-10-18-1344.pdf
+- 2026-10-18 13:44 | archive Q11 | the articles draft of the 03/10 format, replaced by the inbox rewrite with the What is going on box | 04-03-md-revised-3-pdf/v1/11.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-2026-10-18-1344.pdf
+- 2026-10-18 14:00 | archive Q11 | the inbox draft whose What is going on box used undefined shorthand (the email, the row) | 04-01-md-revised-3/v1/11.md -> 04-01-md-revised-3/v1/archive/11-2026-10-18-1400.md
+- 2026-10-18 14:00 | archive Q11 | the inbox draft whose What is going on box used undefined shorthand (the email, the row) | 04-02-md-revised-3-html/v1/11-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-original-margins-2026-10-18-1400.html
+- 2026-10-18 14:00 | archive Q11 | the inbox draft whose What is going on box used undefined shorthand (the email, the row) | 04-02-md-revised-3-html/v1/11-paper.html -> 04-02-md-revised-3-html/v1/archive/11-paper-2026-10-18-1400.html
+- 2026-10-18 14:00 | archive Q11 | the inbox draft whose What is going on box used undefined shorthand (the email, the row) | 04-02-md-revised-3-html/v1/11.html -> 04-02-md-revised-3-html/v1/archive/11-2026-10-18-1400.html
+- 2026-10-18 14:00 | archive Q11 | the inbox draft whose What is going on box used undefined shorthand (the email, the row) | 04-03-md-revised-3-pdf/v1/11-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-original-margins-2026-10-18-1400.pdf
+- 2026-10-18 14:00 | archive Q11 | the inbox draft whose What is going on box used undefined shorthand (the email, the row) | 04-03-md-revised-3-pdf/v1/11-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-paper-2026-10-18-1400.pdf
+- 2026-10-18 14:00 | archive Q11 | the inbox draft whose What is going on box used undefined shorthand (the email, the row) | 04-03-md-revised-3-pdf/v1/11.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-2026-10-18-1400.pdf
+- 2026-10-18 14:07 | archive Q11 | box still shortened its references after step 1 | 04-01-md-revised-3/v1/11.md -> 04-01-md-revised-3/v1/archive/11-2026-10-18-1407.md
+- 2026-10-18 14:07 | archive Q11 | box still shortened its references after step 1 | 04-02-md-revised-3-html/v1/11-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-original-margins-2026-10-18-1407.html
+- 2026-10-18 14:07 | archive Q11 | box still shortened its references after step 1 | 04-02-md-revised-3-html/v1/11-paper.html -> 04-02-md-revised-3-html/v1/archive/11-paper-2026-10-18-1407.html
+- 2026-10-18 14:07 | archive Q11 | box still shortened its references after step 1 | 04-02-md-revised-3-html/v1/11.html -> 04-02-md-revised-3-html/v1/archive/11-2026-10-18-1407.html
+- 2026-10-18 14:07 | archive Q11 | box still shortened its references after step 1 | 04-03-md-revised-3-pdf/v1/11-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-original-margins-2026-10-18-1407.pdf
+- 2026-10-18 14:07 | archive Q11 | box still shortened its references after step 1 | 04-03-md-revised-3-pdf/v1/11-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-paper-2026-10-18-1407.pdf
+- 2026-10-18 14:07 | archive Q11 | box still shortened its references after step 1 | 04-03-md-revised-3-pdf/v1/11.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-2026-10-18-1407.pdf
+- 2026-10-18 14:25 | archive Q11 | the box compared a <label> and a sample object instead of the two categories | 04-01-md-revised-3/v1/11.md -> 04-01-md-revised-3/v1/archive/11-2026-10-18-1425.md
+- 2026-10-18 14:25 | archive Q11 | the box compared a <label> and a sample object instead of the two categories | 04-02-md-revised-3-html/v1/11-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-original-margins-2026-10-18-1425.html
+- 2026-10-18 14:25 | archive Q11 | the box compared a <label> and a sample object instead of the two categories | 04-02-md-revised-3-html/v1/11-paper.html -> 04-02-md-revised-3-html/v1/archive/11-paper-2026-10-18-1425.html
+- 2026-10-18 14:25 | archive Q11 | the box compared a <label> and a sample object instead of the two categories | 04-02-md-revised-3-html/v1/11.html -> 04-02-md-revised-3-html/v1/archive/11-2026-10-18-1425.html
+- 2026-10-18 14:25 | archive Q11 | the box compared a <label> and a sample object instead of the two categories | 04-03-md-revised-3-pdf/v1/11-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-original-margins-2026-10-18-1425.pdf
+- 2026-10-18 14:25 | archive Q11 | the box compared a <label> and a sample object instead of the two categories | 04-03-md-revised-3-pdf/v1/11-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-paper-2026-10-18-1425.pdf
+- 2026-10-18 14:25 | archive Q11 | the box compared a <label> and a sample object instead of the two categories | 04-03-md-revised-3-pdf/v1/11.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-2026-10-18-1425.pdf
+- 2026-10-18 15:29 | archive Q11 | before adding the approved 11b story to section 3, the spam mail, and the no-colon rule | 04-01-md-revised-3/v1/11.md -> 04-01-md-revised-3/v1/archive/11-2026-10-18-1529.md
+- 2026-10-18 15:29 | archive Q11 | before adding the approved 11b story to section 3, the spam mail, and the no-colon rule | 04-02-md-revised-3-html/v1/11-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-original-margins-2026-10-18-1529.html
+- 2026-10-18 15:29 | archive Q11 | before adding the approved 11b story to section 3, the spam mail, and the no-colon rule | 04-02-md-revised-3-html/v1/11-paper.html -> 04-02-md-revised-3-html/v1/archive/11-paper-2026-10-18-1529.html
+- 2026-10-18 15:29 | archive Q11 | before adding the approved 11b story to section 3, the spam mail, and the no-colon rule | 04-02-md-revised-3-html/v1/11.html -> 04-02-md-revised-3-html/v1/archive/11-2026-10-18-1529.html
+- 2026-10-18 15:29 | archive Q11 | before adding the approved 11b story to section 3, the spam mail, and the no-colon rule | 04-03-md-revised-3-pdf/v1/11-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-original-margins-2026-10-18-1529.pdf
+- 2026-10-18 15:29 | archive Q11 | before adding the approved 11b story to section 3, the spam mail, and the no-colon rule | 04-03-md-revised-3-pdf/v1/11-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-paper-2026-10-18-1529.pdf
+- 2026-10-18 15:29 | archive Q11 | before adding the approved 11b story to section 3, the spam mail, and the no-colon rule | 04-03-md-revised-3-pdf/v1/11.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-2026-10-18-1529.pdf
+- 2026-10-18 15:34 | archive Q11 | the story page had a generic subtitle instead of the example's title | 04-01-md-revised-3/v1/11.md -> 04-01-md-revised-3/v1/archive/11-2026-10-18-1534.md
+- 2026-10-18 15:34 | archive Q11 | the story page had a generic subtitle instead of the example's title | 04-02-md-revised-3-html/v1/11-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-original-margins-2026-10-18-1534.html
+- 2026-10-18 15:34 | archive Q11 | the story page had a generic subtitle instead of the example's title | 04-02-md-revised-3-html/v1/11-paper.html -> 04-02-md-revised-3-html/v1/archive/11-paper-2026-10-18-1534.html
+- 2026-10-18 15:34 | archive Q11 | the story page had a generic subtitle instead of the example's title | 04-02-md-revised-3-html/v1/11.html -> 04-02-md-revised-3-html/v1/archive/11-2026-10-18-1534.html
+- 2026-10-18 15:34 | archive Q11 | the story page had a generic subtitle instead of the example's title | 04-03-md-revised-3-pdf/v1/11-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-original-margins-2026-10-18-1534.pdf
+- 2026-10-18 15:34 | archive Q11 | the story page had a generic subtitle instead of the example's title | 04-03-md-revised-3-pdf/v1/11-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-paper-2026-10-18-1534.pdf
+- 2026-10-18 15:34 | archive Q11 | the story page had a generic subtitle instead of the example's title | 04-03-md-revised-3-pdf/v1/11.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-2026-10-18-1534.pdf
+- 2026-10-18 16:24 | archive Q1 | before rewriting Lecture 1 to the current revision 3 standard | 04-01-md-revised-3/v1/01.md -> 04-01-md-revised-3/v1/archive/01-2026-10-18-1624.md
+- 2026-10-18 16:24 | archive Q1 | before rewriting Lecture 1 to the current revision 3 standard | 04-02-md-revised-3-html/v1/01-original-margins.html -> 04-02-md-revised-3-html/v1/archive/01-original-margins-2026-10-18-1624.html
+- 2026-10-18 16:24 | archive Q1 | before rewriting Lecture 1 to the current revision 3 standard | 04-02-md-revised-3-html/v1/01-paper.html -> 04-02-md-revised-3-html/v1/archive/01-paper-2026-10-18-1624.html
+- 2026-10-18 16:24 | archive Q1 | before rewriting Lecture 1 to the current revision 3 standard | 04-02-md-revised-3-html/v1/01.html -> 04-02-md-revised-3-html/v1/archive/01-2026-10-18-1624.html
+- 2026-10-18 16:24 | archive Q1 | before rewriting Lecture 1 to the current revision 3 standard | 04-03-md-revised-3-pdf/v1/01-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-original-margins-2026-10-18-1624.pdf
+- 2026-10-18 16:24 | archive Q1 | before rewriting Lecture 1 to the current revision 3 standard | 04-03-md-revised-3-pdf/v1/01-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-paper-2026-10-18-1624.pdf
+- 2026-10-18 16:24 | archive Q1 | before rewriting Lecture 1 to the current revision 3 standard | 04-03-md-revised-3-pdf/v1/01.pdf -> 04-03-md-revised-3-pdf/v1/archive/01-2026-10-18-1624.pdf
+- 2026-10-18 23:47 | archive Q11 | before the Example for Principle headings and the hierarchy panels with the page and its inspector labels | 04-01-md-revised-3/v1/11-gemini.md -> 04-01-md-revised-3/v1/archive/11-gemini-2026-10-18-2347.md
+- 2026-10-18 23:47 | archive Q11 | before the Example for Principle headings and the hierarchy panels with the page and its inspector labels | 04-02-md-revised-3-html/v1/11-gemini-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-original-margins-2026-10-18-2347.html
+- 2026-10-18 23:47 | archive Q11 | before the Example for Principle headings and the hierarchy panels with the page and its inspector labels | 04-02-md-revised-3-html/v1/11-gemini-paper-2.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-paper-2-2026-10-18-2347.html
+- 2026-10-18 23:47 | archive Q11 | before the Example for Principle headings and the hierarchy panels with the page and its inspector labels | 04-02-md-revised-3-html/v1/11-gemini-paper.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-paper-2026-10-18-2347.html
+- 2026-10-18 23:47 | archive Q11 | before the Example for Principle headings and the hierarchy panels with the page and its inspector labels | 04-02-md-revised-3-html/v1/11-gemini.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-2026-10-18-2347.html
+- 2026-10-18 23:47 | archive Q11 | before the Example for Principle headings and the hierarchy panels with the page and its inspector labels | 04-03-md-revised-3-pdf/v1/11-gemini-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-original-margins-2026-10-18-2347.pdf
+- 2026-10-18 23:47 | archive Q11 | before the Example for Principle headings and the hierarchy panels with the page and its inspector labels | 04-03-md-revised-3-pdf/v1/11-gemini-paper-2.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2-2026-10-18-2347.pdf
+- 2026-10-18 23:47 | archive Q11 | before the Example for Principle headings and the hierarchy panels with the page and its inspector labels | 04-03-md-revised-3-pdf/v1/11-gemini-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2026-10-18-2347.pdf
+- 2026-10-18 23:47 | archive Q11 | before the Example for Principle headings and the hierarchy panels with the page and its inspector labels | 04-03-md-revised-3-pdf/v1/11-gemini.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-2026-10-18-2347.pdf
+- 2026-10-19 00:02 | archive Q11 | before the Point of failure line in every hierarchy box, without the We want note and the components heading | 04-01-md-revised-3/v1/11-gemini.md -> 04-01-md-revised-3/v1/archive/11-gemini-2026-10-19-0002.md
+- 2026-10-19 00:02 | archive Q11 | before the Point of failure line in every hierarchy box, without the We want note and the components heading | 04-02-md-revised-3-html/v1/11-gemini-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-original-margins-2026-10-19-0002.html
+- 2026-10-19 00:02 | archive Q11 | before the Point of failure line in every hierarchy box, without the We want note and the components heading | 04-02-md-revised-3-html/v1/11-gemini-paper-2.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-paper-2-2026-10-19-0002.html
+- 2026-10-19 00:02 | archive Q11 | before the Point of failure line in every hierarchy box, without the We want note and the components heading | 04-02-md-revised-3-html/v1/11-gemini-paper.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-paper-2026-10-19-0002.html
+- 2026-10-19 00:02 | archive Q11 | before the Point of failure line in every hierarchy box, without the We want note and the components heading | 04-02-md-revised-3-html/v1/11-gemini.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-2026-10-19-0002.html
+- 2026-10-19 00:02 | archive Q11 | before the Point of failure line in every hierarchy box, without the We want note and the components heading | 04-03-md-revised-3-pdf/v1/11-gemini-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-original-margins-2026-10-19-0002.pdf
+- 2026-10-19 00:02 | archive Q11 | before the Point of failure line in every hierarchy box, without the We want note and the components heading | 04-03-md-revised-3-pdf/v1/11-gemini-paper-2.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2-2026-10-19-0002.pdf
+- 2026-10-19 00:02 | archive Q11 | before the Point of failure line in every hierarchy box, without the We want note and the components heading | 04-03-md-revised-3-pdf/v1/11-gemini-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2026-10-19-0002.pdf
+- 2026-10-19 00:02 | archive Q11 | before the Point of failure line in every hierarchy box, without the We want note and the components heading | 04-03-md-revised-3-pdf/v1/11-gemini.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-2026-10-19-0002.pdf
+- 2026-10-19 00:06 | archive Q11 | before one component hierarchy in every example: Principle 2 without App | 04-01-md-revised-3/v1/11-gemini.md -> 04-01-md-revised-3/v1/archive/11-gemini-2026-10-19-0006.md
+- 2026-10-19 00:06 | archive Q11 | before one component hierarchy in every example: Principle 2 without App | 04-02-md-revised-3-html/v1/11-gemini-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-original-margins-2026-10-19-0006.html
+- 2026-10-19 00:06 | archive Q11 | before one component hierarchy in every example: Principle 2 without App | 04-02-md-revised-3-html/v1/11-gemini-paper-2.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-paper-2-2026-10-19-0006.html
+- 2026-10-19 00:06 | archive Q11 | before one component hierarchy in every example: Principle 2 without App | 04-02-md-revised-3-html/v1/11-gemini-paper.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-paper-2026-10-19-0006.html
+- 2026-10-19 00:06 | archive Q11 | before one component hierarchy in every example: Principle 2 without App | 04-02-md-revised-3-html/v1/11-gemini.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-2026-10-19-0006.html
+- 2026-10-19 00:06 | archive Q11 | before one component hierarchy in every example: Principle 2 without App | 04-03-md-revised-3-pdf/v1/11-gemini-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-original-margins-2026-10-19-0006.pdf
+- 2026-10-19 00:06 | archive Q11 | before one component hierarchy in every example: Principle 2 without App | 04-03-md-revised-3-pdf/v1/11-gemini-paper-2.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2-2026-10-19-0006.pdf
+- 2026-10-19 00:06 | archive Q11 | before one component hierarchy in every example: Principle 2 without App | 04-03-md-revised-3-pdf/v1/11-gemini-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2026-10-19-0006.pdf
+- 2026-10-19 00:06 | archive Q11 | before one component hierarchy in every example: Principle 2 without App | 04-03-md-revised-3-pdf/v1/11-gemini.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-2026-10-19-0006.pdf
+- 2026-10-19 17:10 | archive Q11 | before the comparison columns that read from the code down (flow=down) | 04-01-md-revised-3/v1/11-gemini.md -> 04-01-md-revised-3/v1/archive/11-gemini-2026-10-19-1710.md
+- 2026-10-19 17:10 | archive Q11 | before the comparison columns that read from the code down (flow=down) | 04-02-md-revised-3-html/v1/11-gemini-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-original-margins-2026-10-19-1710.html
+- 2026-10-19 17:10 | archive Q11 | before the comparison columns that read from the code down (flow=down) | 04-02-md-revised-3-html/v1/11-gemini-paper-2.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-paper-2-2026-10-19-1710.html
+- 2026-10-19 17:10 | archive Q11 | before the comparison columns that read from the code down (flow=down) | 04-02-md-revised-3-html/v1/11-gemini-paper.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-paper-2026-10-19-1710.html
+- 2026-10-19 17:10 | archive Q11 | before the comparison columns that read from the code down (flow=down) | 04-02-md-revised-3-html/v1/11-gemini.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-2026-10-19-1710.html
+- 2026-10-19 17:10 | archive Q11 | before the comparison columns that read from the code down (flow=down) | 04-03-md-revised-3-pdf/v1/11-gemini-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-original-margins-2026-10-19-1710.pdf
+- 2026-10-19 17:10 | archive Q11 | before the comparison columns that read from the code down (flow=down) | 04-03-md-revised-3-pdf/v1/11-gemini-paper-2.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2-2026-10-19-1710.pdf
+- 2026-10-19 17:10 | archive Q11 | before the comparison columns that read from the code down (flow=down) | 04-03-md-revised-3-pdf/v1/11-gemini-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2026-10-19-1710.pdf
+- 2026-10-19 17:10 | archive Q11 | before the comparison columns that read from the code down (flow=down) | 04-03-md-revised-3-pdf/v1/11-gemini.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-2026-10-19-1710.pdf
+- 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-01-md-revised-3/v1/11-gemini.md -> 04-01-md-revised-3/v1/archive/11-gemini-2026-10-19-1713.md
+- 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-02-md-revised-3-html/v1/11-gemini-original-margins.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-original-margins-2026-10-19-1713.html
+- 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-02-md-revised-3-html/v1/11-gemini-paper-2.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-paper-2-2026-10-19-1713.html
+- 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-02-md-revised-3-html/v1/11-gemini-paper.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-paper-2026-10-19-1713.html
+- 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-02-md-revised-3-html/v1/11-gemini.html -> 04-02-md-revised-3-html/v1/archive/11-gemini-2026-10-19-1713.html
+- 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-03-md-revised-3-pdf/v1/11-gemini-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-original-margins-2026-10-19-1713.pdf
+- 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-03-md-revised-3-pdf/v1/11-gemini-paper-2.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2-2026-10-19-1713.pdf
+- 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-03-md-revised-3-pdf/v1/11-gemini-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2026-10-19-1713.pdf
+- 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-03-md-revised-3-pdf/v1/11-gemini.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-2026-10-19-1713.pdf

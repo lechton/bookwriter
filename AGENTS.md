@@ -17,6 +17,7 @@ All operations, shell commands, file inspections, and project workflows are root
 | `react 05` | `projects/react-05` | React 19 Production Lectures v5 |
 | `react 06` | `projects/react-06` | React 19 Production Lectures v6 (Q01–Q13) |
 | `react 07` | `projects/react-07` | React 19 Production Lectures v7 (Q01–Q17) |
+| `react 08` | `projects/react-08` | React 19 Production Lectures v8 (experiment copied from react-07; react-07 frozen) |
 | `vue 01` | `projects/vue-01` | Vue 3 Core & Architecture |
 | `css 01` | `projects/css-01` | CSS Interview Lectures |
 | `accessibility 01` / `a11y 01` | `projects/accessibility-01` | Accessibility & Performance Lectures |
@@ -70,7 +71,7 @@ A project that keeps its own bank (react-06 today) has one live file, `questions
 
 ## Rule Authoring
 
-When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/`, `projects/react-06/skills/v6.7/`, and `projects/react-07/skills/v7.1/` (the latest version folder is live).
+When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/`, `projects/react-06/skills/v6.7/`, , `projects/react-07/skills/v7.1/`, and `projects/react-08/skills/v8.1/` (the latest version folder is live).
 
 ### The Principles of Principles (Authoring Doctrine)
 

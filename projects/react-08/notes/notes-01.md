@@ -1,0 +1,1 @@
+are the code snippets properly explained? I do not want you to repeat blindly the code in words,  but to make sure it is properly commented, in a meaningful way. 
