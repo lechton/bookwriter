@@ -96,7 +96,7 @@ We review these steps in strict sequence because each step depends directly on t
 
 # Principles
 
-## 1. Rows for every email: map()
+## 1. Turn every array item into a component (e.g. `emails.map()`)
 
 *How? `map()` gives back one element per email, in a new array*
 
@@ -111,11 +111,11 @@ Dynamic: rendering a list from an array
 ```
 
 > [!PRINCIPLE]
-> **Principle 1: Mapping: turning every item into an element**
+> **Principle 1: (`map-to-elements`) Turn every item into a component (e.g. `emails.map()`)**
 >
-> **The Mechanics:** Arrow functions behave differently depending on the brackets you use. Parentheses `( )` return automatically: `email => (<EmailRow />)` immediately hands the component back to React. Curly braces `{ }` require a `return` keyword: `email => { <EmailRow /> }` runs the code inside, but returns `undefined` if you forget to write `return`. React does not treat `undefined` as an error: it simply renders nothing. Your array turns into `[undefined, undefined, undefined]`, producing a blank screen with zero warnings in the console.
+> **Why it happens:** To turn an array into a list on the screen, we run `map()` inside `{ }`. But there is a trap with the brackets you put after the arrow `=>`. Parentheses `( )` return the element automatically, whereas curly braces `{ }` open a block of code that returns nothing unless you write the word `return`. If you use `{ }` and forget `return`, the page shows a blank list and the console shows zero errors. You see, a function without `return` gives back `undefined`, so `map()` hands React `[undefined, undefined, undefined]`, and React quietly renders nothing for `undefined`.
 >
-> **The Advice:** If your list is completely blank and the console has no errors, check your `.map()` brackets. You probably switched to `{ }` to add a `console.log()` and forgot to add `return`. Stick to `( )` for simple one-liners, and only use `{ }` when you need extra variables or logic before returning.
+> **The Rule:** Use `map()` with parentheses `item => (<Row />)`, or write an explicit `return` whenever you open curly braces `item => { return <Row />; }`.
 >
 > *We should do this:*
 >
@@ -329,7 +329,7 @@ What gives back one element per item?
 - !a for loop inside JSX braces | a statement: it cannot go there
 ```
 
-## 2. Rows for only some emails: filter(), then map()
+## 2. Filter items first, and check `length > 0` (e.g. `shown.length > 0`)
 
 *When? A folder shows only its own emails, and a folder can have none*
 
@@ -344,11 +344,11 @@ Dynamic: rendering a list from an array
 ```
 
 > [!PRINCIPLE]
-> **Principle 2: Filtering: turning only some items into elements**
+> **Principle 2: (`filter-then-map`) Filter first, and check `length > 0` (e.g. `shown.length > 0`)**
 >
-> **The Mechanics:** Using `&&` to hide an empty list has a classic trap. When an array is empty, `shown.length` is `0`. JavaScript sees `0` as falsy, stops evaluating `{shown.length && rows}`, and hands that `0` straight to React. While React ignores `false`, `null`, and `undefined`, it treats numbers as real text. Instead of rendering nothing, React prints a stray `"0"` right onto your page.
+> **Why it happens:** To show only matching items, run `filter()` first and then `map()` over the result. When no items match, the filtered array's `length` is `0`. This can be a trap. If you use conditional rendering `{ length && list }`, the left side cannot be `0` otherwise it will show zero on the screen - yes, the number `0` will appear on your screen! You see, JavaScript stops at `0` and hands that number to React. React happily prints a stray `0` on the screen, whereas it renders nothing for `false`.
 >
-> **The Advice:** Never put `.length` directly to the left of `&&`. Always turn it into a true/false check like `{shown.length > 0 && rows}`. Better yet, use a ternary operator: `{shown.length > 0 ? rows : <p>No emails here.</p>}`. That forces you to handle both cases cleanly: showing the list when you have data, and a helpful fallback message when you do not.
+> **The Rule:** For conditional rendering prefer `length > 0`, for example `{ length > 0 && list }` or `{ length > 0 ? list : <p>Empty</p> }`, so an empty list produces `false` instead of `0`.
 >
 > *We should do this:*
 >
@@ -502,7 +502,7 @@ What does an empty folder show?
 - +a ternary on `length > 0` | the message: No emails here.
 ```
 
-## 3. Key from the email's id, not its position
+## 3. Link each row to a permanent item ID (e.g. `key={email.id}`)
 
 *Why? Without a key, React matches the DOM elements on the page to the array by position*
 
@@ -517,11 +517,11 @@ Dynamic: rendering a list from an array
 ```
 
 > [!PRINCIPLE]
-> **Principle 3: Keys: naming each element so React can tell the items apart**
+> **Principle 3: (`keys-name-items`) Link each row to a permanent item ID (e.g. `key={item.id}`)**
 >
-> **The Mechanics:** An array `index` (`0, 1, 2`) only tells React which row an item is sitting in right now. A database ID (`email.id`) tells React which specific email it is. If you use `key={index}`, React tracks items by row number instead of content. Say a user checks the box on the first email (index `0`), and then a brand-new email arrives at the top of the inbox. The new email takes over index `0`. Because React sees that `key={0}` is still there, it keeps the old DOM row, along with its checked box, and just swaps the text. Now the checkmark is sitting on the brand-new email. If the user clicks "Delete", they delete the wrong message. Similarly, never generate random keys on the fly like `key={Math.random()}`: every item gets a brand-new key on every render, causing React to destroy and rebuild all DOM elements from scratch, slowing down the app and dropping user focus.
+> **Why it happens:** The array of items in our JavaScript code and the list of DOM elements on the screen are two separate things. When we add, delete, or reorder an item, the array in memory changes its order, but the DOM elements on the screen (along with whatever the user typed or ticked inside them) stay sitting in their old positions (`Row 1`, `Row 2`, `Row 3`). Without a link between the two, React just matches Row 1 on screen to item `0` in memory - so an old ticked checkbox stays on Row 1 even when a brand-new item moves into slot `0`! A `key` is the chain that links each DOM element on the screen to its specific object in memory, so they stay together no matter how the list moves.
 >
-> **The Advice:** Never use the loop `index` as a key if your list can be sorted, filtered, added to, or deleted from. Always use a permanent, unique ID from your data (like `email.id`). That way, React follows the actual item wherever it moves.
+> **The Rule:** Always pass a permanent ID from the item itself, like `key={item.id}`, so each DOM element stays chained to its own data. Never use `key={index}` (which just chains the row to position `0, 1, 2`) or `key={Math.random()}` (which breaks the chain on every render).
 >
 > *We should do this:*
 >
@@ -802,7 +802,7 @@ Which key?
 
 The array index is safe only for static lists that never filter, sort, prepend, or delete items, such as fixed navigation tabs. Appending items strictly to the end of an array avoids position shifts. But deleting or inserting items anywhere else shifts every subsequent index, reproducing the exact same data corruption bug.
 
-## 4. Key on the tag map() returns, not inside the row
+## 4. Put `key` on the outer tag `map()` returns (e.g. `<Row key={id} />`)
 
 *Why? React reads the key only on the elements `map()` gives back*
 
@@ -817,11 +817,11 @@ Dynamic: rendering a list from an array
 ```
 
 > [!PRINCIPLE]
-> **Principle 4: The key's place: naming the element the map gives back**
+> **Principle 4: (`key-on-mapped-element`) Put `key` on the outer tag `map()` returns (e.g. `<Row />`)**
 >
-> **The Mechanics:** React only checks for keys on the outermost tags returned directly inside `.map()`. It cannot look inside child components to find a key. If your `.map()` returns `<EmailRow />`, putting `key={email.id}` on the `<div>` inside `EmailRow.jsx` will not work. As far as `.map()` can see, the `<EmailRow />` tags still have no keys, and React will throw a warning in the console. Also, React uses `key` strictly for its own internal tracking and strips it out before passing props down, so `EmailRow` can never read `props.key`.
+> **Why it happens:** Because `key` is the chain that links each item in `map()` to its element on the screen, React looks for that chain right where `map()` creates the list. This creates two traps. First, if you hide `key={item.id}` inside the child component's `<div>`, `map()` only sees an unchained `<Row />` tag and warns you in the console. Second, `key` is a private label for React, not data for your component - React strips it off before creating `props`, so reading `props.key` inside the child always gives you `undefined`.
 >
-> **The Advice:** Always put `key` on the very first tag inside your `.map()`. If your loop returns `<EmailRow key={email.id} />`, put it right on `<EmailRow />`. If you wrap that component in an `<li>`, move the key to the wrapper instead: `<li key={email.id}><EmailRow /></li>`.
+> **The Rule:** Put `key={item.id}` directly on the outermost tag returned by `map()` (use `<Fragment key={item.id}>` if one item returns two sibling tags), and pass a separate prop like `id={item.id}` when the child component needs to read the ID.
 >
 > *We should do this:*
 >

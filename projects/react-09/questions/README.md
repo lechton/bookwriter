@@ -1,12 +1,12 @@
 # React 19 Complete Curriculum: Zero-Gap Pedagogical Architecture
 
-A unified, strictly dependency-ordered curriculum of **180 questions** covering both client-side React 19 (Q1 to Q100) and React Server (Q101 to Q180), housed directly inside `projects/react-08/questions/`.
+A unified, strictly dependency-ordered curriculum of **180 questions** covering both client-side React 19 (Q1 to Q100) and React Server (Q101 to Q180), housed directly inside `projects/react-09/questions/`.
 
 This question bank serves a dual mission:
 1. **Zero-Gap First-Time Learner Path**: A student who has never written React before can follow from Question 1 onward without hitting missing concepts, premature jargon, or chicken-and-egg dependency loops.
 2. **Authoritative Senior Reference & Interview Prep**: Every question is framed in interview register, investigating cause, effect, browser engine consequences, and operational failure boundaries.
 
-This README describes the live bank, **Version 3**.
+This README describes the live bank, **Version 4**.
 
 ---
 
@@ -15,8 +15,9 @@ This README describes the live bank, **Version 3**.
 | Version | Where | In force | What changed | Brief |
 |---|---|---|---|---|
 | 1 | `archive/questions-v1.md` | until 2026-09-24 | the original order (project setup at Q2, callback props at Q15, useState at Q16, StrictMode at Q20) | `brief/brief_2026_10_05_01.md` (audit) |
-| 2 | `archive/questions-v2.md` (with `archive/topics-v2.md`) | 2026-09-24 to 2026-10-05 | project setup, StrictMode, and callback props moved to Q43 to Q45 as `❱❱ MORE`; UI tree to Q5; createRoot to Q9; events and callback props united in Q13; useState at Q14; forms Q37 to Q39 made `❱ CORE`; rows 46 to 180 unchanged | `brief/brief_2026_10_05_01.md` (audit; the change itself was made without a brief) |
-| 3 | `questions.md` (live) | since 2026-10-05 | effects in react.dev order and rules of hooks in CORE (Q35 to Q37); context performance after memoization; new questions on XSS (Q48), state libraries (Q60), and component testing (Q87), with three new tags; DevTools duplicate and two niche hooks merged; rows 1 to 28 and 96 to 180 unchanged | `brief/brief_2026_10_05_02.md` (changes), `brief/brief_2026_10_05_04.md` (release) |
+| 2 | `archive/questions-v2.md` (with `archive/topics-v2.md`) | 2026-09-24 to 2026-10-05 | project setup, StrictMode, and callback props moved to Q43 to Q45 as `❱❱ MORE`; UI tree to Q5; createRoot to Q9; events and callback props united in Q13; useState at Q14; forms Q37 to Q39 made `❱ CORE`; rows 46 to 180 unchanged | `brief/brief_2026_10_05_01.md` (audit) |
+| 3 | `archive/questions-v3.md` (with `archive/topics-v3.md`) | 2026-10-05 to 2026-10-20 | effects in react.dev order and rules of hooks in CORE (Q35 to Q37); context performance after memoization; new questions on XSS (Q48), state libraries (Q60), and component testing (Q87); DevTools duplicate and two niche hooks merged; rows 1 to 28 and 96 to 180 unchanged | `brief/brief_2026_10_05_02.md` (changes), `brief/brief_2026_10_05_04.md` (release) |
+| 4 | `questions.md` (live) | since 2026-10-20 | fixes early dependency inversions in Q01 to Q47: `#jsx` (Q2) and `#jsx_expressions` (Q3) precede `#component_anatomy` (Q4); `#imports` (Q5), `#ui_tree` (Q6), and `#create_root` (Q7) precede `#props` (Q8); `#event_handling` (Q11), `#use_state` (Q12), and `#render_and_commit` (Q13) precede `#purity` (Q14) and `#rendering_lists` (Q18); `#callback_props` moves back to `❱ CORE` at Q23 before `#lifting_state` (Q24); plain hooks applied; rows 48 to 180 keep their numbers | `brief/brief_2026_10_20_02.md` |
 
 The syllabus cards (`01-01-map/`), the principle maps (`01-01-map-principles/`), and the lectures are keyed to question numbers, so a version change always lists every old-to-new number in its brief.
 
@@ -25,15 +26,14 @@ The syllabus cards (`01-01-map/`), the principle maps (`01-01-map-principles/`),
 ## File Layout
 
 ```
-projects/react-08/questions/
+projects/react-09/questions/
 ├── README.md         this file: design, curriculum map, and the Versions table
 ├── questions.md      the live bank: all 180 questions, continuous numbering 1 to 180; builds read only this file
 ├── topics.md         the live controlled vocabulary of hashtags (one tag per question)
 ├── drafts/           a proposed next version under review; nothing reads it (empty now)
 └── archive/          frozen earlier versions, moved unchanged; nothing reads them
-    ├── questions-v1.md
-    ├── questions-v2.md
-    └── topics-v2.md
+    ├── questions-v3.md
+    └── topics-v3.md
 ```
 
 ### Releasing a New Version
@@ -50,19 +50,17 @@ Never reorder, renumber, add, or remove questions in the live `questions.md` in 
 ## Pedagogical Invariants & Design Principles
 
 ### 1. Zero Gaps in Fundamentals (First-Time Learner Ready)
-- **Fragments on Day 1**: In Q3 (`#jsx`), the single-root rule is paired immediately with Fragment syntax (`<>...</>`). Students never suffer through wrapper `<div>` clutter breaking their layout.
-- **Hierarchy Before Flow**: The component tree (`#ui_tree`, Q5) is established before props (Q6), so the student has a concrete picture of the tree that props flow down.
-- **Modules Before Mounting**: Splitting components across files (`#imports`, Q8) is taught before mounting `App.jsx` with `createRoot` and Vite (Q9). The learner understands what is being mounted before seeing entrypoint plumbing.
-- **Interaction Loop Before Memory**: Event handling and callback props are united in Q13, completing the two-way communication loop before `useState` (Q14).
-- **Engine Rhythm Before Snapshot Mysteries**: Trigger, Render, and Commit (`#render_and_commit`, Q15) is introduced directly after `useState` (Q14). Students understand that "render" means executing their component function, not painting to the screen, providing the exact mental model needed for state snapshots and batching queues.
-- **Refs Before Effects**: `useRef` (Q29) and DOM refs (Q30) precede `useEffect` (Q31). Real-world effects that focus elements, measure nodes, or manage intervals can use refs naturally.
-- **Effects in the react.dev Order (Q31 to Q36)**: Synchronizing with effects, fetching, not needing an effect, the effect lifecycle, separating events from effects, and removing dependencies run in one unbroken sequence, so the dependency warnings a newcomer meets at the first effect are answered inside CORE.
-- **Rules Before Reuse (Q37 before Q38)**: The rules of hooks come after the reader has used five hooks and before custom hooks, so the call-order rule explains errors already seen and governs the hooks about to be written.
-- **Client-Side Data Fetching**: A dedicated lesson (`#data_fetching_client`, Q32) teaches how single-page apps fetch JSON from REST APIs with `fetch`, `useState` (data, loading, error), race condition guards, and abort cleanup before any server course begins.
+- **Syntax and Expressions Before Component Anatomy (Q2 & Q3 before Q4)**: JSX syntax, Fragment grouping (`<>...</>`), and curly brace expressions (`{}`) come before writing custom component functions (Q4). Learners immediately understand what a component returns and why rendering `<ArticleCard />` as a JSX tag differs from calling `{ArticleCard()}` inside `{}`.
+- **Modules, Tree, and Mounting Before Props (Q5 to Q7 before Q8)**: Splitting parent and child components across files (`#imports`, Q5), understanding the Component Tree alongside the Module Dependency Tree (`#ui_tree`, Q6), and mounting `App.jsx` with `createRoot` and Vite (`#create_root`, Q7) precede `#props` (Q8). Multi-component lessons never cram multiple components into a single `App.jsx` file.
+- **Events, State, and Render Cycle Before Purity and Lists (Q11 to Q18)**: Event handling (Q11), `useState` (Q12), and Trigger-Render-Commit (Q13) come before Component Purity (Q14) and Rendering Lists with Keys (Q18). Learners never have to fake re-renders or list updates by saving files in VS Code.
+- **Callback Props Before Lifting State (Q23 before Q24)**: Child-to-parent notifications via callback props (`#callback_props`, Q23) are taught after `useState` and right before Lifting State Up (`#lifting_state`, Q24), so the parent actually holds state when the child notifies it.
+- **Refs Before Effects (Q30 & Q31 before Q32)**: `useRef` (Q30) and DOM refs (Q31) precede `useEffect` (Q32). Real-world effects that focus elements, measure nodes, or manage intervals can use refs naturally.
+- **Effects in the react.dev Order (Q32 to Q37)**: Synchronizing with effects, client data fetching, not needing an effect, the effect lifecycle, separating events from effects, and removing dependencies run in one unbroken sequence, so the dependency warnings a newcomer meets at the first effect are answered inside CORE.
+- **Rules Before Reuse (Q38 before Q39)**: The rules of hooks come after the reader has used multiple hooks and before custom hooks, so the call-order rule explains errors already seen and governs the hooks about to be written.
 
 ### 2. Modern React 19 by Design
-- **React 19 Form Architecture (Q39 to Q44)**: Form choice, `<form action={fn}>`, and `useActionState` close the CORE path (Q39 to Q41); `useFormStatus`, `useOptimistic`, and progressive enhancement open the MORE tour (Q42 to Q44).
-- **The `use()` API**: Context is taught using the modern `use(Context)` API (Q27) alongside promise resolution (Q71).
+- **React 19 Form Architecture (Q40 to Q45)**: Form choice, `<form action={fn}>`, and `useActionState` close the CORE path (Q40 to Q42); `useFormStatus`, `useOptimistic`, and form action reset and progressive enhancement open the MORE tour (Q43 to Q45).
+- **The `use()` API**: Context is taught using the modern `use(Context)` API (Q28) alongside promise resolution (Q71).
 - **Ref as a Prop**: React 19's native `ref` prop (Q85) is treated as the primary modern standard, with legacy `forwardRef` relegated to the migration appendix (Q99).
 
 ### 3. Strict Server Quarantine
@@ -70,17 +68,17 @@ React Server Components (RSC), SSR, and Server Functions are strictly quarantine
 
 ---
 
-## Curriculum Structure (Version 3)
+## Curriculum Structure (Version 4)
 
 ### PART ONE: REACT (Q1 to Q100)
-- **Module 1: Describing the UI (Q1 to Q10)**: Declarative model, component anatomy, JSX and Fragments, expressions, the UI tree, props, children, imports, `createRoot` with Vite, and conditional rendering.
-- **Module 2: Lists and Purity (Q11 to Q12)**: Rendering lists with keys, and component purity.
-- **Module 3: Interactivity and the Render Cycle (Q13 to Q17)**: Event handling with callback props, `useState`, Trigger-Render-Commit, state snapshots, and queued updates.
-- **Module 4: Complex State and State Architecture (Q18 to Q25)**: Objects in state, arrays in state, controlled inputs, reacting to input, state structure, lifting state, component identity, and Thinking in React.
-- **Module 5: Reducers and Context (Q26 to Q28)**: `useReducer`, context with `use()`, and reducer plus context.
-- **Module 6: Refs, Effects, and Client Data (Q29 to Q38)**: `useRef`, DOM refs, `useEffect`, client data fetching, non-effect patterns, effect lifecycle, `useEffectEvent`, effect dependencies, the rules of hooks, and custom hooks.
-- **Module 7: React 19 Forms and Actions (Q39 to Q44)**: Controlled versus uncontrolled forms, `<form action>`, `useActionState`, `useFormStatus`, `useOptimistic`, and progressive enhancement.
-- **Module 8: Foundations Revisited and Client Security (Q45 to Q48)**: Full-stack framework versus standalone build tool, StrictMode auditing, callback contracts versus prop drilling, and XSS with `dangerouslySetInnerHTML`.
+- **Module 1: Foundations, Modules, and Mounting (Q1 to Q7)**: Declarative model, JSX and Fragments, curly brace expressions, component anatomy and parent-child `<Tag />` invocation, multi-file `import`/`export`, the UI and module trees, and `createRoot` with Vite.
+- **Module 2: Data Flow and Conditional Branching (Q8 to Q10)**: Props and immutability, `children` and spread attributes, and conditional rendering.
+- **Module 3: Interactivity, State, the Render Cycle, and Purity (Q11 to Q16)**: Event handling, `useState`, Trigger-Render-Commit, component purity with `<StrictMode>`, state snapshots, and queued updates.
+- **Module 4: Complex State, Lists, and State Architecture (Q17 to Q26)**: Objects in state, rendering lists with keys, arrays in state, controlled inputs, reacting to input, state structure, callback props, lifting state, component identity, and Thinking in React.
+- **Module 5: Reducers and Context (Q27 to Q29)**: `useReducer`, context with `use()`, and reducer plus context.
+- **Module 6: Refs, Effects, and Client Data (Q30 to Q39)**: `useRef`, DOM refs, `useEffect`, client data fetching, non-effect patterns, effect lifecycle, `useEffectEvent`, effect dependencies, the rules of hooks, and custom hooks.
+- **Module 7: React 19 Forms and Actions (Q40 to Q45)**: Controlled versus uncontrolled forms, `<form action>`, `useActionState`, `useFormStatus`, `useOptimistic`, and form action resets with progressive enhancement.
+- **Module 8: Architecture, StrictMode, and Client Security (Q46 to Q48)**: Full-stack framework versus standalone build tool, StrictMode auditing across renders, effects, and refs, and XSS with `dangerouslySetInnerHTML`.
 - **Module 9: Advanced Hooks and Escape Hatches (Q49 to Q53)**: `useLayoutEffect` with `useInsertionEffect`, `useImperativeHandle`, `createPortal`, `useId`, and `useSyncExternalStore`.
 - **Module 10: Performance and State Architecture (Q54 to Q65)**: Re-render mechanics, `React.memo`, `useMemo`, `useCallback`, composition patterns, context optimization, state and server-cache libraries, reconciliation keys, list virtualization, React Compiler, DevTools with the Profiler and `useDebugValue`, and `flushSync`.
 - **Module 11: Concurrency, Transitions, and Suspense (Q66 to Q75)**: Concurrent rendering, `useTransition`, `useDeferredValue`, `<Suspense>`, `React.lazy`, `use(Promise)`, Error Boundaries, `<Activity>`, `<ViewTransition>`, and batching internals.

@@ -11,7 +11,7 @@ Every question carries exactly **one** primary Topic hashtag, drawn from this li
 ## Foundations and Describing the UI
 - `#what_is_react` — Declarative UI model, UI as a projection of state, and component-based structure.
 - `#project_setup` — Creating and running a project; build tools (Vite) versus full-stack frameworks (Next.js).
-- `#component_anatomy` — Function components, return markup, the uppercase naming rule, and modular exports.
+- `#component_anatomy` — Function components, return markup, the uppercase naming rule, and rendering child tags inside parent components.
 - `#jsx` — Writing markup with JSX: single root, tag closing, camelCase attributes, and `<>...</>` Fragments.
 - `#jsx_expressions` — Using JavaScript expressions inside JSX with curly braces `{}`.
 - `#create_root` — `createRoot` and `root.render`: mounting the root React component into the DOM shell.

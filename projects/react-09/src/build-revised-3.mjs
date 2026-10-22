@@ -332,6 +332,7 @@ function pageMock(body, attrs) {
 	let url = 'localhost:5173';
 	let blank = false;
 	const parts = [];
+	const doms = [];
 	const cons = [];
 	for (const raw of body) {
 		const line = raw.trim();
@@ -341,11 +342,13 @@ function pageMock(body, attrs) {
 		else if ((m = line.match(/^heading:\s*(.*)$/))) parts.push(`<div class="phead">${esc(m[1])}</div>`);
 		else if ((m = line.match(/^section:\s*(.*)$/))) parts.push(`<div class="psection">${esc(m[1])}</div>`);
 		else if ((m = line.match(/^card:\s*(.*)$/))) parts.push(cardHTML(parseCard(m[1])));
+		else if ((m = line.match(/^footer:\s*(.*?)(\s*\|\s*(good|bad))?$/))) parts.push(`<div class="pfooter${m[3] ? ` mark-${m[3]}` : ''}">${esc(m[1])}</div>`);
 		else if ((m = line.match(/^line:\s*(.*?)(\s*\|\s*(good|bad))?$/))) parts.push(`<div class="pline${m[3] ? ` mark-${m[3]}` : ''}">${esc(m[1])}</div>`);
 		else if ((m = line.match(/^empty:\s*(.*)$/))) parts.push(`<div class="pempty">${esc(m[1])}</div>`);
 		else if ((m = line.match(/^(row|stack):\s*(.*)$/))) parts.push(`<div class="plist plist-${m[1]}">${m[2].split(';').map((t) => `<span class="pitem">${esc(t.trim())}</span>`).join('')}</div>`);
 		else if ((m = line.match(/^form:\s*(.*)$/))) parts.push(`<div class="pform"><span class="plabeltext">${esc(m[1])}</span><span class="pinput pinput-inline"></span></div>`);
 		else if ((m = line.match(/^overlay:\s*(.*)$/))) parts.push(`<div class="poverlay"><div class="ov-msg">${esc(m[1])}</div></div>`);
+		else if ((m = line.match(/^dom:\s*(.*)$/))) doms.push(m[1]);
 		else if ((m = line.match(/^(console|error):\s*(.*)$/))) cons.push(['error', m[2]]);
 		else if ((m = line.match(/^(warn|log|quiet):\s*(.*)$/))) cons.push([m[1], m[2]]);
 		else if (line === 'blank') blank = true;
@@ -353,8 +356,14 @@ function pageMock(body, attrs) {
 	}
 	const size = attrs.size === 'mini' ? ' mini' : '';
 	const view = blank ? '<div class="pblank">blank page</div>' : parts.join('');
+	const domHTML = doms.length ? `<div class="pdom">${doms.map((raw) => {
+		const mark = raw[0];
+		const cls = { '!': ' dom-bad', '+': ' dom-good', '*': ' dom-note', '-': ' dom-gone' }[mark] || '';
+		const text = cls ? raw.slice(1).trim() : raw;
+		return `<div class="pdom-line${cls}"><span class="dt-pill">DOM</span>${highlight(text, { inTag: false })}</div>`;
+	}).join('')}</div>` : '';
 	const consHTML = cons.length ? `<div class="pconsole">${consoleLines(cons)}</div>` : '';
-	return `<div class="browser${size}"><div class="bbar"><span class="dots"><i></i><i></i><i></i></span><span class="url">${esc(url)}</span></div><div class="bview">${view}</div>${consHTML}</div>`;
+	return `<div class="browser${size}"><div class="bbar"><span class="dots"><i></i><i></i><i></i></span><span class="url">${esc(url)}</span></div><div class="bview">${view}</div>${domHTML}${consHTML}</div>`;
 }
 
 /* Chrome's Console, light, with one logged value opened as Chrome draws it: no line numbers, a disclosure triangle on each
@@ -1167,7 +1176,7 @@ function build(nn) {
 	const blocks = parseBlocks(md.split('\n'))[0];
 	const titleBlock = blocks.find((b) => b.type === 'h1');
 	const docTitle = titleBlock ? titleBlock.text : `Lecture ${nn}`;
-	figureCount.lecture = String(Number(nn));
+	figureCount.lecture = String(parseInt(nn, 10) || nn);
 	figureCount.n = 0;
 	const body = render(blocks);
 	const htmlDir = join(HTML_BASE, version);

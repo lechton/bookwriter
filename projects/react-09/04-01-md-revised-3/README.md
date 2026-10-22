@@ -4,13 +4,13 @@ Revision 3 turns a finished lecture and its principle map into the shortest less
 
 The standard for this edition lives in three skills; read them before writing a lesson:
 
-- `skills/v8.1/summary-edition`: the method, from the lecture and the map to the lesson, with a casebook of Lecture 10's drafts in `examples.md`;
-- `skills/v8.1/summary-figures`: the figures, the house style, and the block syntax in `blocks.md`;
-- `skills/v8.1/summary-audit`: the checks, the cold reads, and the life of a lesson from draft to archive.
+- `skills/v9.1/summary-edition`: the method, from the lecture and the map to the lesson, with a casebook of Lecture 10's and Lecture 11's drafts in `examples.md`;
+- `skills/v9.1/summary-figures`: the figures, the house style, and the block syntax in `blocks.md`;
+- `skills/v9.1/summary-audit`: the checks, the cold reads, and the life of a lesson from draft to archive.
 
 ## The folder
 
-- `v1/NN.md`: the lessons. Build each from `projects/react-08` with `node src/build-revised-3.mjs NN`.
+- `v1/NN.md`: the lessons. Build each from `projects/react-09` with `node src/build-revised-3.mjs NN`.
 - `../04-02-md-revised-3-html/v1/` and `../04-03-md-revised-3-pdf/v1/`: the outputs. `NN.pdf` is the `original` theme; `NN-original-margins.pdf` is the same look with side margins of 22 mm instead of 17 mm. `NN-paper-2.pdf` is an experiment on `paper`: every box (comparison columns, facts, principle boxes, the interview question, the What is going on box) on the light blue of the component panels, with no frame and a white line between the parts of a box.
 - Styles: `src/revised-3/base.css` (structure, the hierarchy panel, the spacing) and `src/revised-3/themes/` (one file per theme).
 
@@ -33,3 +33,6 @@ Each of those hierarchy boxes then lost its We want note and the heading over th
 The four examples of `11-gemini.md` then got one component hierarchy, `EmailList` as PARENT and `EmailRow` as CHILD, with the same notes, so each Point of failure is the only line that changes. Principle 2 lost `App.jsx` and its two folder sections: `EmailList` receives the `folder` the reader opened, and the page check shows the empty Spam folder two ways. The closing example keeps `App`, which the whole app needs. The version before is in `v1/archive/11-gemini-2026-10-19-0006.md`.
 
 Its four comparisons of code and its result then read downwards with `::: row flow=down`: the code on top, on frames of one height, a thick arrow from the code down, in the grey of the browser's top bar, then the browser and the Console, lined up across the two columns. The version before is in `v1/archive/11-gemini-2026-10-19-1710.md`.
+
+The experiments `v1/11-argon.md` (11 pages), `v1/01-argon.md` (8 pages), and `v1/02-argon.md` (10 pages) then introduced the two-page Rule Page + Tinted Bug Lab spread with zero orphan spills, and `11-argon.md`, `11-gemini.md`, `01-argon.md`, and `02-argon.md` adopted the root-first, trap-first conversational Principle box format (`**Why it happens:**` + `**The Rule:**`, batch `#2026_10_20_01_group_1`): starting from the root mental model (such as the data/description in JavaScript memory and the DOM elements on the screen being two separate things), pausing to warn the reader of the trap, naming the visible screen consequence before the JS/React reason, and using clear general-concept titles with concrete examples in parentheses (`(e.g. ...)` / `(like ...)`). `02-argon.md` also adds `footer:` and `dom:` (an inline DevTools Elements strip) to the `page` browser block.
+

@@ -581,3 +581,164 @@ Retirements performed inside react-08 itself are logged below.
 - 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-03-md-revised-3-pdf/v1/11-gemini-paper-2.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2-2026-10-19-1713.pdf
 - 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-03-md-revised-3-pdf/v1/11-gemini-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-paper-2026-10-19-1713.pdf
 - 2026-10-19 17:13 | archive Q11 | before the flow arrow in the browser top bar's grey | 04-03-md-revised-3-pdf/v1/11-gemini.pdf -> 04-03-md-revised-3-pdf/v1/archive/11-gemini-2026-10-19-1713.pdf
+- 2026-10-21 08:19 | archive Q2 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-md-PRE-lectures/v1/02.md -> 01-01-md-PRE-lectures/v1/archive/02-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q2 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/02.md -> 01-02-md-LECTURES/v1/archive/02-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q2 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/figures/02-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/02-01-code-assembly-pipeline-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q2 | archive pre-v4 lesson with inverted dependency assumptions | 01-03-md-lectures-HTML/v1/02.html -> 01-03-md-lectures-HTML/v1/archive/02-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q2 | archive pre-v4 lesson with inverted dependency assumptions | 01-04-md-lectures-PDF/v1/02.pdf -> 01-04-md-lectures-PDF/v1/archive/02-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q2 | archive pre-v4 lesson with inverted dependency assumptions | 02-01-md-revised-1/v1/02.md -> 02-01-md-revised-1/v1/archive/02-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q2 | archive pre-v4 lesson with inverted dependency assumptions | 02-02-md-revised-1-html/v1/02.html -> 02-02-md-revised-1-html/v1/archive/02-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q2 | archive pre-v4 lesson with inverted dependency assumptions | 02-03-md-revised-1-pdf/v1/02.pdf -> 02-03-md-revised-1-pdf/v1/archive/02-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q5 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-md-PRE-lectures/v1/05.md -> 01-01-md-PRE-lectures/v1/archive/05-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q5 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/05.md -> 01-02-md-LECTURES/v1/archive/05-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q5 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/figures/05-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/05-01-code-assembly-pipeline-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q5 | archive pre-v4 lesson with inverted dependency assumptions | 01-03-md-lectures-HTML/v1/05.html -> 01-03-md-lectures-HTML/v1/archive/05-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q5 | archive pre-v4 lesson with inverted dependency assumptions | 01-04-md-lectures-PDF/v1/05.pdf -> 01-04-md-lectures-PDF/v1/archive/05-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q5 | archive pre-v4 lesson with inverted dependency assumptions | 02-01-md-revised-1/v1/05.md -> 02-01-md-revised-1/v1/archive/05-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q5 | archive pre-v4 lesson with inverted dependency assumptions | 02-02-md-revised-1-html/v1/05.html -> 02-02-md-revised-1-html/v1/archive/05-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q5 | archive pre-v4 lesson with inverted dependency assumptions | 02-03-md-revised-1-pdf/v1/05.pdf -> 02-03-md-revised-1-pdf/v1/archive/05-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q6 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-md-PRE-lectures/v1/06.md -> 01-01-md-PRE-lectures/v1/archive/06-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q6 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/06.md -> 01-02-md-LECTURES/v1/archive/06-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q6 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/figures/06-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/06-01-code-assembly-pipeline-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q6 | archive pre-v4 lesson with inverted dependency assumptions | 01-03-md-lectures-HTML/v1/06.html -> 01-03-md-lectures-HTML/v1/archive/06-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q6 | archive pre-v4 lesson with inverted dependency assumptions | 01-04-md-lectures-PDF/v1/06.pdf -> 01-04-md-lectures-PDF/v1/archive/06-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q6 | archive pre-v4 lesson with inverted dependency assumptions | 02-01-md-revised-1/v1/06.md -> 02-01-md-revised-1/v1/archive/06-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q6 | archive pre-v4 lesson with inverted dependency assumptions | 02-02-md-revised-1-html/v1/06.html -> 02-02-md-revised-1-html/v1/archive/06-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q6 | archive pre-v4 lesson with inverted dependency assumptions | 02-03-md-revised-1-pdf/v1/06.pdf -> 02-03-md-revised-1-pdf/v1/archive/06-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q7 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q7 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q7 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/07-01-code-assembly-pipeline-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q7 | archive pre-v4 lesson with inverted dependency assumptions | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q7 | archive pre-v4 lesson with inverted dependency assumptions | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q7 | archive pre-v4 lesson with inverted dependency assumptions | 02-01-md-revised-1/v1/07.md -> 02-01-md-revised-1/v1/archive/07-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q7 | archive pre-v4 lesson with inverted dependency assumptions | 02-02-md-revised-1-html/v1/07.html -> 02-02-md-revised-1-html/v1/archive/07-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q7 | archive pre-v4 lesson with inverted dependency assumptions | 02-03-md-revised-1-pdf/v1/07.pdf -> 02-03-md-revised-1-pdf/v1/archive/07-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-md-PRE-lectures/v1/11.md -> 01-01-md-PRE-lectures/v1/archive/11-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/11.md -> 01-02-md-LECTURES/v1/archive/11-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/figures/11-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/11-01-code-assembly-pipeline-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 01-03-md-lectures-HTML/v1/11.html -> 01-03-md-lectures-HTML/v1/archive/11-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 01-04-md-lectures-PDF/v1/11.pdf -> 01-04-md-lectures-PDF/v1/archive/11-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 02-01-md-revised-1/v1/11.md -> 02-01-md-revised-1/v1/archive/11-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 02-02-md-revised-1-html/v1/11.html -> 02-02-md-revised-1-html/v1/archive/11-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 02-03-md-revised-1-pdf/v1/11.pdf -> 02-03-md-revised-1-pdf/v1/archive/11-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 03-01-md-revised-2/v1/11.md -> 03-01-md-revised-2/v1/archive/11-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 03-02-md-revised-2-html/v1/11.html -> 03-02-md-revised-2-html/v1/archive/11-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 03-03-md-revised-2-pdf/v1/11.pdf -> 03-03-md-revised-2-pdf/v1/archive/11-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q12 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-md-PRE-lectures/v1/12.md -> 01-01-md-PRE-lectures/v1/archive/12-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q12 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/12.md -> 01-02-md-LECTURES/v1/archive/12-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q12 | archive pre-v4 lesson with inverted dependency assumptions | 01-02-md-LECTURES/v1/figures/12-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/archive/12-01-code-assembly-pipeline-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q12 | archive pre-v4 lesson with inverted dependency assumptions | 01-03-md-lectures-HTML/v1/12.html -> 01-03-md-lectures-HTML/v1/archive/12-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q12 | archive pre-v4 lesson with inverted dependency assumptions | 01-04-md-lectures-PDF/v1/12.pdf -> 01-04-md-lectures-PDF/v1/archive/12-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q12 | archive pre-v4 lesson with inverted dependency assumptions | 02-01-md-revised-1/v1/12.md -> 02-01-md-revised-1/v1/archive/12-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q12 | archive pre-v4 lesson with inverted dependency assumptions | 02-02-md-revised-1-html/v1/12.html -> 02-02-md-revised-1-html/v1/archive/12-2026-10-21-0819.html
+- 2026-10-21 08:19 | archive Q12 | archive pre-v4 lesson with inverted dependency assumptions | 02-03-md-revised-1-pdf/v1/12.pdf -> 02-03-md-revised-1-pdf/v1/archive/12-2026-10-21-0819.pdf
+- 2026-10-21 08:19 | archive Q13 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-md-PRE-lectures/v1/13.md -> 01-01-md-PRE-lectures/v1/archive/13-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q2 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map-principles/02.md -> 01-01-map-principles/archive/02-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q5 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map-principles/05.md -> 01-01-map-principles/archive/05-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q6 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map-principles/06.md -> 01-01-map-principles/archive/06-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q7 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map-principles/07.md -> 01-01-map-principles/archive/07-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map-principles/11.md -> 01-01-map-principles/archive/11-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q12 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map-principles/12.md -> 01-01-map-principles/archive/12-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q13 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map-principles/13.md -> 01-01-map-principles/archive/13-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q2 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map/02.md -> 01-01-map/archive/02-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q5 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map/05.md -> 01-01-map/archive/05-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q6 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map/06.md -> 01-01-map/archive/06-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q7 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map/07.md -> 01-01-map/archive/07-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q11 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map/11.md -> 01-01-map/archive/11-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q12 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map/12.md -> 01-01-map/archive/12-2026-10-21-0819.md
+- 2026-10-21 08:19 | archive Q13 | archive pre-v4 lesson with inverted dependency assumptions | 01-01-map/13.md -> 01-01-map/archive/13-2026-10-21-0819.md
+- 2026-10-21 08:20 | archive Q47 | archive pre-v4 Q47 callback_props card before moving to Q23 | 01-01-map/47.md -> 01-01-map/archive/47-2026-10-21-0820.md
+- 2026-10-21 08:20 | renumber Q46->Q47 | v4 question bank shift | 01-01-map/46.md -> 01-01-map/47.md
+- 2026-10-21 08:20 | renumber Q45->Q46 | v4 question bank shift | 01-01-map/45.md -> 01-01-map/46.md
+- 2026-10-21 08:20 | renumber Q44->Q45 | v4 question bank shift | 01-01-map/44.md -> 01-01-map/45.md
+- 2026-10-21 08:20 | renumber Q43->Q44 | v4 question bank shift | 01-01-map/43.md -> 01-01-map/44.md
+- 2026-10-21 08:20 | renumber Q42->Q43 | v4 question bank shift | 01-01-map/42.md -> 01-01-map/43.md
+- 2026-10-21 08:20 | renumber Q41->Q42 | v4 question bank shift | 01-01-map/41.md -> 01-01-map/42.md
+- 2026-10-21 08:20 | renumber Q40->Q41 | v4 question bank shift | 01-01-map/40.md -> 01-01-map/41.md
+- 2026-10-21 08:20 | renumber Q39->Q40 | v4 question bank shift | 01-01-map/39.md -> 01-01-map/40.md
+- 2026-10-21 08:20 | renumber Q38->Q39 | v4 question bank shift | 01-01-map/38.md -> 01-01-map/39.md
+- 2026-10-21 08:20 | renumber Q37->Q38 | v4 question bank shift | 01-01-map/37.md -> 01-01-map/38.md
+- 2026-10-21 08:20 | renumber Q36->Q37 | v4 question bank shift | 01-01-map/36.md -> 01-01-map/37.md
+- 2026-10-21 08:20 | renumber Q35->Q36 | v4 question bank shift | 01-01-map/35.md -> 01-01-map/36.md
+- 2026-10-21 08:20 | renumber Q34->Q35 | v4 question bank shift | 01-01-map/34.md -> 01-01-map/35.md
+- 2026-10-21 08:20 | renumber Q33->Q34 | v4 question bank shift | 01-01-map/33.md -> 01-01-map/34.md
+- 2026-10-21 08:20 | renumber Q32->Q33 | v4 question bank shift | 01-01-map/32.md -> 01-01-map/33.md
+- 2026-10-21 08:20 | renumber Q31->Q32 | v4 question bank shift | 01-01-map/31.md -> 01-01-map/32.md
+- 2026-10-21 08:20 | renumber Q30->Q31 | v4 question bank shift | 01-01-map/30.md -> 01-01-map/31.md
+- 2026-10-21 08:20 | renumber Q29->Q30 | v4 question bank shift | 01-01-map/29.md -> 01-01-map/30.md
+- 2026-10-21 08:20 | renumber Q28->Q29 | v4 question bank shift | 01-01-map/28.md -> 01-01-map/29.md
+- 2026-10-21 08:20 | renumber Q27->Q28 | v4 question bank shift | 01-01-map/27.md -> 01-01-map/28.md
+- 2026-10-21 08:20 | renumber Q26->Q27 | v4 question bank shift | 01-01-map/26.md -> 01-01-map/27.md
+- 2026-10-21 08:20 | renumber Q25->Q26 | v4 question bank shift | 01-01-map/25.md -> 01-01-map/26.md
+- 2026-10-21 08:20 | renumber Q24->Q25 | v4 question bank shift | 01-01-map/24.md -> 01-01-map/25.md
+- 2026-10-21 08:20 | renumber Q23->Q24 | v4 question bank shift | 01-01-map/23.md -> 01-01-map/24.md
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 01-01-map/03.md -> 01-01-map/02.md
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 01-01-map-principles/03.md -> 01-01-map-principles/02.md
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 01-01-md-PRE-lectures/v1/03.md -> 01-01-md-PRE-lectures/v1/02.md
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 01-02-md-LECTURES/v1/03.md -> 01-02-md-LECTURES/v1/02.md
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 01-02-md-LECTURES/v1/figures/03-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/02-01-code-assembly-pipeline.html
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 01-03-md-lectures-HTML/v1/03.html -> 01-03-md-lectures-HTML/v1/02.html
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 01-04-md-lectures-PDF/v1/03.pdf -> 01-04-md-lectures-PDF/v1/02.pdf
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 02-01-md-revised-1/v1/03.md -> 02-01-md-revised-1/v1/02.md
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 02-02-md-revised-1-html/v1/03.html -> 02-02-md-revised-1-html/v1/02.html
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 02-03-md-revised-1-pdf/v1/03.pdf -> 02-03-md-revised-1-pdf/v1/02.pdf
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 03-01-md-revised-2/v1/03.md -> 03-01-md-revised-2/v1/02.md
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 03-02-md-revised-2-html/v1/03.html -> 03-02-md-revised-2-html/v1/02.html
+- 2026-10-21 08:20 | renumber Q3->Q2 | v4 question bank shift | 03-03-md-revised-2-pdf/v1/03.pdf -> 03-03-md-revised-2-pdf/v1/02.pdf
+- 2026-10-21 08:20 | renumber Q4->Q3 | v4 question bank shift | 01-01-map/04.md -> 01-01-map/03.md
+- 2026-10-21 08:20 | renumber Q4->Q3 | v4 question bank shift | 01-01-map-principles/04.md -> 01-01-map-principles/03.md
+- 2026-10-21 08:20 | renumber Q4->Q3 | v4 question bank shift | 01-01-md-PRE-lectures/v1/04.md -> 01-01-md-PRE-lectures/v1/03.md
+- 2026-10-21 08:20 | renumber Q4->Q3 | v4 question bank shift | 01-02-md-LECTURES/v1/04.md -> 01-02-md-LECTURES/v1/03.md
+- 2026-10-21 08:20 | renumber Q4->Q3 | v4 question bank shift | 01-02-md-LECTURES/v1/figures/04-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/03-01-code-assembly-pipeline.html
+- 2026-10-21 08:20 | renumber Q4->Q3 | v4 question bank shift | 01-03-md-lectures-HTML/v1/04.html -> 01-03-md-lectures-HTML/v1/03.html
+- 2026-10-21 08:20 | renumber Q4->Q3 | v4 question bank shift | 01-04-md-lectures-PDF/v1/04.pdf -> 01-04-md-lectures-PDF/v1/03.pdf
+- 2026-10-21 08:20 | renumber Q4->Q3 | v4 question bank shift | 02-01-md-revised-1/v1/04.md -> 02-01-md-revised-1/v1/03.md
+- 2026-10-21 08:20 | renumber Q4->Q3 | v4 question bank shift | 02-02-md-revised-1-html/v1/04.html -> 02-02-md-revised-1-html/v1/03.html
+- 2026-10-21 08:20 | renumber Q4->Q3 | v4 question bank shift | 02-03-md-revised-1-pdf/v1/04.pdf -> 02-03-md-revised-1-pdf/v1/03.pdf
+- 2026-10-21 08:20 | renumber Q8->Q5 | v4 question bank shift | 01-01-map/08.md -> 01-01-map/05.md
+- 2026-10-21 08:20 | renumber Q8->Q5 | v4 question bank shift | 01-01-map-principles/08.md -> 01-01-map-principles/05.md
+- 2026-10-21 08:20 | renumber Q8->Q5 | v4 question bank shift | 01-01-md-PRE-lectures/v1/08.md -> 01-01-md-PRE-lectures/v1/05.md
+- 2026-10-21 08:20 | renumber Q8->Q5 | v4 question bank shift | 01-02-md-LECTURES/v1/08.md -> 01-02-md-LECTURES/v1/05.md
+- 2026-10-21 08:20 | renumber Q8->Q5 | v4 question bank shift | 01-02-md-LECTURES/v1/figures/08-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/05-01-code-assembly-pipeline.html
+- 2026-10-21 08:20 | renumber Q8->Q5 | v4 question bank shift | 01-03-md-lectures-HTML/v1/08.html -> 01-03-md-lectures-HTML/v1/05.html
+- 2026-10-21 08:20 | renumber Q8->Q5 | v4 question bank shift | 01-04-md-lectures-PDF/v1/08.pdf -> 01-04-md-lectures-PDF/v1/05.pdf
+- 2026-10-21 08:20 | renumber Q8->Q5 | v4 question bank shift | 02-01-md-revised-1/v1/08.md -> 02-01-md-revised-1/v1/05.md
+- 2026-10-21 08:20 | renumber Q8->Q5 | v4 question bank shift | 02-02-md-revised-1-html/v1/08.html -> 02-02-md-revised-1-html/v1/05.html
+- 2026-10-21 08:20 | renumber Q8->Q5 | v4 question bank shift | 02-03-md-revised-1-pdf/v1/08.pdf -> 02-03-md-revised-1-pdf/v1/05.pdf
+- 2026-10-21 08:20 | renumber Q9->Q7 | v4 question bank shift | 01-01-map/09.md -> 01-01-map/07.md
+- 2026-10-21 08:20 | renumber Q9->Q7 | v4 question bank shift | 01-01-map-principles/09.md -> 01-01-map-principles/07.md
+- 2026-10-21 08:20 | renumber Q9->Q7 | v4 question bank shift | 01-01-md-PRE-lectures/v1/09.md -> 01-01-md-PRE-lectures/v1/07.md
+- 2026-10-21 08:20 | renumber Q9->Q7 | v4 question bank shift | 01-02-md-LECTURES/v1/09.md -> 01-02-md-LECTURES/v1/07.md
+- 2026-10-21 08:20 | renumber Q9->Q7 | v4 question bank shift | 01-02-md-LECTURES/v1/figures/09-01-code-assembly-pipeline.html -> 01-02-md-LECTURES/v1/figures/07-01-code-assembly-pipeline.html
+- 2026-10-21 08:20 | renumber Q9->Q7 | v4 question bank shift | 01-03-md-lectures-HTML/v1/09.html -> 01-03-md-lectures-HTML/v1/07.html
+- 2026-10-21 08:20 | renumber Q9->Q7 | v4 question bank shift | 01-04-md-lectures-PDF/v1/09.pdf -> 01-04-md-lectures-PDF/v1/07.pdf
+- 2026-10-21 08:20 | renumber Q9->Q7 | v4 question bank shift | 02-01-md-revised-1/v1/09.md -> 02-01-md-revised-1/v1/07.md
+- 2026-10-21 08:20 | renumber Q9->Q7 | v4 question bank shift | 02-02-md-revised-1-html/v1/09.html -> 02-02-md-revised-1-html/v1/07.html
+- 2026-10-21 08:20 | renumber Q9->Q7 | v4 question bank shift | 02-03-md-revised-1-pdf/v1/09.pdf -> 02-03-md-revised-1-pdf/v1/07.pdf
+- 2026-10-21 08:20 | renumber Q14->Q12 | v4 question bank shift | 01-01-map/14.md -> 01-01-map/12.md
+- 2026-10-21 08:20 | renumber Q14->Q12 | v4 question bank shift | 01-01-map-principles/14.md -> 01-01-map-principles/12.md
+- 2026-10-21 08:20 | renumber Q14->Q12 | v4 question bank shift | 01-01-md-PRE-lectures/v1/14.md -> 01-01-md-PRE-lectures/v1/12.md
+- 2026-10-21 08:20 | renumber Q15->Q13 | v4 question bank shift | 01-01-map/15.md -> 01-01-map/13.md
+- 2026-10-21 08:20 | renumber Q15->Q13 | v4 question bank shift | 01-01-map-principles/15.md -> 01-01-map-principles/13.md
+- 2026-10-21 08:20 | renumber Q15->Q13 | v4 question bank shift | 01-01-md-PRE-lectures/v1/15.md -> 01-01-md-PRE-lectures/v1/13.md
+- 2026-10-21 08:20 | renumber Q16->Q15 | v4 question bank shift | 01-01-map/16.md -> 01-01-map/15.md
+- 2026-10-21 08:20 | renumber Q16->Q15 | v4 question bank shift | 01-01-map-principles/16.md -> 01-01-map-principles/15.md
+- 2026-10-21 08:20 | renumber Q16->Q15 | v4 question bank shift | 01-01-md-PRE-lectures/v1/16.md -> 01-01-md-PRE-lectures/v1/15.md
+- 2026-10-21 08:20 | renumber Q17->Q16 | v4 question bank shift | 01-01-map/17.md -> 01-01-map/16.md
+- 2026-10-21 08:20 | renumber Q17->Q16 | v4 question bank shift | 01-01-map-principles/17.md -> 01-01-map-principles/16.md
+- 2026-10-21 08:20 | renumber Q17->Q16 | v4 question bank shift | 01-01-md-PRE-lectures/v1/17.md -> 01-01-md-PRE-lectures/v1/16.md
+- 2026-10-21 08:20 | renumber Q18->Q17 | v4 question bank shift | 01-01-map/18.md -> 01-01-map/17.md
+- 2026-10-21 08:20 | renumber Q18->Q17 | v4 question bank shift | 01-01-map-principles/18.md -> 01-01-map-principles/17.md
+- 2026-10-21 08:20 | renumber Q18->Q17 | v4 question bank shift | 01-01-md-PRE-lectures/v1/18.md -> 01-01-md-PRE-lectures/v1/17.md
+- 2026-10-21 08:21 | archive Q2 | archive old 02-argon builds before renaming 02-argon.md to 04-argon.md | 04-02-md-revised-3-html/v1/02-argon-original-margins.html -> 04-02-md-revised-3-html/v1/archive/02-argon-original-margins-2026-10-21-0821.html
+- 2026-10-21 08:21 | archive Q2 | archive old 02-argon builds before renaming 02-argon.md to 04-argon.md | 04-02-md-revised-3-html/v1/02-argon-paper-2.html -> 04-02-md-revised-3-html/v1/archive/02-argon-paper-2-2026-10-21-0821.html
+- 2026-10-21 08:21 | archive Q2 | archive old 02-argon builds before renaming 02-argon.md to 04-argon.md | 04-02-md-revised-3-html/v1/02-argon-paper.html -> 04-02-md-revised-3-html/v1/archive/02-argon-paper-2026-10-21-0821.html
+- 2026-10-21 08:21 | archive Q2 | archive old 02-argon builds before renaming 02-argon.md to 04-argon.md | 04-02-md-revised-3-html/v1/02-argon.html -> 04-02-md-revised-3-html/v1/archive/02-argon-2026-10-21-0821.html
+- 2026-10-21 08:21 | archive Q2 | archive old 02-argon builds before renaming 02-argon.md to 04-argon.md | 04-03-md-revised-3-pdf/v1/02-argon-original-margins.pdf -> 04-03-md-revised-3-pdf/v1/archive/02-argon-original-margins-2026-10-21-0821.pdf
+- 2026-10-21 08:21 | archive Q2 | archive old 02-argon builds before renaming 02-argon.md to 04-argon.md | 04-03-md-revised-3-pdf/v1/02-argon-paper-2.pdf -> 04-03-md-revised-3-pdf/v1/archive/02-argon-paper-2-2026-10-21-0821.pdf
+- 2026-10-21 08:21 | archive Q2 | archive old 02-argon builds before renaming 02-argon.md to 04-argon.md | 04-03-md-revised-3-pdf/v1/02-argon-paper.pdf -> 04-03-md-revised-3-pdf/v1/archive/02-argon-paper-2026-10-21-0821.pdf
+- 2026-10-21 08:21 | archive Q2 | archive old 02-argon builds before renaming 02-argon.md to 04-argon.md | 04-03-md-revised-3-pdf/v1/02-argon.pdf -> 04-03-md-revised-3-pdf/v1/archive/02-argon-2026-10-21-0821.pdf
+- 2026-10-21 08:21 | renumber Q2->Q4 | rename 02-argon.md to 04-argon.md for Version 4 bank | 04-01-md-revised-3/v1/02-argon.md -> 04-01-md-revised-3/v1/04-argon.md
+- 2026-10-21 12:45 | archive experiment-04-river | archive before rewriting with normal lecture flow | notes/experiment-04-river.md -> notes/archive/experiment-04-river-2026-10-21-1245.md
+- 2026-10-21 12:45 | archive experiment-04-river | archive before rewriting with normal lecture flow | notes/experiment-04-river.html -> notes/archive/experiment-04-river-2026-10-21-1245.html
+
