@@ -270,3 +270,119 @@ COUNTER-EXAMPLE (Lecture 11, before): three small inboxes joined by arrows, "1. 
 PROPER EXAMPLE (Lecture 11, after): the light blue think-aloud page, with the two lists side by side, four bands, a pointer on what is ticked and on what is clicked, the Row and id of every row, the strip with what the form sends, the deleted row drawn in its place, the user's handwritten thoughts, and a "Behind the scenes" note per step.
 
 Note: the owner's corrections, in order. "It is not clear what was clicked, what was deleted, what stayed behind. It is minimalist and cryptic." A demo first: "before you add the instructions, create a demo for me to approve if it works". The comic: "be creative in how you place the image and the comments so the user can see clearly", then "the neobruttal design is too loud". The pointer: "instead of we ticked this, add an actual pointer with a balloon". The page: "make this particular page have background colour a light colour [...] on the left show each step in the browser, on the right [...] the user explaining what is done [...] the way one person thinks out loud", with the owner's own card as a model, Row numbers and id chips included. The words: "the design is spectacular but the explanation is very poor [...] the emails as an array of object, and the DOM representation of the same emails as a list of DOM elements. When we do not properly assign ID to the DOM elements, the two lists are not connected." And the ring: "the whole purpose is to show what movement is made, the actual movement of delete is not underlined here, not pointed in any shape or form." The steps of that path are kept in `04-01-md-revised-3/v1/archive/11b-*.md`.
+
+## Case 32: The Principle Box: from code-stuffed mechanics and story retellings to root-first, trap-first human speech (Section 12) #2026_10_20_01_group_1
+
+COUNTER-EXAMPLE 1 (Lecture 11, `The Mechanics` / `The Advice` draft of Principle 2 - stiff labels, story-specific variable names `shown.length` and `rows` mixed into a general rule, and code syntax interrupting the prose):
+
+> [!PRINCIPLE]
+> **Principle 2: (`filter-then-map`) Filter before `map()`, and test `.length > 0` for empty lists**
+>
+> **The Mechanics:** Filtering first with `const shown = emails.filter(...)` gives us the subset for the current folder and its true count (`shown.length`). If we guard the list with `{shown.length && rows}` and `shown` is empty, `shown.length` is `0`. JavaScript evaluates `0 && rows` to the number `0`, and React prints `"0"` right inside the empty folder. Comparing `shown.length > 0` produces `false`, which React ignores.
+>
+> **The Advice:** Filter your array before `map()`, and never put a bare `.length` to the left of `&&`. Use `{shown.length > 0 ? rows : <p>No emails here.</p>}` (or `{shown.length > 0 && rows}`).
+
+HALF-WAY EXAMPLE (Lecture 11, first conversational rewrite of Principle 3 - uses `Why it happens:` / `The Rule:`, but is still too complex because it retells the row-shifting story instead of starting from the root mental model that the array in memory and the DOM elements on the screen are two separate things linked by `key` as a chain):
+
+> **Why it happens:** When your list re-renders, React needs to know which row on the screen belongs to which item in your array. This can be a nasty trap if you leave out `key` or write `key={index}`. You see, `index` is just the row position (`0, 1, 2`), not the item itself. If a user ticks the checkbox on the first row (index `0`) and a new item arrives at the top of the list, that new item takes over index `0` - and inherits the old row's ticked checkbox right on the screen! And if you write `key={Math.random()}`, every key changes on every render, forcing React to destroy and rebuild every row from scratch.
+>
+> **The Rule:** Always pass a permanent ID from the data itself, like `key={item.id}`, so React follows the actual item wherever it moves, and never use `index` or `Math.random()`.
+
+PROPER EXAMPLES (Lecture 11, all four Principles in `11-argon.md` and `11-gemini.md`, approved after the owner rewrote Principle 2 and directed Principle 3 back to the root mental model):
+
+### Principle 1 (Proper)
+
+```markdown
+> [!PRINCIPLE]
+> **Principle 1: (`map-to-elements`) Turn every item into a component (e.g. `emails.map()`)**
+>
+> **Why it happens:** To turn an array into a list on the screen, we run `map()` inside `{ }`. But there is a trap with the brackets you put after the arrow `=>`. Parentheses `( )` return the element automatically, whereas curly braces `{ }` open a block of code that returns nothing unless you write the word `return`. If you use `{ }` and forget `return`, the page shows a blank list and the console shows zero errors. You see, a function without `return` gives back `undefined`, so `map()` hands React `[undefined, undefined, undefined]`, and React quietly renders nothing for `undefined`.
+>
+> **The Rule:** Use `map()` with parentheses `item => (<Row />)`, or write an explicit `return` whenever you open curly braces `item => { return <Row />; }`.
+>
+> *We should do this:*
+>
+> ```jsx
+> {list.map(item => <Row key={item.id} item={item} />)} // ( ) returns each <Row /> automatically
+> ```
+>
+> *We should not do this:*
+>
+> ```jsx
+> {list.map(item => { <Row key={item.id} item={item} />; })} // **PROBLEMATIC:** { } without return gives undefined
+> ```
+```
+
+### Principle 2 (Proper, modelled directly on the owner's rewrite)
+
+```markdown
+> [!PRINCIPLE]
+> **Principle 2: (`filter-then-map`) Filter first, and check `length > 0` (e.g. `shown.length > 0`)**
+>
+> **Why it happens:** To show only matching items, run `filter()` first and then `map()` over the result. When no items match, the filtered array's `length` is `0`. This can be a trap. If you use conditional rendering `{ length && list }`, the left side cannot be `0` otherwise it will show zero on the screen - yes, the number `0` will appear on your screen! You see, JavaScript stops at `0` and hands that number to React. React happily prints a stray `0` on the screen, whereas it renders nothing for `false`.
+>
+> **The Rule:** For conditional rendering prefer `length > 0`, for example `{ length > 0 && list }` or `{ length > 0 ? list : <p>Empty</p> }`, so an empty list produces `false` instead of `0`.
+>
+> *We should do this:*
+>
+> ```jsx
+> {shown.length > 0 ? list : <p>Empty</p>} // 0 > 0 is false, never the number 0
+> ```
+>
+> *We should not do this:*
+>
+> ```jsx
+> {shown.length && list} // **PROBLEMATIC:** when length is 0, prints 0 on screen
+> ```
+```
+
+### Principle 3 (Proper, rooted in the two separate lists and `key` as the chain between them)
+
+```markdown
+> [!PRINCIPLE]
+> **Principle 3: (`keys-name-items`) Link each row to a permanent item ID (e.g. `key={item.id}`)**
+>
+> **Why it happens:** The array of items in our JavaScript code and the list of DOM elements on the screen are two separate things. When we add, delete, or reorder an item, the array in memory changes its order, but the DOM elements on the screen (along with whatever the user typed or ticked inside them) stay sitting in their old positions (`Row 1`, `Row 2`, `Row 3`). Without a link between the two, React just matches Row 1 on screen to item `0` in memory - so an old ticked checkbox stays on Row 1 even when a brand-new item moves into slot `0`! A `key` is the chain that links each DOM element on the screen to its specific object in memory, so they stay together no matter how the list moves.
+>
+> **The Rule:** Always pass a permanent ID from the item itself, like `key={item.id}`, so each DOM element stays chained to its own data. Never use `key={index}` (which just chains the row to position `0, 1, 2`) or `key={Math.random()}` (which breaks the chain on every render).
+>
+> *We should do this:*
+>
+> ```jsx
+> {list.map(item => <Row key={item.id} item={item} />)} // Chains the DOM row to this item's id
+> ```
+>
+> *We should not do this:*
+>
+> ```jsx
+> {list.map((item, index) => <Row key={index} item={item} />)} // **PROBLEMATIC:** chains the row to slot 0, 1, 2
+> ```
+```
+
+### Principle 4 (Proper, extending the chain mental model to where `key` sits and why `props.key` is `undefined`)
+
+```markdown
+> [!PRINCIPLE]
+> **Principle 4: (`key-on-mapped-element`) Put `key` on the outer tag `map()` returns (e.g. `<Row />`)**
+>
+> **Why it happens:** Because `key` is the chain that links each item in `map()` to its element on the screen, React looks for that chain right where `map()` creates the list. This creates two traps. First, if you hide `key={item.id}` inside the child component's `<div>`, `map()` only sees an unchained `<Row />` tag and warns you in the console. Second, `key` is a private label for React, not data for your component - React strips it off before creating `props`, so reading `props.key` inside the child always gives you `undefined`.
+>
+> **The Rule:** Put `key={item.id}` directly on the outermost tag returned by `map()` (use `<Fragment key={item.id}>` if one item returns two sibling tags), and pass a separate prop like `id={item.id}` when the child component needs to read the ID.
+>
+> *We should do this:*
+>
+> ```jsx
+> {list.map(item => <Row key={item.id} id={item.id} item={item} />)} // Key on map() tag + id prop for child
+> ```
+>
+> *We should not do this:*
+>
+> ```jsx
+> {list.map(item => <Row item={item} />)} // **PROBLEMATIC:** key inside Row is unseen by map(), and props.key is undefined
+> ```
+```
+
+Note: Two owner corrections shaped this standard:
+1. On Principle 2, the owner replaced `The Mechanics:` / `The Advice:` with `Why it happens:` / `The Rule:`, used generic names (`{ length && list }`), paused with a short human warning (*"This can be a trap."*), stated the surprising visual consequence on the screen before the engine rule (*"otherwise it will show zero in the screen - yes the number zero will appear in your screen"*), and then explained the mechanism conversationally (*"You see, JavaScript stops at 0 and hands that number to React..."*).
+2. On Principle 3, the owner rejected the first conversational draft (`HALF-WAY EXAMPLE` above) because it jumped straight into recounting the index-shifting story: *"This is toooo complex, we need a principle of going back to the root, that we used in the text itself. The root here is that the order of the DOM elements as they appear on screen and the order of a variable, such as a list, are not the same thing. We can update the DOM elements, we see the different order in DOM elements, but the order of the list in memory may have not changed. The key is like a chain that links the two."* Starting from the root mental model makes both Principle 3 (why `key` must come from `item.id`) and Principle 4 (why `key` must sit on the outer tag `map()` returns) immediately self-evident.
+

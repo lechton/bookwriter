@@ -1,51 +1,67 @@
-# Skills
+# React 19 Production Lectures — Skills System (`v9.1`)
 
-The instruction system of the react-lecture-06 project. Each skill is one folder with one SKILL.md, organized around numbered principles (`## Section | number | Principle`), with every standard formulated as an evaluative question (`- [ ] Does ...?`, `- [ ] Is ...?`) setting a clear quality bar on the resulting artifact. Skills include PROPER EXAMPLE, HALF WAY EXAMPLE (showing a partial attempt that looks improved but still falls short of the quality standard), and COUNTER-EXAMPLE items with explanatory Notes. Prefer loading only the skill a specific task triggers.
+Version **`v9.1`** contains **two completely separate skill sets** inside `skills/v9.1/` so that rules from the two lecture formats never mix:
 
-## The skills
+1. **`skills/v9.1/v1/` — Original Version (`v1`)**:
+   - The multi-stage pipeline (`01-01-map-principles/v1/` $\rightarrow$ `01-01-md-PRE-lectures/v1/` $\rightarrow$ `01-02-md-LECTURES/v1/` $\rightarrow$ `02-01-md-revised-1..4/v1/`).
+   - Preserved untouched for all existing `v1` lectures.
+2. **`skills/v9.1/v2/` — River Version (`v2`)**:
+   - The streamlined two-step River pipeline (`01-01-map-principles/v2/{NN}.md` $\rightarrow$ `01-02-md-LECTURES/v2/{NN}.md` $\rightarrow$ `01-03-md-lectures-HTML/v2/{NN}.html` & `01-04-md-lectures-PDF/v2/{NN}.pdf`).
+   - Combines a comprehensive **General Concepts Introduction (The Runway)** before Principle 1 with **Unified River Principles** that grow one practical example progressively from Principle 1 to Principle N without repeating the chapter a second time at the end.
 
-| skill | governs | load when |
-|---|---|---|
-| map-principles | the principle map at 01-01-map-principles/{nn}.md: a candidate ledger discovered from the syllabus card, the react.dev pages for its topic, and senior engineering knowledge, then routed to owner lessons through the whole syllabus and selected by importance and atomicity into numbered principles with handles, the principle thread that orders and names them (anchor, axis, labels with their terms, spoken preview, closing line), a Terms table of first appearances, and lists of conflicts and open issues | a principle map is authored or audited, or a principle's coverage, ownership, importance, terms, proofs, or wording is questioned #2026_09_26_19_group_1 revised by #2026_09_26_20_group_1, #2026_09_26_21_group_1, #2026_10_06_01_group_7, and #2026_10_15_03_group_5 |
-| pre-lecture | the Phase 1 blueprint at 01-01-md-PRE-lectures/<version>/{nn}.md (default latest version, e.g. v1), with ★/◇ technical grading of every paragraph element, the recall list and runway, one question cycle plan per principle, and planning of the practical example stages | a pre-lecture is about to be authored or revised |
-| lecture-voice | stance, plain upper-intermediate English, concept definitions (default and core mechanics), technical descriptions that end in a consequence, the numbered opening lines, the thread written for the ear, callouts | lecture prose is authored or revised #2026_10_15_03_group_5 |
-| pedagogical-crossroads | teaching foundational mechanics at technical crossroads using separate integrated code snippets | a technical fork, alternative syntax, or foundational mechanism is introduced |
-| lecture-structure | skeleton (recall, runway, spoken preview, question cycles, closing sections, a summary that repeats the thread), the practical example as the thread applied (one step per principle), naming, tables | a lecture is assembled or restructured, or a pre-lecture plans one #2026_10_15_03_group_5 |
-| code-blocks | code windows, 10-line ceiling, continuation attributes, real line numbers for a window that shows a change, clean comments (zero tildes during drafting) | any code block is authored or reviewed #2026_10_04_04_group_1 revised by #2026_10_15_04_group_1 |
-| code-comment-audit | on-demand post-draft auditing of code comments, speech bubbles, indentation offsets, targeted token pointer alignments, and deterministic invariants | a lecture's code comments are audited on demand or before print certification #2026_10_03_02_group_1 revised by #2026_10_04_04_group_1 |
-| ui-panels | component explorer, files, component-code panels | any UI panel is added or reviewed |
-| figures | standalone HTML figures and the design system | a figure is designed, cloned, or revised |
-| lecture-revision | rewriting completed lectures into effortless junior-friendly reading with density breakdown, bold terminology, conversational bridging, is-vs-is-not definitions, and compiling to the 02-01-md-revised-1 pipeline | an existing lecture is being revised for readability or pedagogical accessibility |
-| principle-definition | every `> [!PRINCIPLE]` box: the map's thread label as its title and the map's rule line under it, the rules the owner enforced box by box (basics first, step by step, general names, no riddles, no words the reader lacks, a code pair that stands alone), the build syntax, and the casebook `examples.md` holding only owner-approved boxes with the drafts that failed before them | any principle is drafted or reviewed, in the blueprint or the lecture #2026_10_04_09_group_1 revised by #2026_10_06_05_group_2 and #2026_10_15_03_group_5 |
-| principled-theory | one-to-one expansion of an approved principle map into theory: the runway that teaches what the questions need, one question cycle per principle whose answer comes before the box, an honest code pair, zero new concepts in the case study | a principle-based theory section or lecture is authored or reviewed #2026_09_26_19_group_1 revised by #2026_10_06_05_group_3 and #2026_10_10_01_group_6 |
-| verification | quality gates and the screenshot protocol | a lecture is claimed complete, or an audit is requested |
-| build | pipeline, theme publishing, version resolution, orchestrator | lectures are compiled, or a production session is launched |
-| summary-edition | the revision 3 summary edition (04-01-md-revised-3): a short, visual lesson that stands on its own, built from the finished lecture and its map; the order of the lesson (theory first, `# Principles`, the closing parts, the worked example and its components at the end), examples chosen anew and built on each principle box's own code, one component per file, the route of a principle section and its subtitles, example titles that name the cause, the What is going on box that builds an invisible cause from its most basic fact, the conditions every description carries, stakes, facts before use, consistent code, principle boxes in short sentences, the comments that name the cause, plain normative prose, the closing recaps; a casebook in examples.md | a summary lesson is written or revised #2026_10_17_01_group_1 revised by #2026_10_18_01_group_7 and #2026_10_18_02_group_3 |
-| summary-figures | the figures of the summary edition: the block for each shape of idea, the standards every figure meets (the browser first in a comparison, real photos, bare page elements, the Console as Chrome draws it), the browser drawn as the app the example is about (the mail app), the component hierarchy panel with its PARENT and CHILD labels, trees of at most five children, the two themes (original and paper) and the process for changing the look, page flow; the block syntax in blocks.md | a figure of a summary lesson is drawn, or its design is changed #2026_10_17_01_group_2 and #2026_10_17_01_group_3 revised by #2026_10_18_01_group_7 and #2026_10_18_02_group_3 |
-| summary-audit | the checks of a summary lesson: build gates, the visual check of every page, cold reads by fresh readers who see only the PDF, the conditions audit, weighing findings, archiving and reporting | a summary lesson builds and is about to be called done #2026_10_17_01_group_4 |
-| summary-revision-4 | the revision 4 pass of an accepted summary lesson (05-01-md-revised-4): the copy from revision 3, the `~token~` each comment points at, the width each line fits, what the build draws in both themes, its balloon gate, archiving the copy; content, comments included, stays in revision 3 | only for the revision 4 pass, after the revision 3 lesson is accepted #2026_10_17_04_group_3 revised by #2026_10_18_01_group_7 |
+---
 
-## Load order
+## Canonical Version Names
 
-writing or auditing a principle map → load map-principles, confirm that bank row {nn} in questions/questions.md and 01-01-map/{nn}.md carry the same topic tag and question, run Discovery from them, the react.dev pages for its topic, and senior engineering knowledge without opening any principle map, read the inbox with `node src/handout.mjs {nn}`, then run Selection against the key lines of every 01-01-map/ card, run the Archive Check against the older maps of the same tag, close the inbox's `map` messages and send any new ones, and finish with `node src/diagnose-map.mjs {nn}` #2026_09_26_19_group_1 revised by #2026_09_26_20_group_1, #2026_09_26_21_group_1, #2026_10_05_07_group_1, #2026_10_06_01_group_5, #2026_10_06_01_group_8, and #2026_10_06_02_group_4
-writing a pre-lecture → consult 01-01-map/{nn}.md for syllabus and scope boundaries (#2026_09_25_06_group_1) and its approved 01-01-map-principles/{nn}.md for the numbered principles and the candidate ledger (#2026_09_26_19_group_1 revised by #2026_09_26_21_group_2), read the inbox with `node src/handout.mjs {nn}` (#2026_10_06_02_group_5), then load pre-lecture, principle-definition, lecture-voice, lecture-structure, principled-theory, pedagogical-crossroads, code-blocks, and ui-panels (read the casebook `principle-definition/examples.md`, then write the recall list and runway, then one `[question-cycle]` plan before each finished principle box; plain trailing comments; zero tildes during drafting) #2026_10_03_04_group_1 revised by #2026_10_04_01_group_1, #2026_10_04_09_group_1, #2026_10_04_10_group_1, #2026_10_06_04_group_3, and #2026_10_10_01_group_3
-writing a lecture (Phase 1 Authoring) → consult the approved 01-01-map-principles/{nn}.md, then load lecture-structure, principle-definition, principled-theory, lecture-voice, pedagogical-crossroads, code-blocks, ui-panels, and figures; dedicate 100% of cognitive energy to pedagogy, clarity, and clean code with plain trailing comments; strictly omit code-comment-audit from authoring #2026_10_04_01_group_1 revised by #2026_10_04_09_group_1
-auditing code comments (On-Demand Phase 2 Audit) → load code-comment-audit, work on the copy in 02-01-md-revised-1/<version>/{nn}.md (copy the working lecture there first if none exists), isolate focal tokens from the Token Targeting Anatomy table, wrap targets in ~token~ anchors, calibrate line budgets, and verify zero failures with `diagnose-lecture.mjs {nn} --audit --revised` before PDF compilation; the working lecture stays token-free #2026_10_03_02_group_1 revised by #2026_10_04_01_group_1, #2026_10_04_04_group_1, and #2026_10_04_10_group_1
-revising a lecture → load lecture-revision, principle-definition, principled-theory, lecture-voice, pedagogical-crossroads, code-blocks, figures, and verification; run secondary code audit afterwards #2026_10_04_01_group_1
-calling a lecture done → load verification and build; run the reading gates first and the scripts last (verification Section 21) #2026_10_10_01_group_4
-writing a summary edition (revision 3) → read the finished lecture `01-02-md-LECTURES/<version>/{nn}.md` and its approved `01-01-map-principles/{nn}.md` together, load summary-edition (read its examples.md first) and summary-figures (with blocks.md), keep lecture-voice at hand for the voice, write `04-01-md-revised-3/<version>/{nn}.md`, build with `node src/build-revised-3.mjs {nn}`, then load summary-audit and run its checks in order, on both PDFs; principle boxes are rewritten from the map's Rule in short sentences (summary-edition Section 12), so principle-definition is not needed for them #2026_10_17_01_group_5 revised by #2026_10_18_01_group_7
-adding the tokens (revision 4) → only after the revision 3 lesson is accepted: load summary-revision-4 and code-comment-audit (its Token Targeting Anatomy), copy `04-01-md-revised-3/v1/{nn}.md` and its photos to `05-01-md-revised-4/v1/`, and let `node src/build-revised-4.mjs {nn}` list each comment that needs a token; the revision 3 skills are not needed, because the text and its comments do not change #2026_10_17_04_group_3 revised by #2026_10_18_01_group_7
+| Version Tag | Canonical Name | Skills Folder | Principle Maps Folder | Lectures Folder | HTML / PDF Build Output |Build Script |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`v1`** | **Original Version** | `skills/v9.1/v1/` | `01-01-map-principles/v1/` | `01-02-md-LECTURES/v1/` | `01-03-md-lectures-HTML/v1/`<br>`01-04-md-lectures-PDF/v1/` | `node src/build-lectures.mjs` |
+| **`v2`** | **River Version** | `skills/v9.1/v2/` | `01-01-map-principles/v2/` | `01-02-md-LECTURES/v2/` | `01-03-md-lectures-HTML/v2/`<br>`01-04-md-lectures-PDF/v2/` | `node src/build-river.mjs` |
 
-The pre-lecture row carries lecture-structure and ui-panels because the blueprint plans the practical example stages and the panel elements before Phase 2 begins; a blueprint written without the structure standards in the room produces clean prose with no planned guided build, and the production lecture inherits that omission. #2026_09_20_01_group_1
+> **Strict Separation Rule**:
+> - When authoring or auditing a **River Version (`v2`)** map or lecture, load **only** the skills in `skills/v9.1/v2/`. Never load `skills/v9.1/v1/`.
+> - When maintaining an **Original Version (`v1`)** map or lecture, load **only** the skills in `skills/v9.1/v1/`.
 
-## The meta-skill
+---
 
-prompt-writing sets the standard for how every skill here is written. Prefer reading it before writing or editing any skill.
+## Part A: River Version (`v2`) Skills (`skills/v9.1/v2/`)
 
-## The registry and the briefs
+| # | Skill | File | Responsibility |
+| :--- | :--- | :--- | :--- |
+| 1 | **`map-principles-v2`** | [v2/map-principles/SKILL.md](v2/map-principles/SKILL.md) | Authors `01-01-map-principles/v2/{NN}.md`: Corpus & Chrome verification, `Candidate Ledger` scope routing, `Terms` inventory, `General Concepts Introduction (Runway Plan)`, philosophical `Root Distinction` per principle, `Real Beginner Mistake` vs. `Interview Depth`, and `River Progression` + `Pertinent Division & Visual Comparison`. |
+| 2 | **`lecture-structure-v2`** | [v2/lecture-structure/SKILL.md](v2/lecture-structure/SKILL.md) | Governs the 3-zone architecture of `01-02-md-LECTURES/v2/{NN}.md`: Zone 1 (Comprehensive General Concepts Introduction / The Runway), Zone 2 (Unified River Principles 1..N), and Zone 3 (Complete Final Code, Summary Table, and For the Interview). |
+| 3 | **`lecture-voice-v2`** | [v2/lecture-voice/SKILL.md](v2/lecture-voice/SKILL.md) | Enforces water-like CEFR B2 single-idea sentences, division of labor between plain-English prose and code blocks, Root-First philosophical pedagogy (`###` titles grounded in the root distinction), strictly chronological code explanations, zero parentheses `( )` in prose/headings/diagrams, and zero fake suspense. |
+| 4 | **`code-and-figures-v2`** | [v2/code-and-figures/SKILL.md](v2/code-and-figures/SKILL.md) | Enforces short 3 to 10 line one-step-at-a-time code snippets during explanations with `~token~` highlight balloons and comments, inline ```` ```tree ```` Box-to-Boxes diagrams (`✓` green `+` vs. `✗` red `!`, `DO` vs. `DO NOT`), and `> [!PRINCIPLE]` cards. |
+| 5 | **`verification-v2`** | [v2/verification/SKILL.md](v2/verification/SKILL.md) | **Mandatory Quality & Pre-Flight Gate**: Enforces the three-stage `- [ ]` checklist sequence—Stage A (Pre-Writing Checkboxes, including reading accepted reference chapters `04.md` and `01.md` first), Stage B (Human Reading Quality Checkboxes verified and reported item-by-item BEFORE any script runs), and Stage C (`build-river.mjs` and `check-links.mjs` ONLY AFTER Stages A & B pass). |
 
-Every rule carries a batch tag (`#YYYY_MM_DD_NN_group_M`) naming its origin; the registry of working titles lives in [RULE-TAGS.md](RULE-TAGS.md); the brief explaining each batch's rules and philosophy lives in `brief/brief_YYYY_MM_DD_NN.md`. Grep a tag to find every rule of that group across all files.
+---
 
-## The archive
+## Part B: Original Version (`v1`) Skills (`skills/v9.1/v1/`)
 
-old-instructions holds the legacy instruction files these skills digest. It stays frozen as the source of record for the rewrite; each SKILL.md names its legacy source in its Digests line.
+All 18 Original Version (`v1`) and Revision 3/4 skills live untouched inside `skills/v9.1/v1/`:
+- [v1/map-principles/SKILL.md](v1/map-principles/SKILL.md)
+- [v1/pre-lecture/SKILL.md](v1/pre-lecture/SKILL.md)
+- [v1/lecture-structure/SKILL.md](v1/lecture-structure/SKILL.md)
+- [v1/lecture-voice/SKILL.md](v1/lecture-voice/SKILL.md)
+- [v1/pedagogical-crossroads/SKILL.md](v1/pedagogical-crossroads/SKILL.md)
+- [v1/code-blocks/SKILL.md](v1/code-blocks/SKILL.md)
+- [v1/code-comment-audit/SKILL.md](v1/code-comment-audit/SKILL.md)
+- [v1/ui-panels/SKILL.md](v1/ui-panels/SKILL.md)
+- [v1/figures/SKILL.md](v1/figures/SKILL.md)
+- [v1/principle-definition/SKILL.md](v1/principle-definition/SKILL.md)
+- [v1/principled-theory/SKILL.md](v1/principled-theory/SKILL.md)
+- [v1/lecture-revision/SKILL.md](v1/lecture-revision/SKILL.md)
+- [v1/verification/SKILL.md](v1/verification/SKILL.md)
+- [v1/build/SKILL.md](v1/build/SKILL.md)
+- [v1/summary-edition/SKILL.md](v1/summary-edition/SKILL.md)
+- [v1/summary-figures/SKILL.md](v1/summary-figures/SKILL.md)
+- [v1/summary-audit/SKILL.md](v1/summary-audit/SKILL.md)
+- [v1/summary-revision-4/SKILL.md](v1/summary-revision-4/SKILL.md)
+
+---
+
+## Part C: Shared Meta-Rules (`skills/v9.1/prompt-writing/`)
+
+- [prompt-writing/SKILL.md](prompt-writing/SKILL.md) — Meta-rules for authoring and refining skills (*Prune Before Banning*, *Teach by Living Example*, *General Standards Over Micro-Regulations*).
+- [prompt-writing/quality-checklist.md](prompt-writing/quality-checklist.md) — Pre-commit quality gate for skill edits.
+- [RULE-TAGS.md](RULE-TAGS.md) — Tag index across the skill suite.

@@ -42,28 +42,30 @@ The default theme (`DEFAULT_THEME`, now `original`) writes `NN.html` and `NN.pdf
 - `role=PARENT`, `role=CHILD`, `role=GRANDCHILD` prints the component's place in the tree at the file tab's top right. #2026_10_18_01_group_4
 - A comment is drawn as a balloon under its line, with no tail; `// **WRONG:** ...` or `{/* **PROBLEMATIC:** ... */}` gives it a red or amber chip before its text. Revision 3 has no `~token~` marks. #2026_10_18_01_group_6
 
-## Principle box
+## Principle box #2026_10_20_01_group_1
 
 ````
 > [!PRINCIPLE]
-> **Principle 1: Show nothing: return null at the top**
+> **Principle 2: (`filter-then-map`) Filter before `map()`, and test `.length > 0` for empty lists**
 >
-> When a component has nothing to show for its props, it returns `null`. (the map's Rule, in short sentences, one paragraph each)
+> **Why it happens:** To show only matching items, run `filter()` first and then `map()` over the result. When no items match, the filtered array's `length` is `0`. This can be a trap. If you use conditional rendering `{ length && list }`, the left side cannot be `0` otherwise it will show zero on the screen - yes, the number `0` will appear on your screen! You see, JavaScript stops at `0` and hands that number to React. React happily prints a stray `0` on the screen, whereas it renders nothing for `false`.
+>
+> **The Rule:** For conditional rendering prefer `length > 0`, for example `{ length > 0 && list }` or `{ length > 0 ? list : <p>Empty</p> }`, so an empty list produces `false` instead of `0`.
 >
 > *We should do this:*
 >
 > ```jsx
-> ...
+> {shown.length > 0 ? list : <p>Empty</p>} // 0 > 0 is false, never the number 0
 > ```
 >
 > *We should not do this:*
 >
 > ```jsx
-> ...
+> {shown.length && list} // **PROBLEMATIC:** when length is 0, prints 0 on screen
 > ```
 ````
 
-A fact note placed directly before the box stays on the same page as the box. Each paragraph of the rule becomes its own line in the box. The box goes right after the section's "you are here" map.
+A fact note placed directly before the box stays on the same page as the box. Inside the box, `**Why it happens:**` explains the root mental model and the visible screen trap in conversational speech using generic names (`list`, `item`, `length`, `<Row />`), and `**The Rule:**` states the portable habit (`summary-edition` Section 12 and Case 32). The box goes right after the section's "you are here" map.
 
 ## Page mockup
 
@@ -89,7 +91,7 @@ quiet: Console: no messages
 - Card fields: `title`, `author` (printed with "By " in front) (`[Sign in]` draws a link), `label`, `foot`, `raw` (a bare value such as `0`), `input` (an empty comment box; `input=placeholder` for other text), `typed=Great news!`, `missing=author` (draws "author missing"), `lines=John Hall; Boston` (one paragraph broken into lines, as `<br />` breaks it), `img=caption`, and `ghost` (an empty card box, noted `<article class="card"> with empty tags`; `ghost=<section class="profile"> with empty tags` names another element). #2026_10_18_01_group_4
 - `img=/john.jpg | alt=John Hall` draws a real photo: the file lives in the lesson folder's `public/` (`04-01-md-revised-3/v1/public/john.jpg`), as Vite serves its `public/` folder at `/`, and the build stops when the file is missing. A value without a leading `/` draws the older labelled bar. #2026_10_18_01_group_4
 - `good=` and `bad=` mark fields by name (`label`, `foot`, `raw`, `missing`, `typed`, `input`, `card`, and so on).
-- Lines in order: `heading`, `section`, `card`, `line` (with `| good` or `| bad`), `empty`, `row` and `stack` (list items in a row with borders, or stacked plain), `form`, `blank` (a blank page), `overlay: message` (an error box inside the page). `console` or `error`, `warn`, `log`, `quiet` add console lines under the page. Two `line` rows in a mini page sit side by side; for text on several lines, use `card: lines=...`. #2026_10_18_01_group_4
+- Lines in order: `heading`, `section`, `card`, `line` (with `| good` or `| bad`), `empty`, `row` and `stack` (list items in a row with borders, or stacked plain), `form`, `footer` (`footer: 2026 Local News | good` or `| bad`), `blank` (a blank page), `overlay: message` (an error box inside the page). `dom: [!|+|*|-] <html markup>` adds a compact DevTools `DOM` inspector strip directly under the browser viewport, and `console` or `error`, `warn`, `log`, `quiet` add console lines under the page. Two `line` rows in a mini page sit side by side; for text on several lines, use `card: lines=...`. #2026_10_18_01_group_4
 - `size=mini` draws a small window for a column.
 
 ## The mail app #2026_10_18_02_group_2

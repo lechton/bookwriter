@@ -18,7 +18,7 @@ All operations, shell commands, file inspections, and project workflows are root
 | `react 06` | `projects/react-06` | React 19 Production Lectures v6 (Q01–Q13) |
 | `react 07` | `projects/react-07` | React 19 Production Lectures v7 (Q01–Q17) |
 | `react 08` | `projects/react-08` | React 19 Production Lectures v8 (experiment copied from react-07; react-07 frozen) |
-| `react 09` | `projects/react-09` | React 19 Production Lectures v9 (copied from react-08; the default React project) |
+| `react 09` | `projects/react-09` | React 19 Production Lectures v9 (`v1` = **Original Version**, `v2` = **River Version**; the default React project) |
 | `vue 01` | `projects/vue-01` | Vue 3 Core & Architecture |
 | `css 01` | `projects/css-01` | CSS Interview Lectures |
 | `accessibility 01` / `a11y 01` | `projects/accessibility-01` | Accessibility & Performance Lectures |
@@ -56,6 +56,7 @@ The documentation corpus (formerly the in-repo `documentation official/` folder)
 
 ## Control Directives
 
+- **Never use interactive questionnaire tools (`AskUser`) to ask options**: NEVER ask the user options through a technical questionnaire tool in the chat. Whenever asking the user a question or presenting options, always write the options directly in plain text in the chat message, stop the turn, and wait for the user's response.
 - `"nnn"` — chat-only discussion; never edit files or run modifying commands.
 - `"ppp"` — proceed immediately: author, edit, and build without asking further confirmation.
 - `"ppi"` — proceed to edit instructions and/or skills files only; stop when instruction and skill editing is finished; never touch lectures or other files.
