@@ -25,3 +25,25 @@ Every fact stays true. The principle map `01-01-map-principles/v2/{NN}.md` is th
 
 **Clear** (approved Lecture 04):
 > **Where did the parentheses go?** Look at the last line above. With parentheses, our code calls the function right now. Without parentheses, we hand the function itself to the browser.
+
+## Headings: Convoluted vs. Clear
+
+Simplify every `##` and `###` heading so it states the concept, comparison, mistake, or step in plain, direct words:
+
+- **Convoluted**: `### Hardcoded text inside a component stamps out identical copies`
+  **Clear**: `### Why hardcoded text inside a component repeats the same card`
+- **Convoluted**: `### Old HTML script tags share one global space, but each module file keeps its names private`
+  **Clear**: `### How module files keep their functions private`
+- **Convoluted**: `### A file can have only one default export, so a file with multiple components exports them by name`
+  **Clear**: `### Default export vs. named exports`
+- **Convoluted**: `### Mistake 1: Nesting tags inside the card tag without rendering {children} in the card file`
+  **Clear**: `### Mistake 1: Forgetting {children} inside the component`
+- **Convoluted**: `### Mistake 2: Mismatching the attribute name in the parent and the property name in the child`
+  **Clear**: `### Mistake 2: Using different prop names in the parent and the child`
+- **Convoluted**: `### Mistake 1: Omitting readTime on the second card without a default value in the card file`
+  **Clear**: `### Mistake 1: Omitting an optional prop without a default value`
+- **Convoluted**: `### A new function tells React to destroy the old input box and build a new one`
+  **Clear**: `### Why a recreated component function destroys the input box`
+- **Convoluted**: `### Our complete city news project with children, spread attributes, and a default reading time`
+  **Clear**: `### The complete project files`
+

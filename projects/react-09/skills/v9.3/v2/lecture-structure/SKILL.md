@@ -47,6 +47,26 @@ The principles follow the cause-before-effect order of [content-benchmarks/SKILL
 3. **The example grows by one step**: one sentence before each code block, one step per block, as in content-benchmarks Sections 2.4 to 2.7. Show the page, the Console, or the Elements panel when this step changes something there.
 4. **The `> [!PRINCIPLE]` card**: the bold title, the italic one-line rule, the explanation in human words as in content-benchmarks Section 2.12, and the `**DO THIS:**` and `**DO NOT DO THIS:**` blocks described in [code-and-figures/SKILL.md](../code-and-figures/SKILL.md) Section 3.
 
+**PROPER (a complete principle's heading sequence, from Lecture 09 Principle 1)**:
+```markdown
+## 1. Principle 1: Pass Wrapped JSX Through the Built-In `children` Prop
+### Why wrapped elements only appear where your component writes `{children}`
+### How React puts wrapped elements into `props.children`
+### Mistake 1: Forgetting `{children}` inside the component
+### Mistake 2: Renaming `children` to a custom prop name
+### Rendering `{children}` inside the component
+```
+
+**COUNTER-EXAMPLE (the same principle with multi-clause slogans and wordy mistake titles)**:
+```markdown
+## 1. Principle 1: Pass Wrapped JSX Through the Built-In `children` Prop
+### A component function does not show nested tags until it renders `children`, and the prop name is fixed as `children`
+### How the build packs nested tags into `props.children`
+### Mistake 1: Nesting tags inside the card tag without rendering `{children}` in the card file
+### Mistake 2: Unpacking a custom parameter name such as `badges` instead of `children`
+### Unpacking `children` and placing `{children}` inside the card
+```
+
 ## 4. Zone 3: the complete example and For the Interview #2026_10_24_01_group_1
 
 1. **`## Putting All [N] Principles Together ...`**: the complete working code once, a `tree` figure of the order in which React calls each component, and a summary table such as `| Aspect | The Plain JavaScript Habit | The React Rule |`.

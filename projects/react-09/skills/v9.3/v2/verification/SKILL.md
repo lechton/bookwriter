@@ -32,17 +32,16 @@ Read `01-01-md-DRAFT-lectures/v2/{NN}.md` from top to bottom as a learner who me
 - [ ] **B4. Links**: `node ../../tools/check-links.mjs` from `projects/react-09` reports zero broken links.
 - [ ] **B5. Files**: Do `01-03-md-lectures-HTML/v2/{NN}.html` and `01-04-md-lectures-PDF/v2/{NN}.pdf` exist? If either is missing, report the build output and stop.
 
-## The completion report #2026_10_24_01_group_4
+## The completion report #2026_10_24_02_group_4
 
-Each thread reports its own stage, one line per gate, in order, quoting text where a gate asks for it, and the script output last.
+The gates are questions you ask yourself while you work, not items to report one by one. Report briefly: the file URLs, what you fixed, and anything that failed or was skipped. Quote only text you changed.
 
 ### PROPER (report shape; the rewrite it quotes is the approved Lecture 03 fix recorded in the convolution brief)
 
 ```markdown
-- A1: Read Lecture 04, the two reference sections in Lectures 05 and 02, and map 03. No v1 file opened.
-- A4: Rewrote one lead-in that recited the block: "Suppose a developer stores `title` and `author` in two constants at the top of `ArticleCard`. Then the developer writes `title` inside `<h2>` and `src="{avatarUrl}"` on the `<img>` tag:" became "In our card, suppose we store the article's title in a variable at the top of the function, and then we write that word directly between the heading tags without curly braces:".
-- B3: build-river 03 built; surveillance flagged one sentence in Principle 3, reread and split.
-- B4: 0 broken links.
+- Lecture: 01-02-md-LECTURES/v2/03.md, with its HTML and PDF.
+- Fixed: one lead-in that recited the block: "Suppose a developer stores `title` and `author` in two constants at the top of `ArticleCard`. Then the developer writes `title` inside `<h2>` and `src="{avatarUrl}"` on the `<img>` tag:" became "In our card, suppose we store the article's title in a variable at the top of the function, and then we write that word directly between the heading tags without curly braces:".
+- Build: build-river 03 built; surveillance flagged one sentence in Principle 3, reread and split. 0 broken links.
 ```
 
 ### COUNTER-EXAMPLE (a mechanical-only report)
