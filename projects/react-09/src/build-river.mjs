@@ -1108,7 +1108,7 @@ function parseAndRender(md, theme = 'book') {
           items[items.length - 1] += '<br/>' + lines[i++].trim();
         }
       }
-      const olAttr = theme === 'book' && /Follow-Up Questions/i.test(lastH3) ? ' class="qa-list"' : '';
+      const olAttr = theme !== 'old' && /Follow-Up Questions/i.test(lastH3) ? ' class="qa-list"' : '';
       out.push(`<ol${olAttr}>${items.map((it) => `<li>${inline(it)}</li>`).join('')}</ol>`);
       continue;
     }
@@ -1211,8 +1211,10 @@ function renderPrincipleBox(lines) {
 /* ---------------------------------------------------------------- Stylesheets (Independent Theme CSS Files) */
 
 const BOOK_CSS_PATH = join(SRC_DIR, 'river-book-theme.css');
+const EARTH01_CSS_PATH = join(SRC_DIR, 'river-earth01-theme.css');
 const OLD_CSS_PATH = join(SRC_DIR, 'river-old-theme.css');
 const BOOK_CSS = readFileSync(BOOK_CSS_PATH, 'utf8');
+const EARTH01_CSS = readFileSync(EARTH01_CSS_PATH, 'utf8');
 const OLD_CSS = readFileSync(OLD_CSS_PATH, 'utf8');
 
 /* ---------------------------------------------------------------- Main Build */
@@ -1346,8 +1348,9 @@ function auditMarkdownProse(mdText) {
 mkdirSync(HTML_DIR, { recursive: true });
 mkdirSync(PDF_DIR, { recursive: true });
 
-// Publish both independent CSS themes into the HTML v2 directory alongside the generated HTML files
+// Publish all independent CSS themes into the HTML v2 directory alongside the generated HTML files
 writeFileSync(join(HTML_DIR, 'river-book-theme.css'), BOOK_CSS);
+writeFileSync(join(HTML_DIR, 'river-earth01-theme.css'), EARTH01_CSS);
 writeFileSync(join(HTML_DIR, 'river-old-theme.css'), OLD_CSS);
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -1398,7 +1401,32 @@ ${bodyBookHtml}
   const htmlPath = join(HTML_DIR, `${name}.html`);
   writeFileSync(htmlPath, finalBookHtml);
 
-  // 2. Old Theme -> {NN}-old.html
+  // 2. Earth01 Theme -> {NN}-earth01.html
+  figCounter = 0;
+  const bodyEarth01Html = parseAndRender(md, 'earth01');
+  const finalEarth01Html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${esc(pageTitle)} (Earth 01 Theme)</title>
+  <link rel="stylesheet" href="river-earth01-theme.css" />
+  <style>
+${EARTH01_CSS}
+  </style>
+</head>
+<body>
+  <div class="container">
+${bodyEarth01Html}
+  </div>
+</body>
+</html>
+`;
+
+  const earth01HtmlPath = join(HTML_DIR, `${name}-earth01.html`);
+  writeFileSync(earth01HtmlPath, finalEarth01Html);
+
+  // 3. Old Theme -> {NN}-old.html
   figCounter = 0;
   const bodyOldHtml = parseAndRender(md, 'old');
   const finalOldHtml = `<!DOCTYPE html>
@@ -1424,7 +1452,7 @@ ${bodyOldHtml}
   writeFileSync(oldHtmlPath, finalOldHtml);
 
   console.log(
-    `[River v2] Built 01-03-md-lectures-HTML/v2/${name}.html (book theme) & ${name}-old.html (old theme) from 01-02-md-LECTURES/v2/${file} (${bookFigs} box-to-boxes figures).`
+    `[River v2] Built 01-03-md-lectures-HTML/v2/${name}.html (book theme), ${name}-earth01.html (earth01 theme) & ${name}-old.html (old theme) from 01-02-md-LECTURES/v2/${file} (${bookFigs} box-to-boxes figures).`
   );
   console.log(
     `[River v2] River Prose Surveillance (${file}): ${parenViolations.length} parenthesis violations, ${codeInProseViolations.length} code-in-prose violations, ${orphanHighlightViolations.length} orphan-highlight violations, ${longSentenceViolations.length} sentences > 28 words.`
@@ -1444,11 +1472,13 @@ ${bodyOldHtml}
 
   if (!noPdf) {
     const pdfPath = join(PDF_DIR, `${name}.pdf`);
+    const earth01PdfPath = join(PDF_DIR, `${name}-earth01.pdf`);
     const oldPdfPath = join(PDF_DIR, `${name}-old.pdf`);
     try {
       execFileSync('prince', [htmlPath, '-o', pdfPath], { stdio: ['ignore', 'ignore', 'inherit'] });
+      execFileSync('prince', [earth01HtmlPath, '-o', earth01PdfPath], { stdio: ['ignore', 'ignore', 'inherit'] });
       execFileSync('prince', [oldHtmlPath, '-o', oldPdfPath], { stdio: ['ignore', 'ignore', 'inherit'] });
-      console.log(`[River v2] Built 01-04-md-lectures-PDF/v2/${name}.pdf & ${name}-old.pdf`);
+      console.log(`[River v2] Built 01-04-md-lectures-PDF/v2/${name}.pdf, ${name}-earth01.pdf & ${name}-old.pdf`);
     } catch {
       // Prince is optional if not installed on the current machine
     }
