@@ -26,7 +26,7 @@ In the **River Version (`v2`)**, quality is secured by **three ordered stages**:
 Check every box below before drafting `01-01-map-principles/v2/{NN}.md` or `01-02-md-LECTURES/v2/{NN}.md`:
 
 - [ ] **Gate A1 — Read the accepted `v2` reference chapters first**: Have you read [01-02-md-LECTURES/v2/04.md](../../../01-02-md-LECTURES/v2/04.md) and [01-02-md-LECTURES/v2/01.md](../../../01-02-md-LECTURES/v2/01.md) in this session before writing a line? Notice how `04.md` introduces each snippet in plain human words (*"First, the developer writes the footer component with a small first letter:"*, *"Then the tag is also written with a small first letter:"*) and shows the concept in 3 to 6 clean lines.
-- [ ] **Gate A2 — Read the `v1` chapter and `v2` principle map**: Have you read `01-02-md-LECTURES/v1/{NN}.md` and `01-01-map-principles/v2/{NN}.md` so that every prerequisite, nuance, condition, and edge case is preserved?
+- [ ] **Gate A2 — Author directly from the official React corpus, syllabus card, and `v2` principle map (Never read `v1` prose)**: Have you read the official React documentation (`documentation official/react/learn/...`), the syllabus card `01-01-map/{NN}.md`, and `01-01-map-principles/v2/{NN}.md`—without reading `01-02-md-LECTURES/v1/{NN}.md`, `01-01-md-PRE-lectures/v1/{NN}.md`, or `01-01-map-principles/v1/{NN}.md` so `v1`'s prose and metaphors never contaminate `v2`?
 - [ ] **Gate A3 — Design the simplest one-thing-at-a-time example**: Does each principle's code snippet test **one** idea or **one** mistake at a time in the fewest possible lines, with zero unused variables riding along? Is each new UI line introduced only in the principle section that needs it?
 
 ```
@@ -91,10 +91,13 @@ The heading on the screen literally says the word `title` instead of `New Park O
 Notes: The prose recites the code block line by line in backticks both before and after the block. Speak in human words in the prose ("First, the developer writes the variable name directly inside the heading tag:") and let the code block show `<h2>title</h2>`.
 ```
 
-### Gate B3 — Radically Simple Snippets: One Mistake or One Step at a Time
-- [ ] Does every code snippet during explanations stay between 3 and 10 lines and test **one** single step or **one** single mistake?
-- [ ] Is everything that the current step does not ask about left out of the snippet, so the reader's eye goes straight to the one line that matters?
-- [ ] In every side-by-side comparison (`::: row` / `::: col`), do the two columns differ only in the exact line being compared?
+### Gate B3 — Complete Mental Picture in Every Snippet & Every "Unwritten Bridge" Voiced ("Where Did `X` Come From?")
+- [ ] Does every code snippet test **one** single step or **one** single mistake at a time, prioritizing total clarity over brevity?
+- [ ] Whenever a step involves a **two-file or parent-child handshake** (such as exporting from File A and importing/renaming + rendering `<Tag />` in File B), does the example show **both sides of the relationship** (what File A exported, how File B imported it, and how File B rendered `<Tag />` in JSX) instead of dropping a lonely 1-line `import` statement?
+- [ ] **Unwritten-Bridge / Reader Eye-Check ("Where Did `X` Come From?")**: Whenever code in Part B introduces **a name, parameter, or value that is NOT visibly written in Part A** (`import StoryCard` when `StoryCard` is not in the exporting file; `props` or `children` in a child component when the parent tag never wrote `props=` or `children=`; `e` in `handleClick(e)` when `onClick={handleClick}` never passed `e`), does the prose **explicitly point out that `X` is not written in Part A**, state who invents or supplies `X`, and walk through what JavaScript or React does step by step?
+- [ ] Does every `~token~` highlight in a code block (including inside `::: row` / `::: col` and `> [!PRINCIPLE]`) have an inline `//` or `{/* */}` speech-bubble comment on that exact line explaining why it is highlighted, with zero standalone comment-only lines?
+- [ ] Are principles ordered by **Cause Before Effect** (for example, teaching why a file uses one default export vs. multiple named exports *before* teaching how the importing file matches curly braces and renames imports)?
+- [ ] In every side-by-side comparison (`::: row` / `::: col`), do the two columns show parallel, complete, self-contained cases?
 
 ```
 PROPER EXAMPLE:
@@ -105,36 +108,42 @@ Testing `<h2>title</h2>`, `<p>By author</p>`, and `<img src="{avatarUrl}" />` al
 Notes: Two different JSX rules (text between tags vs. quotes on an attribute) are tangled together in one block.
 ```
 
-### Gate B4 — First-Read River Flow (One Fact per Sentence, Chronological Order, Zero Parentheses)
+### Gate B4 — First-Read River Flow & Prose Surveillance (Human Words in Prose, Syntax in Code Blocks, Zero Parentheses)
 - [ ] Can a human reader understand every sentence on the first read without pausing or rereading?
-- [ ] Does every sentence carry one clear event or fact in plain B2 English?
-- [ ] Does every explanation of code walk through the lines in the exact top-to-bottom order in which they are written or run?
+- [ ] Have you compared every multi-part or two-file section side by side against the **Full-Section Demo** in [lecture-voice/SKILL.md](../lecture-voice/SKILL.md) (Section 2.5) and [code-and-figures/SKILL.md](../code-and-figures/SKILL.md) (Section 2.4)?
+- [ ] Does every prose sentence use **at most 2 backticked code spans**, with **zero slash file paths** (`src/...`, `./...`) and **zero 4+ word code statements** (`import ... from ...`) inside prose sentences? (Call files by their human names—*our main file*, *our card file*, *our badge file*—and show broken hypothetical code as a 1-line `// **WRONG:**` code block instead of an *"If you wrote..."* prose sentence!)
 - [ ] Are prose paragraphs, headings, table cells, and `tree` diagrams completely free of parentheses `(` and `)` (outside the verbatim interview question banner and fenced code blocks)?
-- [ ] Is the prose completely free of raw multi-property Console objects (`{ $$typeof: ..., type: ... }`) and file/line coordinates (`App.jsx:5`)?
 
-### Gate B5 — Figures Visualise Ideas Already Taught in Prose
+### Gate B5 — Figures Visualise Ideas Already Taught in Prose & Match the Shape of the Concept
 - [ ] Is every significant key idea that appears inside a `tree` diagram or side-by-side browser preview taught in plain words in the prose **before** the figure appears?
-- [ ] Are all labels, `[chips]`, and `| notes` inside `tree` (and especially `tree dir=right`) short and compact so boxes never crush or overflow?
+- [ ] Does the visual format match the complexity of the concept? Use a linear `tree` for categories or step sequences, and use a side-by-side `::: row` / `::: col` two-file comparison + multi-column Markdown table when showing a multi-part relationship across two files or two components (see the Full Demo in [code-and-figures/SKILL.md](../code-and-figures/SKILL.md) Section 2.4).
+- [ ] Are all labels, `[chips]`, and `| notes` inside `tree` (and especially `tree dir=right`) short, parallel across sibling branches, and compact so boxes never crush or overflow?
 - [ ] Does every `tree` comparison mark right vs. wrong paths with `+` (green) and `!` (red), and include `+**DO**` / `~Do **NOT**` key messages where appropriate?
+- [ ] When a lecture or section deals with multiple files, folder organization, or imports and exports across files, does it include a visual ```` ```files ```` File Explorer panel showing the folder hierarchy and what is exported or imported where?
 
 ### Gate B6 — Root-First Principle Boxes and Complete Nuances
-- [ ] Does every `## N. Principle N` section open its `###` subtitle with the philosophical **Root Distinction** that separates two things a beginner blurs together?
+- [ ] Does every `## N. Principle N` section open its `###` subtitle with the philosophical **Root Distinction** from the Title Catalog in [lecture-voice/SKILL.md](../lecture-voice/SKILL.md) Section 3?
 - [ ] Does every `> [!PRINCIPLE]` card explain the rule in clean, natural human English without inline code litter, followed by minimal `**DO THIS:**` and `**DO NOT DO THIS:**` snippets?
 - [ ] Does every statement of a result carry its condition (*when the curly braces are left out*, *when quotes wrap the braces*, *when an object is placed directly inside curly braces*)?
 
 ---
 
-## Stage C: Mechanical Build & Link Gate (ONLY After Stages A & B Pass)
+## Stage C: River Prose Surveillance & Link Gate (After Stages A & B Pass)
 
-Only after you have verified every checkbox in **Stage A** and **Stage B** and written out the 1-line report for each reading gate, run the mechanical tools:
+After you have verified every checkbox in **Stage A** and **Stage B** against the full-section demos, run the automated **River Prose Surveillance Scanner** and link checker:
 
-- [ ] **Gate C1 — Build HTML and PDF outputs**: Run `node src/build-river.mjs {NN}` from `projects/react-09`. Verify that `{NN}.html`, `{NN}-old.html`, `{NN}.pdf`, and `{NN}-old.pdf` build cleanly with `0 parenthesis violations`. Treat any `sentences > 28 words` output as a pointer to reread that sentence for river flow, never as the definition of quality itself.
+- [ ] **Gate C1 — Build HTML/PDF & Run River Prose Surveillance**: Run `node src/build-river.mjs {NN}` from `projects/react-09`. Verify that `{NN}.html`, `{NN}-old.html`, `{NN}.pdf`, and `{NN}-old.pdf` build cleanly and that `River Prose Surveillance` prints:
+  - **`0 parenthesis violations`**
+  - **`0 code-in-prose violations`** (zero sentences with >2 backtick spans, zero 4+ word code statements in prose, zero slash file paths in prose)
+  - **`0 orphan-highlight violations`** (zero `~token~` highlights without an inline speech-bubble comment on the same line, and zero standalone comment-only lines in code blocks)
+  - **`0 sentences > 28 words`**
+  If `River Prose Surveillance` flags any line, rewrite that paragraph in plain human words (*the card file*, *the badge file*, *the main file*), move any code statement into a short code block, and attach an inline comment bubble to every `~token~` until all four counters reach `0`.
 - [ ] **Gate C2 — Workspace link integrity**: Run `node ../../tools/check-links.mjs` from `projects/react-09` and verify `0 broken links`.
 
 ```
 PROPER EXAMPLE (Completion Report After Stages A, B, and C):
 - Gate A1 (Reference chapters read): Read `v2/04.md` and `v2/01.md` before drafting; matched `04.md`'s plain-English lead-ins and 4-to-6-line single-concept snippets.
-- Gate A2 (`v1` & map checked): Checked `v1/03.md` and `v2/03.md` map; all 4 principles, prerequisites, and interview follow-ups covered.
+- Gate A2 (Official corpus, syllabus card & `v2` map checked without reading `v1`): Read the official React docs, `01-01-map/03.md`, and `01-01-map-principles/v2/03.md` directly without loading `v1` files.
 - Gate A3 (Minimal one-thing-at-a-time examples): Split Principle 2 into two separate minimal steps (first `<h2>title</h2>` vs `<h2>{title}</h2>`, then `src="avatarUrl"` vs `src={avatarUrl}`).
 - Gate B1 (Calm conceptual umbrella): Verified every section opens with the real-page problem in plain words before introducing any code.
 - Gate B2 (Division of labor): Removed all sentences that recited `const title`, `<h2>`, and `src="{avatarUrl}"` before/after code blocks; prose now uses plain human words ("the heading", "the variable name", "the image address").

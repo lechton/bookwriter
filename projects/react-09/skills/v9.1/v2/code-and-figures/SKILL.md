@@ -14,25 +14,37 @@ description: >
 > - [ ] Do the sentences before and after a code block speak in plain human words (*the card*, *the heading*, *the photo*, *the footer*) and let the code block show the exact syntax?
 > - [ ] Is every key idea inside a `tree` diagram or UI browser preview taught in plain words in the prose **before** the figure appears?
 > - [ ] Are all `tree` labels, `[chips]`, and `| notes` short and completely free of parentheses `(` and `)`?
+> - [ ] Whenever a lecture or section introduces multiple files, folder organization, or imports and exports across files, does it include a visual ```` ```files ```` File Explorer panel showing the folder hierarchy and what is exported and imported where?
 
 ## 1. Code Block Rules in the River Version (`v2`)
 
 Unlike the Original Version (`v1`), which forbade `~token~` balloons in `01-02-md-LECTURES/v1/` and added them later in `02-01-md-revised-1/`, the **River Version (`v2`)** authors finished code blocks directly in `01-02-md-LECTURES/v2/{NN}.md`.
 
-### 1.1 Minimal, Video-Demo-Friendly Examples & Progressive Element Introduction (`-gemini` Standard)
+### 1.1 Minimal, Realistic, Video-Demo-Friendly Examples & Progressive Element Introduction (`-gemini` Standard)
 - Pick examples that are **minimal** in presenting the exact code problem of the principle, without mixing unrelated principles or extra visual noise.
+- **Credible to Both Junior and Senior Developers (Real-World Believability)**: Every code example and rendered UI preview must look like a real, sensible page that neither a junior developer nor a senior developer would find awkward or artificial:
+  - *Proper Example (Natural Page Structure — Lecture 6)*: The page renders a header, an article list, and one complete article card with its status badges; a second `<ArticleCard />` tag is added only in the single focused step that demonstrates how one file import on disk spawns multiple component subtrees in memory.
+  - *Counter-Example (Awkward Repetition)*: Rendering two identical hardcoded `"New Park Opens Today"` article cards in every browser preview across an entire lecture before `props` are introduced, so every screenshot looks like a copy-paste bug to anyone browsing the page.
 - Every example must be **visually clear inside a small browser window** so it can be demonstrated live in a video and shown inside a compact UI browser preview in the book:
-  - *Proper Example (Lecture 1 — `Cart.jsx`)*: Principles 1 and 2 use only two lines (`<p>Items: {count}</p>` and `<button>Buy {count} items</button>`). The third line (`<input placeholder="Note to the shop" />` with typed text `"Please ring the bell"`) is added **only in Principle 3** when demonstrating that React preserves typed text and focus while `innerHTML` destroys the `<input>` DOM node.
-  - *Counter-Example (Old `SiteHeader.jsx`)*: Five separate places (`Welcome back, Mary`, `Signed in as Mary`, `<button>Mary</button>`, `Messages: 3`, `You have 3 new messages`) plus an unused `<input placeholder="Search" />` already cluttering Principles 1 and 2.
+  - *Proper Example (Progressive Introduction — Lecture 1 `Cart.jsx`)*: Principles 1 and 2 use only two lines (`<p>Items: {count}</p>` and `<button>Buy {count} items</button>`). The third line (`<input placeholder="Note to the shop" />` with typed text `"Please ring the bell"`) is added **only in Principle 3** when demonstrating that React preserves typed text and focus while `innerHTML` destroys the `<input>` DOM node.
+  - *Counter-Example (Cluttered Upfront Setup — Old `SiteHeader.jsx`)*: Five separate places (`Welcome back, Mary`, `Signed in as Mary`, `<button>Mary</button>`, `Messages: 3`, `You have 3 new messages`) plus an unused `<input placeholder="Search" />` already cluttering Principles 1 and 2.
 - Reuse an example from an earlier chapter **if and only if** it naturally fits the new principle, and never weigh the prose down with cross-chapter back-references.
 
-### 1.2 Short Focused Snippets During Explanations (Full Code Only Once at the End)
-- While explaining a concept in the Runway or inside `## 1. Principle 1..N`, keep every code block **short and focused (3 to 10 lines)** so the reader's eyes go straight to the line being taught.
-- Use `title="App.jsx"` and `startLine="N"` attributes so the reader sees where each snippet sits in the file.
-- Show the complete multi-component `App.jsx` file **only once**, in the final `## Putting All Principles Together` section at the end of the lecture.
+### 1.2 Focused Snippets That Show the Complete Picture (Never Orphan a 1-Line Handshake)
+- We optimize for **maximum educational clarity, never for the shortest possible word or line count**.
+- While explaining a single-file rule, keep each code snippet focused (3 to 10 lines) so the reader's eyes go straight to the line being taught.
+- **Show Both Sides of Every Two-File or Parent-Child Handshake**: Whenever a concept connects **two files or two components** (such as *Exporting File* + *Importing File* + *Rendered JSX `<Tag />`*, or *Parent passing props* + *Child reading props*), **never drop a lonely 1-line snippet** (like a bare `import StoryCard from './ArticleCard.jsx';`) that forces the reader to remember what the other file exported or guess how the imported name is used in JSX. Always show the complete handshake:
+  1. What the source file or component defines/exports,
+  2. How the receiving file or component imports/reads it, and
+  3. How the receiving component renders `<Tag />` in its JSX return.
+- Use `title="src/App.jsx"` and `startLine="N"` attributes so the reader sees which file each snippet belongs to.
+- Show the complete multi-component project **once** in full in the final `## Putting All Four Principles Together` section at the end of the lecture.
 
-### 1.3 `~token~` Highlight Balloons and Comments
-- Wrap the 1 or 2 focal tokens of a code snippet in `~...~` tildes (for example, `function ~ArticleCard~()` or `~return (~`) and pair that line with a concise comment (`// 1. ...` or `{/* 2. ... */}`).
+### 1.3 `~token~` Highlight Balloons and Comments (Every `~token~` Must Have an Inline Speech-Bubble Comment)
+- Wrap the 1 or 2 focal tokens of a code snippet in `~...~` tildes (for example, `~export default~ function ArticleCard()` or `~return (~`) and **always pair that exact line with an inline comment (`// 1. ...` or `{/* 2. ... */}`)**.
+- **Never leave an orphan `~token~` without an inline comment on the same line** (including inside `::: row` / `::: col` comparison columns and `> [!PRINCIPLE]` cards): in `src/build-river.mjs`, an inline comment on a `~token~` line renders as a visual speech bubble pointing directly at the highlighted token. Without an inline comment, `~token~` renders as a silent dotted underline that never tells the reader why it is highlighted!
+- **Highlight the token that actually causes the rule**: For example, when showing why a file has only one default export so the importing file does not need its original name, highlight `~export default~` in the exporting file rather than `~ArticleCard~`.
+- **Never write comment-only lines (`// ...`) inside a code block**: `src/build-river.mjs` turns a standalone `// ...` line into a speech bubble attached to the next line and auto-capitalizes its first letter (turning `// src/App.jsx` into a speech bubble reading `Src/App.jsx`). Always put file names in the `title="..."` attribute of the code fence (` ```jsx title="src/App.jsx" `).
 - When showing a broken snippet, start the comment with `// **WRONG:** ...` so the reader sees immediately at a glance that the line is the bug.
 - Never place `~token~` inside a comment, and never use more than 3 `~token~` balloons in one short snippet.
 
@@ -81,7 +93,8 @@ The River Version (`v2`) uses **zero external `.html` figure files**. Every Box-
 To make every example visually clear in the book as well as in a live video demo, pair the archetypical code example with an embedded **UI browser preview** rendered by `src/build-river.mjs`:
 
 1. **General Page Browser (` ```page ` / ` ```page size=mini `)**:
-   - Renders a browser frame (`localhost:5173`) showing headings (`heading: Latest Articles`), cards (`card: label=Local | title=New Park Opens Today | author=By John Hall | text=The city opened a new park with walking paths.`), lines (`line: Hello, John Hall | good`), empty placeholders (`empty: no card on the page`), inputs (`input=Write a comment | bad=input` or `typed=See you there | good=typed`), or `blank`.
+   - Renders a browser frame (`localhost:5173`) showing headings (`heading: Latest Articles`), cards (`card: badge=Live | badge=New | title=New Park Opens Today | author=By John Hall | text=The city opened a new park with walking paths.`), lines (`line: Hello, John Hall | good`), empty placeholders (`empty: no card on the page`), inputs (`input=Write a comment | bad=input` or `typed=See you there | good=typed`), or `blank`.
+   - **100% Browser-to-Code Fidelity**: Every browser preview must faithfully reflect the exact elements returned by the code alongside it—rendering every visible heading, section line, card, and badge from the code, without inventing text that is absent from the code or hiding components that the code renders.
 2. **Shopping Cart Browser (` ```shop ` / ` ```shop size=mini `)**:
    - Renders a compact online store (`Shop`) with an optional product shelf (`product: 🧦 | Wool socks | $9`) and the `Shopping Cart` box (`text: Items: 3 | good`, `input: Note to the shop | bad | empty again`, `typed: Please ring the bell | good | still here`, `button: Buy 2 items | bad | old count`).
 3. **Mail App Browser (` ```mail ` / ` ```mail size=mini `)**:
@@ -92,6 +105,24 @@ To make every example visually clear in the book as well as in a live video demo
    - `overlay`: Shows Vite's dark compile/runtime error overlay (`message:`, `file:`, `help:`, and code frame).
 5. **Side-by-Side Visual Comparisons (`::: row` and `::: col`)**:
    - Wrap two or three `::: col title="..." tag="..." tone=bad|good|plain` blocks inside `::: row caption="..."` so the reader compares the broken UI browser and code on the left against the working UI browser and code on the right in one glance.
+6. **Visual Folder & File Explorer (` ```files title="..." caption="..." `)**:
+   - Whenever a lecture or section deals with project folder organization, splitting components across files, or importing and exporting across modules, include a ```` ```files ```` File Explorer block to show the disk hierarchy visually.
+   - Indent nested folders and files by **2 spaces per level**. Write folders with a trailing slash (`src/`, `  components/`) and files as `filename | role | description` (using roles such as `entry`, `parent`, `child`, `boundary`, `default export`, `named exports`, `state`, or `server`).
+   - In import/export or multi-file sections, use the description column to show clearly **what each file exports and what it imports from where** (with zero parentheses in prose).
+
+### PROPER (Visual Folder Structure with ` ```files ` Showing Exports and Imports Across Folders)
+````markdown
+```files title="article-site: File Explorer" caption="How our project files sit inside src/ and src/components/, and what each file exports or imports."
+index.html | entry | The HTML page with the empty root div where React mounts
+src/
+  main.jsx | boundary | Imports `App` from `./App.jsx` and mounts it into `#root`
+  App.jsx | parent | Exports `App` as default and imports `ArticleCard` from `./components/ArticleCard.jsx`
+  components/
+    ArticleCard.jsx | default export | Exports `ArticleCard` as default and imports `{ LiveBadge, NewBadge }` from `./Badges.jsx`
+    Badges.jsx | named exports | Exports `LiveBadge` and `NewBadge` as named exports
+    ArticleList.jsx | default export | Exports `ArticleList` as default and imports `ArticleCard` from `./ArticleCard.jsx`
+```
+````
 
 ### PROPER (Side-by-Side UI Browser Preview + Code Comparison with `::: row` / `::: col`)
 ````markdown
@@ -147,13 +178,73 @@ The two separate steps to make a component appear
 ```
 ````
 
-### 2.4 Introduce Every Significant Key Idea Before the Figure & Keep `tree` Notes Concise
+### 2.4 Match the Visual Format to the Shape of the Concept (Full Demo: Two-File `::: row` + Table vs. Flattened `tree`)
 
-1. **Every Significant Key Idea in a Diagram Must Be Taught in the Prose First**:
-   - Never sneak a **new concept or key idea** into a diagram title, subtitle, `[chip]`, or `| note` when the prose before the diagram has not taught that idea yet.
-   - Do **not** misapply this rule by dumping raw Console objects, file/line coordinates, or every literal word from a figure into the prose. Teach the **significant key ideas** naturally in warm, direct English before the figure, and let the figure summarize or display them visually.
-2. **Keep `tree` (Especially `tree dir=right`) Labels, Chips, and Notes Short**:
-   - Keep each branch label, `[chip]`, and `| note` inside a ```` ```tree ```` block to a short phrase or compact token so the left root box is never crushed and the right-hand result cards never overflow with long code lines or multi-property object literals.
+A 3-box ```` ```tree ```` diagram is built for **single-dimension categories or linear step sequences**. When a concept coordinates **multiple moving parts across two files or two components** (such as how Default vs. Named exports are written in File 1, imported and renamed in File 2, and rendered as a `<Tag />` in JSX), a 1-line `tree` chip hides the exporting file and the JSX tag. Instead, pair a **two-file `::: row` / `::: col` comparison** with a **4-column Markdown table**, as shown in the full demo below:
+
+### PROPER DEMO (Self-Contained Two-File `::: row` / `::: col` Comparison with Speech Bubbles on Every `~token~` + 4-Column Overview Table)
+````markdown
+Look at both two-file handshakes side by side:
+
+::: row caption="Why a default import can invent a new name directly, while a named import must write OriginalName as NewName inside curly braces."
+::: col title="Renaming a Default Import" tag="no braces: any new name works" tone=good
+```jsx title="src/components/ArticleCard.jsx"
+~export default~ function ArticleCard() { // 1. Only ONE default export in this file
+  return <article>New Park Opens Today</article>;
+}
+```
+```jsx title="src/App.jsx" good="1,5"
+import ~StoryCard~ from './components/ArticleCard.jsx'; // 2. No braces: grabs the default export and names it StoryCard
+
+export default function App() {
+  return (
+    <StoryCard />
+  );
+}
+```
+`StoryCard` is not in the card file. Because there are no curly braces, JavaScript grabs the single `export default` and gives it the new nickname `StoryCard`.
+:::
+::: col title="Renaming a Named Import" tag="curly braces: OriginalName as NewName" tone=good
+```jsx title="src/components/Badges.jsx"
+export function ~LiveBadge~() { // 1. Exported by the exact name LiveBadge
+  return <span>Live</span>;
+}
+export function NewBadge() {
+  return <span>New</span>;
+}
+```
+```jsx title="src/components/ArticleCard.jsx" good="1,5"
+import { ~LiveBadge as BreakingBadge~ } from './Badges.jsx'; // 2. Finds LiveBadge first, then renames it to BreakingBadge
+
+export default function ArticleCard() {
+  return (
+    <BreakingBadge />
+  );
+}
+```
+`BreakingBadge` is not in the badge file. Inside curly braces, you write `LiveBadge` first so JavaScript finds it, then `as BreakingBadge`.
+:::
+:::
+
+Here is the complete picture of how default and named exports work across both files:
+
+| Export Style | 1. In the Exporting File | 2. Normal Import in the Importing File | 3. Importing Under a Different Name |
+| :--- | :--- | :--- | :--- |
+| **Default Export: at most 1 per file** | `export default function ArticleCard` | `import ArticleCard from './ArticleCard.jsx'` | `import StoryCard from './ArticleCard.jsx'` |
+| **Named Export: unlimited per file** | `export function LiveBadge` | `import { LiveBadge } from './Badges.jsx'` | `import { LiveBadge as BreakingBadge } from './Badges.jsx'` |
+````
+
+### COUNTER-EXAMPLE DEMO (Flattening a Two-File Relationship into a 3-Box `tree` with Mismatched Chips)
+````markdown
+```tree caption="How default imports and named imports differ in curly braces and renaming."
+Two ways to import a component
+- +Default import [`import StoryCard from './ArticleCard.jsx'`] | **No curly braces** | Any name works because the file has **only one** default export
+- +Named import [`import { LiveBadge } from './Badges.jsx'`] | **Inside curly braces `{ }`** | Must match `LiveBadge` **exactly**, or rename explicitly with `as`
+```
+````
+*Why this fails*:
+1. Hides the exporting files (`ArticleCard.jsx` and `Badges.jsx`) and hides how `<StoryCard />` and `<BreakingBadge />` are rendered in JSX.
+2. Shows a **renamed** import (`StoryCard`) in the first branch's `[chip]`, while showing an **un-renamed** import (`{ LiveBadge }`) in the second branch's `[chip]`, leaving the reader confused about what is being compared.
 
 ### PROPER (Concise `tree dir=right` Notes Whose Key Ideas Were Already Taught in Prose)
 ````markdown

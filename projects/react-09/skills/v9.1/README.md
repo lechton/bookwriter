@@ -19,7 +19,7 @@ Version **`v9.1`** contains **two completely separate skill sets** inside `skill
 | **`v2`** | **River Version** | `skills/v9.1/v2/` | `01-01-map-principles/v2/` | `01-02-md-LECTURES/v2/` | `01-03-md-lectures-HTML/v2/`<br>`01-04-md-lectures-PDF/v2/` | `node src/build-river.mjs` |
 
 > **Strict Separation Rule**:
-> - When authoring or auditing a **River Version (`v2`)** map or lecture, load **only** the skills in `skills/v9.1/v2/`. Never load `skills/v9.1/v1/`.
+> - When authoring or auditing a **River Version (`v2`)** map or lecture, load **only** the skills in `skills/v9.1/v2/`. Never load `skills/v9.1/v1/`, and never read `01-01-map-principles/v1/`, `01-01-md-PRE-lectures/v1/`, or `01-02-md-LECTURES/v1/` (reading `v1` files contaminates `v2` with `v1`'s prose structure and metaphors). Author `v2` directly from `questions/questions.md`, `01-01-map/{NN}.md`, the official React documentation corpus, the live runtime, and the accepted `v2` reference lectures (`01-02-md-LECTURES/v2/04.md` and `01-02-md-LECTURES/v2/01.md`).
 > - When maintaining an **Original Version (`v1`)** map or lecture, load **only** the skills in `skills/v9.1/v1/`.
 
 ---
@@ -60,8 +60,9 @@ All 18 Original Version (`v1`) and Revision 3/4 skills live untouched inside `sk
 
 ---
 
-## Part C: Shared Meta-Rules (`skills/v9.1/prompt-writing/`)
+## Part C: Shared Meta-Rules & Skill Surveillance (`skills/v9.1/`)
 
+- [skill-surveillance/SKILL.md](skill-surveillance/SKILL.md) — **Super-Skill governing all skill edits**: enforces full-scale load-bearing section demos and title catalogs instead of isolated rules/bans, requires cross-skill demo updates, and requires every demo inside a skill to pass River Prose Surveillance.
 - [prompt-writing/SKILL.md](prompt-writing/SKILL.md) — Meta-rules for authoring and refining skills (*Prune Before Banning*, *Teach by Living Example*, *General Standards Over Micro-Regulations*).
 - [prompt-writing/quality-checklist.md](prompt-writing/quality-checklist.md) — Pre-commit quality gate for skill edits.
 - [RULE-TAGS.md](RULE-TAGS.md) — Tag index across the skill suite.

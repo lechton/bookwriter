@@ -43,15 +43,15 @@ Never rush into Principle 1 before the reader has the big picture and the founda
 
 ### 2.2 Why We Need This Concept (`## Why We ...`)
 - **Real-Page Motivation (`###` heading) + Archetypical UI Browser Preview**: Open with a concrete webpage situation the reader recognizes immediately, paired with an embedded **UI browser preview** (` ```page `, ` ```shop `, or ` ```mail `) showing the finished archetypical UI and a `tree` Box-to-Boxes diagram comparing the manual approach (`!`) against the React approach (`+`).
-- **Minimal, Video-Demo-Friendly Example Selection (`-gemini` Standard)**:
-  - Pick an example that is **minimal** in presenting the code problem (no hyper-complex mixing of unrelated principles) and **visually clear inside a small browser window** so it works in a live video demo and in the book's embedded browser mockups.
+- **Minimal, Realistic, Video-Demo-Friendly Example Selection (`-gemini` Standard)**:
+  - Pick an example that is **minimal** in presenting the code problem (no hyper-complex mixing of unrelated principles), **looks like a real, sensible page to both a junior developer and a senior developer** (never an awkward contrivance such as repeating two identical hardcoded articles across every preview of a chapter), and is **visually clear inside a small browser window** so it works in a live video demo and in the book's embedded browser mockups.
   - Introduce each UI element **only in the Principle section that needs it** (for example, in Lecture 1's `Cart`, Principles 1 and 2 have only the `Items: 3` line and the `Buy 3 items` button; the `Note to the shop` input is added only in Principle 3).
   - Reuse or extend an example from an earlier chapter **if and only if** it naturally fits the new principle—and **without heavy back-reference prose** (*"As we saw in Lecture 1 and Lecture 2..."*) that adds cognitive load.
 - **First Taste of the Mechanism (`###` heading)**: Show the shortest 2-step preview followed by a `tree dir=right` diagram or side-by-side `::: row` / `::: col` browser + code preview.
 - **Pertinent Division of Elements (`###` heading)**: Show how the elements sit side by side in JSX and divide them visually in a `tree` diagram (for example, built-in lowercase HTML tags known to the browser vs. capital-letter React component tags known only to React).
 - **Light, Self-Contained Prerequisites & Project Setup (`###` heading)**:
   - Keep any prerequisite reminders self-contained in 1 or 2 plain sentences without heavy cross-chapter back-references.
-  - Explain how the lesson's project files are organized in one brief paragraph.
+  - Explain how the lesson's project files are organized in one brief paragraph. When the lesson spans multiple files, teaches module imports/exports, or organizes files across folders such as `src/` and `src/components/`, include a visual ```` ```files ```` File Explorer panel right after the paragraph so the reader sees the folder tree and what is exported and imported where.
 
 ### 2.3 Overview of the Chapter's Principles (`### Four Principles of ...`)
 Close Zone 1 with:
@@ -61,6 +61,43 @@ Close Zone 1 with:
 ---
 
 ## 3. Zone 2: Unified River Principles (`## 1. Principle 1..N`)
+
+Order the principles in **causal order (Cause Before Effect)**: whenever one principle governs how a file or component defines or provides something and another principle governs how another file or component consumes it, teach the defining principle first and the consuming principle second.
+
+### Full Demo: Causal Handoff Between Two Principles (Principle 2 Sets Up the Files $\rightarrow$ Principle 3 Consumes Them)
+
+````markdown
+## 2. Principle 2: Default vs. Named Exports: One Default for the Main Component, Named Exports for Multiple Components
+
+### A file can have only one default export, so a file with multiple components exports them by name
+
+In Principle 1, `ArticleCard.jsx` had only one component, so we exported it with `export default`. What happens when we want one file to hold **two or three small components**, such as status badges?
+...
+To export both badges from the badge file, we remove the word `default` and write `export function` in front of each badge. That makes both of them **named exports**:
+
+```jsx title="src/components/Badges.jsx" startLine="1"
+~export function LiveBadge~() { // 1st named export: exported under the name "LiveBadge"
+  return <span className="badge">Live</span>;
+}
+
+~export function NewBadge~() { // 2nd named export: exported under the name "NewBadge"
+  return <span className="badge">New</span>;
+}
+```
+...
+
+---
+
+## 3. Principle 3: Match Imports to Exports: No Braces for Default, Curly Braces for Named
+
+### How a file exports a component determines whether the importing file uses curly braces and whether it can pick a new name
+
+Now look at the two component files we have built so far:
+1. **Our card file, `ArticleCard.jsx`**, exports **one default component** with `export default`.
+2. **Our badge file, `Badges.jsx`**, exports **two named components** with `export function`.
+
+How does another file import from each one?
+````
 
 Each principle is a top-level `## N. Principle N: [Title]` section that advances the chapter's practical example by one step and follows this internal rhythm:
 

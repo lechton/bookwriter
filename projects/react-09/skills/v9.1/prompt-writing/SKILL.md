@@ -5,9 +5,7 @@ description: Write or edit prompts, instructions, and skills for AI agents. Use 
 
 # Prompt Writing
 
-This skill governs the authoring, refinement, and quality review of all agent instructions, prompts, and skills across the workspace.
-
-Use [quality-checklist.md](quality-checklist.md) as the governing standard for prompt and instruction quality. Vocabulary guidance lives in [prompt-glossary.md](prompt-glossary.md).
+This skill governs the authoring, refinement, and quality review of all agent instructions, prompts, and skills across the workspace. Whenever editing any skill in `skills/v9.1/`, always run the **Skill-Surveillance Super-Skill** ([../skill-surveillance/SKILL.md](../skill-surveillance/SKILL.md)) alongside [quality-checklist.md](quality-checklist.md). Vocabulary guidance lives in [prompt-glossary.md](prompt-glossary.md).
 
 ## The Five Principles of Principles #2026_10_04_03_group_1
 

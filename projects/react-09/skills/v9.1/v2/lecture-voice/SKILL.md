@@ -87,11 +87,148 @@ Prose, code blocks, and code comments each have one job:
 > ...
 > The heading on the screen literally says the word `title` instead of `New Park Opens Today`! Even worse, the `<img>` tag shows a broken image icon because the browser tried to fetch a file literally named `"{avatarUrl}"`.
 
+### PROPER 2B (Plain Human Words & Chronological Order for a Module Mismatch)
+> When you save the file, the page goes blank and the Console shows an error:
+>
+> ```devconsole
+> x Uncaught SyntaxError: The requested module '/src/components/Badges.jsx' does not provide an export named 'default'
+> ```
+>
+> Look at what happened across the two files in order:
+> 1. In the badge file, we exported both badges **by name**, without the word `default`. So the badge file has **no default export**.
+> 2. In the card file, we wrote the `import` line **without curly braces**, which asks the badge file for its single `default` export.
+> 3. Because the badge file has no `default` export, the browser stops before React runs.
+>
+> The opposite mix-up fails the same way. If a file exports a component with `export default` and another file imports it **with** curly braces, the browser also stops with an error.
+
+### COUNTER-EXAMPLE 2B (Dumping Error Strings, Code Statements, and "Suppose FileA..." into Prose)
+> `Uncaught SyntaxError: The requested module '/src/components/Badges.jsx' does not provide an export named 'default'`
+>
+> Why did the page stop before React even ran? Before running a single line of component code, the browser links every `import` to its matching export slot. Because `import LiveBadge from './Badges.jsx'` has no curly braces, the browser asked `Badges.jsx` for its `default` slot. But `Badges.jsx` used `export function LiveBadge`, so its `default` slot is empty!
+>
+> The opposite mistake fails in the exact same way. Suppose `ArticleCard.jsx` uses `export default function ArticleCard`, and `App.jsx` imports `{ ArticleCard }` with curly braces. The browser stops and reports `does not provide an export named 'ArticleCard'`.
+> *Notes*: Stuffs raw Console error strings, full `import`/`export` statements, filenames, and a hypothetical second code example (*"Suppose `ArticleCard.jsx` uses... and `App.jsx` imports..."*) directly into prose sentences in backward causal order.
+
 ---
 
-## 3. Philosophical Pedagogy of the Root (Start from the Fundamental Distinction)
+## 2.5 Full-Section Demo: Explaining a Multi-Part Two-File Concept & Voicing Every "Unwritten Bridge" ("Where Did `X` Come From?")
+
+Whenever two connected pieces of code use **a name, parameter, or value in Part B that is NOT visibly written in Part A** (such as `import StoryCard` when `StoryCard` is not in the other file, `function Card({ children })` when `<Card><h2>News</h2></Card>` never wrote `children=`, or `function handleClick(e)` when `onClick={handleClick}` never passed `e`), a human reader's eye immediately checks Part A and asks: **"Wait—it says `X` here, and I do not see `X` in the other code! Where did `X` come from?"**
+
+Never leave that bridge unspoken. Call out openly in the prose that the name is **not** written in the other code, state who invents or supplies it, and walk through what JavaScript or React does step by step:
+
+### PROPER FULL-SECTION DEMO (Complete Two-File Handshake + Explicit "Where Did `X` Come From?" Eye-Check)
+````markdown
+### Can the importing file give an imported component a different tag name?
+
+Sometimes the file that imports a component wants to use a different local tag name on the page. For example, our main file might want to call the card `<StoryCard />`. Or our card file might want to call the live badge `<BreakingBadge />`.
+
+Whether you can write that new name directly depends on **how many exports** the other file has.
+
+#### 1. Renaming a default import: write any new name directly
+
+Our card file has **only one** default export:
+
+```jsx title="src/components/ArticleCard.jsx" startLine="1"
+~export default~ function ArticleCard() { // 1. The only default export in this file
+  return <article className="card"><h2>New Park Opens Today</h2></article>;
+}
+```
+
+When our main file imports from the card file **without curly braces**, it can invent a brand-new local name on the spot:
+
+```jsx title="src/App.jsx" startLine="1"
+import ~StoryCard~ from './components/ArticleCard.jsx'; // 2. StoryCard is a new local nickname invented here!
+
+export default function App() {
+  return (
+    <main>
+      <h1>Latest Articles</h1>
+      ~<StoryCard />~ {/* 3. Renders ArticleCard under its new local nickname StoryCard */}
+    </main>
+  );
+}
+```
+
+Look closely at those two files. The word `StoryCard` does not exist anywhere inside our card file! Inside the card file, the function is still named `ArticleCard`. Why doesn't JavaScript complain that `StoryCard` is missing?
+
+Because the import line has **no curly braces**, JavaScript does **not** search the card file for a function named `StoryCard`. Instead, leaving out the curly braces tells JavaScript to do two simple steps:
+1. Go to the card file and grab whatever single function is marked `export default`, which is `ArticleCard`.
+2. Give that function the brand-new local nickname `StoryCard` inside our main file so we can render it as `<StoryCard />`.
+
+#### 2. Renaming a named import: write the original name first, then `as` and the new name
+
+Our badge file is different. It has **two** named exports in the same file:
+
+```jsx title="src/components/Badges.jsx" startLine="1"
+export function ~LiveBadge~() { // 1st named export
+  return <span className="badge">Live</span>;
+}
+
+export function ~NewBadge~() { // 2nd named export
+  return <span className="badge">New</span>;
+}
+```
+
+When an import uses **curly braces**, JavaScript **does** search the badge file by name so it knows which of the two badges we want. If our card file writes the brand-new name `BreakingBadge` directly inside curly braces, JavaScript searches the badge file for `BreakingBadge`, finds nothing, and stops with an error:
+
+```jsx title="src/components/ArticleCard.jsx" startLine="1"
+import { ~BreakingBadge~ } from './Badges.jsx'; // **WRONG:** curly braces search Badges.jsx for BreakingBadge, which does not exist!
+```
+
+To rename a named import, we write **both names** inside the curly braces with the word **`as`** between them:
+1. First write **`LiveBadge`**, the exact name exported by our badge file, so JavaScript finds the right badge.
+2. Then write **`as BreakingBadge`**, the new local nickname we want to use as our JSX tag:
+
+```jsx title="src/components/ArticleCard.jsx" startLine="1"
+import { ~LiveBadge as BreakingBadge~, NewBadge } from './Badges.jsx'; // 1. Finds LiveBadge first, then renames it to BreakingBadge
+
+export default function ArticleCard() {
+  return (
+    <article className="card">
+      ~<BreakingBadge />~ {/* 2. Renders LiveBadge under its new local nickname BreakingBadge */}
+      <NewBadge />
+      <h2>New Park Opens Today</h2>
+    </article>
+  );
+}
+```
+````
+
+### COUNTER-EXAMPLE FULL-SECTION DEMO (Orphaned 1-Line Snippets, Unexplained Name Trap & Code-Stuffed Prose)
+````markdown
+### Can the importing file choose a different name?
+
+Because `ArticleCard.jsx` has **only one** default export, the importing file can give a default import **any local name it wants**:
+
+```jsx title="src/App.jsx" startLine="1"
+import ~StoryCard~ from './components/ArticleCard.jsx'; // Valid: renames the default import to StoryCard
+```
+
+On the other hand, when `src/components/ArticleCard.jsx` imports from `'./Badges.jsx'` inside curly braces `{ ... }`, JavaScript has to know which of the two badges in `Badges.jsx` you are asking for. If you simply wrote `import { BreakingBadge } from './Badges.jsx'`, JavaScript would look inside `Badges.jsx` for a function named `BreakingBadge`, fail to find one, and stop with an error! Instead, write `import { LiveBadge as BreakingBadge } from './Badges.jsx'`:
+
+```jsx title="src/components/ArticleCard.jsx" startLine="1"
+import { ~LiveBadge as BreakingBadge~ } from './Badges.jsx'; // Valid: renames LiveBadge to BreakingBadge
+```
+````
+*Why this fails*:
+1. **Unexplained Name Trap ("Where did `StoryCard` come from?")**: Shows `import StoryCard` without ever pointing out that `StoryCard` does **not** exist in `ArticleCard.jsx` and without explaining why no curly braces skips searching `ArticleCard.jsx` by name!
+2. **Orphaned 1-Line Snippets**: Drops lonely 1-line `import` snippets without showing what `ArticleCard.jsx` or `Badges.jsx` exported or how `<StoryCard />` and `<BreakingBadge />` are rendered in JSX.
+3. **Code-Stuffed Prose**: Stuffs file paths (`src/components/ArticleCard.jsx`, `'./Badges.jsx'`) and 6-word code statements (`import { BreakingBadge } from './Badges.jsx'`) directly into prose sentences instead of speaking in plain human words (*our card file*, *our badge file*) and letting a 1-line `// **WRONG:**` code block show the broken syntax.
+
+---
+
+## 3. Philosophical Pedagogy of the Root & Copy-Pasteable Title Catalog
 
 Every principle (`## N. Principle N`) and its opening `###` subsection must start from the **root distinction** that blurs together as one automatic thing for a beginner, but is two separate things for an experienced developer.
+
+### Copy-Pasteable Title & Heading Catalog (Model Your `##`, `###`, and `####` Headings on These)
+
+| Heading Level | PROPER River Headings (Copy This Pattern) | COUNTER-EXAMPLE Headings (Do Not Write This) |
+| :--- | :--- | :--- |
+| **`##` Principle Titles** | `## 1. Principle 1: Rendering: React Calls the Component Wherever a Tag Names It`<br>`## 2. Principle 2: Naming: Every React Component Name Must Start with a Capital Letter`<br>`## 2. Principle 2: Default vs. Named Exports: One Default for the Main Component, Named Exports for Multiple Components`<br>`## 3. Principle 3: Match Imports to Exports: No Braces for Default, Curly Braces for Named`<br>`## 4. Principle 4: Import Paths: Every Relative Path Starts from the Importing File's Folder` | `## Principle 1: Component Rendering`<br>`## Principle 2: Capitalization Rules`<br>`## Principle 3: Imports and Exports`<br>`## Principle 4: Relative Paths` |
+| **`###` Root-Distinction Openings** | `### Writing the component function and using its tag are two separate steps`<br>`### In JSX, the first letter of a tag tells React whether it is HTML or your component`<br>`### Plain text inside a tag and a JavaScript value inside curly braces are two separate worlds`<br>`### Old HTML script tags share one global space, but each module file keeps its names private`<br>`### A file can have only one default export, so a file with multiple components exports them by name`<br>`### A relative path does not start from the project root, because it starts from the folder of the file you are editing` | `### How ArticleCard renders inside App.jsx`<br>`### Using curly braces in JSX`<br>`### Default and named exports in ES modules`<br>`### Resolving relative paths in Vite` |
+| **`###` & `####` Step Headings** | `### What happens when you import a named export without curly braces`<br>`### Wrapping named imports in curly braces fixes the mismatch`<br>`### Can the importing file give an imported component a different tag name?`<br>`#### 1. Renaming a default import: write any new name directly`<br>`#### 2. Renaming a named import: write the original name first, then as and the new name` | `### Named import syntax error`<br>`### Default vs. named aliasing` |
 
 - [ ] Does the opening `###` heading of each Principle section state the root distinction in plain words (such as `### Writing the component function and using its tag are two separate steps` or `### Plain text inside a tag and a JavaScript value inside curly braces are two separate worlds`)?
 - [ ] Does the opening of each Principle explain why that distinction matters both **In daily coding** and **In an interview** before showing the code step?
