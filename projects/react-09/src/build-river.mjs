@@ -15,6 +15,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { editorBlock } from './revised-4/editor.mjs';
+import { renderFileExplorer } from './file-explorer.mjs';
 
 const SRC_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = dirname(SRC_DIR);
@@ -277,11 +278,17 @@ function renderTree(body, attrs, theme = 'book') {
 /* ---------------------------------------------------------------- UI Browser Previews, DOM Panel, DevConsole & Overlay */
 
 function parseCard(raw) {
-  const card = {};
+  const card = { badges: [] };
   for (const part of raw.split('|').map((s) => s.trim()).filter(Boolean)) {
     const eq = part.indexOf('=');
-    if (eq > 0) card[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
-    else card[part] = true;
+    if (eq > 0) {
+      const k = part.slice(0, eq).trim();
+      const v = part.slice(eq + 1).trim();
+      if (k === 'badge') card.badges.push(v);
+      else if (k === 'badges') {
+        for (const b of v.split(',').map((s) => s.trim()).filter(Boolean)) card.badges.push(b);
+      } else card[k] = v;
+    } else card[part] = true;
   }
   return card;
 }
@@ -304,8 +311,17 @@ function cardHTML(c, extraClass = '') {
   const fcls = (name, base) =>
     [base, goodSet.has(name) ? 'pf-good' : '', badSet.has(name) ? 'pf-bad' : ''].filter(Boolean).join(' ');
   const parts = [];
+  if (c.head) {
+    parts.push(`<div class="${fcls('head', 'phead')}">${esc(c.head)}</div>`);
+  }
   if (c.img) {
     parts.push(`<div class="${fcls('img', 'pcard-img')}"><span>${esc(c.img)}</span></div>`);
+  }
+  if (c.badges && c.badges.length > 0) {
+    const spans = c.badges
+      .map((b) => `<span class="${fcls('badge', 'pcard-label')}">${esc(b)}</span>`)
+      .join('');
+    parts.push(`<div class="pcard-badges">${spans}</div>`);
   }
   if (c.label) parts.push(`<span class="${fcls('label', 'pcard-label')}">${esc(c.label)}</span>`);
   if (c.title !== undefined) {
@@ -372,7 +388,7 @@ function pageMock(body, attrs) {
       i++;
       continue;
     }
-    if (raw.startsWith('line:')) {
+    if (raw.startsWith('line:') || raw.startsWith('text:')) {
       const [text, flag] = raw.slice(5).split('|').map((s) => s.trim());
       const cls = flag === 'good' ? ' pline-good' : flag === 'bad' ? ' pline-bad' : '';
       items.push(`<div class="pline${cls}">${esc(text)}</div>`);
@@ -950,6 +966,8 @@ function parseAndRender(md, theme = 'book') {
         out.push(devConsole(body, attrs));
       } else if (lang === 'overlay') {
         out.push(overlayPanel(body, attrs));
+      } else if (lang === 'files') {
+        out.push(figWrap(renderFileExplorer(body.join('\n'), attrs.title), attrs.caption));
       } else {
         out.push(renderCodeBlock(lang, attrs, body));
       }
@@ -965,7 +983,7 @@ function parseAndRender(md, theme = 'book') {
       if (/^INTERVIEW QUESTION\s*\|/.test(inner[0])) {
         const [, tier, ...q] = inner[0].split('|').map((s) => s.trim());
         out.push(
-          `<div class="interview-banner"><div class="interview-banner-label">Interview Question · ${esc(
+          `<div class="interview-banner interview-banner-top"><div class="interview-banner-label">Interview Question · ${esc(
             tier
           )}</div><p class="interview-banner-q">${inline(q.join(' | '))}</p></div>`
         );
@@ -1006,7 +1024,27 @@ function parseAndRender(md, theme = 'book') {
           .join('');
         out.push(`<div class="moral-box"><div class="moral-box-title">IN THE WILD</div>${paras}</div>`);
       } else {
-        out.push(`<div class="interview-banner"><p class="interview-banner-q">${inline(inner.join(' '))}</p></div>`);
+        const blocks = [];
+        let bi = 0;
+        while (bi < inner.length) {
+          const bl = inner[bi].trim();
+          if (!bl) {
+            bi++;
+            continue;
+          }
+          if (/^-\s+/.test(bl)) {
+            const lis = [];
+            while (bi < inner.length && /^-\s+/.test(inner[bi].trim())) {
+              lis.push(`<li>${inline(inner[bi].trim().replace(/^-\s+/, ''))}</li>`);
+              bi++;
+            }
+            blocks.push(`<ul>${lis.join('')}</ul>`);
+          } else {
+            blocks.push(`<p class="interview-banner-q">${inline(bl)}</p>`);
+            bi++;
+          }
+        }
+        out.push(`<div class="interview-banner interview-banner-full">${blocks.join('')}</div>`);
       }
       continue;
     }
@@ -1182,17 +1220,31 @@ const OLD_CSS = readFileSync(OLD_CSS_PATH, 'utf8');
 function auditMarkdownProse(mdText) {
   const lines = mdText.split('\n');
   let inFence = false;
+  let inInterviewSection = false;
   const parenViolations = [];
   const longSentenceViolations = [];
+  const codeInProseViolations = [];
+  const orphanHighlightViolations = [];
 
   for (let idx = 0; idx < lines.length; idx++) {
     const line = lines[idx];
     const trimmed = line.trim();
     const unquoted = trimmed.replace(/^>\s?/, '');
+    if (unquoted.startsWith('## For the Interview')) {
+      inInterviewSection = true;
+    } else if (unquoted.startsWith('## ') && !unquoted.startsWith('## For the Interview')) {
+      inInterviewSection = false;
+    }
     if (unquoted.startsWith('```')) {
       const lang = unquoted.slice(3).trim().split(/\s+/)[0];
       if (!inFence) {
-        inFence = lang === 'tree' ? 'tree' : 'code';
+        if (lang === 'tree' || lang === 'files') {
+          inFence = lang;
+        } else if (['js', 'jsx', 'html'].includes(lang) || lang === '') {
+          inFence = 'editor-code';
+        } else {
+          inFence = 'mock-code';
+        }
         // Check caption on the fence header for parentheses
         if (/[()]/.test(unquoted)) {
           parenViolations.push(`Line ${idx + 1}: ${line}`);
@@ -1202,18 +1254,37 @@ function auditMarkdownProse(mdText) {
       }
       continue;
     }
-    if (inFence === 'code') continue;
+    if (inFence === 'mock-code') continue;
+    if (inFence === 'editor-code') {
+      const hasInlineComment = /\/\/(\s|$)|\{\/\*|\/\*|<!--/.test(unquoted);
+      const isCommentOnly = /^\s*(\/\/|\{\/\*|\/\*|<!--)/.test(unquoted);
+      if (isCommentOnly) {
+        orphanHighlightViolations.push(
+          `Line ${idx + 1} (comment-only line in code block — place comments inline on the code line with ~token~ so the speech bubble points to the token): ${unquoted}`
+        );
+      } else if (/~.+?~/.test(unquoted) && !hasInlineComment) {
+        orphanHighlightViolations.push(
+          `Line ${idx + 1} (orphan ~token~ highlight with no inline // comment bubble explaining it): ${unquoted}`
+        );
+      }
+      continue;
+    }
 
     // 1. Check for parentheses outside code/mock fences (exempting the verbatim bank question header)
     const isVerbatimQuestion =
       unquoted.startsWith('INTERVIEW QUESTION |') || unquoted.startsWith('**The Interview Question:**');
-    if (!isVerbatimQuestion && /[()]/.test(line)) {
+    const lineForParenCheck = inFence === 'files' ? line.replace(/`[^`]+`/g, '') : line;
+    if (!isVerbatimQuestion && /[()]/.test(lineForParenCheck)) {
       parenViolations.push(`Line ${idx + 1}: ${line}`);
     }
 
-    // 2. Check narrative prose sentences for excessive length (> 28 words) as pointers to reread
+    // 2. Check narrative prose sentences for River flow:
+    //    - Excessive sentence length (> 28 words, counting words inside backticks too)
+    //    - Code-in-prose overload (> 2 backticked spans in one sentence, or a 4+ word code statement inside prose, or slash file paths inside prose)
     if (
+      isVerbatimQuestion ||
       inFence === 'tree' ||
+      inFence === 'files' ||
       !unquoted ||
       unquoted.startsWith('#') ||
       unquoted.startsWith('|') ||
@@ -1223,23 +1294,53 @@ function auditMarkdownProse(mdText) {
     ) {
       continue;
     }
-    const clean = unquoted
+
+    // Temporarily mask dots inside backticks so sentence splitting doesn't split on `./App.jsx`
+    const maskedLine = unquoted
       .replace(/^[-*]\s+/, '')
       .replace(/^\d+\.\s+/, '')
       .replace(/^\*\*[^*]+\*\*:\s+/, '')
-      .replace(/`[^`]+`/g, 'CODE')
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/\*([^*]+)\*/g, '$1');
-    const sentences = clean.split(/(?<=[.!?]["']?)\s+/);
-    for (const s of sentences) {
-      const words = s.trim().split(/\s+/).filter(Boolean);
+      .replace(/`([^`]+)`/g, (_, code) => '`' + code.replace(/\./g, '\u0000') + '`');
+
+    const rawSentences = maskedLine.split(/(?<=[.!?]["']?)\s+/);
+    for (const rawS of rawSentences) {
+      const s = rawS.replace(/\u0000/g, '.').trim();
+      if (!s) continue;
+
+      // Check backticked spans inside this sentence (outside ## For the Interview)
+      if (!inInterviewSection) {
+        const spans = [...s.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+        if (spans.length > 2) {
+          codeInProseViolations.push(
+            `Line ${idx + 1} (${spans.length} code spans in one sentence — use plain human words in prose): ${s}`
+          );
+        }
+        for (const span of spans) {
+          const spanWords = span.trim().split(/\s+/).filter(Boolean);
+          if (spanWords.length >= 4) {
+            codeInProseViolations.push(
+              `Line ${idx + 1} (${spanWords.length}-word code statement \`${span}\` in prose — move syntax to a code block): ${s}`
+            );
+          } else if (/[\w.]+\/[\w./]+/.test(span)) {
+            codeInProseViolations.push(
+              `Line ${idx + 1} (file path \`${span}\` in prose — name the file in human words like "the card file" and keep paths in code blocks/titles): ${s}`
+            );
+          }
+        }
+      }
+
+      const plainForCount = s
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1');
+      const words = plainForCount.trim().split(/\s+/).filter(Boolean);
       if (words.length > 28) {
-        longSentenceViolations.push(`Line ${idx + 1} (${words.length} words): ${s.trim()}`);
+        longSentenceViolations.push(`Line ${idx + 1} (${words.length} words): ${plainForCount.trim()}`);
       }
     }
   }
 
-  return { parenViolations, longSentenceViolations };
+  return { parenViolations, longSentenceViolations, codeInProseViolations, orphanHighlightViolations };
 }
 
 mkdirSync(HTML_DIR, { recursive: true });
@@ -1268,7 +1369,8 @@ for (const file of targets) {
   const md = readFileSync(mdPath, 'utf8');
   const titleMatch = md.match(/^#\s+(.*)$/m);
   const pageTitle = titleMatch ? titleMatch[1] : `Lecture ${name}`;
-  const { parenViolations, longSentenceViolations } = auditMarkdownProse(md);
+  const { parenViolations, longSentenceViolations, codeInProseViolations, orphanHighlightViolations } =
+    auditMarkdownProse(md);
 
   // 1. New Book Design Theme -> {NN}.html
   figCounter = 0;
@@ -1325,10 +1427,16 @@ ${bodyOldHtml}
     `[River v2] Built 01-03-md-lectures-HTML/v2/${name}.html (book theme) & ${name}-old.html (old theme) from 01-02-md-LECTURES/v2/${file} (${bookFigs} box-to-boxes figures).`
   );
   console.log(
-    `[River v2] Mechanical check (${file}): ${parenViolations.length} parenthesis violations outside code blocks, ${longSentenceViolations.length} sentences > 28 words (pointers to reread; verify all human reading gates in skills/v9.1/v2/verification/SKILL.md first!).`
+    `[River v2] River Prose Surveillance (${file}): ${parenViolations.length} parenthesis violations, ${codeInProseViolations.length} code-in-prose violations, ${orphanHighlightViolations.length} orphan-highlight violations, ${longSentenceViolations.length} sentences > 28 words.`
   );
   if (parenViolations.length) {
     console.warn('Parenthesis violations:\n' + parenViolations.join('\n'));
+  }
+  if (codeInProseViolations.length) {
+    console.warn('Code-in-prose violations (use plain human words in prose; move syntax to code blocks):\n' + codeInProseViolations.join('\n'));
+  }
+  if (orphanHighlightViolations.length) {
+    console.warn('Orphan ~token~ or comment-only violations in code blocks:\n' + orphanHighlightViolations.join('\n'));
   }
   if (longSentenceViolations.length) {
     console.warn('Long sentence warnings:\n' + longSentenceViolations.join('\n'));

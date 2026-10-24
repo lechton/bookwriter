@@ -24,10 +24,10 @@ function getFileIcon(name) {
 
 function classifyRoleClass(role) {
 	const r = (role || '').toLowerCase();
-	if (r.includes('shell') || r.includes('root') || r.includes('layout')) return 'fe-role-shell';
-	if (r.includes('form') || r.includes('boundary') || r.includes('action')) return 'fe-role-boundary';
-	if (r.includes('consumer') || r.includes('hook') || r.includes('status')) return 'fe-role-consumer';
-	if (r.includes('button') || r.includes('leaf') || r.includes('ui') || r.includes('widget')) return 'fe-role-leaf';
+	if (r.includes('shell') || r.includes('root') || r.includes('layout') || r.includes('parent')) return 'fe-role-shell';
+	if (r.includes('form') || r.includes('boundary') || r.includes('action') || r.includes('entry')) return 'fe-role-boundary';
+	if (r.includes('consumer') || r.includes('hook') || r.includes('status') || r.includes('default')) return 'fe-role-consumer';
+	if (r.includes('button') || r.includes('leaf') || r.includes('ui') || r.includes('widget') || r.includes('child') || r.includes('named')) return 'fe-role-leaf';
 	if (r.includes('server') || r.includes('api') || r.includes('network')) return 'fe-role-server';
 	if (r.includes('state') || r.includes('reducer') || r.includes('store')) return 'fe-role-state';
 	return 'fe-role-generic';
