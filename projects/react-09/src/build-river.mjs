@@ -1299,7 +1299,7 @@ function auditMarkdownProse(mdText) {
     const maskedLine = unquoted
       .replace(/^[-*]\s+/, '')
       .replace(/^\d+\.\s+/, '')
-      .replace(/^\*\*[^*]+\*\*:\s+/, '')
+      .replace(/^\*\*[^*]+?[:.]?\*\*[:.]?\s+/, '')
       .replace(/`([^`]+)`/g, (_, code) => '`' + code.replace(/\./g, '\u0000') + '`');
 
     const rawSentences = maskedLine.split(/(?<=[.!?]["']?)\s+/);
