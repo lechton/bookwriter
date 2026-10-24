@@ -742,3 +742,21 @@ Retirements performed inside react-08 itself are logged below.
 - 2026-10-21 12:45 | archive experiment-04-river | archive before rewriting with normal lecture flow | notes/experiment-04-river.md -> notes/archive/experiment-04-river-2026-10-21-1245.md
 - 2026-10-21 12:45 | archive experiment-04-river | archive before rewriting with normal lecture flow | notes/experiment-04-river.html -> notes/archive/experiment-04-river-2026-10-21-1245.html
 
+- 2026-10-24 20:30 | archive Q9 | archive before simplifying headings for comparison | 01-02-md-LECTURES/v2/09.md -> 01-02-md-LECTURES/v2/archive/09-2026-10-24-2030.md
+- 2026-10-24 20:30 | archive Q9 | archive before simplifying headings for comparison | 01-03-md-lectures-HTML/v2/09-old.html -> 01-03-md-lectures-HTML/v2/archive/09-old-2026-10-24-2030.html
+- 2026-10-24 20:30 | archive Q9 | archive before simplifying headings for comparison | 01-03-md-lectures-HTML/v2/09.html -> 01-03-md-lectures-HTML/v2/archive/09-2026-10-24-2030.html
+- 2026-10-24 20:30 | archive Q9 | archive before simplifying headings for comparison | 01-04-md-lectures-PDF/v2/09-old.pdf -> 01-04-md-lectures-PDF/v2/archive/09-old-2026-10-24-2030.pdf
+- 2026-10-24 20:30 | archive Q9 | archive before simplifying headings for comparison | 01-04-md-lectures-PDF/v2/09.pdf -> 01-04-md-lectures-PDF/v2/archive/09-2026-10-24-2030.pdf
+- 2026-10-24 20:30 | archive Q10 | archive before simplifying headings for comparison | 01-02-md-LECTURES/v2/10.md -> 01-02-md-LECTURES/v2/archive/10-2026-10-24-2030.md
+- 2026-10-24 20:30 | archive Q10 | archive before simplifying headings for comparison | 01-03-md-lectures-HTML/v2/10-old.html -> 01-03-md-lectures-HTML/v2/archive/10-old-2026-10-24-2030.html
+- 2026-10-24 20:30 | archive Q10 | archive before simplifying headings for comparison | 01-03-md-lectures-HTML/v2/10.html -> 01-03-md-lectures-HTML/v2/archive/10-2026-10-24-2030.html
+- 2026-10-24 20:30 | archive Q10 | archive before simplifying headings for comparison | 01-04-md-lectures-PDF/v2/10-old.pdf -> 01-04-md-lectures-PDF/v2/archive/10-old-2026-10-24-2030.pdf
+- 2026-10-24 20:30 | archive Q10 | archive before simplifying headings for comparison | 01-04-md-lectures-PDF/v2/10.pdf -> 01-04-md-lectures-PDF/v2/archive/10-2026-10-24-2030.pdf
+- 2026-10-24 20:43 | archive Q1 | archive before simplifying headings | 01-02-md-LECTURES/v2/01.md -> 01-02-md-LECTURES/v2/archive/01-2026-10-24-2043.md
+- 2026-10-24 20:43 | archive Q2 | archive before simplifying headings | 01-02-md-LECTURES/v2/02.md -> 01-02-md-LECTURES/v2/archive/02-2026-10-24-2043.md
+- 2026-10-24 20:43 | archive Q3 | archive before simplifying headings | 01-02-md-LECTURES/v2/03.md -> 01-02-md-LECTURES/v2/archive/03-2026-10-24-2043.md
+- 2026-10-24 20:43 | archive Q4 | archive before simplifying headings | 01-02-md-LECTURES/v2/04.md -> 01-02-md-LECTURES/v2/archive/04-2026-10-24-2043.md
+- 2026-10-24 20:43 | archive Q5 | archive before simplifying headings | 01-02-md-LECTURES/v2/05.md -> 01-02-md-LECTURES/v2/archive/05-2026-10-24-2043.md
+- 2026-10-24 20:43 | archive Q6 | archive before simplifying headings | 01-02-md-LECTURES/v2/06.md -> 01-02-md-LECTURES/v2/archive/06-2026-10-24-2043.md
+- 2026-10-24 20:43 | archive Q7 | archive before simplifying headings | 01-02-md-LECTURES/v2/07.md -> 01-02-md-LECTURES/v2/archive/07-2026-10-24-2043.md
+- 2026-10-24 20:43 | archive Q8 | archive before simplifying headings | 01-02-md-LECTURES/v2/08.md -> 01-02-md-LECTURES/v2/archive/08-2026-10-24-2043.md
