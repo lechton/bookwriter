@@ -1,0 +1,479 @@
+---
+name: code-blocks
+description: Governs code windows, line ceilings, continuation attributes, real line numbers, and comment conventions inside lectures; use when writing or reviewing any code block in a lecture.
+---
+
+# Code Blocks
+
+This skill governs how code blocks are authored in lecture Markdown: editor windows and filename tabs, the 10-line ceiling, continuation attributes that stitch long files across progressive steps, real line numbers for a window that shows a change, end-of-line `//` comment bubbles, tag-free natural English comments, and right/wrong comparative blocks. The build compiler (`src/build-lectures.mjs`) parses plain Markdown fences and generates styled HTML editor windows.
+
+Digests: `skills/old-instructions/instructions.md` (code block format) and `skills/old-instructions/AUTHOR-BRIEF.md` (hard format rules).
+
+## Code Windows | 01 | Clean Fencing and Supported Language Tags
+
+- [ ] Does every code block open with a recognized language tag (` ```jsx `, ` ```js `, ` ```tsx `, ` ```ts `, ` ```javascript `, ` ```typescript `, or ` ```bash `)?
+- [ ] Does every code block close with a matching closing fence ` ``` ` placed on its own line?
+- [ ] Is `jsx` preferred as the standard language tag for React component code?
+- [ ] Are code snippets complete and runnable when demonstrating a pattern, providing self-contained execution rather than disconnected fragments?
+
+- [ ] PROPER EXAMPLE: Complete minimal component in a clean code window:
+
+> ```jsx
+> import { useState } from 'react';
+> export default function App() {
+>   const [count, setCount] = useState(0);
+>   return (<button onClick={() => setCount(count + 1)}>Clicks: {count}</button>);
+> }
+> ```
+
+Notes: Uses the `jsx` language tag, closes cleanly, and provides a runnable component with zero leading empty lines.
+
+## Code Windows | 02 | Filename Tabs and Title Attributes
+
+- [ ] Does the opening code fence include a `title="..."` attribute whenever the default filename does not match the actual file name?
+- [ ] Are derived defaults relied upon when suitable (`jsx` yields `App.jsx`, `tsx` yields `App.tsx`, `js` yields `App.js`, and `ts` yields `App.ts`), with titles specified whenever introducing other files?
+- [ ] Do runnable project snippets use registered filenames from the lecture's file tree (such as `title="SearchBar.jsx"`)?
+- [ ] Do historical or pre-React 19 comparisons use explicit conceptual titles without `.jsx` extensions (such as `title="Historical Pattern"` or `title="Naive Implementation"`)? A conceptual title is for code that is not a real project file. A snippet that lives in a real project file keeps the file's name on its tab. #2026_10_12_05_group_1
+- [ ] Does the tab of a window that shows part of a project file hold the file's name alone, such as `App.jsx`? The line numbers and the sentence before the window say which part it shows: "In `App`, line 13 closes the logo the same way." Words added to the tab, such as `App.jsx (the two lines that change)`, make one file look like several, and the build reads the tab to check the line numbers (Section 06B). #2026_10_15_04_group_1
+
+- [ ] PROPER EXAMPLE: Overriding the default tab with a recognized project filename:
+
+> ```jsx title="SearchBar.jsx"
+> export default function SearchBar({ query, onChange }) {
+>   return (<input value={query} onChange={(e) => onChange(e.target.value)} />);
+> }
+> ```
+
+Notes: Explicitly names `SearchBar.jsx`, matching the project file tree and providing an accurate editor tab.
+
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Cluttered or unregistered filename tabs:
+
+> ```jsx title="Search Input Prompter Widget FINAL v2.jsx"
+> export default function SearchBar({ query, onChange }) {
+>   return (<input value={query} onChange={(e) => onChange(e.target.value)} />);
+> }
+> ```
+
+Notes: Uses a cluttered, unregistered filename that does not exist in the project, triggering compiler warnings and confusing the reader.
+
+## Code Windows | 03 | Density, Indentation & 80-Character Boundary
+
+- [ ] Are empty lines inside code blocks eliminated where possible, preserving compact numbered vertical rows in print?
+- [ ] Is top-level code kept flush against the left margin, avoiding stray leading spaces that misalign editor rendering?
+- [ ] Do all code lines stay within the 80-character boundary, breaking long object literals, method chains, and JSX attribute lists across multiple rows?
+- [ ] Are JSX elements formatted with one prop per line whenever a component takes two or more attributes or whenever a single line exceeds 80 characters, ensuring readability without accidental wrapping or PDF clipping? #2026_09_26_17_group_1
+- [ ] **Principle Card 68-Character Ceiling**: In principle callout breakout cards (`.principle-case`), are all single-line code statements kept strictly within 68 characters, breaking JSX attributes or statements across multiple rows if they exceed this limit to prevent right-edge clipping against card padding and watermark badges? #2026_10_03_01_group_1
+
+- [ ] PROPER EXAMPLE: Formatting attributes with natural line breaks:
+
+> ```jsx
+> <button
+>   formAction={() => saveNote(note)}
+>   disabled={pending}
+> >
+>   Save
+> </button>
+> ```
+
+Notes: Each attribute occupies its own line, keeping the snippet comfortably below the 80-character boundary.
+
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Unbroken single-line attribute lists:
+
+> ```jsx
+> <button formAction={() => saveNote(note)} disabled={pending} style={{ marginTop: 12, padding: '6px 14px' }}>Save</button>
+> ```
+
+Notes: Far exceeds 80 characters, forcing accidental mid-attribute line wraps that break visual editor alignment in PDF layout.
+
+## Code Windows | 04 | Zero Author-Side HTML Styling
+
+- [ ] Are code blocks authored using plain Markdown syntax and authentic language comments (`//` for JavaScript, `{/* ... */}` for JSX tags/elements, `#` for Bash/Shell, or `<!--` for HTML)? #2026_09_21_23_group_1 #2026_09_28_01_group_1
+- [ ] Does the block avoid raw HTML `<span>` tags, inline CSS classes, or hardcoded bubble containers, allowing the compiler to generate editor chrome automatically?
+- [ ] Are raw HTML tags kept out of code fences, avoiding double-encoded entities that disrupt syntax highlighting?
+
+## Line Ceilings | 05 | The 10-Line Code Ceiling
+
+- [ ] Does every code block contain 10 or fewer lines of executable code?
+- [ ] Are components longer than 10 lines sliced across sequential micro-steps?
+- [ ] Does slicing code support step-by-step deconstruction, preventing overwhelming walls of code from tiring readers?
+
+- [ ] PROPER EXAMPLE: Focused component under the 10-line ceiling:
+
+> ```jsx title="ReaderGreeting.jsx"
+> export default function ReaderGreeting({ readerName }) {
+>   return (
+>     <div className="greeting-box">
+>       <span>Welcome back, {readerName}</span>
+>     </div>
+>   );
+> }
+> ```
+
+Notes: Complete, focused, 7 lines total, easily scanned and deconstructed in a single view.
+
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Multi-concern component in a single un-sliced window:
+
+> ```jsx title="SiteHeader.jsx"
+> export default function SiteHeader({ readerName, tier, onLogout }) {
+>   const [open, setOpen] = useState(false);
+>   const badgeColor = tier === 'premium' ? 'gold' : 'blue';
+>   return (
+>     <header className="site-header">
+>       <h1>Corner Shop</h1>
+>       <ReaderGreeting readerName={readerName} />
+>       <MemberBadge tier={tier} color={badgeColor} />
+>       <button onClick={() => setOpen(!open)}>Menu</button>
+>       {open && <NavMenu onLogout={onLogout} />}
+>     </header>
+>   );
+> }
+> ```
+
+Notes: 14 lines long, combines 3 distinct UI concerns, exceeds the 10-line budget, and benefits from being sliced across progressive micro-steps.
+
+## File Continuations | 06 | Slicing Files with Continuation Attributes
+
+A code window is a view of a real file. Its line numbers are the ones the reader's editor shows, and the build colors each row by its number (even rows shaded), so a file shown in parts keeps one run of stripes from window to window, as it does on screen. Two cases follow from this. A file the reader sees for the first time, too long for one window, is shown in parts that form a chain (this section). A change to lines the reader has already seen is shown where it happens in the file (Section 06B). #2026_10_15_04_group_1
+
+- [ ] When a single component file is sliced across several windows, in one step or across the steps that build it, are snippets stitched together using continuation attributes on code fences: #2026_09_21_31_group_1 revised by #2026_10_15_04_group_1
+    * First snippet: `title="Name.jsx" startLine="1" continues="bottom"`
+    * Intermediate snippets: `title="Name.jsx" startLine="NN" continues="both"`
+    * Final snippet: `title="Name.jsx" startLine="NN" continues="top"`
+- [ ] Does the builder compile matching continuation attributes into seamless editor windows with continuation tabs, signaling continuous file progress?
+- [ ] Are continuation attributes (`continues`) reserved specifically for slicing a single continuous file across line budgets, avoiding use for progressive revisions of different code states?
+- [ ] Do intermediate and final continuation blocks (`continues="both"` or `continues="top"`) set `startLine > 1`, calculated as `previous_startLine + previous_lineCount`, avoiding re-declaring `export default function ...` or re-opening `return (`? #2026_09_21_31_group_1
+
+- [ ] PROPER EXAMPLE: Slicing a component across continuation fences:
+
+> ```jsx title="FeedbackPortal.jsx" startLine="1" continues="bottom"
+> export default function FeedbackPortal() {
+>   const [query, setQuery] = useState('');
+>   return (
+>     <div className="portal-container">
+>       <LiveSearchInput query={query} onChange={setQuery} />
+> ```
+> 
+> *(prose deconstructing parent state and prop passing)*
+> 
+> ```jsx title="FeedbackPortal.jsx" startLine="6" continues="top"
+>       <FeedbackForm />
+>     </div>
+>   );
+> }
+> ```
+
+Notes: The first block opens with `continues="bottom"`, and the closing block picks up at line 6 with `continues="top"`, stitching the file seamlessly.
+
+- [ ] PROPER EXAMPLE: Lecture 3, Step 1 pastes the old page into `App.jsx`. `SearchBox` fills lines 1 to 9 under `title="App.jsx" startLine="1" continues="bottom"`; one sentence follows ("`App` follows it, from line 10:"); then `App` fills lines 10 to 19 under `title="App.jsx" startLine="10" continues="top"`. The reader sees one file, numbered 1 to 19, with one run of stripes. #2026_10_15_04_group_1
+- [ ] COUNTER-EXAMPLE: The first version of the same step: two windows titled `App.jsx (SearchBox, pasted)` and `App.jsx (App, pasted)`, each numbered from 1. Notes: The reader sees two small files where the editor shows one, `App` claims line 1 although it starts on line 10, and the stripes start over in the second window. #2026_10_15_04_group_1
+- [ ] COUNTER-EXAMPLE: React 07, Lecture 8, Step 2 continues `ArticleCard.jsx` at `startLine="10"`, but the window above it ends on line 10 (its two blank lines count as rows). Notes: Line 10 appears twice, and every number after it is one too low. Count every row the window shows, blank rows included; comment-only lines are merged into the next row's bubble and take no number. #2026_10_15_04_group_1
+
+## File Continuations | 06B | A Window That Shows a Change #2026_10_15_04_group_1 revised by #2026_10_15_06_group_1
+
+Many steps and answers change a file the reader has already seen: they close a tag, add a wrapper, change a saved value. The window then shows the changed lines where they now sit in the file, under the file's name, so the reader can find them in their own editor. Lines added earlier move every line below them down, as they do on screen.
+
+- [ ] Does the window carry the file's name alone and `startLine` set to the first line it shows, counted in the file as it stands after the change, with no `continues` (a change is not the next part of a chain)? A few lines of the enclosing element may come with it when they make the place clear, such as the whole `<header>` around five changed lines. #2026_10_15_04_group_1
+- [ ] When one change touches two places that are apart in the file, does each place get its own window, introduced by a sentence that names the component and the line? Every number on the page is then a real line. #2026_10_15_04_group_1
+- [ ] When the changed part is longer than the 10-line ceiling, does the window show the part that changed (the `return` of the component, for example) at its real lines, with the rest of the component left to the reader's editor? #2026_10_15_04_group_1
+- [ ] Do the code lines keep the indentation they have in the file, so a line from inside `<main>` sits as deep as it does on screen? #2026_10_15_04_group_1
+
+- [ ] PROPER EXAMPLE: Lecture 3, Step 2 closes two tags. The sentence "In `SearchBox`, line 5 closes the input:" leads to a one-line window, `title="App.jsx" startLine="5"`; "In `App`, line 13 closes the logo the same way:" leads to a second, `title="App.jsx" startLine="13"`. Step 3 then shows the `return` of `SearchBox` with its new `<section>` as lines 2 to 10, and Step 4 says that the two new lines moved `App` down before it shows `App`'s `return` as lines 13 to 22. #2026_10_15_04_group_1
+
+> ```jsx title="App.jsx" startLine="13"
+>       {/* so does the logo */}
+>       <img src="/logo.png" alt="Site logo" />
+> ```
+
+Notes: The tab names the file, the row number is the line the reader finds in the editor, and the indentation matches it. The comment-only line merges into the bubble of line 13 and takes no number.
+
+- [ ] COUNTER-EXAMPLE: The first version of the same step put both lines in one window: #2026_10_15_04_group_1
+
+> ```jsx title="App.jsx (the two lines that change)"
+> {/* in SearchBox: the input closes itself */}
+> <input id="query" type="search" autocomplete="off" />
+> {/* in App: so does the logo */}
+> <img src="/logo.png" alt="Site logo" />
+> ```
+
+Notes: The window numbers the two lines 1 and 2, although they are lines 5 and 13 of the file, and it sets a line of `SearchBox` directly above a line of `App`, as if they were neighbours. The label on the tab tries to explain what the numbers get wrong. Lecture 2's `App.jsx (both names)` did the same with a `// ...the same article as before` line standing in for code.
+
+## File Continuations | 07 | Real Executable Code at Block Openers
+
+- [ ] Does every code block start directly on its first line of real, executable code?
+- [ ] Does the code block avoid leading blank lines or decorative comments so that `startLine` accurately counts real code?
+- [ ] Are leading blank lines avoided to prevent empty numbered rows from appearing at the top of the editor window?
+
+## Code Comments | 08 | Inline Comments and Speech Bubble Rendering
+
+- [ ] Are code comments attached directly to the end of the line they annotate (`code; // annotation`, `<Component /> {/* annotation */}`, or `command # annotation`)? #2026_09_21_23_group_1 #2026_09_28_01_group_1
+- [ ] **The Pure Code Authoring Standard (Zero Tildes During Drafting)**: During initial lecture drafting, are code blocks written with natural, plain trailing comments (`code // comment`) with ZERO tildes? Detecting focal tokens and wrapping them in tildes (`~token~`) belongs strictly to the on-demand post-edit audit pass (`code-comment-audit`), preserving the author's full cognitive energy for pedagogy, storytelling, and narrative clarity. #2026_10_04_01_group_1 revised by #2026_10_04_04_group_1
+- [ ] When a comment describes the statement or line as a whole (such as a component declaration, import statement, or layout shell), is the line left plain with zero tildes, allowing the pointer to rest naturally at the line indentation without painting distracting full-line underlines? #2026_10_03_07_group_1
+- [ ] Do code blocks maintain natural breathing room (typically 1 to 2 comments on load-bearing lines across a 6-to-10-line block), avoiding commenting 3 or more consecutive lines in a row to prevent vertical speech bubble pileups? #2026_10_03_07_group_1
+- [ ] When a JSX element carries a comment, is the attribute placed on its own line if needed so the comment has 35+ characters of breathing room to explain purpose or consequence without exceeding the 80-character line boundary? #2026_10_03_05_group_1
+- [ ] For multiline data structures, is the comment placed at the end of the last value to summarize the collection as a whole? #2026_10_03_03_group_1
+- [ ] For runtime actions (logging, mutations), is the comment placed on the actual line of execution (`console.log(...)`) rather than the enclosing function header? #2026_10_03_03_group_1
+- [ ] Does the snippet leverage compiler comment extraction—supporting standard `//` in JavaScript statements, native `{/* ... */}` (and `/* ... */`) in JSX markup/elements, native `#` in Bash/Shell, and `<!--` in HTML—to generate floating speech bubbles in the right-hand panel? #2026_09_21_23_group_1 #2026_09_28_01_group_1
+- [ ] Are standalone comment lines avoided where possible, keeping the two-column layout balanced?
+- [ ] Does every narrative code block (≥3 lines) feature end-of-line comments on its load-bearing lines, maintaining two-column editor balance? #2026_09_21_30_group_1 (refining #2026_09_21_17_group_1)
+- [ ] Do code comments track the mind of the reader, matching the vocabulary and concepts introduced in the surrounding prose on that exact line? #2026_09_21_13_group_1
+
+- [ ] PROPER EXAMPLE: Clean code authoring with natural comments and breathing room:
+
+> ```js title="Transpiled Expression Output"
+> const output = _jsxs("article", { // Packages container with child descriptors
+>   className: "recipe-card",
+>   children: [
+>     _jsx("h2", { children: title }), // Passes live variable to title text node
+>     _jsx("img", { src: avatarUrl }), // Passes dynamic image path to src prop
+>     _jsxs("p", { children: [readTime, " min"] })
+>   ]
+> });
+> ```
+
+Notes: 
+1. Pure code authoring with natural end-of-line comments and zero tildes during drafting.
+2. Line 1 has an explanatory comment on the assignment; lines 4 and 5 annotate specific props; line 6 has no comment, giving the editor window breathing room and preventing stacked speech bubbles.
+3. Focal token detection and pointer targeting (`~token~`) are handled separately in the on-demand audit pass (`code-comment-audit`).
+
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Premature token wrapping during drafting:
+
+> ```js title="Transpiled Expression Output"
+> ~const output = _jsxs("article", {~ // Packages container with child descriptors
+>   className: "recipe-card",
+>   children: [
+>     ~_jsx("h2", { children: title }),~ // Passes variable to text node
+>     ~_jsx("img", { src: avatarUrl }),~ // Passes live string to image source
+>     ~_jsxs("p", { children: [readTime, " min"] })~ // Concatenates child array
+>   ]
+> });
+> ```
+
+Notes: Wrapping entire statements or trying to manually target tokens with tildes during initial authoring clutters the draft and distracts from narrative flow. Authors write plain code with normal trailing comments and defer all tilde wrapping to the on-demand audit pass.
+
+## Code Comments | 09 | Syntax Safety and Bubble Formatting #2026_10_10_01_group_8 revised by #2026_10_11_01_group_6
+
+- [ ] Are speech bubble comments written using plain alphanumeric characters and minimal inline markdown?
+- [ ] Do comments avoid trailing commas, semicolons, or stray closing symbols that could disrupt tokenization?
+- [ ] Are raw HTML tags avoided inside comment strings?
+- [ ] Does each comment tell the reader something the code alone does not (the value the line produces, what the screen or console shows, why the line is there), instead of a label that repeats the code ("Click", "sets tickets")? Length follows from that: "tickets is 0 here" is enough, and a long comment that only restates the code is still a label. Section 10 shows the difference. #2026_10_03_05_group_1 revised by #2026_10_10_01_group_8
+- [ ] **Comments inside JSX.** Is a comment after JSX markup (after a closing `>` of an element, on a line that is a child of another element) written as `{/* ... */}`? There, `// ...` is not a comment: JSX prints it on the page as text. A `//` comment is safe after a JavaScript statement and between the attributes of an opening tag, and only `//` is right after a statement's `;`. #2026_10_10_01_group_8 revised by #2026_10_11_01_group_6
+
+  - PROPER EXAMPLE: `<p>Tickets: {tickets}</p> {/* shows 3 after one click */}` inside a `return (...)`. #2026_10_10_01_group_8
+  - PROPER EXAMPLE: `return <p>Tickets: {tickets}</p>; // shows 3 after one click` (the `//` follows the statement's `;`). #2026_10_10_01_group_8
+  - COUNTER-EXAMPLE: `<p>Tickets: {tickets}</p> // shows 3 after one click` inside a `return (...)`. Notes: The page shows the text "// shows 3 after one click" under the count. #2026_10_10_01_group_8
+  - COUNTER-EXAMPLE: `return <div className="card" />; {/* drops children silently */}` (Lecture 7, Question 1). Notes: After the `;` the line is JavaScript again, so the braces are not a JSX comment: they open an empty block of code after the `return`, which never runs. The reader learns a form that only works by accident. After a statement, the comment is `// drops children silently`. #2026_10_11_01_group_6
+
+## Code Comments | 10 | Explanatory Depth and Meaningful Clauses #2026_10_03_05_group_1
+
+- [ ] Does every speech bubble comment provide substantive pedagogical orientation by stating what the code executes, why it is written, or what failure it prevents? #2026_10_03_05_group_1
+- [ ] Are staccato telegram fragments and bare keyword echoes completely avoided? #2026_10_03_05_group_1
+
+- [ ] PROPER EXAMPLE: A comment that says what the line does for the user: #2026_10_10_01_group_8
+
+> ```jsx
+> <button
+>   type="button"
+>   onClick={handleSave} // Halts bubbling to protect parent card
+> >
+>   Save
+> </button>
+> ```
+
+Notes: The attribute is placed on its own line, keeping the line within 80 characters while giving the speech bubble space to explain the bubbling consequence clearly.
+
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Telegram-style 1-word label:
+
+> ```jsx
+> <button onClick={handleSave}>Save</button> // Click
+> ```
+
+Notes: Squeezing code onto a single line forces the comment into an unhelpful 1-word label that teaches nothing. The `//` after `</button>` is also printed on the page whenever the line sits inside JSX markup (Section 09). #2026_10_10_01_group_8
+
+- [ ] PROPER EXAMPLE: Short comments that carry values: #2026_10_10_01_group_8
+
+> ```jsx
+> setTickets(tickets + 1); // tickets is 0 here
+> setTickets(tickets + 1); // still 0 here
+> ```
+
+Notes: Four words and three words, and each tells the reader the one fact the code hides: the value `tickets` holds on that line. #2026_10_10_01_group_8
+
+- [ ] COUNTER-EXAMPLE: Comments that restate the code at length: #2026_10_10_01_group_8
+
+> ```jsx
+> setTickets(tickets + 1); // calls the setter function to add one ticket
+> setTickets(tickets + 1); // calls the setter function again for another
+> ```
+
+Notes: Eight words each, and nothing the code did not already say; the value of `tickets`, the one thing the reader needs, is missing. #2026_10_10_01_group_8
+
+- [ ] PROPER EXAMPLE: Explaining concrete runtime mechanics and avoided performance penalties #2026_10_03_06_group_1:
+
+> ```jsx
+> const products = [ // Declared outside App to avoid recreating array on each render
+> ```
+
+Notes: Concrete, explains the architectural reason for placing data outside the component (avoiding array reallocation on every render cycle).
+
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Abstract academic labels without operational cause or consequence #2026_10_03_06_group_1:
+
+> ```jsx
+> const products = [ // Static collection outside render
+> ```
+
+Notes: Uses clinical textbook jargon ("collection", "static") that merely names what the object is in the abstract without explaining why it sits outside the component or what runtime penalty it avoids.
+
+## Code Comments | 11 | Sequential Numbering in Multi-Step Snippets
+
+- [ ] When a snippet demonstrates a multi-step execution pipeline, are steps numbered sequentially inside the comments (`// (1) ...`, `// (2) ...`, `// (3) ...`)?
+- [ ] Does sequential numbering guide the reader through the chronological execution path (e.g. event trigger → state update → DOM reconciliation)?
+
+- [ ] PROPER EXAMPLE: Numbering sequential steps:
+
+> ```jsx
+> const formData = new FormData(e.currentTarget); // (1) Harvest native input values
+> const title = formData.get('title');            // (2) Extract specific form field
+> setTitle(title);                                // (3) Synchronize into React state
+> ```
+
+Notes: Clearly labels the 3-step pipeline in chronological order.
+
+## Code Comments | 12 | Tag-Free Code Comments & The Verdict Tag Protocol #2026_09_21_18_group_1 (superseding #2026_09_21_15_group_1)
+
+- [ ] Are code comments authored in clean, natural English without uppercase category prefix tags?
+- [ ] Are bureaucratic category tags avoided across all code blocks (dropping `CODE LOGIC:`, `DATA FLOW:`, `CLIENT API:`, `COMPONENT:`, `DOM CONTAINER:`, `ROOT INITIALIZATION:`, `TREE PROJECTION:`)?
+- [ ] When demonstrating broken code (illegal syntax, compiler crashes, runtime exceptions, forbidden mutations), does the comment lead with the clear verdict tag `// **WRONG:** [consequence]`? #2026_09_21_30_group_1 revised by #2026_10_15_12_group_1
+- [ ] When code executes without throwing but contains an anti-pattern, architectural flaw, or deprecated API, does the comment lead with `// **PROBLEMATIC:**` (or specific qualifiers like `// **SLOW:**`, `// **FRAGILE:**`, `// **LEAK:**`)? #2026_09_21_30_group_1 revised by #2026_10_15_12_group_1
+- [ ] In standard working code (Stage C assembly, idiomatic solutions), are clean, tag-free comments used, avoiding `**RIGHT:**` when no broken counterpart is being contrasted?
+- [ ] Are comments kept concise and readable within the speech bubble layout?
+- [ ] In principle comparison cards (`> [!PRINCIPLE]`), do comments follow the Visceral Action-Pair Standard (#2026_09_26_01_group_1), describing the developer's physical code action with active verb phrases (e.g. `// Composing custom React components` vs `// Dumping raw HTML tags`) while strictly avoiding academic buzzwords ("conflating", "coupling", "entanglement")? #2026_09_26_01_group_1
+
+- [ ] PROPER EXAMPLE: Clean natural comments without prefix tags:
+
+> ```jsx
+> const [query, setQuery] = useState(''); // Holds search query for per-keystroke **SYNCHRONIZATION**
+> <LiveSearchInput query={query} onChange={setQuery} /> // Passes query downward and setter for **INVERSE FLOW**
+> ```
+
+Notes: Comments explain the physical role in natural English with single bold keywords; zero category prefix tags.
+
+- [ ] PROPER EXAMPLE (THE CONTRAST EXCEPTION): Contrasting anti-patterns against valid patterns:
+
+> ```jsx
+> const title = props.title; // **WRONG:** bypasses declared component contracts
+> const { title } = props;   // **RIGHT:** unpacks declared prop explicitly
+> ```
+
+Notes: The `**WRONG:**` and `**RIGHT:**` tags are permitted here because the block explicitly contrasts an anti-pattern against the correct pattern.
+
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Redundant bureaucratic classification prefix tags:
+
+> ```jsx
+> const [query, setQuery] = useState(''); // **CODE LOGIC:**<br>Holds search query locally
+> <LiveSearchInput query={query} onChange={setQuery} /> // **DATA FLOW:**<br>Passes state downward
+> ```
+
+Notes: Clutters speech bubbles with redundant classification tags instead of natural explanation.
+
+## Right & Wrong Blocks | 13 | Anti-Pattern Window Tags and Directive Headers
+
+- [ ] Are right and wrong comparative blocks authored using the `right` or `wrong` window tag on the opening fence (` ```jsx right ` or ` ```jsx wrong `)?
+- [ ] Does the compiler render the `right` tag with an emerald checkmark side panel and the `wrong` tag with a rose cross side panel?
+- [ ] Is a flush-left directive header in bold placed directly above the code fence:
+    * `**DO THIS:** [concise instruction in normal weight]`
+    * `**DO NOT DO THIS:** [concise instruction in normal weight]`
+- [ ] Is code inside tagged `right` and `wrong` blocks kept free of internal comments, allowing the directive header above the block to carry the instruction?
+- [ ] Are tagged `right` and `wrong` blocks reserved for closing `### Summary` sections, while narrative editor windows in the main body remain standard blocks with speech bubble comments? #2026_09_21_17_group_1
+
+- [ ] PROPER EXAMPLE: Clean directive header with tagged fence:
+
+> **DO THIS:** read input values through component state on every render
+>
+> ```jsx right
+> const [title, setTitle] = useState('');
+> return (<input value={title} onChange={(e) => setTitle(e.target.value)} />);
+> ```
+
+Notes: Bold directive header placed above the code block, `right` tag applied to fence, and zero internal comments.
+
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Missing directive header and duplicate internal comments:
+
+> ```jsx wrong
+> // DO NOT DO THIS
+> // this reads the DOM directly
+> const title = document.querySelector('input').value;
+> return (<input defaultValue={title} />);
+> ```
+
+Notes: Missing the external directive header, and duplicates instructions as internal comments where comments are avoided.
+
+## Callout Code Windows | 14 | Inset Display Code Blocks in Alert Cards #2026_09_22_10_group_1
+
+- [ ] When illustrating syntax transformations, compiler AST outputs, or input/output pairings inside alert callouts (`[!WILD]`, `[!TIP]`, `[!NOTE]`), are code snippets authored as dedicated display blocks using backticks? #2026_09_22_10_group_1
+- [ ] Does the callout avoid embedding multi-word statements, JSX elements, or transpiled function calls into running text as inline pills, preventing horizontal text overflow in print? #2026_09_22_10_group_1
+- [ ] Are input code and output transpilation separated onto their own lines with distinct introductory lead-ins ("When nesting elements in JSX:" and "The compiler translates inner tags into a children prop:")? #2026_09_22_10_group_1
+- [ ] Are structured JSX and nested function calls formatted across multiple indented lines so the AST hierarchy and prop mappings are immediately clear? #2026_09_22_10_group_1
+- [ ] Do code blocks inside callouts render with a clean 1px perimeter and light drop shadow on a pure white surface, omitting heavy left accent stripes? #2026_09_22_10_group_1
+
+- [ ] PROPER EXAMPLE: Formatted code blocks inside an alert card:
+
+> ```markdown
+> > [!WILD]
+> > **How does JSX compile nested children under the hood?**
+> >
+> > When nesting elements in JSX:
+> > `<RecipeBox>
+> >   <Heading text="Lemon Pancakes" />
+> > </RecipeBox>`
+> >
+> > The JSX compiler converts the inner tag directly into a prop named `children`:
+> > `_jsx(RecipeBox, {
+> >   children: _jsx(Heading, {
+> >     text: "Lemon Pancakes"
+> >   })
+> > })`
+> >
+> > If you pass multiple sibling elements, `props.children` becomes an array of React elements. The `children` prop is not magic; it is simply a standard JavaScript object property populated automatically by the JSX parser whenever tags enclose content.
+> ```
+
+Notes: Indented multi-line snippets deconstruct the compiler AST cleanly without overflowing the card container. #2026_09_22_10_group_1
+
+## Display Code Invariants | 14B | Total Ban on Multi-Line Code in Content & Invariant 9 #2026_09_25_09_group_1 revised by #2026_10_03_12_group_1
+
+- [ ] **Total Ban on Multi-Line Code in Content**: Is multi-line code NEVER passed as simple text or narrative prose paragraphs (neither wrapped in line-by-line backticks nor as multiline backtick blocks)? Multi-line code belongs strictly inside titled fenced code blocks (` ```jsx `) or inside `> [!PRINCIPLE]` callouts with `>` prefixes on every line. Backticks in prose are reserved exclusively for single inline identifiers (`useState`, `props.title`). #2026_10_03_12_group_1
+- [ ] In principle comparative cards (`*It is best practice to do this:*` / `*Instead of doing this:*`), are cards authored strictly *inside* the `> [!PRINCIPLE]` container with `>` on every line? Emitting comparative cards outside blockquotes without `>` is strictly forbidden, as it triggers compiler display-code fragmentation into unstyled floating boxes. #2026_10_03_12_group_1
+
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Multi-line code in narrative content:
+> `return (`
+> `  <article className="card">`
+> `    <h2>title</h2>`
+> `  </article>`
+> `);`
+
+Notes: Multi-line code passed as content outside fences or callouts bypasses the code-block compiler and generates a broken staircase of floating .code-line-callout boxes. Always use a titled fenced code block (```jsx title="...") instead. #2026_10_03_12_group_1
+
+## JSX Return Formatting | 15 | Parentheses on JSX Returns #2026_09_24_03_group_1
+
+- [ ] Are JSX return values wrapped in parentheses `(...)`, including single-line returns (`return (<span>{name}</span>);` rather than bare `return <span>{name}</span>;`)?
+- [ ] Is wrapping JSX returns in parentheses applied consistently across code examples, component functions, principle cards, right/wrong snippets, and summaries?
+- [ ] Does wrapping JSX returns in parentheses protect against Automatic Semicolon Insertion (ASI) issues when lines are refactored across rows?
+
+- [ ] PROPER EXAMPLE: Wrapping one-line returns in parentheses:
+
+> ```jsx title="ReaderGreeting.jsx"
+> export default function ReaderGreeting({ name }) {
+>   return (<span>Welcome, {name}</span>);
+> }
+> ```
+
+Notes: Wraps the one-line JSX return in parentheses, establishing consistent defensive patterns against Automatic Semicolon Insertion bugs.
+
+- [ ] COUNTER-EXAMPLE: Pattern to avoid: Omitting parentheses on a JSX return:
+
+> ```jsx title="ReaderGreeting.jsx"
+> export default function ReaderGreeting({ name }) {
+>   return <span>Welcome, {name}</span>;
+> }
+> ```
+
+Notes: Omits parentheses on the JSX return, which can lead to silent ASI errors when lines are broken.

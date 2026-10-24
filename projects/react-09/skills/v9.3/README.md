@@ -44,7 +44,9 @@ Version **`v9.3`** keeps **two separate skill sets** inside `skills/v9.3/` so th
 
 ## Part B: Original Version (`v1`) skills
 
-All 18 Original Version skills live unchanged inside `skills/v9.3/v1/`:- [v1/map-principles/SKILL.md](v1/map-principles/SKILL.md)
+All 18 Original Version skills live unchanged inside `skills/v9.3/v1/`:
+
+- [v1/map-principles/SKILL.md](v1/map-principles/SKILL.md)
 - [v1/pre-lecture/SKILL.md](v1/pre-lecture/SKILL.md)
 - [v1/lecture-structure/SKILL.md](v1/lecture-structure/SKILL.md)
 - [v1/lecture-voice/SKILL.md](v1/lecture-voice/SKILL.md)
