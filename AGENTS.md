@@ -63,8 +63,11 @@ The documentation corpus (formerly the in-repo `documentation official/` folder)
 - `"iii"` — when there is a problem, focus on the instructions that enabled it: examine pruning or editing them, and present proposed instruction changes broken down by section with exact diffs before approval.
 - `"aaa NN"` (e.g. `aaa 14`): archive lecture NN of the active project: run `python3 archive_lecture.py NN --dry-run` in the project folder, show the plan, then run `python3 archive_lecture.py NN` and report the moves. Do nothing else. If the project has no `archive_lecture.py`, stop and say so.
 
-### Retiring Lecture Files
+### Writing a Brief
 
+When the owner asks for a brief, write it as a new file in the active project's brief folder (`projects/<name>/brief/`, or `briefs/` where the project uses that name), named `brief_YYYY_MM_DD_NN.md` with the next free number for that day. Then add one row for it to `01_TOC.md` in the same folder (create the file if it is missing): a link to the brief, its date, and a very short summary of what it records. Briefs written before a folder's `01_TOC.md` existed are not added unless the owner asks.
+
+### Retiring Lecture Files
 Never delete, overwrite, or hand-move a lecture, pre-lecture, figure, HTML, or PDF file. To retire a version, run the project's `archive_lecture.py`: it moves every file of that lecture into the `archive/` subfolder next to it under a timestamped name, refuses to overwrite anything, logs each move in `ARCHIVE-LOG.md`, and brings a version back with `--restore STAMP` (`--list` shows the stamps).
 
 ### Versioning a Question Bank
