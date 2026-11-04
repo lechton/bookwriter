@@ -76,6 +76,7 @@ Each `### Principle N` in `## Principles` records these fields as short facts:
 
 - **Handle**: a few words that name the principle.
 - **Rule**: the rule in one plain line, with its condition.
+- **Opening Essence**: the furniture-free snippet and human image that unlock this principle before the project files appear, plus the exact nuance of confusion to state out loud (*"Yes, it is the exact same thing!"* or *"It may look the same, or work the same at first, but it is NOT the same thing!"*), as governed by [opening-essence/SKILL.md](../opening-essence/SKILL.md).
 - **Root Distinction**: the two things a junior developer sees as one (*Junior blurred view*) and the separation a senior developer keeps (*Senior grounding*), each as one line. Example: *junior*: "I wrote the card function, so the card should appear"; *senior*: declaring the function and placing its tag are two separate steps.
 - **Real Beginner Mistake (events, in order)**: what developers really do wrong in daily coding, as numbered events. Never invent a mistake to force a comparison.
 - **Interview Depth**: what a senior interviewer probes as a follow-up, one point per line, kept apart from the daily mistake.
@@ -101,6 +102,7 @@ Each `### Principle N` in `## Principles` records these fields as short facts:
 ## 5. The Runway Plan #2026_10_24_01_group_2
 
 `## General Concepts Introduction (Runway Plan)` lists, as facts:
+- **Opening Essence**: the naked, furniture-free code and everyday human image that open Zone 1 before any project file is shown, plus the exact nuance of confusion to elaborate out loud, under [opening-essence/SKILL.md](../opening-essence/SKILL.md).
 - **Theme**: the real page problem that motivates the chapter, in one line, such as twenty article cards that should not be copied and pasted twenty times.
 - **Ways**: when developers really choose between two to four approaches for the same job, the approaches and when each fits. Otherwise, `Ways: none`.
 - **Recall**: the exact facts from earlier lessons this chapter stands on, each with its lesson number.

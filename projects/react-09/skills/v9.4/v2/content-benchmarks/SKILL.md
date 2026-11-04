@@ -23,7 +23,7 @@ Each benchmark below is a standard, an approved example from an earlier River le
 
 ### 2.1 Each principle starts at its root, with simple, instructive headings
 
-Every section opens with a simple, natural heading that names the concept, comparison, mistake, or step in plain language. The opening sentences then say why the difference matters in daily coding and in an interview.
+Every section opens with a simple, natural heading that names the concept, comparison, mistake, or step in plain language, and immediately opens with the naked mechanism under [opening-essence/SKILL.md](../opening-essence/SKILL.md) before touching the project files.
 
 | Heading role | PROPER, from approved lectures | COUNTER-EXAMPLE |
 | --- | --- | --- |
@@ -49,20 +49,28 @@ Every section opens with a simple, natural heading that names the concept, compa
 
 *Why this fails*: It starts in the middle of the code, so the reader never learns which two ideas the principle separates.
 
-### 2.2 Real bugs and real interview questions
+### 2.2 Never drop an info bomb — lay out the pieces and positions before the verdict
 
-The beginner mistake is one that developers really make while coding and debugging. A nuance that only an interviewer asks about stays in the interview part, and it is never dressed up as the main bug.
+Never start a principle with a front-loaded `- **In daily coding**: ...` / `- **In an interview**: ...` spoiler dump that summarizes bugs, variable names, or ordering rules before the reader has seen the mechanism and its shapes. And whenever two things can be combined or ordered on the same tag (`A` and `B`), never jump straight to *"putting A after B is better than putting A before B"*:
+1. First tell the reader that `A` and `B` can be used together on the same tag.
+2. Next, lay out both possible positions explicitly: `A` **before** `B` (meaning `A` is first and `B` is second/last) versus `B` **before** `A` (meaning `B` is first and `A` is second/last).
+3. Only after both positions are visible side by side, trace left-to-right to show what happens in each one.
 
-**PROPER** (Lecture 04, Principle 1):
+**PROPER** (Lecture 09, Principle 2):
 
-> - **In daily coding**: If you write the card function, **but forget to place its tag inside `App`**, you see nothing on the screen. Declaring the function and using its tag are two separate steps.
-> - **In an interview**: When an interviewer asks what a component is and how it runs, do not stop at *"It is a function that returns JSX."* State both steps: you write the function, and you place its tag in `App` so **React calls your function**. That call by React is what **rendering** means.
+> In the examples above, `{...article}` was the only thing written on `<MyComponent {...article} />`. Can you also write `{...article}` **together with** other attributes on the exact same tag?
+>
+> Yes! Suppose our `article` object holds an old title, and we want to pass every field from it into `<MyComponent>`, except we want to give it a new title. We can write both `{...article}` and `title="New Title"` on the same tag.
+>
+> When you put both on the same tag, there are **two ways to order them**:
+> - **Order 1**: `{...article}` comes **before** `title="New Title"`. That means `{...article}` is **first** on the left, and `title="New Title"` is **second** on the right.
+> - **Order 2**: `title="New Title"` comes **before** `{...article}`. That means `title="New Title"` is **first** on the left, and `{...article}` is **second** on the right.
 
-**COUNTER-EXAMPLE** (rejected Lecture 04 draft, which opened the principle with an edge case):
+**COUNTER-EXAMPLE** (rejected Lecture 09 Principle 2 opening — an info bomb dropped before any piece or position was taught):
 
-> If `ArticleCard` is just a JavaScript function that returns JSX, why can't I write `{ArticleCard()}` inside `<main>` and call it myself?
+> - **In daily coding**: Two silent bugs happen when forwarding an object onto a card tag. First, if you pass `parkStory={parkStory}` without the three dots, the card's top-level props arrive as `undefined`. Its heading goes blank and its total time displays `NaN` with **zero Console errors**. Second, if you write `{...parkStory}` **after** an attribute you wanted to change, the spread overwrites your new value with the object's old value!
 
-*Why this fails*: Almost nobody writes this in daily work. Opening on it treats an interview nuance as the common bug, and the real bug, a forgotten tag, gets pushed aside.
+*Why this fails*: It drops three untaught bombs in one paragraph. First, it says *"the card's top-level props arrive as `undefined`"* before the reader has seen what `props` looks like with `article={article}` (`props.article.title`) versus `{...article}` (`props.title`). Second, the reader has only ever seen `{...article}` alone on a tag; nobody told them yet that `{...article}` can share a tag with other attributes, or laid out the two possible positions (`A` first and `B` second vs. `B` first and `A` second) before announcing which order overwrites which.
 
 ### 2.3 Each section opens with the everyday situation
 

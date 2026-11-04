@@ -11,6 +11,10 @@ A first draft always comes out more convoluted than it should be, even when its 
 
 Every fact stays true. The principle map `01-01-map-principles/v2/{NN}.md` is there only to check a fact when a rewrite touches one. Code blocks, figures, captions, and tables are text too, and they are simplified the same way.
 
+Check [opening-essence/SKILL.md](../opening-essence/SKILL.md) first:
+1. If the draft drops the reader into the lesson's project files before showing the naked mechanism in its simplest lines, or if it uses a technical word (*imperative*, *spreading*, *children*, *destructuring*) to define itself instead of unlocking its everyday human image and stating directly whether two things are ***"the exact same thing"*** or ***"may look the same, or work the same at first, but are NOT the same thing"***, add or rewrite that Opening Essence before the project code begins.
+2. **Eliminate every info bomb and front-loaded spoiler dump**: Delete any front-loaded `- **In daily coding**:` / `- **In an interview**:` bullet dumps at the start of a principle that announce bugs (`top-level props arrive as undefined`, `NaN`) or ordering verdicts (`putting A after B overwrites B`) before the reader has seen the underlying shapes on stage. Whenever two things can be combined or ordered (`A` and `B`), first tell the reader they can be combined, then lay out both possible positions (`A` before `B`, meaning `A` is first and `B` is last, versus `B` before `A`, meaning `B` is first and `A` is last), and only then trace what happens in each position.
+
 **Convoluted** (rejected Lecture 07 first draft):
 > The module entry and Vite: a module script tag loads the startup file, and Vite translates JSX tags and package names for the browser.
 

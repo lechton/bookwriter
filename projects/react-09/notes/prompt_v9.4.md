@@ -1,15 +1,117 @@
+Lesson NN = 12
+skill version SV = v9.4
 
-Lesson NN = 08. 
+## Goal & Workspace Rules
+- Work in `projects/react-09` on **River Version (`v2`) Lesson `{NN}`** (bank row `{NN}` in `questions/questions.md`).
+- Use only the skills in `skills/{SV}/` (start with `skills/{SV}/README.md`).
+- Never read **Original Version (`v1`)** maps, drafts, lectures, or skills.
+- Follow the workspace law in `AGENTS.md`:
+  - Zero em-dashes
+  - Zero hard-wraps
+  - TTS-safe prose
+- Never overwrite, delete, or hand-move an existing lecture or draft file. If any file this prompt would write already exists, stop and tell me so I can retire it with `archive_lecture.py` first.
+- Do not commit anything.
 
+---
 
-Work in projects/react-09 on River Version (v2) Lesson {NN}, bank row {NN} in questions/questions.md. Use only the skills in skills/v9.4/ (start with skills/v9.4/README.md), never read Original Version (v1) maps, drafts, lectures, or skills, and follow the workspace law in AGENTS.md: no em-dashes, no hard-wraps, TTS-safe prose. Never overwrite, delete, or hand-move an existing lecture or draft file: if a file this prompt would write already exists, stop and tell me, so I can retire it with archive_lecture.py first. Do not commit anything.
+## Step 1: Principle Map (written by you in this thread)
+- **Target file**:
+  - `01-01-map-principles/v2/{NN}.md`
+- **Skills to load**:
+  - `skills/{SV}/v2/map-principles/SKILL.md`
+  - `skills/{SV}/v2/opening-essence/SKILL.md`
+- **Inputs to read**:
+  - Bank row `{NN}` in `questions/questions.md`
+  - Syllabus card `01-01-map/{NN}.md` (if the card does not exist, work from the bank row and note that in the report)
+  - Official React corpus
+- **What to do**:
+  - If `01-01-map-principles/v2/{NN}.md` already exists, check it against the Completion Gate of `skills/{SV}/v2/map-principles/SKILL.md`. Keep it if it passes, or stop and list the failures if it fails.
+  - If it does not exist, verify every runtime behavior in headless Chrome, write the map under those two skills, and pass the Completion Gate.
+  - Keep facts only in the map (never drafted lecture sentences).
 
-Step 1, principle map, written by you in this thread: if 01-01-map-principles/v2/{NN}.md exists, check it against the Completion Gate of skills/v9.4/v2/map-principles/SKILL.md, and keep it if it passes or stop and list the failures if it fails. If it does not exist, write it under that skill: read bank row {NN} and the syllabus card 01-01-map/{NN}.md (if the card does not exist, work from the bank row and say so in the report), read the corpus, verify every runtime behavior in headless Chrome, and pass the Completion Gate. The map holds facts only, never lecture sentences.
+---
 
-Step 2, first draft, in a new Argon thread: use synara_capabilities to pick the exact Argon provider and model, never guess a slug, then create a new Synara thread with this message and wait until it finishes: "Work in projects/react-09 on River Version (v2) Lesson {NN}. Load skills/v9.4/README.md and these skills in skills/v9.4/v2/: lecture-structure, lecture-voice, content-benchmarks, code-and-figures, and verification Stage A. Never read v1 files. Read the reference sections in content-benchmarks Section 1, then the map 01-01-map-principles/v2/{NN}.md. Write the whole lecture from top to bottom, one principle at a time, as the first draft at 01-01-md-DRAFT-lectures/v2/{NN}.md. If that file already exists, stop and say so. Run verification Stage A and fix what fails. Do not build, and do not write 01-02-md-LECTURES/v2/{NN}.md. Report briefly: the absolute file URL of the draft, what you fixed, and anything that failed."
+## Step 2: First Draft (in a new Argon thread in High mode)
+- **Thread setup**:
+  - Use `synara_capabilities` to pick the exact **Argon** provider and model (never guess a slug).
+  - Set reasoning effort / mode to **High** (`high`).
+  - Create a new Synara thread with the message below and wait until it finishes:
 
-Step 3, simplify and build, in a second new Argon thread that did not write the draft: create it the same way with this message and wait until it finishes: "Work in projects/react-09 on River Version (v2) Lesson {NN}. Load skills/v9.4/README.md, skills/v9.4/v2/simplify/SKILL.md, and the lecture skills in skills/v9.4/v2/. Read 01-01-md-DRAFT-lectures/v2/{NN}.md and simplify it from top to bottom into 01-02-md-LECTURES/v2/{NN}.md, as the simplify skill says. Leave the draft unchanged. If 01-02-md-LECTURES/v2/{NN}.md already exists, stop and say so. Then run verification Stage B: from projects/react-09, run node src/build-river.mjs {NN} and node ../../tools/check-links.mjs, and confirm that 01-03-md-lectures-HTML/v2/{NN}.html and 01-04-md-lectures-PDF/v2/{NN}.pdf exist. Report briefly: the absolute file URLs of the lecture, the HTML, and the PDF, what you fixed, and anything that failed."
+> Work in `projects/react-09` on River Version (`v2`) Lesson `{NN}`.
+>
+> **1. Load these skills first** (never read `v1` files):
+> - `skills/{SV}/README.md`
+> - `skills/{SV}/v2/opening-essence/SKILL.md`
+> - `skills/{SV}/v2/lecture-structure/SKILL.md`
+> - `skills/{SV}/v2/lecture-voice/SKILL.md`
+> - `skills/{SV}/v2/content-benchmarks/SKILL.md`
+> - `skills/{SV}/v2/code-and-figures/SKILL.md`
+> - `skills/{SV}/v2/verification/SKILL.md` (Stage A)
+>
+> **2. Read these inputs**:
+> - The reference sections listed in `skills/{SV}/v2/content-benchmarks/SKILL.md` Section 1
+> - The principle map at `01-01-map-principles/v2/{NN}.md`
+>
+> **3. Write the first draft**:
+> - Write the whole lecture from top to bottom, one principle at a time, to:
+>   - `01-01-md-DRAFT-lectures/v2/{NN}.md`
+> - If that file already exists, stop and say so.
+> - Run `verification` Stage A and fix anything that fails.
+> - Do not run the build, and do not write `01-02-md-LECTURES/v2/{NN}.md`.
+>
+> **4. Report briefly**:
+> - Absolute file URL of `01-01-md-DRAFT-lectures/v2/{NN}.md`
+> - What you fixed
+> - Anything that failed
 
-Do not write the draft or the lecture yourself, and never pass your own wording for the lecture to the Argon threads. If you cannot create or wait for a Synara thread, stop after Step 1 and print the Step 2 and Step 3 messages for me to paste into new Argon threads myself.
+---
 
-Final report: the absolute file URLs of the map, the first draft, the lecture, the HTML, and the PDF; whether the map was new or reused; the short reports of the two Argon threads; and anything that failed or was skipped.
+## Step 3: Simplify & Build (in a second new Argon thread in High mode)
+- **Thread setup**:
+  - Create a **second** fresh Synara thread (one that did not write the draft) using the exact **Argon** provider and model in **High** (`high`) mode, and wait until it finishes:
+
+> Work in `projects/react-09` on River Version (`v2`) Lesson `{NN}`.
+>
+> **1. Load these skills first** (never read `v1` files):
+> - `skills/{SV}/README.md`
+> - `skills/{SV}/v2/simplify/SKILL.md`
+> - `skills/{SV}/v2/opening-essence/SKILL.md`
+> - `skills/{SV}/v2/lecture-structure/SKILL.md`
+> - `skills/{SV}/v2/lecture-voice/SKILL.md`
+> - `skills/{SV}/v2/content-benchmarks/SKILL.md`
+> - `skills/{SV}/v2/code-and-figures/SKILL.md`
+> - `skills/{SV}/v2/verification/SKILL.md` (Stage B)
+>
+> **2. Simplify the draft into the final lecture**:
+> - Read the first draft at:
+>   - `01-01-md-DRAFT-lectures/v2/{NN}.md` (leave the draft file unchanged)
+> - Simplify it from top to bottom into:
+>   - `01-02-md-LECTURES/v2/{NN}.md`
+> - Follow `simplify` and `opening-essence` (Moves 1–4, zero info bombs).
+> - If `01-02-md-LECTURES/v2/{NN}.md` already exists, stop and say so.
+>
+> **3. Run Verification Stage B & Build**:
+> - From `projects/react-09`, run:
+>   - `node src/build-river.mjs {NN}`
+>   - `node ../../tools/check-links.mjs`
+> - Confirm that both outputs exist and have zero surveillance/link errors:
+>   - `01-03-md-lectures-HTML/v2/{NN}.html`
+>   - `01-04-md-lectures-PDF/v2/{NN}.pdf`
+>
+> **4. Report briefly**:
+> - Absolute file URLs of the lecture `.md`, the `.html`, and the `.pdf`
+> - What you fixed
+> - Anything that failed
+
+---
+
+## Guardrails & Final Report
+- Do not write the draft or the lecture yourself, and never pass your own wording for the lecture to the Argon threads.
+- If you cannot create or wait for a Synara thread, stop after Step 1 and print the Step 2 and Step 3 messages so I can paste them into new Argon threads myself.
+- **In your final report, list**:
+  - Absolute file URL of the map: `01-01-map-principles/v2/{NN}.md` (and whether it was new or reused)
+  - Absolute file URL of the first draft: `01-01-md-DRAFT-lectures/v2/{NN}.md`
+  - Absolute file URL of the final lecture: `01-02-md-LECTURES/v2/{NN}.md`
+  - Absolute file URL of the HTML: `01-03-md-lectures-HTML/v2/{NN}.html`
+  - Absolute file URL of the PDF: `01-04-md-lectures-PDF/v2/{NN}.pdf`
+  - Short reports from both Argon threads, plus anything that failed or was skipped

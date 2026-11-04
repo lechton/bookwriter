@@ -17,9 +17,9 @@ River maps 07 to 10 each carried on the City News site of the lesson before, bec
 
 | Step | File | Written by | Skill |
 | --- | --- | --- | --- |
-| 1. Principle map | `01-01-map-principles/v2/{NN}.md` | Opus | [v2/map-principles](v2/map-principles/SKILL.md) |
-| 2. First draft | `01-01-md-DRAFT-lectures/v2/{NN}.md`, the whole lecture from top to bottom | Argon | [v2/lecture-structure](v2/lecture-structure/SKILL.md), [v2/lecture-voice](v2/lecture-voice/SKILL.md), [v2/content-benchmarks](v2/content-benchmarks/SKILL.md), [v2/code-and-figures](v2/code-and-figures/SKILL.md) |
-| 3. Lecture | `01-02-md-LECTURES/v2/{NN}.md`, built to `01-03-md-lectures-HTML/v2/` and `01-04-md-lectures-PDF/v2/` by `node src/build-river.mjs {NN}` | Argon, in a fresh thread that did not write the draft | [v2/simplify](v2/simplify/SKILL.md), with the step 2 skills |
+| 1. Principle map | `01-01-map-principles/v2/{NN}.md` | Opus | [v2/map-principles](v2/map-principles/SKILL.md), [v2/opening-essence](v2/opening-essence/SKILL.md) |
+| 2. First draft | `01-01-md-DRAFT-lectures/v2/{NN}.md`, the whole lecture from top to bottom | Argon | [v2/opening-essence](v2/opening-essence/SKILL.md), [v2/lecture-structure](v2/lecture-structure/SKILL.md), [v2/lecture-voice](v2/lecture-voice/SKILL.md), [v2/content-benchmarks](v2/content-benchmarks/SKILL.md), [v2/code-and-figures](v2/code-and-figures/SKILL.md) |
+| 3. Lecture | `01-02-md-LECTURES/v2/{NN}.md`, built to `01-03-md-lectures-HTML/v2/` and `01-04-md-lectures-PDF/v2/` by `node src/build-river.mjs {NN}` | Argon, in a fresh thread that did not write the draft | [v2/simplify](v2/simplify/SKILL.md), [v2/opening-essence](v2/opening-essence/SKILL.md), with the step 2 skills |
 
 [v2/verification](v2/verification/SKILL.md) holds the gates: Stage A is the first draft's reading, and Stage B is the lecture after the simplify pass, with the build and the links last.
 
@@ -38,13 +38,14 @@ River maps 07 to 10 each carried on the City News site of the lesson before, bec
 
 | # | Skill | Used by | Responsibility |
 | --- | --- | --- | --- |
-| 1 | [map-principles-v2](v2/map-principles/SKILL.md) | Opus | The fact sheet and the lesson's example, chosen anew: scope, verified runtime behavior, ledger, terms, root distinctions, real mistakes as events, interview depth, bridges, example steps, code names, interview points. No drafted lecture sentences. |
-| 2 | [lecture-structure-v2](v2/lecture-structure/SKILL.md) | Argon | The three zones of a River lecture, used for the first draft and the lecture. |
-| 3 | [lecture-voice-v2](v2/lecture-voice/SKILL.md) | Argon | Writing the first draft from the map one principle at a time, and the voice: one idea per sentence, plain words for the parts, zero parentheses, chronological order. |
-| 4 | [content-benchmarks-v2](v2/content-benchmarks/SKILL.md) | Argon | The reference lectures to read first, and twelve benchmarks with approved passages and rejected drafts: root, real bugs, everyday openings, the on-stage walk, plain lead-ins, handshakes, bridges, cause before effect, believable examples, figures after the text, sentences with worth, principle cards in human words. |
-| 5 | [code-and-figures-v2](v2/code-and-figures/SKILL.md) | Argon | Code blocks, `~token~` balloons, `tree` figures, browser previews, `files` panels, and principle cards. |
-| 6 | [simplify-v2](v2/simplify/SKILL.md) | Argon, fresh thread | Assumes the first draft is convoluted from top to bottom and rewrites it for maximum clarity into the lecture. |
-| 7 | [verification-v2](v2/verification/SKILL.md) | Argon | Stage A first draft, Stage B lecture with the build and links, and the completion report. |
+| 1 | [opening-essence-v2](v2/opening-essence/SKILL.md) | Opus, Argon | Opens every chapter and every principle by stripping away all project furniture, showing the naked mechanism in its simplest lines, elaborating every nuance of confusion in direct language (*"Yes, it is the exact same thing!"* or *"It may look the same, or work the same at first, but it is NOT the same thing!"*), and unlocking technical words through their everyday human meaning before stepping into the project files. |
+| 2 | [map-principles-v2](v2/map-principles/SKILL.md) | Opus | The fact sheet and the lesson's example, chosen anew: scope, verified runtime behavior, ledger, terms, opening essence, root distinctions, real mistakes as events, interview depth, bridges, example steps, code names, interview points. No drafted lecture sentences. |
+| 3 | [lecture-structure-v2](v2/lecture-structure/SKILL.md) | Argon | The three zones of a River lecture, used for the first draft and the lecture. |
+| 4 | [lecture-voice-v2](v2/lecture-voice/SKILL.md) | Argon | Writing the first draft from the map one principle at a time, and the voice: one idea per sentence, plain words for the parts, zero parentheses, chronological order. |
+| 5 | [content-benchmarks-v2](v2/content-benchmarks/SKILL.md) | Argon | The reference lectures to read first, and twelve benchmarks with approved passages and rejected drafts: root, real bugs, everyday openings, the on-stage walk, plain lead-ins, handshakes, bridges, cause before effect, believable examples, figures after the text, sentences with worth, principle cards in human words. |
+| 6 | [code-and-figures-v2](v2/code-and-figures/SKILL.md) | Argon | Code blocks, `~token~` balloons, `tree` figures, browser previews, `files` panels, and principle cards. |
+| 7 | [simplify-v2](v2/simplify/SKILL.md) | Argon, fresh thread | Assumes the first draft is convoluted from top to bottom and rewrites it for maximum clarity into the lecture. |
+| 8 | [verification-v2](v2/verification/SKILL.md) | Argon | Stage A first draft, Stage B lecture with the build and links, and the completion report. |
 
 ## Part B: Original Version (`v1`) skills
 
