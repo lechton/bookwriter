@@ -1,0 +1,1298 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 14: Responding to Events and Event Propagation — Edition v6.4-6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v6.4-6";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 14: Responding to Events and Event Propagation</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you respond to user events like clicks and typing?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Nora opens her code editor at The Daily Courier to build an interactive article desk.</li>
+<li>The team wants readers to search articles, click cards to read them, and bookmark stories.</li>
+<li>Nora clicks the Bookmark button, but the parent card opens as well and the search form reloads the whole page.</li>
+<li>Why does clicking a button inside a card trigger the parent card handler as well?</li>
+<li>Unhandled propagation causes double actions, while unprevented form submissions trigger full-page browser reloads.</li>
+<li>Many developers struggle to separate bubbling from default actions, and read wrong targets when clicking inner icons.</li>
+<li>Today, we master event objects, keystroke handling, event bubbling, propagation stopping, and default action prevention.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Friction of Event Bubbling and Default Actions</h3>
+<p>Every web application exists to present content. Real user interfaces must also respond when users interact with the screen. Users click buttons, submit search queries, and save articles for later reading. In earlier lessons, you learned that React components are pure functions. They calculate JSX markup from incoming props. However, when developers begin adding interactivity to their components, they frequently encounter unexpected browser behaviors.</p>
+<p>To see this in action on The Daily Courier, Nora builds an interactive news desk: <code>src/App.jsx</code>. She renders a list of news articles. Each card features an article headline and a nested "Save" button. When the reader clicks the card itself, the application should open the full story. When the reader clicks the Save button, the application should save the story without opening it.</p>
+<p>It is common for an engineer to write the code below, expecting button clicks and card clicks to stay separate. Opening the browser reveals an immediate defect. Clicking Save logs the bookmark, but it also opens the full article. The user triggered two conflicting actions with a single click.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Naive Execution Attempt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ story, onOpen }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">save</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'Saved:'</span>, story.id</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 196px;">
+        <span class="text">Prints bookmark action to console</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;article onClick=<span class="target-token">{onOpen}</span>&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 196px;">
+        <span class="text">Enclosing card handler triggers on bubble</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;button onClick=<span class="target-token">{save}</span>&gt;Save&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px; --token-offset: 177px;">
+        <span class="text">Inner click bubbles to card</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Why did clicking the inner button trigger the parent card handler? In the browser DOM, events do not stop at the element you clicked. They bubble upward through every parent element in the tree. The button sits inside the card. Clicking the button triggers its handler first, then triggers the enclosing card handler.</p>
+<p>A second failure occurs when an engineer submits a search form without halting browser defaults. Decades ago, HTML forms submitted data by navigating to a new URL. When a reader presses Enter inside a search form without special handling, the browser reloads the page. The page refreshes, the URL appends a question mark, and all client memory disappears.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><p><strong>Why did clicking Save also open my article card?</strong></p>
+  <p>In the browser DOM and React, click events bubble upward from child to parent. When you click a button inside an article card, the click runs the button handler first. Then, the event travels up to the article card and runs the card click handler as well. To prevent the parent card from opening, call <code>e.stopPropagation()</code> inside the button handler. This halts the event immediately and prevents it from reaching any parent elements.</p></div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Synthetic Events, Input Handlers, and Propagation Pathways</h3>
+<p>To build reliable user interfaces, we must understand how React connects JavaScript functions to browser events. In the browser DOM, elements dispatch native events like <code>click</code>, <code>input</code>, and <code>submit</code>. Different browsers historically implemented slightly different event properties. React solves this by wrapping native events in a cross-browser object called <strong>SyntheticEvent</strong>.</p>
+<p>The synthetic event object conforms directly to the standard DOM Event interface. It normalizes browser differences so your event code behaves identically across all modern browsers. In React, you attach handlers using camelCase props like <code>onClick</code>, <code>onChange</code>, and <code>onSubmit</code>. Every handler function receives this synthetic event object <code>e</code> automatically as its first argument.</p>
+<p>A critical distinction in event handling is the difference between <code>e.currentTarget</code> and <code>e.target</code>. The property <code>e.currentTarget</code> always points to the element that owns the active handler. In contrast, <code>e.target</code> points to the innermost element the user physically touched. If a button contains an icon <span class="code-line-callout"><code>&lt;span&gt;★&lt;/span&gt;</code></span> clicking the star sets <code>e.target</code> to that inner span. However, <code>e.currentTarget</code> remains the button element. Reading <code>e.currentTarget</code> ensures you inspect the element that declared the handler.</p>
+<p>Let us also examine how React handles text inputs. In native DOM, input <code>change</code> events wait for blur. They fire only when the user leaves the field. In React, <code>onChange</code> behaves differently: it fires on every single keystroke. Under the hood, React listens to the browser <code>input</code> event and normalizes it to <code>onChange</code>. The property <code>e.target.value</code> contains the full text typed so far, providing real-time access to user queries.</p>
+<p>Finally, let us review two JavaScript features used in clean event handling. First, <strong>object destructuring</strong> (<span class="code-line-callout"><code><span class="kw">const</span> { value } = e.target</code></span>) unpacks properties from an object into local variables. Second, an <strong>arrow function</strong> (<span class="code-line-callout"><code>() =&gt; <span class="fn">handleOpen</span>(story.id)</code></span>) creates a waiting function value. It passes specific identifiers upward only when the user clicks, preventing premature execution during render.</p>
+</div>
+<div class="keep-together">
+<h3>Principles of React: The Core Laws of Event Handling and Propagation</h3>
+<p>Senior interview candidates must clearly explain event handling and propagation. They must distinguish targets, handle keystrokes, and stop bubbling cleanly. To master these concepts, we formalize the six governing principles of event handling:</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Put Side Effects in Handlers, Never in Render</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">side effect</span>
+          <span class="gloss-def">an operation that interacts with outside systems or modifies external memory</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">render calculation</span>
+          <span class="gloss-def">the pure step where a component calculates its JSX markup</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Handlers run strictly when the user interacts, never during the render calculation. This makes event handlers the natural home for side effects like logging, analytics, and network calls. Placing side effects in component bodies causes unwanted executions and crashes pure rendering contracts.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>In earlier lessons, you learned that React components must remain pure calculations. React calls your component function whenever it needs to compute markup. Under StrictMode in development, React invokes your component twice to detect unexpected side effects.</p>
+<p>Side effects placed in component bodies run on page load. Under StrictMode, they execute twice during development. By contrast, React calls event handlers only when a user physically clicks, types, or submits. An event handler is not part of the render calculation. It can safely send network requests, write to local storage, and trigger outside systems.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Render vs Handler Execution</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleCard</span>({ story }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  console.<span class="fn">log</span>(<span class="target-token"><span class="str">'Render card:'</span>, story.id</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px; --token-offset: 224px;">
+        <span class="text">Executes twice during render phase</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">function</span> <span class="fn">save</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'Bookmarked:'</span>, story.id</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 219px;">
+        <span class="text">Runs exclusively upon user click</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;button onClick=<span class="target-token">{save}</span>&gt;Save&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 177px;">
+        <span class="text">Passes reference without calling</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Refreshing the browser prints "Render card" twice under StrictMode. The message "Bookmarked" prints zero times. When you click the button, "Bookmarked" prints once, while the render log does not run again.</p>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Read currentTarget for the Bound Element and target for What Was Touched</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">currentTarget</span>
+          <span class="gloss-def">the element whose event handler is currently executing</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">target</span>
+          <span class="gloss-def">the innermost DOM element where the event originated</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Every handler receives a React event object that mirrors DOM standards. The currentTarget property refers to the element that owns the handler. The target property refers to the innermost element the user physically touched, such as an icon inside a button.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>When an event occurs, the browser creates an event object. React wraps this event in a SyntheticEvent. If you attach an <code>onClick</code> handler to an <code>&lt;article&gt;</code> card, the card is the <code>currentTarget</code>.</p>
+<p>If the user clicks an icon <span class="code-line-callout"><code>&lt;span&gt;★&lt;/span&gt;</code></span> inside that card, <code>e.target</code> is the inner <code>&lt;span&gt;</code> tag. A common bug occurs when developers read <code>e.target.dataset.id</code> expecting the card ID. If the reader clicks the icon, <code>e.target</code> is the span, returning <code>undefined</code>. Always inspect <code>e.currentTarget</code> to read attributes from the element that declared the handler.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Target vs CurrentTarget</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleCard</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">check</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'target:'</span>, e.target.tagName</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 238px;">
+        <span class="text">Reads innermost touched tag</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'current:'</span>, e.currentTarget.tagName</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 276px;">
+        <span class="text">Identifies owner tag</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;article onClick=<span class="target-token">{check}</span>&gt;&lt;button&gt;★&lt;/button&gt;&lt;/article&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>Clicking the star icon prints <code>target: SPAN</code> and <code>current: ARTICLE</code>. This proves that <code>target</code> identifies what was touched, while <code>currentTarget</code> identifies the handler boundary.</p>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Expect onChange to Fire on Every Keystroke</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">onChange event</span>
+          <span class="gloss-def">a synthetic event firing on every text modification in an input</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">input event</span>
+          <span class="gloss-def">the native browser event dispatched on each individual keystroke</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">React fires the onChange prop on every single keystroke. In the browser DOM, native change events wait until an input loses focus. React wraps the native input event so onChange provides immediate updates as the user types.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>In traditional JavaScript, developers had to choose between <code>input</code> and <code>change</code> events. The native <code>change</code> event on <code>&lt;input&gt;</code> elements dispatches only when the user commits text by pressing Enter or clicking away.</p>
+<p>In React, <code>onChange</code> fires immediately on every keypress. The property <code>e.target.value</code> contains the full text typed into the field so far. The underlying native event type is <code>input</code>, exposed through <code>e.nativeEvent.type</code>. This immediate dispatch allows components to log searches, validate formats, or filter lists in real time.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Per Keystroke Input Handling</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SearchBar</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleChange</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'typed:'</span>, e.target.value</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 224px;">
+        <span class="text">Fires on every single keystroke</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'type:'</span>, e.nativeEvent.type</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 238px;">
+        <span class="text">Reveals native browser event</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;input onChange=<span class="target-token">{handleChange}</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 215px;">
+        <span class="text">Fires handler on every keystroke</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Typing the letters "n" and "e" produces two log lines: first <code>typed: n</code>, then <code>typed: ne</code>. Both lines report <code>type: input</code>.</p>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">Expect Events to Bubble Up Through Parent Handlers</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">event bubbling</span>
+          <span class="gloss-def">the upward propagation of an event through ancestor DOM elements</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">capture phase</span>
+          <span class="gloss-def">the downward pass where capture handlers execute before bubbling starts</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Events start at the innermost element touched and bubble upward through ancestors in order. Each parent handler on the path executes unless explicitly stopped. The onScroll event is the sole exception in React that does not bubble.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>Event propagation in React follows the DOM event model. When a user clicks an element, the event first travels downward from the root during the capture phase. You can listen to this phase using <code>onClickCapture</code>.</p>
+<p>Once the event reaches the target, it bubbles upward through each parent element. If a button sits inside an <code>&lt;article&gt;</code> card, clicking the button invokes the button handler first, then the card handler. All events propagate in React except <code>onScroll</code>, which fires strictly on the scrolled element.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Event Bubbling Sequence</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">FeedCard</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> onCard = () =&gt; console.<span class="fn">log</span>(<span class="target-token"><span class="str">'2. Card ran'</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-right" style="--right-edge: 418px; --tail-shoulder: 24px;">
+        <span class="text">Runs second on bubble</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> onBtn = () =&gt; console.<span class="fn">log</span>(<span class="target-token"><span class="str">'1. Button ran'</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-right" style="--right-edge: 418px; --tail-shoulder: 24px;">
+        <span class="text">Runs first at target</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;article onClick=<span class="target-token">{onCard}</span>&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 196px;">
+        <span class="text">Parent card listening to bubbles</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;button onClick={onBtn}&gt;Read&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>When you click the button, the console logs <code>1. Button ran</code> followed immediately by <code>2. Card ran</code>. The click traveled upward through the tree automatically.</p>
+<aside class="callout callout-principle" data-principle="5">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 5</span></div>
+    <h4 class="principle-title">Stop Propagation Where a Child Action Must Stay Local</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">stopPropagation</span>
+          <span class="gloss-def">a method on the event object that prevents further bubbling to parents</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">child isolation</span>
+          <span class="gloss-def">keeping child button actions from activating enclosing card click handlers</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">When clicking an inner control must not trigger the parent container handler, call e.stopPropagation() in the child handler. Stopping propagation keeps the action local and prevents accidental parent activation.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">ActionBtn</span>({ onSave }) {</div><div class="case-code-line">  <span class="kw">function</span> <span class="fn">handleClick</span>(e) {</div><div class="case-code-line">    <span class="target-token">e.<span class="fn">stopPropagation</span>()</span>;</div><div class="cmt-bubble" style="--indent-offset: 33px; --token-offset: 75px;"><span class="text">Stops bubbling to parent</span></div><div class="case-code-line">    <span class="fn">onSave</span>();</div><div class="case-code-line">  }</div><div class="case-code-line">  <span class="kw">return</span> &lt;button onClick=<span class="target-token">{handleClick}</span>&gt;Save&lt;/button&gt;;</div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-watermark-bg"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">ActionBtn</span>({ onSave }) {</div><div class="case-code-line">  <span class="kw">function</span> <span class="fn">handleClick</span>(e) {</div><div class="case-code-line">    <span class="target-token"><span class="fn">onSave</span>()</span>;</div><div class="cmt-bubble" style="--indent-offset: 33px; --token-offset: 30px;"><span class="text">Omitting stopPropagation bubbles click to parent</span></div><div class="case-code-line">  }</div><div class="case-code-line">  <span class="kw">return</span> &lt;button onClick=<span class="target-token">{handleClick}</span>&gt;Save&lt;/button&gt;;</div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>In modern web applications, clickable cards often contain independent actions like bookmark, like, or share buttons. If a user clicks Bookmark, they intend to save the article, not navigate to the article page.</p>
+<p>Without calling <code>e.stopPropagation()</code>, the event bubbles to the card, triggering both actions. Calling <code>e.stopPropagation()</code> halts the event at the button boundary. If the parent needs notification, the child calls a parent callback prop explicitly after stopping propagation.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Stopped Propagation Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">BookmarkAction</span>({ storyId }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSave</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="target-token">e.<span class="fn">stopPropagation</span>()</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 86px;">
+        <span class="text">Halts bubbling before reaching parent</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'Saved story:'</span>, storyId</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 219px;">
+        <span class="text">Runs isolated action in memory</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;button onClick={handleSave}&gt;Save Story&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Clicking the Save button now prints only <code>Saved story: art-1</code>. The enclosing card click handler never runs because bubbling was stopped at the button boundary.</p>
+<aside class="callout callout-principle" data-principle="6">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 6</span></div>
+    <h4 class="principle-title">Prevent Browser Default Actions on Form Submission</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">preventDefault</span>
+          <span class="gloss-def">a method that cancels the default browser behavior for an event</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">full-page reload</span>
+          <span class="gloss-def">native browser form submission that refreshes the page and wipes memory</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Forms natively reload the browser page upon submission. Call e.preventDefault() in your onSubmit handler to cancel the native reload. This allows React to handle the event in memory.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">SearchForm</span>({ onSearch }) {</div><div class="case-code-line">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</div><div class="case-code-line">    <span class="target-token">e.<span class="fn">preventDefault</span>()</span>;</div><div class="cmt-bubble" style="--indent-offset: 33px; --token-offset: 71px;"><span class="text">Prevents full-page reload on submit</span></div><div class="case-code-line">    <span class="fn">onSearch</span>();</div><div class="case-code-line">  }</div><div class="case-code-line">  <span class="kw">return</span> &lt;form onSubmit=<span class="target-token">{handleSubmit}</span>&gt;&lt;button&gt;Go&lt;/button&gt;&lt;/form&gt;;</div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-watermark-bg"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">SearchForm</span>({ onSearch }) {</div><div class="case-code-line">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</div><div class="case-code-line">    <span class="target-token">e.<span class="fn">stopPropagation</span>()</span>;</div><div class="cmt-bubble" style="--indent-offset: 33px; --token-offset: 75px;"><span class="text">Does not prevent full-page reload</span></div><div class="case-code-line">    <span class="fn">onSearch</span>();</div><div class="case-code-line">  }</div><div class="case-code-line">  <span class="kw">return</span> &lt;form onSubmit=<span class="target-token">{handleSubmit}</span>&gt;&lt;button&gt;Go&lt;/button&gt;&lt;/form&gt;;</div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>HTML form elements carry built-in browser behaviors established decades ago. When a <code>&lt;form&gt;</code> is submitted, the browser collects inputs and navigates to its action URL. If no action exists, it reloads the current page with query parameters.</p>
+<p>In a single-page React application, a full-page reload wipes all client state and clears the browser console. Developers sometimes mistakenly call <code>e.stopPropagation()</code> to fix this reload. However, stopping propagation only halts bubbling to parent components; it does nothing to prevent browser default behaviors. To cancel the reload, you must call <code>e.preventDefault()</code>.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Preventing Form Submission Reload</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SearchForm</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="target-token">e.<span class="fn">preventDefault</span>()</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 82px;">
+        <span class="text">Cancels native browser full-page reload</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'Search submitted'</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 196px;">
+        <span class="text">Executes custom submission in memory</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;form onSubmit={handleSubmit}&gt;&lt;button&gt;Go&lt;/button&gt;&lt;/form&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>With <code>e.preventDefault()</code>, pressing Enter logs "Search submitted" while the page stays in place. The console logs remain visible and the page never refreshes.</p>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for reading-desk - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">reading-desk - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">onOpen={handleOpen}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h3" data-elem="[h3.title]"><div class="ui-elem-content">City Transit Expands</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ArticleActions</span><span class="component-explorer-props">onSave={handleSave}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.save-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Save</span></div></div><div class="ui-elem ui-tag-button" data-elem="[button.share-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Share</span></div></div></div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">onOpen={handleOpen}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h3" data-elem="[h3.title]"><div class="ui-elem-content">Clean Energy Accord</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ArticleActions</span><span class="component-explorer-props">onSave={handleSave}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.save-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Save</span></div></div><div class="ui-elem ui-tag-button" data-elem="[button.share-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Share</span></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="reading-desk: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">reading-desk: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Reading desk container holding search form, article list, and top-level action handlers</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ArticleCard.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Clickable presentation card wiring container click and hosting nested action toolbar</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ArticleActions.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-leaf">leaf</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Action toolbar containing Save and Share buttons using stopPropagation to protect parent card</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Warm Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #d98c47; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #f3caa3; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we declare the reading desk container</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the clickable article card</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/ArticleCard.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we build the protected action toolbar</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/ArticleActions.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 14.1: Figure 14.1: The progressive assembly pipeline of the interactive news desk application</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we declare the reading desk container';">First, we declare the reading desk container</div>
+      <div class="card-components"><span class="component-tag">&lt;src/App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <code>src/App.jsx</code>, we establish the top-level container for our news reading desk. We define static article data and declare event handlers. The search input handles keystrokes through <code>handleSearchChange</code>.</p>
+<p>Notice that because state management belongs to future lessons, these handlers currently log user actions to the console. The search input logs every keystroke immediately as the user types.</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> ArticleCard <span class="kw">from</span> <span class="str">'./components/ArticleCard.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">const</span> <span class="target-token">articles</span> = [ </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px; --token-offset: 91px;">
+        <span class="text">Declared outside App to avoid recreating on renders</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  { id: <span class="str">'art-1'</span>, title: <span class="str">'City Transit'</span> },</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  { id: <span class="str">'art-2'</span>, title: <span class="str">'Clean Energy'</span> }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">];</span></div>
+<div class="row odd"><span class="num">7</span><span class="src"></span></div>
+<div class="row even"><span class="num">8</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div></div></div></div>
+<p>Next, we declare <code>handleSearchChange</code> and <code>handleSearchSubmit</code>. Notice that <code>handleSearchSubmit</code> calls <code>e.preventDefault()</code> to stop the browser from reloading the page upon form submission.</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSearchChange</span>(e) {</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'Query:'</span>, e.target.value</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 224px;">
+        <span class="text">Logs query on every keystroke</span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSearchSubmit</span>(e) {</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    <span class="target-token">e.<span class="fn">preventDefault</span>()</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 82px;">
+        <span class="text">Cancels native browser full-page reload</span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">    console.<span class="fn">log</span>(<span class="str">'Search submitted'</span>);</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  }</span></div></div></div></div>
+<p>The functions <code>handleOpen</code> and <code>handleSave</code> record user actions in console logs. Each function receives the article identifier passed upward from child components.</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row even"><span class="num">16</span><span class="src">  <span class="kw">function</span> <span class="fn">handleOpen</span>(id) {</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'Open story:'</span>, id</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 191px;">
+        <span class="text">Executes when parent card is clicked</span>
+      </div></div>
+<div class="row even"><span class="num">18</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSave</span>(id) {</span></div>
+<div class="row even"><span class="num">20</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'Save story:'</span>, id</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 191px;">
+        <span class="text">Executes when bookmark action is saved</span>
+      </div></div>
+<div class="row odd"><span class="num">21</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">22</span><span class="src">  <span class="kw">return</span> (</span></div></div></div></div>
+<p>We now render the search form. We wire the search form to <code>handleSearchSubmit</code> and the search input to <code>handleSearchChange</code>.</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">23</span><span class="src">    &lt;main className=<span class="str">"desk-container"</span>&gt;</span></div>
+<div class="row even"><span class="num">24</span><span class="src">      &lt;h1&gt;Latest News Desk&lt;/h1&gt;</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">      &lt;form onSubmit=<span class="target-token">{handleSearchSubmit}</span>&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px; --token-offset: 234px;">
+        <span class="text">Cancels page reload on submit</span>
+      </div></div>
+<div class="row even"><span class="num">26</span><span class="src">        &lt;input onChange={handleSearchChange} placeholder=<span class="str">"Search..."</span> /&gt;</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">        &lt;button type=<span class="str">"submit"</span>&gt;Search&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">28</span><span class="src">      &lt;/form&gt;</span></div></div></div></div>
+<p>We complete <code>App.jsx</code> by rendering the article collection. We pass <code>handleOpen</code> and <code>handleSave</code> downward as uncalled function references.</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">29</span><span class="src">      {articles.<span class="fn">map</span>((story) =&gt; (</span></div>
+<div class="row even"><span class="num">30</span><span class="src">        &lt;ArticleCard</span></div>
+<div class="row odd"><span class="num">31</span><span class="src">          key={story.id}</span></div>
+<div class="row even"><span class="num">32</span><span class="src">          story={story}</span></div>
+<div class="row odd"><span class="num">33</span><span class="src">          onOpen=<span class="target-token">{handleOpen}</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px; --token-offset: 120px;">
+        <span class="text">Passes uncalled card click handler</span>
+      </div></div>
+<div class="row even"><span class="num">34</span><span class="src">          onSave=<span class="target-token">{handleSave}</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px; --token-offset: 120px;">
+        <span class="text">Passes uncalled bookmark save handler</span>
+      </div></div>
+<div class="row odd"><span class="num">35</span><span class="src">        /&gt;</span></div>
+<div class="row even"><span class="num">36</span><span class="src">      ))}&lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">37</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">38</span><span class="src">}</span></div></div></div></div>
+<p>By mapping over the collection, each card receives the exact same handler references without triggering premature logs.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the clickable article card';">Next, we build the clickable article card</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/ArticleCard.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/ArticleCard.jsx</code></span> we construct the interactive card boundary. The card renders an <code>&lt;article&gt;</code> tag with an <code>onClick</code> prop. When clicked, it calls <code>onOpen(story.id)</code> using an inline arrow function.</p>
+<p>Inside the card, we render the article title. We also mount <code>&lt;ArticleActions /&gt;</code>, passing <code>story.id</code> and the callback prop <code>onSave</code>.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleCard</span>({ story, onOpen, onSave }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;article</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      onClick=<span class="target-token">{() =&gt; <span class="fn">onOpen</span>(story.id)}</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px; --token-offset: 186px;">
+        <span class="text">Delays execution until user clicks</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h3&gt;{story.title}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;ArticleActions storyId={story.id} onSave={onSave} /&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice how <code>ArticleCard</code> acts as a bridge. It handles its card click directly while forwarding callbacks to a child.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we build the protected action toolbar';">Finally, we build the protected action toolbar</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/ArticleActions.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/ArticleActions.jsx</code></span> we build the action buttons. The user can save or share the article. These buttons live inside a clickable <code>&lt;article&gt;</code> card. Without protection, clicking Save or Share bubbles up to the card.</p>
+<p>To isolate these buttons, we declare <code>handleSaveClick</code> and <code>handleShareClick</code>. Each handler calls <code>e.stopPropagation()</code> before executing its action.</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleActions.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleActions</span>({ storyId, onSave }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSaveClick</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="target-token">e.<span class="fn">stopPropagation</span>()</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 86px;">
+        <span class="text">Halts bubbling to isolate save action</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">onSave</span>(storyId);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">handleShareClick</span>(e) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="target-token">e.<span class="fn">stopPropagation</span>()</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 86px;">
+        <span class="text">Prevents click from opening parent card</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    console.<span class="fn">log</span>(<span class="str">'Shared story:'</span>, storyId);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  }</span></div></div></div></div>
+<p>We now render the action toolbar buttons. The Save button and Share button attach their protected click handlers cleanly.</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">10</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &lt;div className=<span class="str">"action-toolbar"</span>&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;button onClick=<span class="target-token">{handleSaveClick}</span>&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px; --token-offset: 229px;">
+        <span class="text">Runs isolated bookmark handler</span>
+      </div></div>
+<div class="row odd"><span class="num">13</span><span class="src">        &lt;span&gt;★&lt;/span&gt; Save</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      &lt;button onClick={handleShareClick}&gt;Share&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">18</span><span class="src">}</span></div></div></div></div>
+<p>Notice that the Save button contains a <span class="code-line-callout"><code>&lt;span&gt;★&lt;/span&gt;</code></span> icon. When the user clicks the star, <code>e.target</code> is the span, while <code>e.currentTarget</code> is the button. The event stops cleanly at the button boundary.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>news desk shell</strong> manages article data, handles search events, and coordinates top-level logs.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">onOpen={handleOpen}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>clickable article card</strong> opens article details and bridges props downward to child actions.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ArticleActions</span><span class="component-explorer-props">onSave={handleSave}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>action toolbar</strong> renders Save and Share buttons using stopPropagation to protect parent card handlers.</p></div></div></div></div></div></div></div></div>
+</div>
+<p>Review the complete architecture. In a naive implementation, clicking Save inside the card triggers both the save action and the card open action. Submitting the search form reloads the browser, clearing the console.</p>
+<p>By applying <code>e.stopPropagation()</code> in <code>ArticleActions.jsx</code>, child actions stay isolated. By applying <code>e.preventDefault()</code> in <code>App.jsx</code>, search submissions execute without page reloads.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    main .architecture-audit-figure .audit-table th.th-col-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      font-size: 0.81rem;
+      line-height: 1.4;
+      vertical-align: top !important;
+      color: #334155;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .audit-table td.td-layer,
+    main .architecture-audit-figure .audit-table td.td-layer {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .layer-tag {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 1px;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-size: 0.72rem;
+      color: #64748b;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .architecture-audit-figure .audit-table td.td-naive,
+    main .architecture-audit-figure .audit-table td.td-naive {
+      color: #475569;
+    }
+    .architecture-audit-figure .audit-table td.td-reality,
+    main .architecture-audit-figure .audit-table td.td-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+      color: #1e293b;
+    }
+    .architecture-audit-figure .bullet {
+      font-weight: 800;
+      margin-right: 3px;
+    }
+    .architecture-audit-figure .bullet-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .bullet-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .verdict-row td {
+      border-top: 2px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 10px 12px !important;
+      background: #f1f5f9;
+    }
+    .architecture-audit-figure .verdict-row td.td-reality {
+      background: #e2e8f0 !important;
+    }
+    .architecture-audit-figure .verdict-badge {
+      font-weight: 800;
+      font-size: 0.82rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Event Propagation &amp; Interaction Architecture</div>
+    <div class="audit-title">The Architecture of Event Handling</div>
+    <p class="audit-subtitle">Contrasting accidental bubbling, full-page reloads, and target confusion with synthetic events, propagation stopping, and default prevention</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Architecture</span>
+          <span class="th-main">Layer</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">Naive Assumption</span>
+          <span class="th-main">Uncontrolled Events</span>
+          <span class="th-sub sub-danger">Bubbling Cascades &amp; Reloads</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">React Reality</span>
+          <span class="th-main">Controlled Dispatch</span>
+          <span class="th-sub sub-teal">SyntheticEvent &amp; Propagation Isolation</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">&lt;App.jsx&gt;</span>
+          <span class="layer-role">News Desk Shell</span>
+        </td>
+        <td class="td-naive">
+          <div><span class="bullet bullet-danger">&times;</span> Form submission without preventDefault reloads page</div>
+          <div><span class="bullet bullet-danger">&times;</span> Full-page reload clears memory and browser console logs</div>
+          <div><span class="bullet bullet-danger">&times;</span> Expecting onChange to fire only when input loses focus</div>
+        </td>
+        <td class="td-reality">
+          <div><span class="bullet bullet-teal">&check;</span> Calling e.preventDefault() cancels native page navigation</div>
+          <div><span class="bullet bullet-teal">&check;</span> Client-side search executes cleanly without dropping memory</div>
+          <div><span class="bullet bullet-teal">&check;</span> React onChange wraps input event, firing on each keystroke</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">&lt;ArticleCard.jsx&gt;</span>
+          <span class="layer-role">Clickable Container</span>
+        </td>
+        <td class="td-naive">
+          <div><span class="bullet bullet-danger">&times;</span> Card assumes all inner button clicks stay within buttons</div>
+          <div><span class="bullet bullet-danger">&times;</span> Reading e.target.id breaks when touching inner icon spans</div>
+          <div><span class="bullet bullet-danger">&times;</span> Clicking Save opens article reader unexpectedly</div>
+        </td>
+        <td class="td-reality">
+          <div><span class="bullet bullet-teal">&check;</span> Recognizes events bubble through parent card containers</div>
+          <div><span class="bullet bullet-teal">&check;</span> Property e.currentTarget reliably identifies element with handler</div>
+          <div><span class="bullet bullet-teal">&check;</span> Parent coordinates card navigation while children isolate actions</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">&lt;ArticleActions.jsx&gt;</span>
+          <span class="layer-role">Action Toolbar</span>
+        </td>
+        <td class="td-naive">
+          <div><span class="bullet bullet-danger">&times;</span> Bare button handlers allow click to propagate upward</div>
+          <div><span class="bullet bullet-danger">&times;</span> Attempting e.preventDefault() to halt bubbling has zero effect</div>
+          <div><span class="bullet bullet-danger">&times;</span> User triggers two conflicting actions with a single click</div>
+        </td>
+        <td class="td-reality">
+          <div><span class="bullet bullet-teal">&check;</span> Calling e.stopPropagation() halts upward event bubbling</div>
+          <div><span class="bullet bullet-teal">&check;</span> Distinguishes stopPropagation from browser preventDefault</div>
+          <div><span class="bullet bullet-teal">&check;</span> Save and Share actions run locally without card interference</div>
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td class="td-layer">
+          <span class="verdict-badge">System Verdict</span>
+        </td>
+        <td class="td-naive">
+          <strong>FRAGILE INTERACTION</strong><br>
+          Accidental bubbling and unprevented form reloads trigger double-actions and wipe memory.
+        </td>
+        <td class="td-reality">
+          <strong>DETERMINISTIC EVENT ARCHITECTURE</strong><br>
+          Synthetic events, stopPropagation, and preventDefault deliver isolated, reliable user controls.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 14.2: Figure 14.2: Architecture audit table contrasting naive event assumptions with React event dispatch realities</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>E-Commerce Product Cards</strong>: Product cards navigate on click. Nested Add-to-Cart buttons call <code>e.stopPropagation()</code> to stay on the page.</li>
+<li><strong>Search and Filter Bars</strong>: Search forms call <code>e.preventDefault()</code> to prevent page reloads. Input fields use <code>onChange</code> for real-time filtering.</li>
+<li><strong>Dropdown Menus and Modals</strong>: Modals stop propagation on dialog windows. This prevents clicks inside from triggering backdrop dismissal.</li>
+<li><strong>Interactive News Feeds</strong>: Social feeds use nested bookmark controls. These controls isolate click events from full-article view navigation.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>SyntheticEvent</strong>: A cross-browser wrapper around native DOM events providing identical behavior across all modern browsers.</li>
+<li><strong>Event Bubbling</strong>: The natural upward propagation of an event through parent DOM elements until it reaches the root.</li>
+<li><strong>Propagation Stopping</strong>: Calling <code>e.stopPropagation()</code> to halt the upward journey of an event, preventing ancestor handlers from executing.</li>
+<li><strong>Default Action Prevention</strong>: Calling <code>e.preventDefault()</code> to cancel the built-in browser behavior for an event, such as form submit reloads.</li>
+<li><strong>Event Target</strong>: The innermost element the user touched (<code>e.target</code>), contrasted with the element owning the handler (<code>e.currentTarget</code>).</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li>Learn the official guide to responding to events and handling interaction in React (see <a href="https://react.dev/learn/responding-to-events">react.dev/learn/responding-to-events</a>).</li>
+<li>Reference documentation for React common DOM components and event properties (see <a href="https://react.dev/reference/react-dom/components/common">react.dev/reference/react-dom/components/common</a>).</li>
+<li>Detailed guide on event propagation and stopping bubbling in nested components (see <a href="https://react.dev/learn/responding-to-events#event-propagation">react.dev/learn/responding-to-events#event-propagation</a>).</li>
+<li>Best practices for preventing default browser behaviors during form submissions (see <a href="https://react.dev/learn/responding-to-events#preventing-default-behavior">react.dev/learn/responding-to-events#preventing-default-behavior</a>).</li>
+<li>Comprehensive overview of the React SyntheticEvent object and its DOM compatibility (see <a href="https://react.dev/reference/react-dom/components/common#react-event-object">react.dev/reference/react-dom/components/common#react-event-object</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Event Propagation &amp; Child Isolation</span></div>
+<p class="summary-principle">➔ ALWAYS call <code>e.stopPropagation()</code> in child button handlers when nested inside clickable parent containers.</p>
+<p class="summary-principle">➔ IF a parent needs notification THEN call the parent callback prop explicitly after stopping propagation.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> stop bubbling in child buttons nested inside clickable cards</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">SaveButton</span>({ onSave }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleClick</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    e.<span class="fn">stopPropagation</span>();</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">onSave</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;button type=<span class="str">"button"</span> onClick={handleClick}&gt;Save&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> allow child button clicks to bubble to parent containers</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">SaveButton</span>({ onSave }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleClick</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="fn">onSave</span>();</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> &lt;button type=<span class="str">"button"</span> onClick={handleClick}&gt;Save&lt;/button&gt;;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Preventing Browser Default Actions</span></div>
+<p class="summary-principle">➔ ALWAYS call <code>e.preventDefault()</code> inside <code>onSubmit</code> handlers to prevent full-page browser reloads.</p>
+<p class="summary-principle">➔ NEVER substitute <code>e.stopPropagation()</code> for <code>e.preventDefault()</code> when attempting to prevent form reloads.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> prevent default browser navigation on form submission</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">SearchBox</span>({ onSearch }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">onSearch</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;form onSubmit={handleSubmit}&gt;&lt;button type=<span class="str">"submit"</span>&gt;Search&lt;/button&gt;&lt;/form&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> rely on stopPropagation to halt browser form submission reloads</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">SearchBox</span>({ onSearch }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    e.<span class="fn">stopPropagation</span>();</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">onSearch</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;form onSubmit={handleSubmit}&gt;&lt;button type=<span class="str">"submit"</span>&gt;Search&lt;/button&gt;&lt;/form&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Keystrokes &amp; Element Targets</span></div>
+<p class="summary-principle">➔ ALWAYS expect React <code>onChange</code> to fire on every single keystroke.</p>
+<p class="summary-principle">➔ ALWAYS read <code>e.currentTarget</code> to access the element that owns the active handler.</p>
+<table class="comparison-table"><thead><tr><th></th><th><strong>NAIVE ASSUMPTION</strong><br>(Fragile Event Handling)</th><th><strong>REACT DISPATCH REALITY</strong><br>(Robust Event Architecture)</th></tr></thead><tbody><tr><td><strong>Nested button clicks</strong></td><td>Child clicks stay isolated inside the clicked button automatically</td><td>Clicks bubble upward through all parent container handlers</td></tr><tr><td><strong>Stopping bubbling</strong></td><td>Developers assume bubbling is harmless or cannot be stopped</td><td>Calling <code>e.stopPropagation()</code> isolates child actions cleanly</td></tr><tr><td><strong>Form submissions</strong></td><td>Submitting a form keeps the single-page application alive</td><td>Browser executes full-page reload unless <code>e.preventDefault()</code> runs</td></tr><tr><td><strong>Input change timing</strong></td><td>Text input change event waits until the user leaves the field</td><td>React <code>onChange</code> fires immediately on every single keystroke</td></tr><tr><td><strong>Touched element target</strong></td><td>Property <code>e.target</code> always points to the element owning the handler</td><td>Property <code>e.target</code> points to inner icon; <code>e.currentTarget</code> owns handler</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

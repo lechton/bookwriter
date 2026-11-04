@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 18: Updating Objects in State — Edition v7.1-1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v7.1-1";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 18: Updating Objects in State</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you update an object in state without mutating it?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A user updates their account profile on a community website settings page.</li>
+<li>The user types a new biography into the form and clicks save.</li>
+<li>The developer assigns the new biography directly to the profile object and calls the setter.</li>
+<li>Why does the screen refuse to update and keep showing the old biography?</li>
+<li>The user refreshes the page in confusion, wondering why their changes disappeared.</li>
+<li>No error appeared in the console, and React accepted the setter call without complaint.</li>
+<li>Today we learn how React checks object identity, why mutation skips rendering, and how spread syntax preserves state.</li></ol>
+</div>
+<div class="keep-together">
+<h3>One click, a mutated property, and a screen that refuses to change</h3>
+<p>Until now, state held primitive numbers and strings. In real applications, a single state variable often holds an entire data record. One object stores a user profile, account settings, and nested contact details.</p>
+<p>When state holds a JavaScript object, two questions decide what appears on the screen:</p>
+<ol><li><strong>How does React check whether a state value actually changed?</strong></li>
+<li><strong>Why does mutating a nested object corrupt earlier render snapshots?</strong></li></ol>
+<p>If you mutate an object in place, React will not throw an error. Your code will pass a quick glance, and still leave stale information on the screen.</p>
+<p>Before looking at the code, here are seven rules from earlier lessons that govern state objects:</p>
+<ul>
+<li><strong>Object Expressions (Lecture 04):</strong> Writing object literals inside JSX curly braces creates standard JavaScript objects.</li>
+<li><strong>Props Read-Only Contract (Lecture 06):</strong> Inputs handed to a component are read-only. You never reassign properties on props, and state follows this same rule.</li>
+<li><strong>Render Purity (Lecture 12):</strong> Any code executing during a render pass must be pure. Given the same inputs, it must return the same output without altering external objects.</li>
+<li><strong>Event Handling (Lecture 13):</strong> Handlers receive a browser event object <code>e</code> holding data from the interactive element.</li>
+<li><strong>State and Setters (Lecture 14):</strong> Declaring state with <code>useState</code> gives you a variable and its setter. Calling the setter is the only valid way to request a screen update.</li>
+<li><strong>Fixed Snapshots (Lecture 16):</strong> Every render receives a fixed snapshot of state that never changes in place during that render.</li>
+<li><strong>Functional Updaters (Lecture 17):</strong> Passing an updater like <span class="code-line-callout"><code>prev =&gt; ({ ...prev })</code></span> guarantees calculations read the live queue.</li>
+</ul>
+<p>Let's trace how these rules behave when updating objects in state.</p>
+</div>
+<div class="keep-together">
+<h3>Plain objects are silent: why React requires setters</h3>
+<p>A standard JavaScript object is completely silent.</p>
+<p>When you assign to <code>user.bio = 'Architect'</code>, JavaScript modifies the property in memory. However, it rings no bells and triggers no alarms.</p>
+<p>A plain object has no connection to the browser DOM. It cannot notify the browser that text changed, and it cannot trigger a render on its own.</p>
+<p>This is the entire reason React provides setter functions.</p>
+<p>In React, a variable is not automatically reactive. React does not watch your variables, and it does not monitor properties inside your objects.</p>
+<p>The setter function is the single communication channel between your code and React's rendering engine.</p>
+<p>Calling the setter is the only action that hooks your data into React's reactive system. It tells React that a value changed and requests a screen update.</p>
+</div>
+<div class="keep-together">
+<h3>Direct mutation operates outside the reactive system</h3>
+<p>When you assign directly to a property, you operate completely outside the reactive system.</p>
+<p>You changed data in computer memory, but you never notified React. The screen remains frozen because React has no idea you touched anything.</p>
+<p>Even worse, calling <code>setUser(user)</code> after a direct mutation fails to fix the problem.</p>
+<p>React compares the previous state with the next state using a built-in comparison tool named <code>Object.is</code>.</p>
+<p>The <code>Object.is</code> tool checks whether two values share the exact same memory address. It does not inspect the properties inside the object.</p>
+<p>Because both variables point to the exact same object in memory, <code>Object.is</code> returns true. React concludes that no state change occurred and skips the render completely.</p>
+</div>
+<div class="keep-together">
+<h3>Reactivity through replacement: why we pass new objects</h3>
+<p>React does not track property mutations. React tracks object replacements.</p>
+<p>To participate in React's reactive system, you must never modify an existing state object. Instead, you create a brand new object and pass it through the setter.</p>
+<p>Writing curly braces allocates a fresh object at a new memory address.</p>
+<p>To retain existing data without typing every property manually, JavaScript provides the <strong>spread syntax</strong>. Writing <span class="code-line-callout"><code>{ ...user, bio: <span class="str">'Architect'</span> }</code></span> allocates a new object, copies all properties, and overwrites the biography.</p>
+<p>Because the new object has a different memory address, <code>Object.is</code> returns false. React detects the state change, schedules a render pass, and updates the screen.</p>
+</div>
+<div class="keep-together">
+<h3>Principles of React: Updating Objects in State</h3>
+<p>Each question below starts from code you could write today. The answer shows what React does with it. The principle turns that behavior into a rule for production code.</p>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="1">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 1</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 1: State Object Identity & The Skipped Render';">State Object Identity &amp; The Skipped Render</h3>
+</div>
+<p>Suppose you have state holding a user profile object with a nested <code>details</code> record. You update the user bio by assigning to it directly inside a click handler:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">user.details.bio = <span class="str">'Architect'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Mutates nested value in memory</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="fn">setUser</span>(user); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Hands unchanged reference back to setter</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">console.<span class="fn">log</span>(<span class="str">'handler done'</span>);</span></div></div></div></div>
+<p>The handler modifies the bio property directly on the existing user object in memory. Next, it hands that same object reference to <code>setUser</code>, expecting React to detect the edit. Finally, it logs to the console to confirm the click finished running.</p>
+<p>After one click, the console shows <code>handler done</code>, but no component render occurs and the screen keeps the old bio. Why does React skip updating the screen even though the object property changed?</p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code did not work as intended.</strong> Mutating an object preserves its memory address without triggering a render.</p>
+<p>React checks whether to re-render by comparing object identity:</p>
+<ul>
+<li><strong>It compares the memory address:</strong> The setter compares the next value with the current one using <code>Object.is</code>.</li>
+<li><strong>It finds the same address:</strong> Because the object was modified in place, both variables point to the same location. <code>Object.is(user, user)</code> returns true.</li>
+<li><strong>It skips the render pass:</strong> When the memory address is unchanged, React assumes the state value did not change. It skips the render completely.</li>
+</ul>
+<p>The screen stays stale until an unrelated event triggers a render. When a separate click updates an activity counter, React re-renders the component. That render reads the mutated object from memory and finally paints the new biography. This delayed update is a classic production bug.</p>
+<p>To request a render, you must pass a newly created object to the setter. Never assign directly to the properties of a state object.</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Treat state objects as read-only and never mutate them in place</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">Object.is</span>
+          <span class="gloss-def">a JavaScript comparison method that checks whether two values share the exact same reference</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Always treat every object stored in state as read-only. Never assign properties directly to a state object, because React requires a new object reference to trigger a render.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">handleUpdateBio</span>() {</div><div class="case-code-line">  <span class="fn">setUser</span>({</div><div class="case-code-line">    ...user,</div><div class="case-code-line">    bio: <span class="str">'Architect'</span></div><div class="cmt-bubble" style="--indent-offset: 33px;"><span class="text">Allocates fresh object reference</span></div><div class="case-code-line">  });</div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">handleUpdateBio</span>() {</div><div class="case-code-line">  user.bio = <span class="str">'Architect'</span>;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Mutates existing object in memory</span></div><div class="case-code-line">  <span class="fn">setUser</span>(user);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Identical reference skips render</span></div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="2">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 2</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 2: Creating New Objects with Object Spread';">Creating New Objects with Object Spread</h3>
+</div>
+<p>Starting with a user object that has both a <code>role</code> and <code>details</code>, you want to promote the team member. You call the setter with only the changed field:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">setUser</span>({</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  role: <span class="str">'Tech Lead'</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Supplies only the updated role field</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">});</span></div></div></div></div>
+<p>The developer passes a fresh object containing only the new role to <code>setUser</code>. They assume React will merge this role into the existing user profile automatically.</p>
+<p>Why does this update cause the component to crash with a TypeError, removing the user profile from the screen?</p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code did not work as intended.</strong> React replaces the entire state object instead of merging it.</p>
+<p>State setters in modern React do not perform automatic shallow merging:</p>
+<ul>
+<li><strong>It replaces the entire state object:</strong> The setter treats the object passed to it as the complete new state.</li>
+<li><strong>It drops all unmentioned properties:</strong> Passing only the role completely discards <code>name</code>, <code>city</code>, <code>details</code>, and all other fields.</li>
+<li><strong>It causes property lookups to crash:</strong> The next render attempts to read <code>user.details.bio</code>, finds undefined, and throws a runtime error.</li>
+</ul>
+<p>To preserve existing fields, use object spread syntax (<code>...user</code>). The spread operator copies all existing properties into a brand new object. Always place the spread operator first so your changed property overrides the copied one.</p>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Copy existing properties with object spread before applying changes</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row no-glossary">
+      <div class="principle-definition-card">
+        <p class="principle-statement">Always copy existing object fields using spread syntax before writing updated properties. Place the spread operator first so your changed values override the copied properties.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setUser</span>({</div><div class="case-code-line">  ...user,</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Clones existing fields into new object</span></div><div class="case-code-line">  role: <span class="str">'Tech Lead'</span></div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Overrides role with updated value</span></div><div class="case-code-line">});</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setUser</span>({</div><div class="case-code-line">  role: <span class="str">'Tech Lead'</span></div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Drops other keys and causes crash</span></div><div class="case-code-line">});</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="3">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 3</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 3: Copying Every Level of Nested Objects';">Copying Every Level of Nested Objects</h3>
+</div>
+<p>You want to update the nested bio inside <code>user.details</code>. Remembering to copy the user, you make a shallow copy and then mutate the nested details:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> nextUser = { ...user }; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Shallow copy clones only the outer object</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">nextUser.details.bio = <span class="str">'Lead'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Writes to shared details object</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="fn">setUser</span>(nextUser);</span></div></div></div></div>
+<p>The developer uses object spread to duplicate the outer user object, believing the entire structure is now safe. They then reassign the nested bio property directly and queue the update.</p>
+<p>The screen updates to display the new bio. However, clicking Reset to restore <code>initialUser</code> still shows the new bio instead of the original text. Why did updating a copy corrupt the initial state?</p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code did not work as intended.</strong> Object spread is shallow and does not duplicate nested objects.</p>
+<p>Object spread copies property values only one level deep:</p>
+<ul>
+<li><strong>It copies primitive fields by value:</strong> Top-level fields like <code>name</code> and <code>role</code> get copied as independent values.</li>
+<li><strong>It copies nested objects by reference:</strong> The <code>details</code> property holds an object reference pointing to nested memory.</li>
+<li><strong>Both copies share nested memory:</strong> Both outer containers point to the exact same nested details object.</li>
+</ul>
+<p>When you modify <code>nextUser.details.bio</code>, you mutate the shared nested object in memory. Because <code>initialUser</code> points to that same nested object, its data is corrupted. To update nested state, allocate a fresh object at every level along the path.</p>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Copy every nested object level along the path to the changed property</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row no-glossary">
+      <div class="principle-definition-card">
+        <p class="principle-statement">Deeply nested state requires copying every object along the path from the root to the target property. Never mutate a nested object on a shallow copy, as it alters historical snapshots and shared references.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setUser</span>(prev =&gt; ({</div><div class="case-code-line">  ...prev,</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Clones outer object container</span></div><div class="case-code-line">  details: {</div><div class="case-code-line">    ...prev.details,</div><div class="cmt-bubble" style="--indent-offset: 33px;"><span class="text">Clones nested details object</span></div><div class="case-code-line">    bio: <span class="str">'Lead Architect'</span></div><div class="case-code-line">  }</div><div class="case-code-line">}));</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> next = { ...user };</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Outer copy shares inner object</span></div><div class="case-code-line">next.details.bio = <span class="str">'Lead'</span>;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Mutates shared nested memory</span></div><div class="case-code-line"><span class="fn">setUser</span>(next);</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="4">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 4</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 4: Updating Multiple Fields with Computed Property Names';">Updating Multiple Fields with Computed Property Names</h3>
+</div>
+<p>Your user profile form contains a <code>role</code> input and a <code>city</code> input. You connect both inputs to a single change handler using computed property syntax:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleChange</span>(e) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setUser</span>({</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    ...user, </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Retains existing state properties across inputs</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">    [e.target.name]: e.target.value </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Maps input name directly to state key</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  });</span></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>This single handler captures change events from multiple inputs. It preserves existing fields with object spread while reading the input name attribute dynamically to assign the matching property.</p>
+<p>Why does this single function successfully update both <code>role</code> and <code>city</code> inputs without requiring separate change handlers for each field?</p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code worked properly.</strong> This is a proper use of computed property names to handle multiple inputs.</p>
+<p>JavaScript allows object keys to be evaluated dynamically using square brackets:</p>
+<ul>
+<li><strong>It matches input names to state keys:</strong> Setting the input name to match the state key links them together.</li>
+<li><strong>It reads event targets dynamically:</strong> The expression reads the input name and uses it as the key.</li>
+<li><strong>It preserves unedited fields:</strong> Spreading user ensures fields not modified by this specific input remain in state.</li>
+</ul>
+<p>This pattern eliminates boilerplate code. You can manage forms with many fields using a single handler, as long as input names match keys.</p>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">Use computed property syntax to update multiple fields from a single event handler</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row no-glossary">
+      <div class="principle-definition-card">
+        <p class="principle-statement">Match input name attributes to state object keys to update multiple fields using one event handler. Use square brackets to compute the property key dynamically while spreading existing state.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">handleChange</span>(e) {</div><div class="case-code-line">  <span class="fn">setUser</span>({</div><div class="case-code-line">    ...user,</div><div class="case-code-line">    [e.target.name]: e.target.value</div><div class="cmt-bubble" style="--indent-offset: 33px;"><span class="text">Evaluates input name dynamically</span></div><div class="case-code-line">  });</div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<p>We assemble the user profile manager: an outer application shell, the stateful profile boundary, and the action form controls. Every component logs its execution to the development console.</p>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for user-profile - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">user-profile - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>UserProfile</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h2" data-elem="[h2.title]"><div class="ui-elem-content">User Profile Manager</div></div><div class="ui-elem ui-tag-p" data-elem="[p.profile-display]"><div class="ui-elem-content">Alex Rivera (Senior Developer)</div></div><div class="ui-elem ui-tag-p" data-elem="[p.city-display]"><div class="ui-elem-content">City: Seattle</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>ProfileForm</span><span class="component-explorer-props">onPromote={handlePromote} onChangeBio={handleChangeBio} onReset={handleReset}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button]"><div class="ui-elem-content"><span class="surface-ui-btn">Promote</span></div></div><div class="ui-elem ui-tag-button" data-elem="[button]"><div class="ui-elem-content"><span class="surface-ui-btn">Change Bio</span></div></div><div class="ui-elem ui-tag-button" data-elem="[button]"><div class="ui-elem-content"><span class="surface-ui-btn">Reset Profile</span></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="user-profile: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">user-profile: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Top-level layout container mounting the user profile feature</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">data/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-line"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-js" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fef3c7"/><polyline points="14 2 14 8 20 8"/><path d="M10 13v4a1 1 0 0 1-2 0"/><path d="M14 13h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v2"/></svg>
+					</div>
+					<span class="fe-name-text">initialUser.js</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">helper</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Provides baseline immutable user profile data</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">UserProfile.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Manages profile state, executes spread copies, and handles nested updates</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ProfileForm.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Renders form inputs, forwards change events, and triggers action buttons</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+    }
+    .assembly-steps-figure .card-content {
+      padding: 10px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 5px;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      color: #0f172a;
+    }
+
+    /* Step 1: Blue */
+    .assembly-steps-figure .step-1 .card-edge { background: #2563eb; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: rgba(37, 99, 235, 0.3); }
+
+    /* Step 2: Teal */
+    .assembly-steps-figure .step-2 .card-edge { background: #0d9488; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: rgba(13, 148, 136, 0.3); }
+
+    /* Step 3: Warm Amber */
+    .assembly-steps-figure .step-3 .card-edge { background: #d97706; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: rgba(217, 119, 6, 0.3); }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we lay out the user profile application</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the stateful user profile boundary</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/UserProfile.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we build the profile action form controls</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/ProfileForm.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 18.1: Figure 18.1: The progressive assembly pipeline of the user profile feature</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we lay out the user profile application';">First, we lay out the user profile application</div>
+      <div class="card-components"><span class="component-tag">&lt;src/App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> UserProfile <span class="kw">from</span> <span class="str">'./components/UserProfile.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  console.<span class="fn">log</span>(<span class="str">'App runs'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">App renders once on initial load</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"dashboard-layout"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h1&gt;User Profile Management&lt;/h1&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;UserProfile /&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p><code>App</code> owns zero profile state, so edits inside the profile widget never force <code>App</code> to re-render. It executes once on initial load, keeping top-level layout completely isolated from profile interactions.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the stateful user profile boundary';">Next, we build the stateful user profile boundary</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/UserProfile.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">UserProfile.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> ProfileForm <span class="kw">from</span> <span class="str">'./ProfileForm.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">import</span> { initialUser } <span class="kw">from</span> <span class="str">'../data/initialUser.js'</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">UserProfile</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [user, setUser] =</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="hook">useState</span>(initialUser); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Stores nested profile record in state</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> [views, setViews] = <span class="hook">useState</span>(<span class="nl">1420</span>);</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  console.<span class="fn">log</span>(<span class="str">'UserProfile runs, role ='</span>, user.role);</span></div></div></div></div>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">function</span> <span class="fn">handlePromote</span>() {</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">setUser</span>({</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      ...user, </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Copies existing top-level fields</span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src">      role: <span class="str">'Senior Developer'</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Overrides role with new value</span>
+      </div></div>
+<div class="row odd"><span class="num">13</span><span class="src">    });</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  }</span></div></div></div></div>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row even"><span class="num">16</span><span class="src">  <span class="kw">function</span> <span class="fn">handleChangeBio</span>() {</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    <span class="fn">setUser</span>(prev =&gt; ({</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      ...prev, </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Copies outer user object</span>
+      </div></div>
+<div class="row odd"><span class="num">19</span><span class="src">      details: {</span></div>
+<div class="row even"><span class="num">20</span><span class="src">        ...prev.details, </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Copies nested details object</span>
+      </div></div>
+<div class="row odd"><span class="num">21</span><span class="src">        bio: <span class="str">'Lead architect for cloud systems.'</span></span></div>
+<div class="row even"><span class="num">22</span><span class="src">      }</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">    }));</span></div>
+<div class="row even"><span class="num">24</span><span class="src">  }</span></div></div></div></div>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row even"><span class="num">26</span><span class="src">  <span class="kw">function</span> <span class="fn">handleReset</span>() {</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">    <span class="fn">setUser</span>(initialUser); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Restores clean original profile snapshot</span>
+      </div></div>
+<div class="row even"><span class="num">28</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">29</span><span class="src">  <span class="kw">function</span> <span class="fn">handleChange</span>(e) {</span></div>
+<div class="row even"><span class="num">30</span><span class="src">    <span class="fn">setUser</span>({</span></div>
+<div class="row odd"><span class="num">31</span><span class="src">      ...user, </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Preserves remaining state fields</span>
+      </div></div>
+<div class="row even"><span class="num">32</span><span class="src">      [e.target.name]: e.target.value </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Dynamically updates matching key</span>
+      </div></div>
+<div class="row odd"><span class="num">33</span><span class="src">    });</span></div>
+<div class="row even"><span class="num">34</span><span class="src">  }</span></div></div></div></div>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row even"><span class="num">36</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">37</span><span class="src">    &lt;section className=<span class="str">"profile-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">38</span><span class="src">      &lt;p&gt;Role: {user.role}&lt;/p&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Reads current role from snapshot</span>
+      </div></div>
+<div class="row odd"><span class="num">39</span><span class="src">      &lt;p&gt;City: {user.city}&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">40</span><span class="src">      &lt;p&gt;Bio: {user.details.bio}&lt;/p&gt;</span></div></div></div></div>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">42</span><span class="src">      &lt;ProfileForm</span></div>
+<div class="row odd"><span class="num">43</span><span class="src">        user={user}</span></div>
+<div class="row even"><span class="num">44</span><span class="src">        onPromote={handlePromote}</span></div>
+<div class="row odd"><span class="num">45</span><span class="src">        onChangeBio={handleChangeBio}</span></div>
+<div class="row even"><span class="num">46</span><span class="src">        onReset={handleReset}</span></div>
+<div class="row odd"><span class="num">47</span><span class="src">        onChange={handleChange} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Forwards dynamic field handler</span>
+      </div></div>
+<div class="row even"><span class="num">48</span><span class="src">      /&gt;</span></div>
+<div class="row odd"><span class="num">49</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">50</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">51</span><span class="src">}</span></div></div></div></div>
+<p><code>UserProfile</code> owns all state. In <code>handlePromote</code>, top-level spread preserves user details while updating the role. In <code>handleChangeBio</code>, nested spread copies both levels, leaving <code>initialUser</code> untouched so <code>handleReset</code> restores baseline data accurately.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we build the profile action form controls';">Finally, we build the profile action form controls</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/ProfileForm.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ProfileForm.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ProfileForm</span>(props) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> { user, onPromote, onChangeBio, onReset, onChange } = props;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;form className=<span class="str">"control-group"</span> onSubmit={e =&gt; e.<span class="fn">preventDefault</span>()}&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;input</span></div>
+<div class="row even"><span class="num">6</span><span class="src">        name=<span class="str">"role"</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Matches state key for computed updates</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">        value={user.role}</span></div>
+<div class="row even"><span class="num">8</span><span class="src">        onChange={onChange}</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      /&gt;</span></div></div></div></div>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row even"><span class="num">10</span><span class="src">      &lt;input name=<span class="str">"city"</span> value={user.city} onChange={onChange} /&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;div className=<span class="str">"button-row"</span>&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">        &lt;button type=<span class="str">"button"</span> onClick={onPromote}&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Triggers top-level spread</span>
+      </div></div>
+<div class="row odd"><span class="num">13</span><span class="src">          Promote</span></div>
+<div class="row even"><span class="num">14</span><span class="src">        &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">        &lt;button type=<span class="str">"button"</span> onClick={onChangeBio}&gt;Change Bio&lt;/button&gt;</span></div></div></div></div>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">16</span><span class="src">        &lt;button type=<span class="str">"button"</span> onClick={onReset}&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Restores initial snapshot</span>
+      </div></div>
+<div class="row odd"><span class="num">17</span><span class="src">          Reset Profile</span></div>
+<div class="row even"><span class="num">18</span><span class="src">        &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">      &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">22</span><span class="src">}</span></div></div></div></div>
+<p><code>ProfileForm</code> owns zero state. It acts as an interactive control bridge, forwarding input keystrokes and button clicks upward to <code>UserProfile</code>. Here the <code>value</code> and <code>onChange</code> pairing provides a preview of controlled inputs, fully explored in Lecture 20. The parent boundary executes the immutable state transitions.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>parent component</strong> provides the outer application layout. It owns <strong>zero profile state</strong> and renders once on startup. Notice it mounts <strong>UserProfile</strong> as an isolated boundary. This architecture ensures state updates inside the profile widget never cause unnecessary parent re-renders.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>UserProfile</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>stateful boundary component</strong>. It owns the <strong>user profile object</strong> and <strong>views counter</strong>. Notice it uses <strong>object spread</strong> for top-level updates and <strong>nested spread</strong> for account details. Why? To guarantee every queued update produces a fresh reference without mutating historical snapshots.</p></div></div></div><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>ProfileForm</span><span class="component-explorer-props">onPromote={handlePromote} onChangeBio={handleChangeBio} onReset={handleReset} onChange={handleChange}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>stateless child control</strong>. It receives handlers and current profile values. Notice it owns <strong>zero local memory</strong>. When inputs change or buttons are clicked, it forwards events upward to the parent boundary.</p></div></div></div></div></div></div>
+</div>
+<p>A beginner attempts to modify state objects by assigning directly to properties. React instead requires fresh object references, using <code>Object.is</code> to detect changes and preserve render snapshot integrity.</p>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Object Reference</strong>: The memory address where a JavaScript object lives, which React checks using <code>Object.is</code> to detect changes.</li>
+<li><strong>Mutation</strong>: Changing the properties of an existing object in place without creating a new object in memory.</li>
+<li><strong>Object Spread (<code>...obj</code>)</strong>: A JavaScript syntax that copies all enumerable properties from an existing object into a new object literal.</li>
+<li><strong>Shallow Copy</strong>: A copy operation that duplicates top-level properties but copies references to nested objects rather than cloning them.</li>
+<li><strong>Nested Object</strong>: An object stored inside another object, requiring explicit copying at every level to prevent shared reference mutation.</li>
+<li><strong>Computed Property</strong>: A JavaScript syntax using square brackets <code>[key]</code> to set an object property dynamically from an evaluated expression.</li>
+<li><strong><code>Object.is</code></strong>: The JavaScript comparison algorithm used by React to verify whether a new state value differs from the previous one.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Official guide on updating objects in state</strong>: read the complete react.dev explanation of object immutability (see <a href="https://react.dev/learn/updating-objects-in-state">react.dev/learn/updating-objects-in-state</a>).</li>
+<li><strong>API reference for useState</strong>: inspect caveats on object state and setter functions (see <a href="https://react.dev/reference/react/useState">react.dev/reference/react/useState</a>).</li>
+<li><strong>Component purity rules</strong>: learn why mutating outside objects during render violates React invariants (see <a href="https://react.dev/learn/keeping-components-pure">react.dev/learn/keeping-components-pure</a>).</li>
+<li><strong>Updating arrays in state</strong>: see Lecture 19 for applying immutable patterns to lists using <code>map</code>, <code>filter</code>, and array spread.</li>
+<li><strong>Controlled inputs in depth</strong>: see Lecture 20 for driving form state completely through React.</li>
+<li><strong>Flat state architecture</strong>: see Lecture 22 for structuring state to avoid deep nesting entirely.</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Object Immutability &amp; Reference Equality</span></div>
+<p class="summary-principle">➔ ALWAYS treat every object in state as read-only and never assign properties directly to it.</p>
+<p class="summary-principle">➔ NEVER expect calling a setter with a mutated object to trigger a component re-render.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Object Spread &amp; Nested Updates</span></div>
+<p class="summary-principle">➔ ALWAYS place the spread operator first when updating objects so changed properties override copied fields.</p>
+<p class="summary-principle">➔ IF updating nested state THEN copy every level along the path from the root to the changed property.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Form Field Management</span></div>
+<p class="summary-principle">➔ ALWAYS match input name attributes to state object keys when using computed property change handlers.</p>
+<table class="comparison-table"><thead><tr><th></th><th><strong>DIRECT MUTATION</strong><br>(In-Place Edit)</th><th><strong>OBJECT SPREAD COPY</strong><br>(Immutable Form)</th></tr></thead><tbody><tr><td><strong>Reference identity</strong></td><td>Retains identical memory address</td><td>Creates a brand new memory reference</td></tr><tr><td><strong><code>Object.is</code> result</strong></td><td>Evaluates to true (skipped render)</td><td>Evaluates to false (triggers render)</td></tr><tr><td><strong>Nested properties</strong></td><td>Alters shared objects in place</td><td>Copies each level along the path</td></tr><tr><td><strong>Past snapshots</strong></td><td>Corrupts historical render memory</td><td>Preserves previous render snapshots</td></tr><tr><td><strong>Reset behavior</strong></td><td>Permanently corrupts initial state</td><td>Restores baseline defaults accurately</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

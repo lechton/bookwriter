@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 32: Escaping the Overflow Trap with the Popover API</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 32: Escaping the Overflow Trap with the Popover API</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">What problem does the native Popover API solve that z-index and absolute positioning could not?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Maya builds an options menu for an investigative story card.</li>
+<li>She places a small three-dots button inside the card header.</li>
+<li>Clicking the button must display a floating list of sharing and bookmarking options.</li>
+<li>Setting absolute coordinates on the menu forces the dropdown to sit inside the card.</li>
+<li>Because the card applies overflow hidden to round its corners, the menu gets sliced in half.</li>
+<li>Slapping a massive z-index of 999999 on the menu fails because stacking contexts are local.</li>
+<li>The native Popover API promotes floating menus directly to the browser Top Layer above all page layout.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Stacking Context and Overflow Trap: The z-index Myth</h3>
+<p>For nearly three decades of web development, building a custom floating dropdown menu, tooltip, or modal dialog followed an identical, fragile recipe. You wrapped your trigger button and menu inside a container with <code>position: relative</code>. You styled the dropdown menu with <code>position: absolute</code>, and you slapped a massive integer onto it, such as <code>z-index: 999999</code>. Frontend teams routinely assumed that a large enough <code>z-index</code> would force the menu to float above every other element on the screen.</p>
+<p>In real-world web applications, this assumption collapses immediately. Look at the physical HTML structure of a standard editorial story card on The National Times:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">overflow-trap-card.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;article <span class="kw">class</span>=<span class="str">"news-card"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;header <span class="kw">class</span>=<span class="str">"card-header"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">    &lt;h3&gt;Defense Department Releases Satellite Audit&lt;/h3&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;button <span class="kw">class</span>=<span class="str">"menu-trigger"</span>&gt;Options&lt;/button&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">    &lt;div <span class="kw">class</span>=<span class="str">"dropdown-menu"</span>&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">      &lt;a href=<span class="str">"#save"</span>&gt;Bookmark Story&lt;/a&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">      &lt;a href=<span class="str">"#share"</span>&gt;Share Link&lt;/a&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">  &lt;/header&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">&lt;/article&gt;</span></div></div></div></div>
+<p>In <code>overflow-trap-card.html</code>, the <code>.dropdown-menu</code> sits inside the <code>.card-header</code>, which lives inside the <code>.news-card</code> article element. To make the card look polished, designers apply rounded corners using <code>border-radius: 8px</code> and clip child images using <code>overflow: hidden</code>.</p>
+<p>The moment you add <code>overflow: hidden</code> to the card, a visual catastrophe occurs. When the user clicks the options button, the <code>.dropdown-menu</code> opens. However, because the dropdown extends beyond the bottom edge of the card, the card boundary physically slices off the bottom half of the menu. The bookmark and share links disappear completely.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">overflow-clipping.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.news-card </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">position</span>: <span class="kw">relative</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">overflow</span>: <span class="kw">hidden</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">border-radius</span>: <span class="nl">8px</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">.dropdown-menu </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">position</span>: <span class="kw">absolute</span>;</span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="prop">top</span>: <span class="nl">100%</span>;</span></div>
+<div class="row"><span class="num">10</span><span class="src">  <span class="prop">left</span>: <span class="nl">0</span>;</span></div>
+<div class="row"><span class="num">11</span><span class="src">  <span class="prop">z-index</span>: <span class="nl">999999</span>;</span></div>
+<div class="row"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+<p>In <code>overflow-clipping.css</code>, the <code>.news-card</code> establishes the containing block and enforces <code>overflow: hidden</code>. Even though <code>.dropdown-menu</code> declares <code>z-index: 999999</code>, the browser clips the menu at the card edge.</p>
+<p>A massive <code>z-index</code> cannot rescue you from an ancestor clipping boundary. In the CSS visual formatting model, <code>z-index</code> only controls the rendering order of elements within their local <strong>stacking context</strong>.</p>
+<p>The official MDN documentation defines this strict hierarchy:</p>
+<blockquote>"A stacking context is formed, anywhere on a document, by any element which has an opacity value less than 1, a transform value other than none, a filter value other than none, or a will-change specifying any property that creates a stacking context. Stacking contexts can contain further stacking contexts, and together they form a tree. The order in which elements are rendered is determined by their position within this hierarchy."<br><br><em>MDN Web Docs, The Stacking Context (<code>resources/web-performance/mdn/files/en-us/web/css/css_positioned_layout/understanding_z-index/stacking_context/index.md</code>)</em></blockquote>
+<p>If an ancestor element has an <code>opacity</code> below 1, a CSS <code>transform</code>, or an <code>overflow: hidden</code> boundary, it creates an isolated stacking container. An element with <code>z-index: 999999</code> nested inside a card with <code>z-index: 1</code> will always render behind a neighboring sidebar that declares <code>z-index: 2</code>. Stacking contexts are local, not global.</p>
+<figure class="css-figure">
+<style>
+  .fig-popover-trap {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-popover-trap .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-popover-trap .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-popover-trap .pill-trap {
+    background: #fde8e8;
+    border: 1px solid #f9b4b4;
+    color: #b91c1c;
+  }
+  .fig-popover-trap .pill-toplayer {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-popover-trap .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-popover-trap .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-popover-trap .card-trap {
+    border: 1px solid #fca5a5;
+  }
+  .fig-popover-trap .card-toplayer {
+    border: 1.5px solid #86efac;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-popover-trap .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+    gap: 10px;
+  }
+
+  .fig-popover-trap .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #475569;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .fig-popover-trap .canvas-area {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px;
+    box-sizing: border-box;
+    height: 185px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fig-popover-trap .card-container {
+    border: 2px dashed #94a3b8;
+    background: #f1f5f9;
+    border-radius: 6px;
+    padding: 10px;
+    height: 95px;
+    position: relative;
+  }
+
+  .fig-popover-trap .card-tag {
+    position: absolute;
+    top: -9px;
+    left: 8px;
+    background: #475569;
+    color: #ffffff;
+    font-size: 8.5px;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .fig-popover-trap .trigger-btn {
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    display: inline-block;
+  }
+
+  .fig-popover-trap .clipped-menu {
+    position: absolute;
+    top: 36px;
+    left: 10px;
+    width: 140px;
+    background: #1e293b;
+    color: #ffffff;
+    border-radius: 4px;
+    padding: 6px;
+    font-size: 9.5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  }
+
+  .fig-popover-trap .toplayer-menu {
+    position: absolute;
+    top: 50px;
+    left: 22px;
+    width: 150px;
+    background: #0f172a;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 10px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    border: 1px solid #38bdf8;
+    z-index: 99;
+  }
+
+  .fig-popover-trap .clip-line {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #ef4444;
+  }
+
+  .fig-popover-trap .card-footer {
+    padding: 10px 14px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .fig-popover-trap .footer-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+  }
+  .fig-popover-trap .footer-key {
+    color: #64748b;
+    font-weight: 500;
+  }
+  .fig-popover-trap .footer-val {
+    font-weight: 700;
+  }
+</style>
+
+<div class="fig-popover-trap">
+  <div class="compare-header">
+    <div class="compare-pill pill-trap">ABSOLUTE + Z-INDEX (CLIPPING TRAP)</div>
+    <div class="compare-pill pill-toplayer">NATIVE POPOVER API (TOP LAYER)</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Card 1: Absolute + Overflow Trap -->
+    <div class="preview-card card-trap">
+      <div class="card-body">
+        <div class="stage-label">
+          <span>ANCESTOR OVERFLOW: HIDDEN</span>
+          <span style="color: #ef4444;">SEVERED</span>
+        </div>
+        <div class="canvas-area">
+          <div class="card-container" style="overflow: hidden;">
+            <div class="card-tag">card [overflow: hidden]</div>
+            <div class="trigger-btn">Options ▾</div>
+            <div class="clipped-menu">
+              <div>• Edit Story</div>
+              <div>• Archive Brief</div>
+              <div style="color: #f87171;">[CUT OFF AT BORDER]</div>
+            </div>
+            <div class="clip-line"></div>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #991b1b; line-height: 1.4; background: #fef2f2; padding: 8px 10px; border-radius: 4px; border: 1px dashed #fca5a5;">
+          No amount of z-index can escape an ancestor's overflow: hidden, overflow: clip, or transform containing block. The menu is severed.
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-row">
+          <span class="footer-key">Rendering Layer</span>
+          <span class="footer-val" style="color: #b91c1c;">Trapped in Stacking Context</span>
+        </div>
+        <div class="footer-row">
+          <span class="footer-key">Boundary State</span>
+          <span class="footer-val" style="color: #b91c1c;">Clipped by Ancestor</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Native Top Layer -->
+    <div class="preview-card card-toplayer">
+      <div class="card-body">
+        <div class="stage-label">
+          <span>PROMOTED TO TOP LAYER</span>
+          <span style="color: #059669;">UNCLIPPED</span>
+        </div>
+        <div class="canvas-area">
+          <div class="card-container" style="overflow: hidden;">
+            <div class="card-tag">card [overflow: hidden]</div>
+            <div class="trigger-btn" style="background: #059669;">Options ▾</div>
+          </div>
+          <!-- Floats in Top Layer above container bounds -->
+          <div class="toplayer-menu">
+            <div style="font-size: 9px; color: #38bdf8; font-family: monospace; margin-bottom: 3px;">TOP LAYER (BROWSER ROOT)</div>
+            <div>✓ Edit Story</div>
+            <div>✓ Archive Brief</div>
+            <div>✓ Share Article</div>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #166534; line-height: 1.4; background: #f0fdf4; padding: 8px 10px; border-radius: 4px; border: 1px dashed #86efac;">
+          The Popover API promotes the element to the browser's Top Layer, floating entirely above all stacking contexts and ancestor overflow boundaries.
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-row">
+          <span class="footer-key">Rendering Layer</span>
+          <span class="footer-val" style="color: #059669;">Browser Top Layer</span>
+        </div>
+        <div class="footer-row">
+          <span class="footer-key">Boundary State</span>
+          <span class="footer-val" style="color: #059669;">Escapes All Clipping (100%)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 32.1: The Stacking Context Trap Versus the Top Layer: Classical absolute positioning (left) is severed by ancestor overflow: hidden boundaries. The native Popover API (right) promotes the dropdown to the browser Top Layer, escaping all ancestor clipping and stacking context traps.</figcaption>
+</figure>
+<p>Figure 32.1 reveals the architectural difference between classical layout and modern browser capabilities. In the left panel, the dropdown menu is physically trapped inside its parent card. The card's <code>overflow: hidden</code> boundary cuts right through the menu, rendering half the links invisible. In the right panel, the menu escapes the card completely. The browser renders the menu in a special dedicated plane, floating cleanly above all card borders and neighboring page content.</p>
+</div>
+<div class="keep-together">
+<h3>The Top Layer Revolution: Transcending Document Layout</h3>
+<p>To permanently resolve this clipping problem, browser vendors introduced an entirely new rendering canvas into web standards: the <strong>Top Layer</strong>.</p>
+<p>The Top Layer is a dedicated rendering plane managed directly by the browser engine. It sits completely outside the normal document flow and paints above the root <code>&lt;html&gt;</code> element. When an element enters the Top Layer, the browser removes it from its parent visual formatting box and renders it on this sovereign plane.</p>
+<p>Because the Top Layer lives above the entire document tree, elements inside it are completely immune to ancestor CSS rules. An ancestor container can apply <code>overflow: hidden</code>, <code>clip-path</code>, <code>opacity: 0.5</code>, or <code>transform: scale(0.8)</code>. None of those properties affect the Top Layer element. The element does not get clipped, does not inherit ancestor opacity, and never gets trapped behind sibling containers.</p>
+<p>Furthermore, elements inside the Top Layer do not use classical numeric <code>z-index</code> integers. Instead, the browser engine renders Top Layer elements in the exact chronological order in which they were opened. The most recently opened popover or modal dialog automatically paints on top of older ones.</p>
+<p>The official WHATWG HTML specification formalizes this sovereign rendering behavior:</p>
+<blockquote>"An element in the top layer is rendered on top of all other elements on the page, including elements in other stacking contexts. The top layer is not affected by ancestor styles such as overflow: hidden, opacity, or transform. Each top layer element establishes its own stacking context and renders independently of document tree positioning."<br><br><em>WHATWG HTML Living Standard, The Top Layer (<code>resources/spec/html/rendering.html</code>)</em></blockquote>
+</div>
+<div class="keep-together">
+<h3>The Declarative Popover Contract: Zero-JavaScript Invocation</h3>
+<p>Before the native Popover API, creating an interactive dropdown menu required writing dozens of lines of JavaScript. You had to attach click listeners, toggle custom visibility classes like <code>.is-open</code>, track state, and manage focus.</p>
+<p>The <strong>HTML Popover API</strong> eliminates this boilerplate entirely. It provides a native, declarative mechanism to promote any element into the Top Layer directly from HTML markup.</p>
+<p>To turn an element into a popover, you add a single boolean HTML attribute: <code>popover</code>. When an element has the <code>popover</code> attribute, the browser automatically applies <code>display: none</code> by default. The element remains completely hidden until a trigger activates it.</p>
+<p>To connect a trigger button to your popover, you add the <code>popovertarget</code> attribute to a <code>&lt;button&gt;</code> tag. The value of <code>popovertarget</code> must match the <code>id</code> of your popover container:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">declarative-popover.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;article <span class="kw">class</span>=<span class="str">"news-card"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;header <span class="kw">class</span>=<span class="str">"card-header"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">    &lt;button popovertarget=<span class="str">"card-menu"</span>&gt;Options&lt;/button&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;nav id=<span class="str">"card-menu"</span> popover&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">      &lt;a href=<span class="str">"#bookmark"</span>&gt;Bookmark Story&lt;/a&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">      &lt;a href=<span class="str">"#share"</span>&gt;Share Link&lt;/a&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">    &lt;/nav&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  &lt;/header&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;/article&gt;</span></div></div></div></div>
+<p>In <code>declarative-popover.html</code>, <code>&lt;button popovertarget="card-menu"&gt;</code> acts as the trigger. The <code>&lt;nav id="card-menu" popover&gt;</code> container defines the popover overlay.</p>
+<p>When a user clicks the button, the browser engine automatically toggles the popover. It displays the <code>&lt;nav&gt;</code> container and immediately promotes it to the Top Layer. You do not write a single line of JavaScript. There are no event listeners to register, no class names to toggle, and no click handlers to debug.</p>
+<p>By default, the <code>popovertarget</code> attribute toggles visibility between open and closed. If you want explicit one-way behavior, you can add the <code>popovertargetaction</code> attribute:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">explicit-action.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;button popovertarget=<span class="str">"card-menu"</span> popovertargetaction=<span class="str">"show"</span>&gt;Open Menu&lt;/button&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">&lt;button popovertarget=<span class="str">"card-menu"</span> popovertargetaction=<span class="str">"hide"</span>&gt;Close Menu&lt;/button&gt;</span></div></div></div></div>
+<p>In <code>explicit-action.html</code>, the first button only opens the menu, while the second button explicitly closes it.</p>
+<figure class="css-figure">
+<style>
+  .fig-popover-mechanics {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-popover-mechanics .header-pill {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    margin-bottom: 12px;
+  }
+
+  .fig-popover-mechanics .main-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fig-popover-mechanics .features-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 14px;
+    background: #f8fafc;
+  }
+
+  .fig-popover-mechanics .feature-item {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .fig-popover-mechanics .feat-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #2563eb;
+    text-transform: uppercase;
+  }
+
+  .fig-popover-mechanics .feat-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .fig-popover-mechanics .feat-desc {
+    font-size: 10px;
+    color: #475569;
+    line-height: 1.4;
+  }
+
+  .fig-popover-mechanics .card-footer {
+    padding: 10px 14px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+  }
+</style>
+
+<div class="fig-popover-mechanics">
+  <div class="header-pill">
+    THE THREE BUILT-IN SUPERPOWERS OF DECLARATIVE POPOVERS
+  </div>
+
+  <div class="main-card">
+    <div class="features-grid">
+      <!-- 1 -->
+      <div class="feature-item">
+        <div class="feat-badge">ZERO JAVASCRIPT</div>
+        <div class="feat-title">Declarative Invocation</div>
+        <div class="feat-desc">
+          <code style="font-family: monospace; font-size: 9px; color: #1e40af;">popovertarget="menu"</code> toggles state natively. Zero click event listeners required.
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <div class="feature-item">
+        <div class="feat-badge">BUILT-IN DISMISS</div>
+        <div class="feat-title">Automatic Light Dismiss</div>
+        <div class="feat-desc">
+          Clicking outside the popover automatically closes it and handles single-open mutual exclusivity among sibling popovers.
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <div class="feature-item">
+        <div class="feat-badge">A11Y INTEGRATED</div>
+        <div class="feat-title">Focus & Escape Restoral</div>
+        <div class="feat-desc">
+          Pressing the <code style="font-family: monospace; font-size: 9px; color: #1e40af;">Escape</code> key immediately dismisses the popover and restores keyboard focus to the triggering button.
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <span style="color: #64748b;">Browser-Native Pipeline: <code style="font-family: monospace; color: #0f172a;">popover="auto"</code></span>
+      <span style="color: #15803d; font-weight: 700;">Replaces 100+ Lines of Custom JS</span>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 32.2: The Declarative Superpowers: Popovers provide declarative triggering via HTML attributes (left), automatic light dismiss on outside clicks (center), and native keyboard Escape focus restoral without writing custom event listeners (right).</figcaption>
+</figure>
+<p>Figure 32.2 summarizes the three built-in superpowers of the native Popover API. First, declarative triggering allows plain HTML attributes to open and close menus without JavaScript. Second, automatic light dismiss monitors user interaction and closes the overlay the moment the user clicks outside. Third, built-in keyboard handling listens for the Escape key and returns keyboard focus directly to the trigger button.</p>
+</div>
+<div class="keep-together">
+<h3>Automatic Light Dismiss and Single-Open Invariance</h3>
+<p>Two of the most frustrating features to build manually in frontend development are <strong>light dismiss</strong> and <strong>mutual exclusion</strong>.</p>
+<p>Light dismiss means that whenever a user clicks anywhere outside an active dropdown menu, or moves focus away from it, the menu should close immediately. In classical JavaScript development, teams had to register global click listeners on the <code>window</code> or <code>document</code> object. Developers had to inspect <code>event.target</code>, check whether the clicked node was contained inside the dropdown, and manually clean up event listeners to prevent browser memory leaks.</p>
+<p>With the native Popover API, light dismiss is built directly into the browser engine. When an element has the default attribute <code>popover</code> (which is shorthand for <code>popover="auto"</code>), clicking anywhere outside its borders closes the popover automatically.</p>
+<p>In addition to light dismiss, <code>popover="auto"</code> enforces <strong>single-open invariance</strong>. If you have three different cards on your screen and open the menu on Card 1, it appears on screen. When you click the options button on Card 2, the browser engine immediately closes Card 1 before displaying Card 2. Only one auto popover can exist on screen at a time, preventing messy UI clutter where multiple menus overlap each other.</p>
+<p>If your user interface requires multiple overlays to remain visible at the same time, such as non-blocking notification toasts or informational tooltips, you can switch the popover mode to <strong>manual</strong>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">manual-popover.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;div id=<span class="str">"status-toast"</span> popover=<span class="str">"manual"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;p&gt;Article draft saved to cloud storage.&lt;/p&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;/div&gt;</span></div></div></div></div>
+<p>In <code>manual-popover.html</code>, <code>popover="manual"</code> promotes the element to the Top Layer so it escapes clipping, but disables automatic light dismiss. The toast stays visible until your application code or a dedicated close button dismisses it.</p>
+</div>
+<div class="keep-together">
+<h3>Keyboard Accessibility and Focus Restoral Contract</h3>
+<p>Building accessible floating UI with classical JavaScript is notoriously difficult. Most custom dropdown implementations violate web accessibility guidelines because they forget to manage keyboard focus.</p>
+<p>Under WCAG 2.4.3 (Focus Order), when a user opens a floating menu and subsequently closes it, keyboard focus must return directly to the trigger button that launched it. If focus is lost, keyboard users and screen readers get reset back to the very top of the page, forcing them to tab through the entire site navigation all over again.</p>
+<p>The native Popover API enforces this focus contract automatically. The browser engine tracks which DOM element triggered the popover. The moment the user presses the <code>Escape</code> key, the browser executes three coordinated actions:</p>
+<ol><li>It immediately closes the active popover element.</li>
+<li>It removes the element from the Top Layer.</li>
+<li>It moves focus back to the <code>&lt;button&gt;</code> carrying the <code>popovertarget</code> attribute.</li></ol>
+<p>Screen readers also benefit from native accessibility semantics. Because the browser understands the relationship between <code>popovertarget</code> and the target <code>id</code>, assistive technologies automatically announce whether the popover is currently expanded or collapsed, eliminating the need to write manual <code>aria-expanded</code> and <code>aria-controls</code> attributes.</p>
+</div>
+<div class="keep-together">
+<h3>Visual Styling and the ::backdrop Pseudo-Element</h3>
+<p>When an element enters the Top Layer, the browser gives it a dedicated styling target: the <strong><code>::backdrop</code> pseudo-element</strong>.</p>
+<p>The <code>::backdrop</code> pseudo-element is a full-screen surface generated directly behind the Top Layer element, between the popover and the rest of the web page. This allows you to dim, blur, or tint the background content while the overlay is active.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">backdrop-styling.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">#card-menu:popover-open </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">background-color</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">border</span>: <span class="nl">1px</span> <span class="kw">solid</span> <i class="swatch" style="background:#cbd5e1"></i><span class="clr">#cbd5e1</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">border-radius</span>: <span class="nl">8px</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">padding</span>: <span class="nl">12px</span>;</span></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src"><span class="sel">#card-menu::backdrop </span>{</span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="prop">background-color</span>: <span class="fn">rgba</span>(<span class="nl">15</span>, <span class="nl">23</span>, <span class="nl">42</span>, <span class="nl">0.4</span>);</span></div>
+<div class="row"><span class="num">10</span><span class="src">  <span class="prop">backdrop-filter</span>: blur(<span class="nl">2px</span>);</span></div>
+<div class="row"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+<p>In <code>backdrop-styling.css</code>, <code>#card-menu:popover-open</code> styles the active popover card with a clean white surface and subtle border. The <code>#card-menu::backdrop</code> selector styles the full-screen canvas behind it, dimming the rest of the page with a semi-transparent dark slate tint and applying a soft 2-pixel blur effect.</p>
+<p>When animating popovers, modern CSS provides <strong><code>@starting-style</code></strong>. Because popovers toggle between <code>display: none</code> and <code>display: block</code>, classical CSS transitions would fail to animate their opening state. The <code>@starting-style</code> at-rule defines the initial styling values of the element before its first paint in the Top Layer:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">popover-animation.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">#card-menu </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">opacity</span>: <span class="nl">1</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">transform</span>: translateY(<span class="nl">0</span>);</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">transition</span>: opacity <span class="nl">0.2s</span> ease, transform <span class="nl">0.2s</span> ease, display <span class="nl">0.2s</span> allow-discrete;</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">@starting-style </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src"><span class="sel">  #card-menu:popover-open </span>{</span></div>
+<div class="row"><span class="num">9</span><span class="src">    <span class="prop">opacity</span>: <span class="nl">0</span>;</span></div>
+<div class="row"><span class="num">10</span><span class="src">    <span class="prop">transform</span>: translateY(<span class="nl">-8px</span>);</span></div>
+<div class="row"><span class="num">11</span><span class="src">  }</span></div>
+<div class="row"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+<p>In <code>popover-animation.css</code>, <code>@starting-style</code> defines the pre-open values: zero opacity and an 8-pixel upward shift. When the popover opens, it smoothly fades in and glides into position. The declaration <code>transition-behavior: allow-discrete</code> allows the browser to transition properties across <code>display</code> changes.</p>
+</div>
+<div class="keep-together">
+<h3>Modern Layout Tethering with CSS Anchor Positioning</h3>
+<p>While the Popover API effortlessly solves the overflow clipping problem, it introduces a new layout question: once a popover lives in the Top Layer, how do you keep it visually tethered next to the button that opened it?</p>
+<p>By default, an element in the Top Layer centers itself in the middle of the screen like a modal dialog. In the past, positioning a Top Layer element next to an inline button required importing heavy JavaScript positioning libraries.</p>
+<p>Today, modern CSS solves this pairing natively by combining the Popover API with <strong>CSS Anchor Positioning</strong>. You assign an <code>anchor-name</code> to the trigger button, and connect the popover using <code>position-anchor</code> and <code>position-area</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">anchor-popover.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.menu-trigger </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">anchor-name</span>: --card-trigger;</span></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">#card-menu </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">position</span>: <span class="kw">absolute</span>;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">position-anchor</span>: --card-trigger;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">position-area</span>: bottom span-all;</span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="prop">margin-top</span>: <span class="nl">6px</span>;</span></div>
+<div class="row"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>In <code>anchor-popover.css</code>, <code>.menu-trigger</code> registers itself as a named anchor using <code>anchor-name: --card-trigger</code>. The <code>#card-menu</code> popover tethers itself to that button using <code>position-anchor: --card-trigger</code>. The property <code>position-area: bottom span-all</code> docks the floating menu directly below the button, while <code>margin-top: 6px</code> adds breathing room.</p>
+<figure class="css-figure">
+<style>
+  .fig-popover-styling {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-popover-styling .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-popover-styling .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+  }
+
+  .fig-popover-styling .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-popover-styling .feature-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: 1px solid #cbd5e1;
+  }
+
+  .fig-popover-styling .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+    gap: 10px;
+  }
+
+  .fig-popover-styling .feature-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .fig-popover-styling .code-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: #334155;
+    line-height: 1.4;
+  }
+
+  .fig-popover-styling .desc-text {
+    font-size: 11px;
+    color: #475569;
+    line-height: 1.4;
+  }
+
+  .fig-popover-styling .card-footer {
+    padding: 10px 14px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    font-size: 11px;
+    font-weight: 600;
+    color: #059669;
+  }
+</style>
+
+<div class="fig-popover-styling">
+  <div class="compare-header">
+    <div class="compare-pill">STYLING: THE ::BACKDROP LAYER</div>
+    <div class="compare-pill">LAYOUT: CSS ANCHOR POSITIONING</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Card 1: ::backdrop -->
+    <div class="feature-card">
+      <div class="card-body">
+        <div class="feature-title">
+          <span>TOP LAYER ::BACKDROP</span>
+          <span style="color: #2563eb;">NATIVE SHROUD</span>
+        </div>
+        <div class="code-box">
+          [popover]::backdrop {<br>
+          &nbsp;&nbsp;background: rgba(15, 23, 42, 0.6);<br>
+          &nbsp;&nbsp;backdrop-filter: blur(4px);<br>
+          }
+        </div>
+        <div class="desc-text">
+          Every top-layer element receives a full-screen <code style="font-family: monospace;">::backdrop</code> pseudo-element rendered directly behind it, dimming and blurring the underlying document without extra wrapper divs.
+        </div>
+      </div>
+      <div class="card-footer">
+        ✓ Zero-Markup Backdrop Shrouds
+      </div>
+    </div>
+
+    <!-- Card 2: Anchor Positioning -->
+    <div class="feature-card">
+      <div class="card-body">
+        <div class="feature-title">
+          <span>COORDINATE ANCHOR DOCKING</span>
+          <span style="color: #2563eb;">TOP LAYER DOCK</span>
+        </div>
+        <div class="code-box">
+          #menu {<br>
+          &nbsp;&nbsp;position: absolute;<br>
+          &nbsp;&nbsp;position-anchor: --share-btn;<br>
+          &nbsp;&nbsp;top: anchor(bottom);<br>
+          &nbsp;&nbsp;left: anchor(left);<br>
+          }
+        </div>
+        <div class="desc-text">
+          CSS Anchor Positioning binds the Top Layer popover directly to its invoking DOM button in the regular document flow, eliminating manual JS bounding client rect coordinate math!
+        </div>
+      </div>
+      <div class="card-footer">
+        ✓ Absolute Tethering Without JS
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 32.3: Styling and Layout Tethering: Top-layer popovers generate native ::backdrop pseudo-elements for frosted shrouds (left). When paired with CSS Anchor Positioning (right), the floating top-layer menu docks accurately to its invoking DOM trigger without JavaScript.</figcaption>
+</figure>
+<p>Figure 32.3 demonstrates styling and tethering in action. In the left panel, the popover uses its <code>::backdrop</code> pseudo-element to render a frosted dark shroud across the underlying document. In the right panel, pairing the Popover API with CSS Anchor Positioning docks the menu exactly 6 pixels below the trigger button, completely immune to ancestor overflow clipping.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>To impress the interviewer:</strong> Highlight that the Popover API is not just a replacement for <code>z-index</code>; it is an accessibility and state management contract. It gives you Top Layer promotion (escaping all <code>overflow: hidden</code> boundaries), automatic light dismiss (outside clicks), native <code>Escape</code> key handling, and strict focus restoration back to the trigger element without writing a single line of JavaScript.</p>
+  </div>
+</aside>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">
+  <p>Classical <code>z-index</code> and absolute positioning are powerless against ancestor <code>overflow: hidden</code> clipping boundaries; the HTML Popover API promotes elements to the browser Top Layer, rendering them above all document styles while providing native light dismiss and focus management.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Card and Table Row Action Menus:</strong> Floating kebab or three-dots context menus inside scrollable cards or data tables that must never be clipped by table cell borders.</li>
+<li><strong>Global Navigation Dropdowns:</strong> Multi-column mega menus that must sit reliably above hero carousels and embedded video banners.</li>
+<li><strong>Application Toast Notifications:</strong> Non-blocking status messages (<code>popover="manual"</code>) that alert users to saved drafts or network events above all viewports.</li>
+<li><strong>Contextual Help and Fact-Checking Tooltips:</strong> Floating definition cards paired with CSS Anchor Positioning that dock next to technical terms.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>HTML Popover API</strong>: A native browser standard providing declarative overlay management, Top Layer rendering, light dismiss, and focus restoration.</li>
+<li><strong>Top Layer</strong>: An internal browser rendering plane above the document root that displays overlays without clipping from ancestor CSS styles.</li>
+<li><strong>Light Dismiss</strong>: The browser behavior that automatically closes an active overlay when a user clicks outside its borders or presses Escape.</li>
+<li><strong>Stacking Context</strong>: A three-dimensional conceptual container formed by elements with specific CSS properties that isolates z-index calculations.</li>
+<li><strong><code>::backdrop</code></strong>: A native CSS pseudo-element rendered directly behind a Top Layer element, covering the entire viewport.</li>
+<li><strong><code>@starting-style</code></strong>: A CSS at-rule used to define the initial visual state of an element before its first paint, enabling smooth entry transitions.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Escaping the Overflow Trap with the Popover API</strong></p>
+<p>The HTML Popover API revolutionizes floating UI engineering on the web. By moving overlays out of fragile DOM stacking hierarchies and promoting them directly to the Top Layer, developers can create robust dropdowns and menus with clean HTML markup and zero JavaScript overhead.</p>
+<ol><li>Classical <code>position: absolute</code> dropdowns get clipped whenever an ancestor container applies <code>overflow: hidden</code>.</li>
+<li>Applying massive <code>z-index</code> values fails because <code>z-index</code> is strictly local to its nearest ancestor stacking context.</li>
+<li>The browser Top Layer renders elements above the entire document tree, completely bypassing ancestor clipping and opacity.</li>
+<li>The <code>popover</code> attribute turns any HTML element into a top-layer overlay that starts hidden by default.</li>
+<li>Setting <code>popovertarget="id"</code> on a <code>&lt;button&gt;</code> opens and toggles the popover declaratively without JavaScript.</li>
+<li>The default <code>popover="auto"</code> mode provides automatic light dismiss on outside clicks and enforces single-open invariance.</li>
+<li>Pressing the <code>Escape</code> key automatically closes the popover and restores keyboard focus to the trigger button.</li>
+<li>Pairing the Popover API with CSS Anchor Positioning allows top-layer overlays to dock accurately beside inline triggers.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Use nested absolute positioning with arbitrary <code>z-index: 999999</code> inside containers with <code>overflow: hidden</code>, causing dropdown menus to be clipped in half.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;article <span class="kw">class</span>=<span class="str">"news-card"</span> style=<span class="str">"overflow: hidden;"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;button onclick=<span class="str">"toggleMenu()"</span>&gt;Options&lt;/button&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"menu"</span> style=<span class="str">"position: absolute; z-index: 999999;"</span>&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;a href=<span class="str">"#save"</span>&gt;Bookmark&lt;/a&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/article&gt;</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use the native <code>popover</code> and <code>popovertarget</code> attributes to promote the overlay directly to the Top Layer with zero JavaScript.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;article <span class="kw">class</span>=<span class="str">"news-card"</span> style=<span class="str">"overflow: hidden;"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;button popovertarget=<span class="str">"card-menu"</span>&gt;Options&lt;/button&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;nav id=<span class="str">"card-menu"</span> popover&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;a href=<span class="str">"#save"</span>&gt;Bookmark&lt;/a&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;/nav&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/article&gt;</span></div></div></div></div>
+</div>
+<p>➔ NEVER rely on giant <code>z-index</code> integers to rescue dropdown menus from ancestor <code>overflow: hidden</code> containers; use the native Popover API.</p>
+<p>➔ ALWAYS use <code>popover="auto"</code> for contextual dropdowns so the browser handles light dismiss and keyboard <code>Escape</code> navigation automatically.</p>
+<p>➔ IF you need a floating overlay to dock directly beside an inline trigger THEN pair the Popover API with CSS Anchor Positioning.</p>
+<table><thead><tr><th></th><th><strong>CLASSICAL ABSOLUTE DROPDOWNS</strong><br>(DOM-tree positioning)</th><th><strong>NATIVE POPOVER API</strong><br>(browser top layer)</th></tr></thead><tbody><tr><td><strong>Rendering Plane</strong></td><td>Trapped inside ancestor<br>DOM stacking contexts</td><td>Promoted directly to the<br>sovereign Top Layer</td></tr><tr><td><strong>Overflow Clipping</strong></td><td>Sliced off by ancestor<br><code>overflow: hidden</code> rules</td><td>Completely immune to all<br>ancestor clipping boundaries</td></tr><tr><td><strong>Scripting Cost</strong></td><td>Requires handwritten JS<br>listeners and class toggles</td><td>Declarative HTML attributes;<br>zero JavaScript required</td></tr><tr><td><strong>Outside Clicks</strong></td><td>Requires global click listeners<br>on window or document</td><td>Native light dismiss handled<br>automatically by the browser</td></tr><tr><td><strong>Keyboard Dismiss</strong></td><td>Manual <code>keydown</code> listeners<br>and custom focus management</td><td>Built-in Escape key dismiss<br>with native focus restoral</td></tr><tr><td><strong>Viewport Shrouds</strong></td><td>Requires full-screen fixed<br>shroud div elements in DOM</td><td>Native <code>::backdrop</code> pseudo-element<br>with zero extra HTML markup</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

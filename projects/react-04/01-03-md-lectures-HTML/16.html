@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 16: Persistent Component Memory with useState</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 16: Persistent Component Memory with useState</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">Why do ordinary variables forget their values between renders, and how does useState remember?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Elena Vance develops the breaking news desk and live reader workspace for The National Times.</li>
+<li>Each article card displays a breaking headline and an interactive bookmark counter for readers.</li>
+<li>Elena clicks the bookmark button, incrementing a local variable, but the count on screen never changes.</li>
+<li>Why do ordinary variables forget their values between renders, and how does useState remember?</li>
+<li>If components rely on ordinary variables, user clicks produce zero visual updates, and any subsequent re-render wipes memory back to zero.</li>
+<li>Plain JavaScript functions discard local variables the moment they finish running, and React never hears about the change.</li>
+<li>Today you learn why ordinary variables fail, how useState retains values across renders, and how React tracks state memory internally.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Why Ordinary Local Variables Fail: Retention and Triggering</h3>
+<p>In earlier lessons, we learned that React components are regular JavaScript functions that calculate and return JSX markup (see Lecture 3). We also learned that component rendering must remain completely pure and free of side effects (see Lecture 13). When you want a component to track changing numbers or text, your natural instinct as a JavaScript developer is to declare a local variable with <code>let</code>, such as <span class="code-line-callout"><code><span class="kw">let</span> count = <span class="nl">0</span></code></span> and increment it inside an event handler (see Lecture 14). Developers transitioning from plain JavaScript often expect that reassigning an ordinary local variable will automatically update what the user sees on screen, only to find that the displayed number never changes.</p>
+<p>In plain JavaScript DOM scripting, you could mutate a global or module variable and manually write the updated value into the DOM with <code>element.textContent = count</code> (see Lecture 1). In that world, your script directly owned both the variable and the DOM mutation. Now imagine clicking a button in React that executes <code>count = count + 1</code>. The variable in local memory changes from 0 to 1. But two critical failures prevent that change from appearing on screen: first, changing a local variable never tells React to run the component function again. React never hears about your change, so no new JSX is computed and the screen remains frozen. Second, even if another interaction forces the component to re-render, the function executes again from line 1, wiping the local variable back to <span class="code-line-callout"><code><span class="kw">let</span> count = <span class="nl">0</span></code></span> Ordinary variables fail on both necessary requirements: they do not trigger renders, and they do not persist across renders.</p>
+<p>Here is the broken code showing an ordinary local variable failing to update the user interface:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BrokenCounter</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">BrokenCounter</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">let</span> count = <span class="nl">0</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Ordinary variable re-initialized on every render</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">function</span> <span class="fn">handleClick</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    count = count + <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">WRONG:</b> mutates local variable; React never hears about it</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;button onClick={handleClick}&gt;Bookmarks: {count}&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>What is <code>useState</code>? React resolves this failure by drawing a strict boundary between two kinds of variables: the <strong>ordinary local variable</strong>, which belongs to the transient JavaScript call stack, and <strong>component state</strong>, which belongs to React's persistent memory. In normal JavaScript, a local variable exists only while the function runs: when the function finishes, the engine pops its execution frame and the variable vanishes from memory. If you call that function a second time, the engine allocates a brand new variable initialized from scratch. In React, when you define data through <code>useState</code>, you hand ownership of that data to React: you write <span class="code-line-callout"><code><span class="kw">const</span> [count, setCount] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> React preserves that value outside the component function, in its internal fiber tree, across every single render pass. The law of useState states: a component can only preserve interactive data and trigger visual updates through the useState hook; reading the state variable returns the frozen value for the current render, and only calling the state setter requests React to schedule the next render with a new value. In web development, a variable that automatically drives the screen when it changes is called a <strong>reactive variable</strong>, and that reactivity is where React got its name; React's own documentation simply calls it <strong>state</strong>.</p>
+<p>To fix the broken counter, we import <code>useState</code> from React and replace the ordinary variable:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CorrectCounter</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">CorrectCounter</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [count, setCount] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> retains data across <b class="tag">RENDERS</b></span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">function</span> <span class="fn">handleClick</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">setCount</span>(count + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> schedules a <b class="tag">RE-RENDER</b> with new value</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> &lt;button onClick={handleClick}&gt;Bookmarks: {count}&lt;/button&gt;;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does an ordinary variable forget its value?</strong> Imagine a newsroom whiteboard in The National Times office. A reporter walks up to the whiteboard, writes down the number 0, and starts writing an article. At the end of the day, the janitor walks in, wipes the whiteboard completely clean, and turns off the lights. The next morning, the reporter walks in, sees an empty whiteboard, and is forced to write 0 all over again. That whiteboard is an <strong>ordinary local variable</strong>: every time the function runs, the board is wiped clean, and any number written on it is discarded. Now imagine that instead of writing on the whiteboard, the reporter deposits the number into a secure vault in the building's basement (the <strong>fiber memory</strong>). Every morning, the reporter asks the vault manager for the latest number. The vault never forgets, no matter how many times the office lights turn off. That vault is <strong><code>useState</code></strong>: it holds your <strong>component state</strong> safely in memory between renders so your data never gets erased.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>How useState Remembers: Hook Queues and Fiber Memory</h3>
+<p>When you look at the syntax <span class="code-line-callout"><code><span class="kw">const</span> [count, setCount] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> you notice something peculiar: you pass an initial value <code>0</code>, but you pass no variable name or string identifier like <code>"count"</code>. When the component re-renders, you call <code>useState(0)</code> again with the exact same initial argument <code>0</code>. How does React know to return the updated value <code>1</code> instead of resetting back to <code>0</code>? Does React inspect variable names or parse your function code? The answer is no. React does not inspect variable names, parse function strings, or use runtime reflection.</p>
+<p>Instead, React stores component memory outside your function, on an internal JavaScript object called a <strong>Fiber node</strong> (see Lecture 12). For each component instance mounted in the UI tree, React maintains an internal linked list of hook records (<code>memoizedState</code>). Each time your component calls <code>useState</code>, React inspects the current hook cell in that list. During the initial mount render, React creates a new cell, stores <code>0</code> as the memoized value, and creates the setter function. On subsequent re-renders, React does not read the initial argument <code>0</code> again; it simply returns the current value stored in that existing cell and advances its internal pointer to the next hook.</p>
+<p>This internal pointer mechanism is why the <strong>Rules of Hooks</strong> exist: you must only call Hooks at the top level of your component function. You can never call <code>useState</code> inside loops, conditions, or nested functions. Why? Because React relies strictly on a <strong>stable call order</strong> to match each hook call to its corresponding memory cell. If a hook call sits inside an <code>if</code> block that only runs on certain renders, the pointer index shifts out of alignment, and a state variable for a headline might receive the value intended for a bookmark count.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>How does React remember without variable names?</strong> Imagine a row of numbered post office boxes in a newsroom mailroom: box 1, box 2, and box 3. When the reporter walks in, they do not ask for "the box named headline." They simply open box 1 first, box 2 second, and box 3 third. As long as the reporter visits the boxes in the exact same order every single day, they always find the right mail. Box 1 always holds the headline, box 2 always holds the author, and box 3 always holds the count. This is how <strong><code>useState</code></strong> works: React stores your values in an ordered row of <strong>hook cells</strong>, and every render reads those cells in sequence. But imagine if on Tuesday, the reporter skips box 1 and opens box 2 first! Suddenly, the reporter reads the author's mail thinking it is the headline! This is why the <strong>Rules of Hooks</strong> demand a <strong>stable call order</strong>: calling hooks conditionally scrambles the boxes, while calling them unconditionally keeps every value in its proper slot.</div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example HeadlineViewer StoryCounter';">Let's Design a Practical Example HeadlineViewer StoryCounter</div>
+      
+    </div>
+  </div>
+</div>
+<p>To see how ordinary variables fail and how <code>useState</code> reliably retains memory across renders, consider the breaking news desk of The National Times. The parent container <code>HeadlineDesk.jsx</code> coordinates a breaking headline viewer (<code>HeadlineViewer.jsx</code>) and an independent reader bookmark counter (<code>StoryCounter.jsx</code>).</p>
+<p>Before writing any code, examine the final rendered interface we are building. Notice that this visual panel represents the authentic rendered user interface on screen, without code distractions:</p>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for national-times - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>HeadlineDesk</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>HeadlineViewer</span><span class="component-explorer-props">headline=&quot;Global Climate Summit Concludes&quot; onUpdateHeadline={setHeadline}</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-badge">Breaking News</span><span class="surface-ui-btn">Next Headline</span></div></div><div class="component-explorer-node component-kind-counter"><div class="component-explorer-label"><span>StoryCounter</span><span class="component-explorer-props">storyId=&quot;summit-2026&quot;</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-badge" data-elem="[badge: Readers Saved]"><div class="ui-elem-content">0</div></div><span class="surface-ui-btn">Save Article</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The rendered canvas displays the visual destination of our application. The parent container <code>HeadlineDesk.jsx</code> hosts both child views. It holds the breaking headline in state and provides an updater callback so the headline viewer can advance stories, while the bookmark counter maintains its own isolated private memory.</p>
+<p>Here is the file layout on disk:</p>
+
+<section class="file-explorer" aria-label="national-times: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">national-times: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">HeadlineDesk.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Top-level container coordinating headline state and mounting child views</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">HeadlineViewer.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Displays breaking headline and forwards headline changes to parent</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryCounter.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Terminal counter maintaining isolated private bookmark count in state</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<p>To construct this architecture, we follow a top-down assembly pipeline: we start with the parent news desk container and then build each nested child inside it:</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Orange / Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #e09f67; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #eac4a1; }
+
+    /* Step 4 Colors (Green) */
+    .assembly-steps-figure .step-4 .card-edge { background: #74ad68; }
+    .assembly-steps-figure .step-4 .card-main { background: #d2ebc9; }
+    .assembly-steps-figure .step-4 .card-divider { background: #b2d5a5; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the parent container HeadlineDesk.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;HeadlineDesk /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the stateful child HeadlineViewer.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;HeadlineViewer /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Then, we declare the independent counter StoryCounter.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;StoryCounter /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card step-4">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">4</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we seal the counter with isolated instance memory</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;StoryCounter /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 16.1: Progressive code assembly pipeline: starting from the parent headline desk and assembling stateful memory.</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the parent container HeadlineDesk.jsx';">First, we construct the parent container HeadlineDesk.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>We start our implementation at the top: the parent container <code>HeadlineDesk.jsx</code>.</p>
+<p>We begin here because the parent defines the layout and dictates the data architecture for the entire view. It decides which piece of data needs reactive state at the desk level and which piece stays completely autonomous:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">HeadlineDesk.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">HeadlineDesk</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [headline, setHeadline] = <span class="hook">useState</span>(<span class="str">'Global Summit Concludes'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Holds breaking headline in parent state as single source of truth</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"desk-layout"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;HeadlineViewer headline={headline} onUpdateHeadline={setHeadline} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Passes headline and updater callback for inverse flow</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;StoryCounter storyId=<span class="str">"summit-2026"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Mounted with zero parent state; manages own private memory</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Look at line 3: <span class="code-line-callout"><code><span class="kw">const</span> [headline, setHeadline] = <span class="hook">useState</span>(<span class="str">'Global Summit Concludes'</span>)</code></span> We declare state here because the breaking headline is shared information that multiple parts of the desk display.</p>
+<p>Now look at line 6: <span class="code-line-callout"><code>&lt;HeadlineViewer headline={headline} onUpdateHeadline={setHeadline} /&gt;</code></span> We have not coded <code>HeadlineViewer</code> yet. But right here in the parent, we establish its contract. The parent owns the headline text, and passes a callback so the child can request a new headline. We will build that child next in step 2.</p>
+<p>Now look at line 7: <span class="code-line-callout"><code>&lt;StoryCounter storyId=<span class="str">"summit-2026"</span> /&gt;</code></span> Notice that it takes zero headline state and zero callbacks. We could have declared a bookmark counter variable right here in <code>HeadlineDesk</code>. But that would be a serious architectural defect. Why? Because every time a single reader bookmarks an article, this entire parent container and the headline viewer would be forced to re-render repeatedly. By giving it zero parent state, we isolate it completely. We will build that counter in steps 3 and 4.</p>
+<p>To recap this first step: the parent holds shared state that child views coordinate through, and leaves independent widgets to manage their own private memory.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the stateful child HeadlineViewer.jsx';">Next, we build the stateful child HeadlineViewer.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 2, we fulfill the contract established by the parent: we build <code>HeadlineViewer.jsx</code>.</p>
+<p>This child component displays the active breaking headline and provides a button to advance to the next news story:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">HeadlineViewer.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">HeadlineViewer</span>({ headline, onUpdateHeadline }) { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Receives headline text and updater callback from parent</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;section className=<span class="str">"headline-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;span className=<span class="str">"badge"</span>&gt;Breaking News&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2&gt;{headline}&lt;/h2&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Renders live headline string provided by parent state</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">onUpdateHeadline</span>(<span class="str">'Mars Probe Sends First Signal'</span>)}&gt;Next Headline&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">ACTION:</b><br>Invokes parent setter to schedule headline re-render</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice the function parameters: we destructure <span class="code-line-callout"><code>{ headline, onUpdateHeadline }</code></span> directly from props. That matches the contract we established in step 1. <code>HeadlineViewer</code> owns zero local state. It relies entirely on its parent to provide the active headline and the function to update it.</p>
+<p>Look at the button click handler on line 6: <span class="code-line-callout"><code>onClick={() =&gt; <span class="fn">onUpdateHeadline</span>(<span class="str">'Mars Probe Sends First Signal'</span>)}</code></span></p>
+<p>Where does <code>onUpdateHeadline</code> come from? Look back at Step 1 in <code>HeadlineDesk.jsx</code>. The parent declared <span class="code-line-callout"><code><span class="kw">const</span> [headline, setHeadline] = <span class="hook">useState</span>(<span class="str">'Global Summit Concludes'</span>)</code></span> and then rendered: <span class="code-line-callout"><code>&lt;HeadlineViewer headline={headline} onUpdateHeadline={setHeadline} /&gt;</code></span></p>
+<p>Notice what happened: the parent handed its private updater function <code>setHeadline</code> to the child under the prop name <code>onUpdateHeadline</code>. <code>HeadlineViewer</code> does not own state, and it does not know how <code>headline</code> is stored. It only holds a telephone line called <code>onUpdateHeadline</code>.</p>
+<p>When the editor clicks the button, the native browser <code>onClick</code> fires and calls <span class="code-line-callout"><code><span class="fn">onUpdateHeadline</span>(<span class="str">'Mars Probe Sends First Signal'</span>)</code></span> Because <code>onUpdateHeadline</code> points directly to <code>setHeadline</code>, that call immediately executes <span class="code-line-callout"><code><span class="fn">setHeadline</span>(<span class="str">'Mars Probe Sends First Signal'</span>)</code></span> back in <code>HeadlineDesk</code>.</p>
+<p>This is standard <strong>inverse data flow</strong>: data flows down through props (<code>headline</code>), and user actions flow up through callbacks (<code>onUpdateHeadline</code>).</p>
+<p>What would happen if <code>HeadlineViewer</code> stored the headline in an ordinary local variable?</p>
+<p>If <code>HeadlineViewer</code> used <span class="code-line-callout"><code><span class="kw">let</span> localHeadline = <span class="str">'Global Summit Concludes'</span></code></span> clicking the button would modify <code>localHeadline</code> in transient memory, but React would never schedule a render, and any re-render triggered elsewhere would reset the headline back to its initial text. Worse, the parent <code>HeadlineDesk</code> and any adjacent news widgets would have zero access to the updated headline.</p>
+<p>By keeping <code>HeadlineViewer</code> stateless, it owns zero <code>useState</code>. It is a pure presenter: given <code>headline</code> and <code>onUpdateHeadline</code>, it displays the markup and forwards clicks.</p>
+<p>This separation gives you two concrete superpowers:</p>
+<ol><li>If tomorrow you replace this manual button with an automated live newsfeed socket, you touch zero headline rendering markup in this component.</li>
+<li>If you redesign the headline card with a new layout, you touch zero state management code in the parent.</li></ol>
+<p>To recap this step: data flows down from the parent through <code>headline</code>, and user actions flow up through <code>onUpdateHeadline</code>.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Then, we declare the independent counter StoryCounter.jsx';">Then, we declare the independent counter StoryCounter.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 3, we build our second child component: <code>StoryCounter.jsx</code>.</p>
+<p>Remember how we mounted <code>StoryCounter</code> in step 1 without any parent state props? Here is why.</p>
+<p>Think about how a reader interacts with this bookmark counter. They read the headline. Then they click the button to save the article for later. While they are saving, the headline does not change, and the parent desk does not need to re-render. We only need to track the count right here inside this specific card:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryCounter.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryCounter</span>({ storyId }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [saves, setSaves] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Allocates private state memory cell in this component fiber</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSave</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">setSaves</span>(saves + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">ACTION:</b><br>Dispatches update to increment saves and schedules re-render</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;aside className=<span class="str">"counter-box"</span>&gt;</span></div></div></div></div>
+<p>Look closely at line 3. Notice what is deliberately absent: there is no ordinary <span class="code-line-callout"><code><span class="kw">let</span> count = <span class="nl">0</span></code></span> variable.</p>
+<p>Instead, notice <span class="code-line-callout"><code><span class="kw">const</span> [saves, setSaves] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> When this component mounts, React registers a new hook cell in this component instance's Fiber node. The initial value <code>0</code> is stored safely in React's internal memory vault.</p>
+<p>Now look at line 5: <code>setSaves(saves + 1)</code>. When the user clicks the button, <code>handleSave</code> executes the setter. It does not overwrite a local variable on the JavaScript stack. It dispatches an action to React's update queue, telling React: "The new count for this cell is 1. Please schedule a re-render."</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Finally, we seal the counter with isolated instance memory';">Finally, we seal the counter with isolated instance memory</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 4, we complete <code>StoryCounter.jsx</code> by adding the count display, the action button, and closing the container:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">StoryCounter.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">9</span><span class="src">      &lt;span className=<span class="str">"count-pill"</span>&gt;Readers Saved: {saves}&lt;/span&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Displays current state snapshot for this render</span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">      &lt;button onClick={handleSave}&gt;Save Article&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Fires user click event to trigger state update</span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &lt;/aside&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">}</span></div></div></div></div>
+<p>Notice line 9: <span class="code-line-callout"><code>&lt;span className=<span class="str">"count-pill"</span>&gt;Readers Saved: {saves}&lt;/span&gt;</code></span> During the current render, <code>{saves}</code> evaluates to the snapshot value provided by <code>useState</code>.</p>
+<p>Now trace what happens in the browser when the reader clicks Save Article. The button fires <code>onClick</code>, which calls <code>handleSave()</code>. That calls <code>setSaves(0 + 1)</code>. React receives the update, schedules work on its fiber loop, and calls <code>StoryCounter</code> a second time.</p>
+<p>On that second pass, React executes <code>useState(0)</code> again. But because React remembers that this component instance's hook cell was updated to <code>1</code>, it returns <code>[1, setSaves]</code>. The function returns new JSX with <code>Readers Saved: 1</code>, and React commits that change to the DOM.</p>
+<p>Here is the load-bearing lesson of component state: <strong>state is completely local and private to each component instance</strong>. If you render <code>&lt;StoryCounter /&gt;</code> in three different article cards across the page, each copy gets its own separate Fiber node and its own independent hook cell. Clicking save on card A increments card A to 1, while card B and card C remain at 0.</p>
+<p>To recap this step: <code>useState</code> gives each component instance its own private memory that survives renders and triggers scheduled updates.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Lessons from the Experiment: Naive Expectation vs Reality</h3>
+<p>Developers new to React instinctively assume that variables inside a component function behave like variables in a standard program, persisting for the lifetime of the application. This naive expectation leads developers to write ordinary local variables, only to wonder why their click handlers produce zero visual changes on screen.</p>
+<p>In our experiment, <code>HeadlineViewer</code> displayed headlines driven by parent state, while <code>StoryCounter</code> maintained its own local bookmark count. If <code>StoryCounter</code> had used an ordinary <span class="code-line-callout"><code><span class="kw">let</span> count = <span class="nl">0</span></code></span> clicking the button would change <code>count</code> in local scope, but React would never schedule a render, and any render triggered by <code>HeadlineDesk</code> would immediately reset <code>count</code> back to 0. Ordinary variables have no connection to the React render loop and no home in persistent memory.</p>
+<p>To see the architectural hierarchy and component relationships at a glance, examine how each component functions in direct relation to the others:</p>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>HeadlineDesk</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>parent component</strong> orchestrates the overall desk layout. It owns the <strong>breaking headline state</strong>. Also, it actively provides two things: the <strong>state (headline)</strong> and the <strong>updater function (onUpdateHeadline)</strong> downward to <strong>HeadlineViewer</strong>. Notice it deliberately passes <strong>zero state</strong> to <strong>StoryCounter</strong>. Why? To ensure reader bookmark clicks never trigger re-renders across the entire headline desk.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>HeadlineViewer</span><span class="component-explorer-props">headline={headline} onUpdateHeadline={setHeadline}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>presenter child component</strong>. It receives two things from the parent: the <strong>headline prop</strong> and the <strong>updater callback</strong>. Notice it owns <strong>zero local state</strong>. When the editor advances the story, it invokes the callback prop to request a state update in the parent. This preserves strict one-way data flow.</p></div></div></div><div class="component-explorer-node component-kind-counter"><div class="component-explorer-label"><span>StoryCounter</span><span class="component-explorer-props">storyId=&quot;summit-2026&quot;</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>autonomous stateful component</strong>. Notice it maintains its own <strong>private memory</strong> using <code>useState(0)</code>. When the user clicks save, it increments its own count without notifying or re-rendering <code>HeadlineDesk</code>. Why? Because bookmark counts are local to this specific article card.</p></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<!--
+  ARCHETYPE 10: ARCHITECTURE AUDIT VERTICAL TABLE
+  LECTURE 16: Persistent Component Memory with useState
+-->
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      vertical-align: top !important;
+      background: #ffffff;
+      color: #334155 !important;
+    }
+    .architecture-audit-figure .audit-table td:first-child,
+    main .architecture-audit-figure .audit-table td:first-child {
+      width: 22% !important;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table td:nth-child(2) {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table td:nth-child(3),
+    .architecture-audit-figure .reality-cell {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .layer-num {
+      display: block;
+      font-weight: 800;
+      color: #0f172a;
+      font-size: 0.92rem;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-weight: 600;
+      color: #64748b;
+      font-size: 0.80rem;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .item-title {
+      display: block;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 4px;
+      font-size: 0.92rem;
+    }
+    .architecture-audit-figure .text-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .item-desc {
+      display: block;
+      color: #475569;
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+    .architecture-audit-figure .reality-cell .item-desc {
+      color: #334155;
+    }
+    .architecture-audit-figure code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.80rem;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .reality-cell code {
+      background: #eef7f9;
+      border-color: rgba(14, 116, 144, 0.25);
+      color: #0e7490;
+    }
+    .architecture-audit-figure .verdict-row td,
+    main .architecture-audit-figure .verdict-row td {
+      border-top: 1.5px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 8px 12px !important;
+    }
+    .architecture-audit-figure .verdict-label {
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .verdict-tag {
+      display: block;
+      font-size: 0.80rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .tag-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .tag-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .verdict-desc {
+      display: block;
+      font-size: 0.84rem;
+      color: #334155;
+      line-height: 1.35;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">LESSONS FROM THE CODE</div>
+    <div class="audit-title">The Persistent Memory Architecture Audit</div>
+    <p class="audit-subtitle">Evaluating ordinary local variables versus useState memory across component layers.</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">LAYER</span>
+          <span class="th-main">Component</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">NAIVE EXPECTATION</span>
+          <span class="th-main">Local Variables</span>
+          <span class="th-sub sub-danger">Transient Stack Execution</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">WHAT HAPPENED</span>
+          <span class="th-main">useState Memory</span>
+          <span class="th-sub sub-teal">React 19 Fiber Persistence</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <span class="layer-num">&lt;HeadlineDesk /&gt;</span>
+          <span class="layer-role">Parent Container</span>
+        </td>
+        <td>
+          <span class="item-title">Ordinary Variable Mutation</span>
+          <span class="item-desc">Assumed declaring <code>let headline</code> would store changes across renders and notify child views automatically.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Centralized Reactive State</span>
+          <span class="item-desc">Declares <code>useState</code> to retain the active headline in fiber memory, scheduling a re-render whenever the setter is invoked.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">&lt;HeadlineViewer /&gt;</span>
+          <span class="layer-role">Presenter Child</span>
+        </td>
+        <td>
+          <span class="item-title">Child State Duplication</span>
+          <span class="item-desc">Assumed child could increment a local index or mutate parent variables directly to advance breaking headlines.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Stateless Inverse Data Flow</span>
+          <span class="item-desc">Child remains completely stateless, invoking <code>onUpdateHeadline</code> to request a state transition in the parent.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">&lt;StoryCounter /&gt;</span>
+          <span class="layer-role">Terminal Counter</span>
+        </td>
+        <td>
+          <span class="item-title">Silent Local Variable Loss</span>
+          <span class="item-desc">Assumed <code>let count = 0</code> would persist across clicks, only to find the screen never updates and resets on render.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Isolated Instance Memory</span>
+          <span class="item-desc">Allocates a private <code>useState(0)</code> cell in this fiber node, incrementing independently with zero parent re-renders.</span>
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td>
+          <span class="verdict-label">VERDICT</span>
+        </td>
+        <td>
+          <span class="verdict-tag tag-danger">FRAGILE STATE LOSS</span>
+          <span class="verdict-desc">Local variables vanish when the function exits, fail to trigger renders, and silently discard user actions.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="verdict-tag tag-teal">BULLETPROOF PERSISTENCE</span>
+          <span class="verdict-desc"><code>useState</code> retains memory in the component fiber node and triggers scheduled re-renders on every setter call.</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 16.2: Architecture audit: evaluating ordinary local variables vs useState memory across component layers.</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>State Memory Behind the Scenes: The Fiber Cell Lifecycle</h3>
+<p>Now that we have seen <code>useState</code> in action, we can examine exactly what happens inside the browser when state changes. When your application first loads, React mounts your component tree into the DOM (see Lecture 6).</p>
+<p>The lifecycle of component state moves through three distinct phases: (a) The mount phase (<code>mountState</code>) occurs when the component renders for the first time. The kind-name is the initial mount. React allocates a Fiber node for the component instance, creates a new hook object, sets its <code>memoizedState</code> to the initial value <code>0</code>, and returns the pair <code>[0, dispatch]</code>. The consequence is that the initial UI displays the starting value and registers the setter function in memory. (b) The dispatch phase (<code>dispatchAction</code>) occurs when the user clicks a button and your handler calls <code>setCount(1)</code>. The kind-name is state dispatch. The setter function packages the update action, attaches it to the hook's update queue, and requests the React scheduler to schedule a render pass. The consequence is that React becomes aware of the user interaction and plans a future reconciliation pass without blocking the main browser thread. (c) The update phase (<code>updateState</code>) occurs when the scheduler executes the re-render. The kind-name is the update render pass. React invokes the component function again. When the code encounters <code>useState(0)</code>, React ignores the initial argument <code>0</code>, evaluates the pending update queue, writes the new value <code>1</code> into <code>memoizedState</code>, and returns <code>[1, dispatch]</code>. The consequence is that the component produces new JSX reflecting the updated state, and React commits the difference to the physical DOM.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked why ordinary variables forget and how <code>useState</code> remembers, do not just say "React re-renders." Give the senior two-part answer: First, ordinary variables live on the transient JavaScript execution stack, so they vanish when the function exits and cannot trigger renders. Second, <code>useState</code> stores data in the component's persistent Fiber node outside the function. Calling the setter queues an update and schedules a re-render, and on the next pass React uses stable hook call order to return the updated value from that fiber cell.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Breaking news tickers: Storing the active headline index in component state so clicking next advances through stories without resetting to the first story.</li>
+<li>Interactive article bookmarking: Maintaining a private save counter in local state that increments on click and survives page re-renders.</li>
+<li>Form validation indicators: Tracking whether an input has been touched or modified by the reader to show inline validation messages dynamically.</li>
+<li>Collapsible article sections: Toggling an accordion panel between expanded and collapsed states using a boolean state variable.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>useState</strong>: A React Hook that declares a state variable, giving a function component private memory that persists across renders and triggers re-renders when updated.</li>
+<li><strong>State Variable</strong>: The current value returned as the first element of the useState array, representing the state snapshot for the active render pass.</li>
+<li><strong>State Setter</strong>: The updater function returned as the second element of the useState array, used to update the state value and schedule a re-render with React.</li>
+<li><strong>Fiber Node</strong>: An internal React data structure that represents a component instance in memory and stores its persistent hook linked list outside the function stack.</li>
+<li><strong>Rule of Hooks</strong>: The invariant requiring that Hooks be called only at the top level of function components, ensuring a stable, predictable call order on every render.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Persistent Component Memory with useState in React</strong></p>
+<p>In production applications, understanding why ordinary variables forget and how <code>useState</code> remembers is the foundation of all interactive React engineering. Here is your streetwise review.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Principles of Component State Memory</span></div>
+<ol><li>Ordinary local variables fail because they cannot <strong>retain</strong> data or <strong>trigger</strong> renders.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) A function's local variables are discarded when execution finishes, resetting to their initial values on the next call.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Reassigning an ordinary variable never notifies React, leaving the on-screen user interface completely unchanged.</li>
+<li>The <code>useState</code> hook provides both <strong>retention</strong> and <strong>triggering</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) React stores state variables in the component's persistent Fiber node, surviving across render cycles.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Calling the state setter function queues an update and schedules a re-render to paint new data on screen.</li>
+<li>React matches state to hook calls using a <strong>stable call order</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Hooks have no string identifiers; React steps through an internal linked list of hook cells in sequential order.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Calling hooks conditionally or inside loops breaks the sequence, scrambling component memory.</li></ol>
+<p class="summary-principle">➔ NEVER use ordinary local variables to track data that should update what appears on the screen.</p>
+<p class="summary-principle">➔ ALWAYS call <code>useState</code> at the top level of your component to preserve a stable hook call order.</p>
+<p class="summary-principle">➔ IF you need a component to remember changing values across user interactions THEN <strong>declare them with <code>useState</code></strong>.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Declare interactive component memory with <code>useState</code> and update it via the setter function.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Correct State Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">BookmarkButton</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [count, setCount] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;button onClick={() =&gt; <span class="fn">setCount</span>(count + <span class="nl">1</span>)}&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      Bookmarks: {count}</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Never reassign local variables inside click handlers and expect the screen to update.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Local Variable Anti-Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">BrokenButton</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">let</span> count = <span class="nl">0</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;button onClick={() =&gt; { count = count + <span class="nl">1</span>; }}&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      Bookmarks: {count}</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>ORDINARY LOCAL VARIABLE</strong><br>(Plain JavaScript)</th><th><strong>USESTATE HOOK</strong><br>(React Component State)</th></tr></thead><tbody><tr><td><strong>Data Retention</strong></td><td>Discarded when function exits;<br>resets on every render</td><td>Persists in component's Fiber node<br>across all render passes</td></tr><tr><td><strong>Re-render Trigger</strong></td><td>None: React never hears about<br>variable reassignments</td><td>Setter queues update and schedules<br>immediate component re-render</td></tr><tr><td><strong>Storage Location</strong></td><td>Transient JavaScript execution<br>call stack</td><td>Persistent internal hook linked list<br>on the component Fiber</td></tr><tr><td><strong>Call Constraints</strong></td><td>Can be declared anywhere inside<br>or outside functions</td><td>Must be called at the top level to<br>preserve stable call order</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 38: The Lifecycle of a Reactive Effect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 38: The Lifecycle of a Reactive Effect</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">What is the lifecycle of a reactive effect as its dependencies change?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Elena builds a live editorial room for The National Times website.</li>
+<li>The chat interface connects to an external websocket server, subscribing reporters to breaking news channels.</li>
+<li>When Elena switches from the general channel to the politics channel, the old connection stays open and duplicate messages flood the screen.</li>
+<li>What is the lifecycle of a reactive effect as its dependencies change?</li>
+<li>If you treat an effect like component mount and unmount, changing dependencies leaves zombie connections open and leaks memory.</li>
+<li>The component never left the screen, yet React ran cleanup before opening the new channel connection.</li>
+<li>Today you learn the exact sequence of cleanup and re-setup, how closures capture old values, and how to synchronize external systems without leaks.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Component Architecture and the Effect Synchronization Cycle</h3>
+<p>In earlier lessons, we learned that React components maintain local state using <code>useState</code> and synchronize with external systems using <code>useEffect</code> (see Lecture 1 and Lecture 28). In an editorial desk, components often need to maintain an active connection to an external service, such as a websocket chat room. Developers often assume that effects follow the lifecycle of the host component, mounting once when added to the DOM and unmounting once when removed.</p>
+<p>Every React component undergoes a standard three-phase lifecycle: it mounts when inserted into the DOM, updates when receiving new props or state, and unmounts when removed from the screen. An effect, however, lives by a different set of rules. An effect does not mount or update; it starts synchronizing and stops synchronizing. When a prop such as <code>roomId</code> changes from <code>"general"</code> to <code>"politics"</code>, the component updates, but the effect must stop synchronizing with the old room before starting to synchronize with the new room.</p>
+<p>What is a <strong>reactive effect</strong>? In standard web development, when you open a connection to an external server with <code>connection.connect()</code>, the browser maintains that socket indefinitely. The browser does not know when your application has moved on to a different topic, and it never automatically closes the connection for you. That manual, open-ended connection is the default behavior of the plain web platform. A <strong>reactive effect</strong> changes this relationship completely. In React, you declare an effect by passing a function to <code>useEffect</code>, specifying the reactive values it reads in a dependency array. Inside that function, you write the setup code to start synchronizing, and return a cleanup function to stop synchronizing. The law of reactive effects is absolute: React will never run a new setup for changed dependencies without first running the cleanup from the previous render; every single setup is strictly paired with a prior cleanup.</p>
+<p>Here is the naive connection pattern that treats effects as component mount events, omitting cleanup and causing connection leaks:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Zombie Connection Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">BadChatRoom</span>({ roomId }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="kw">const</span> connection = <span class="fn">createConnection</span>(roomId); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">SETUP:</b><br>Connects to server on mount</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">    connection.<span class="fn">connect</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">LEAK:</b><br>Never disconnects when roomId changes or component unmounts</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }, [roomId]);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;h2&gt;Active Room: {roomId}&lt;/h2&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>In the naive snippet above, the component opens a socket connection whenever <code>roomId</code> changes. But notice what is missing: there is no cleanup return. When the reporter switches from <code>"general"</code> to <code>"politics"</code>, React re-runs the effect function. It opens a new connection to <code>"politics"</code>. But the socket to <code>"general"</code> was never closed. Both sockets remain alive in browser memory. Every message broadcast to either channel will now trigger duplicate event handlers on the same screen.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does an effect clean up before re-running?</strong> Imagine checking into a hotel room. You enter room one hundred and unpack your clothes into the wardrobe. Later, the front desk calls and upgrades you to room two hundred. Do you leave your clothes scattered across room one hundred and start unpacking fresh clothes into room two hundred? Of course not. If you did, you would have your belongings split across two rooms at once. First, you pack your bags and check out of room one hundred. Only then do you enter room two hundred and unpack. In React, a <strong>reactive effect</strong> works the exact same way. When <code>roomId</code> changes, React checks out of the old room by running the <strong>cleanup function</strong>. Then it checks into the new room by running the new <strong>setup function</strong>. This strict sequence guarantees you never have two active connections open at the same time.</div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example ChannelSelector ChatRoom';">Let's Design a Practical Example ChannelSelector ChatRoom</div>
+      
+    </div>
+  </div>
+</div>
+<p>To understand how reactive effects synchronize with changing dependencies in production, consider the live chat workspace on The National Times. The layout <code>ChatWorkspace.jsx</code> hosts two distinct functional areas:</p>
+<ol><li>A channel selection bar (<code>ChannelSelector.jsx</code>) where reporters switch between news channels like <code>"general"</code>, <code>"politics"</code>, and <code>"breaking"</code>.</li>
+<li>A live chat room (<code>ChatRoom.jsx</code>) that establishes and maintains a real-time websocket connection to the selected channel.</li></ol>
+<p>Before writing any code, examine the final rendered interface we are building. Notice that this visual panel represents the authentic rendered user interface on screen, without code distractions:</p>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for national-times - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>ChatWorkspace</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>ChannelSelector</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn"># general</span><span class="surface-ui-btn"># politics</span><span class="surface-ui-btn"># breaking</span></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ChatRoom</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-badge">Connected to # general</span><div class="surface-ui-input"><span class="surface-ui-input-placeholder">Type a dispatch...</span></div><span class="surface-ui-btn">Send</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The rendered canvas displays the visual destination of our application. The parent container <code>ChatWorkspace.jsx</code> hosts both parts. At the top sits the channel selector bar with button pills. Below it sits the active chat room card, displaying the live channel badge, the message composer input, and the send button.</p>
+<p>Here is the file layout on disk:</p>
+
+<section class="file-explorer" aria-label="national-times: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">national-times: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ChatWorkspace.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Top-level container managing active roomId state</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">services/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-line"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-js" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fef3c7"/><polyline points="14 2 14 8 20 8"/><path d="M10 13v4a1 1 0 0 1-2 0"/><path d="M14 13h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v2"/></svg>
+					</div>
+					<span class="fe-name-text">chat.js</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">module</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">External connection utility simulating websocket lifecycle</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ChannelSelector.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Interactive button group allowing reporters to switch channels</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ChatRoom.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Reactive effect boundary synchronizing websocket connection with roomId</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<p>To construct this architecture, we follow a top-down assembly pipeline: we start with the parent workspace container and then build each nested child inside it:</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Orange / Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #e09f67; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #eac4a1; }
+
+    /* Step 4 Colors (Green) */
+    .assembly-steps-figure .step-4 .card-edge { background: #74ad68; }
+    .assembly-steps-figure .step-4 .card-main { background: #d2ebc9; }
+    .assembly-steps-figure .step-4 .card-divider { background: #b2d5a5; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the parent container ChatWorkspace.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;ChatWorkspace.jsx&gt;</span>
+          <span class="component-tag">&lt;ChannelSelector /&gt;</span>
+          <span class="component-tag">&lt;ChatRoom /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the channel selector child ChannelSelector.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;ChannelSelector.jsx&gt;</span>
+          <span class="component-tag">activeRoom</span>
+          <span class="component-tag">onSelect</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Then, we declare the reactive effect in ChatRoom.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;ChatRoom.jsx&gt;</span>
+          <span class="component-tag">useEffect([roomId])</span>
+          <span class="component-tag">connection.disconnect()</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card step-4">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">4</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we seal the chat interface and message composer</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;ChatRoom.jsx&gt;</span>
+          <span class="component-tag">status-badge</span>
+          <span class="component-tag">Send button</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 38.1: Progressive code assembly pipeline: starting from the parent workspace, building the channel selector, and assembling the reactive chat room.</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the parent container ChatWorkspace.jsx';">First, we construct the parent container ChatWorkspace.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>We start our implementation at the top: the parent container <code>ChatWorkspace.jsx</code>.</p>
+<p>We begin here because the parent defines the layout and dictates the shared state for the entire workspace. It decides which room is currently active and coordinates the child components without touching websockets directly:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ChatWorkspace.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ChatWorkspace</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [roomId, setRoomId] = <span class="hook">useState</span>(<span class="str">'general'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">STATE:</b><br>Coordinates active channel across newsroom views</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"chat-layout"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;ChannelSelector activeRoom={roomId} onSelect={setRoomId} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Passes current channel and setter callback</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;ChatRoom roomId={roomId} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">REACTIVE PROP:</b><br>Triggers effect re-synchronization when value changes</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Look at line 3: <span class="code-line-callout"><code><span class="kw">const</span> [roomId, setRoomId] = <span class="hook">useState</span>(<span class="str">'general'</span>)</code></span> We declare state here because multiple child components need to coordinate around the active channel.</p>
+<p>Now look at line 6: <span class="code-line-callout"><code>&lt;ChannelSelector activeRoom={roomId} onSelect={setRoomId} /&gt;</code></span> We have not coded <code>ChannelSelector</code> yet. But right here in the parent, we establish its contract. The parent passes down the active room string for styling, and passes <code>setRoomId</code> so the child can report user selections. We will build that child next in step 2.</p>
+<p>Now look at line 7: <span class="code-line-callout"><code>&lt;ChatRoom roomId={roomId} /&gt;</code></span> Notice that we pass <code>roomId</code> as a prop. Notice also that the parent contains zero effect code and zero socket logic. If we put the websocket connection in <code>ChatWorkspace</code>, switching channels would force the entire workspace layout to re-render and re-initialize. By delegating <code>roomId</code> downward as a prop, we turn <code>ChatRoom</code> into an isolated reactive boundary. We will build that component in steps 3 and 4.</p>
+<p>To recap this first step: the parent holds the shared state that child components need to coordinate, and leaves external socket synchronization to the child boundary.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the channel selector child ChannelSelector.jsx';">Next, we build the channel selector child ChannelSelector.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 2, we fulfill the contract established by the parent: we build <code>ChannelSelector.jsx</code>.</p>
+<p>This child component is responsible for the channel navigation pills at the top of the workspace:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ChannelSelector.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ChannelSelector</span>({ activeRoom, onSelect }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> rooms = [<span class="str">'general'</span>, <span class="str">'politics'</span>, <span class="str">'breaking'</span>];</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;nav className=<span class="str">"channel-bar"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      {rooms.<span class="fn">map</span>((room) =&gt; (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">        &lt;button key={room} className={room === activeRoom ? <span class="str">'active'</span> : <span class="str">''</span>} onClick={() =&gt; <span class="fn">onSelect</span>(room)}&gt;#{room}&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 76px;">
+        <span class="text"><b class="tag">ACTION:</b><br>Notifies parent to update active channel</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">      ))}</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/nav&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice the function parameters: we destructure <code>{ activeRoom, onSelect }</code> directly from props. That matches the contract we wrote in step 1. <code>ChannelSelector</code> owns zero local state. It relies entirely on its parent to provide the active channel name and the function to update it.</p>
+<p>Look at the button click handler on line 6: <span class="code-line-callout"><code>onClick={() =&gt; <span class="fn">onSelect</span>(room)}</code></span></p>
+<p>Where does <code>onSelect</code> come from? Look back at Step 1 in <code>ChatWorkspace.jsx</code>. The parent declared <span class="code-line-callout"><code><span class="kw">const</span> [roomId, setRoomId] = <span class="hook">useState</span>(<span class="str">'general'</span>)</code></span> and then rendered: <span class="code-line-callout"><code>&lt;ChannelSelector activeRoom={roomId} onSelect={setRoomId} /&gt;</code></span></p>
+<p>Notice what happened: the parent handed its private updater function <code>setRoomId</code> to the child under the prop name <code>onSelect</code>. <code>ChannelSelector</code> does not own state, and it does not know what <code>roomId</code> is used for. It only holds a telephone line called <code>onSelect</code>.</p>
+<p>When the reporter clicks a button, the native browser <code>onClick</code> fires and calls <code>onSelect(room)</code>. Because <code>onSelect</code> points directly to <code>setRoomId</code>, that call immediately executes <code>setRoomId('politics')</code> back in <code>ChatWorkspace</code>.</p>
+<p>This is standard <strong>inverse data flow</strong>: data flows down through props (<code>activeRoom</code>), and user actions flow up through callbacks (<code>onSelect</code>).</p>
+<p>What would happen if <code>ChannelSelector</code> opened the websocket connection itself?</p>
+<p>If you put the <code>useEffect</code> or socket connection inside <code>ChannelSelector</code>, the navigation buttons would be trapped managing network sockets, reconnection timers, and message buffers. Worse, the chat message area in <code>ChatRoom</code> would have no way to access that socket without messy prop-drilling or global state hacks. You would have buttons and network protocols tangled in a single file.</p>
+<p>By separating them, <code>ChannelSelector</code> owns zero <code>useState</code> and zero <code>useEffect</code>. It is a pure presenter: given the same <code>activeRoom</code> string and <code>onSelect</code> callback, it will always render the exact same three buttons.</p>
+<p>This separation gives you two concrete superpowers:</p>
+<ol><li>If tomorrow you replace the button pills with a dropdown <code>&lt;select&gt;</code> menu, you touch zero lines of websocket code.</li>
+<li>If you swap the websocket protocol in <code>ChatRoom</code> for a mock test service, you touch zero lines of button code.</li></ol>
+<p>To recap this step: user interactions in <code>ChannelSelector</code> flow upward to <code>ChatWorkspace</code> through <code>onSelect</code>, changing the parent's <code>roomId</code> state.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Then, we declare the reactive effect in ChatRoom.jsx';">Then, we declare the reactive effect in ChatRoom.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 3, we build the core reactive boundary: slice 1 of <code>ChatRoom.jsx</code>.</p>
+<p>Think about what must happen when <code>roomId</code> changes. The component receives a new <code>roomId</code> prop. It must terminate the previous websocket connection. Then it must open a new connection to the new channel:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ChatRoom.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ChatRoom</span>({ roomId }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [status, setStatus] = <span class="hook">useState</span>(<span class="str">'disconnected'</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="kw">const</span> connection = <span class="fn">createConnection</span>(roomId); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">SETUP:</b><br>Instantiates socket for current roomId</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">    connection.<span class="fn">connect</span>(() =&gt; <span class="fn">setStatus</span>(<span class="str">'connected'</span>));</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      connection.<span class="fn">disconnect</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">CLEANUP:</b><br>Terminates socket before next setup or unmount</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">      <span class="fn">setStatus</span>(<span class="str">'disconnected'</span>);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    };</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  }, [roomId]); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">DEPENDENCY:</b><br>Triggers cleanup and re-setup whenever roomId changes</span>
+      </div></div></div></div></div>
+<p>Look closely at the <code>useEffect</code> call on lines 3 to 10. Notice the dependency array on line 10: <code>[roomId]</code>. This tells React that the effect depends on the value of <code>roomId</code>. Whenever <code>roomId</code> changes between renders, React must re-synchronize the effect.</p>
+<p>Now look at the body of the effect on lines 4 and 5. That is your <strong>setup function</strong>. It calls <code>createConnection(roomId)</code> and initiates the connection with <code>connection.connect()</code>. When the socket opens, it updates local state to <code>'connected'</code>.</p>
+<p>Now look at lines 6 to 9: <span class="code-line-callout"><code><span class="kw">return</span> () =&gt; { connection.<span class="fn">disconnect</span>(); <span class="fn">setStatus</span>(<span class="str">'disconnected'</span>); };</code></span> That return statement is your <strong>cleanup function</strong>. It tells React how to stop synchronizing.</p>
+<p>Here is the vital rule of effect execution. When <code>roomId</code> changes from <code>"general"</code> to <code>"politics"</code>, React does not just run the setup code with <code>"politics"</code>. First, React runs the cleanup function returned during the <code>"general"</code> render. That disconnects the old socket. Only after the old socket is closed does React run the setup code with <code>"politics"</code>.</p>
+<p>To recap this step: the effect pairs every setup with a cleanup, ensuring that changing <code>roomId</code> cleanly shuts down the old channel before opening the new one.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Finally, we seal the chat interface and message composer';">Finally, we seal the chat interface and message composer</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 4, we complete <code>ChatRoom.jsx</code> by adding the message composer interface and closing the component tag:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">ChatRoom.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">11</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    &lt;section className=<span class="str">"chat-card"</span>&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      &lt;header className=<span class="str">"chat-header"</span>&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">        &lt;h3&gt;Channel: #{roomId}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">        &lt;span className={<span class="str">`status-badge ${status}`</span>}&gt;{status}&lt;/span&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 76px;">
+        <span class="text"><b class="tag">UI STATUS:</b><br>Reflects live connection state</span>
+      </div></div>
+<div class="row even"><span class="num">16</span><span class="src">      &lt;/header&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      &lt;input placeholder={<span class="str">`Broadcast to #${roomId}...`</span>} /&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      &lt;button type=<span class="str">"button"</span>&gt;Send&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">CONTROL:</b><br>Dispatches message to active connection</span>
+      </div></div>
+<div class="row odd"><span class="num">19</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">}</span></div></div></div></div>
+<p>Notice the header on lines 13 to 16. It renders the current channel name <code>#{roomId}</code> and a status badge showing whether the socket is <code>'connected'</code> or <code>'disconnected'</code>.</p>
+<p>Now look at the message area on lines 17 and 18. It provides an input and a Send button. When the reporter types a message and submits it, the message travels across the currently active websocket connection.</p>
+<p>Notice what happens when the user switches channels: <code>ChatRoom</code> never unmounts from the DOM. The card stays in place. The input box stays in place. But behind the scenes, React executed the cleanup function to close the previous socket and executed the setup function to connect to the new socket.</p>
+<p>The <code>&lt;section&gt;</code> boundary seals this entire workflow. It isolates connection management from the rest of the application. The parent container <code>ChatWorkspace</code> never has to know how websockets work, and <code>ChannelSelector</code> never has to know how connections are cleaned up.</p>
+<p>Let us recap the senior rule. An effect does not represent component mounting or unmounting. An effect represents an ongoing synchronization cycle. When dependencies change, React always runs the cleanup from the previous render before running the setup for the next render.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Lessons from the Experiment: Naive Expectation vs Reality</h3>
+<p>Developers familiar with traditional component lifecycles instinctively assume that an effect only runs its cleanup function when the component is removed from the screen. This naive expectation leads to severe bugs: when props or state change, developers expect the effect to update in place, leaving old subscriptions active and creating zombie listeners.</p>
+<p>In our experiment, the <code>ChatRoom</code> component remained mounted continuously while the reporter switched channels from <code>"general"</code> to <code>"politics"</code>. However, React still ran the cleanup function for <code>"general"</code> before running the setup function for <code>"politics"</code>. If React waited until unmount to run cleanup, the application would maintain two open sockets simultaneously, receiving duplicate messages and wasting network bandwidth.</p>
+<p>To see the architectural hierarchy and component relationships at a glance, examine how each component functions in direct relation to the others:</p>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ChatWorkspace</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>parent container</strong> orchestrates the newsroom workspace layout. It owns the <strong>active channel state (<code>roomId</code>)</strong>. Notice it provides two things: the state and updater callback downward to <strong>ChannelSelector</strong>, and the reactive <strong><code>roomId</code> prop</strong> to <strong>ChatRoom</strong>. It isolates the workspace from connection logic so switching channels never unmounts the view.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>ChannelSelector</span><span class="component-explorer-props">activeRoom={roomId} onSelect={setRoomId}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>channel selection control</strong>. It receives the active channel string and the updater callback from the parent. Notice it renders clean button pills with zero knowledge of websockets or network protocols. When clicked, it notifies the parent to update the channel.</p></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ChatRoom</span><span class="component-explorer-props">roomId={roomId}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>reactive effect boundary</strong>. It receives <strong><code>roomId</code></strong> as a reactive prop. Notice that when <code>roomId</code> changes, the component does not unmount. Instead, React executes the <strong>cleanup function</strong> from the previous render to close the old socket, and then runs the <strong>new setup function</strong> to open the new socket.</p></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      vertical-align: top !important;
+      font-size: 0.81rem !important;
+      line-height: 1.4 !important;
+      color: #334155 !important;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .audit-table tr.audit-row-alt td,
+    main .architecture-audit-figure .audit-table tr.audit-row-alt td {
+      background: #fcfdfe;
+    }
+    .architecture-audit-figure .audit-table td.td-reality,
+    main .architecture-audit-figure .audit-table td.td-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .audit-table tr.audit-row-alt td.td-reality,
+    main .architecture-audit-figure .audit-table tr.audit-row-alt td.td-reality {
+      background: #f1f5f9 !important;
+    }
+    .architecture-audit-figure .layer-title {
+      font-size: 0.86rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .layer-sub {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      color: #64748b;
+      word-break: break-all;
+    }
+    .architecture-audit-figure .audit-table tr.verdict-row td,
+    main .architecture-audit-figure .audit-table tr.verdict-row td {
+      border-top: 2px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 9px 12px !important;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .verdict-label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .verdict-tag {
+      font-size: 0.86rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+    .architecture-audit-figure .tag-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .tag-teal {
+      color: #0e7490;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">LESSONS FROM THE CODE</div>
+    <div class="audit-title">Architecture Audit: Effect Lifecycle and Dependency Synchronization</div>
+    <p class="audit-subtitle">Evaluating component lifecycle assumptions against React 19 effect synchronization guarantees.</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">HIERARCHY</span>
+          <span class="th-main">Component Layer</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">ASSUMPTION</span>
+          <span class="th-main">Naive Expectation</span>
+          <span class="th-sub sub-danger">(COMPONENT LIFECYCLE)</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">GUARANTEE</span>
+          <span class="th-main">What Happened</span>
+          <span class="th-sub sub-teal">(REACT 19 REALITY)</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="audit-row">
+        <td>
+          <div class="layer-title">Parent Workspace</div>
+          <div class="layer-sub">&lt;ChatWorkspace.jsx&gt;</div>
+        </td>
+        <td>
+          Expected to manage socket connection directly or unmount entire workspace when channel switches.
+        </td>
+        <td class="td-reality">
+          Owns <code>roomId</code> state cleanly; stays mounted and coordinates child views without touching websockets.
+        </td>
+      </tr>
+      <tr class="audit-row audit-row-alt">
+        <td>
+          <div class="layer-title">Selection Control</div>
+          <div class="layer-sub">&lt;ChannelSelector.jsx&gt;</div>
+        </td>
+        <td>
+          Expected to notify socket service directly or manage channel teardown inside click event handlers.
+        </td>
+        <td class="td-reality">
+          Pure interactive control; delegates state update upward via <code>onSelect</code>, completely decoupled from socket logic.
+        </td>
+      </tr>
+      <tr class="audit-row">
+        <td>
+          <div class="layer-title">Reactive Effect Boundary</div>
+          <div class="layer-sub">&lt;ChatRoom.jsx&gt;</div>
+        </td>
+        <td>
+          Assumed effect only cleans up when component unmounts; expected changing <code>roomId</code> to update socket in place.
+        </td>
+        <td class="td-reality">
+          React executes cleanup callback from previous render to disconnect old room, then runs new setup to connect new room.
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td>
+          <span class="verdict-label">FINAL VERDICT</span>
+        </td>
+        <td>
+          <span class="verdict-tag tag-danger">ZOMBIE ACCUMULATION</span>
+        </td>
+        <td class="td-reality">
+          <span class="verdict-tag tag-teal">ISOLATED RE-SYNCHRONIZATION</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 38.2: Architecture audit: evaluating component lifecycle expectations against React 19 effect synchronization reality.</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>The Exact Synchronization Sequence: Cleanup Before Re-Setup</h3>
+<p>To understand why React executes cleanup before re-setup, we must trace the exact sequence of events during a dependency transition. A dependency change is not a simple function call; it is an orchestrated three-step sequence. Without understanding this sequence, developers are baffled by console logs showing cleanup running with old prop values while the screen already displays new prop values.</p>
+<p>Consider what happens when the user clicks the <code># politics</code> button while currently connected to <code># general</code>. First, React updates the <code>roomId</code> state in <code>ChatWorkspace</code> and re-renders the component tree. Second, React commits the changes to the DOM: the screen now paints the new title "Channel: #politics". Third, before running the new effect, React calls the cleanup function returned during the previous render. That cleanup function closed over <code>roomId = "general"</code>, so it disconnects cleanly from <code># general</code>. Fourth, React runs the effect setup function for the current render. That setup function closes over <code>roomId = "politics"</code>, connecting to the new channel. If setup ran before cleanup, both connections would exist concurrently, causing race conditions and state corruption.</p>
+<p>What happens in React 19 development with Strict Mode? When your component first mounts in development, React intentionally mounts the component, runs setup, runs cleanup immediately, and then runs setup a second time. Why? To prove that your cleanup function completely undoes whatever your setup function did. If your cleanup function is missing or incomplete, the second setup exposes the bug immediately during development before it reaches production users.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does cleanup see the old prop value?</strong> Imagine you write a letter, place it inside an envelope, and seal it shut. Inside that envelope, you wrote: "Please lock door number ten." Ten minutes later, you move to room twenty. Does moving to room twenty magically rewrite the letter inside the sealed envelope? Of course not. The sealed envelope still says: "Please lock door number ten." In JavaScript, a <strong>cleanup function</strong> is like that sealed envelope: it is a <strong>closure</strong>. When React created the cleanup function during the first render, it captured the old prop value <code>roomId = "general"</code>. When React opens that envelope during the next render, it executes the instructions inside: it disconnects from <code>"general"</code>, not <code>"politics"</code>. This <strong>closure capture</strong> guarantees that cleanup always cleans up the exact resource that was opened.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Editorial websocket channels: Subscribing to live newsroom dispatches and disconnecting the old channel before opening the new one when reporters switch topics.</li>
+<li>Document title and event observers: Attaching window resize or scroll listeners that re-bind to new target containers when layout dimensions change.</li>
+<li>Real-time stock and score tickers: Subscribing to high-frequency market tickers where changing the selected asset requires terminating the previous data feed.</li>
+<li>Video and audio player instances: Initializing native media player instances that must destroy existing playback sessions before mounting a new media stream.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Reactive Effect</strong>: An effect declared with <code>useEffect</code> that synchronizes an external system with current props and state, re-running whenever its declared dependencies change.</li>
+<li><strong>Effect Lifecycle</strong>: The independent lifecycle of an effect, consisting solely of starting synchronization via setup and stopping synchronization via cleanup, distinct from component mounting.</li>
+<li><strong>Cleanup Function</strong>: A callback returned by an effect setup function that releases resources, cancels subscriptions, and disconnects sockets created during that synchronization cycle.</li>
+<li><strong>Dependency Array</strong>: The second argument to <code>useEffect</code>, listing all reactive values (props, state, and derived variables) read inside the effect to tell React when to re-synchronize.</li>
+<li><strong>Strict Mode Re-synchronization</strong>: React development behavior that executes setup, cleanup, and setup on initial mount to verify that effect cleanup routines completely undo setup actions.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>The Lifecycle of a Reactive Effect in React 19</strong></p>
+<p>In production applications, understanding the independent lifecycle of reactive effects prevents zombie connections, memory leaks, and out-of-sync external systems. Here is your streetwise review.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Principles of Effect Synchronization</span></div>
+<ol><li>Think of effects as <strong>synchronization cycles</strong>, not component lifecycles.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Components mount, update, and unmount; effects start synchronizing and stop synchronizing.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) An effect may start and stop synchronization dozens of times while its host component remains continuously mounted.</li>
+<li>React <strong>always runs cleanup before re-setup</strong> when dependencies change.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Before connecting to the new dependency, React calls the cleanup function from the previous render.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Closure capture ensures the cleanup function accesses the exact props and state from the render that created it.</li>
+<li>Every setup must have a <strong>mirror cleanup function</strong> that completely reverses it.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) If setup connects, cleanup must disconnect; if setup subscribes, cleanup must unsubscribe.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Strict Mode in development tests this symmetry by running setup, cleanup, and setup immediately on mount.</li></ol>
+<p class="summary-principle">➔ NEVER assume an effect only cleans up when the component leaves the screen.</p>
+<p class="summary-principle">➔ ALWAYS return a cleanup function from effects that open connections, subscriptions, or timers.</p>
+<p class="summary-principle">➔ IF an effect reads a reactive prop or state variable THEN <strong>include it in the dependency array to trigger timely re-synchronization</strong>.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Return a mirror cleanup function that reverses setup and cleanly releases external resources.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Resilient Effect Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ChatRoom</span>({ roomId }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="kw">const</span> connection = <span class="fn">createConnection</span>(roomId);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    connection.<span class="fn">connect</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      connection.<span class="fn">disconnect</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Cleans up old channel before next setup</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    };</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  }, [roomId]);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">return</span> &lt;h2&gt;Room: #{roomId}&lt;/h2&gt;;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Never omit cleanup or treat effects as mount-only routines when dependencies change.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Leaky Effect Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">LeakyChatRoom</span>({ roomId }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="kw">const</span> connection = <span class="fn">createConnection</span>(roomId);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    connection.<span class="fn">connect</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Leaks old connection when roomId changes</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }, [roomId]); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Missing cleanup leaves zombie sockets active</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;h2&gt;Room: #{roomId}&lt;/h2&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>COMPONENT LIFECYCLE</strong><br>(mount / update / unmount)</th><th><strong>EFFECT LIFECYCLE</strong><br>(synchronize / stop synchronizing)</th></tr></thead><tbody><tr><td><strong>Primary Responsibility</strong></td><td>Manages DOM insertion, prop updates,<br>and DOM removal</td><td>Synchronizes an external system with<br>current props and state</td></tr><tr><td><strong>Execution Timing</strong></td><td>Mounts once at start; unmounts<br>once at destruction</td><td>Starts and stops synchronization repeatedly<br>as dependencies change</td></tr><tr><td><strong>Cleanup Trigger</strong></td><td>Runs teardown only when component<br>is removed from screen</td><td>Runs cleanup before every re-setup AND<br>when component unmounts</td></tr><tr><td><strong>Closure Context</strong></td><td>Component re-renders with fresh<br>props and state</td><td>Cleanup function executes with captured<br>values from prior render</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

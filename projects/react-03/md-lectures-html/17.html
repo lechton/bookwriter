@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 17: State Batching and Updater Functions: Queue Processing Architecture</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 17: State Batching and Updater Functions: Queue Processing Architecture</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How does React queue multiple state updates, and when do you need an updater function?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named David builds a subscriber donation counter for The National Times.</li>
+<li>The donation box queues multiple contributions arriving rapidly from different reader interactions.</li>
+<li>David calls setTotal(total + 10) three times, but the final total increases by only ten.</li>
+<li>Why does queuing three update calls resolve to only a single ten-dollar increase?</li>
+<li>Incorrect total calculations drop customer contributions and create catastrophic financial ledger discrepancies.</li>
+<li>Direct setters read from the current snapshot, while updater functions read the queued pending value.</li>
+<li>Today you learn how React batches updates and how updater functions calculate pending state.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Automatic Batching: The Restaurant Waiter Metaphor</h3>
+<p>When designing interactive user interfaces, event handlers often need to update multiple state variables at once. For example, submitting a form might reset an input text string, update an error flag to false, and set a loading spinner to true. If React re-rendered the entire component immediately upon every single <code>setState</code> invocation, the browser would re-render three consecutive times, causing severe layout thrashing and UI stutter.</p>
+<p>To prevent this performance penalty, React employs <strong>automatic batching</strong> (known classically as <strong>State Batching</strong> and in modern engineering as <strong>Automatic Batching / Update Queue</strong>).</p>
+<p>In physical browser execution, React does not process state updates synchronously on the line where they are called. Instead, React waits until all the code inside your event handler has completely finished executing. Only then does React process the queued updates and trigger a single, coalesced re-render pass.</p>
+<p>This mechanism functions exactly like a waiter taking orders at a restaurant table. The waiter does not run back to the kitchen after you order your appetizer; they wait until everyone at the table has selected their drinks, entrees, and desserts. Once your table's entire order is written down, the waiter makes a single trip to the kitchen. In React 18 and 19, automatic batching applies uniformly across event handlers, promises, <code>setTimeout</code> timers, and native DOM listeners alike.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>What is state batching in plain English?</strong> In a restaurant, when a family orders appetizers, drinks, and main courses, the waiter writes down all three items on a single notepad before walking to the kitchen. The waiter does not make three separate trips for three items. React behaves the exact same way. When your event handler sets three state variables in a row, React writes them all down on an internal notepad. It waits until your entire function finishes, and then performs a single combined re-render. It is just grouping updates into one single delivery, time and time again. Understanding <strong>state batching</strong> as an <strong>update queue</strong> clarifies how React optimizes <strong>render performance</strong> while maintaining <strong>component stability</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Replacement Update Trap</h3>
+<p>While automatic batching delivers exceptional rendering performance, it introduces a subtle trap when developers attempt to update the same state variable multiple times in a single handler.</p>
+<p>Consider what happened to Zara when she attempted to build a triple-vote button:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Direct Replacement Anti-Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> [votes, setVotes] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">function</span> <span class="fn">handleTripleBoost</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">setVotes</span>(votes + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Reads frozen snapshot value 0</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="fn">setVotes</span>(votes + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Overwrites queue with value 1</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="fn">setVotes</span>(votes + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Overwrites queue with value 1</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>When a reader clicks the button, why does <code>votes</code> increase to 1 instead of 3?</p>
+<p>Recall from the previous lecture that <strong>state is a snapshot in time</strong>. In the render where the user clicks the button, <code>votes</code> is frozen at <code>0</code>. Therefore, Zara's code is mathematically identical to writing:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Queue Evaluation Reality</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">setVotes</span>(<span class="nl">0</span> + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Queues replacement with <b class="tag">ONE</b></span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="fn">setVotes</span>(<span class="nl">0</span> + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Overwrites previous target with <b class="tag">ONE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="fn">setVotes</span>(<span class="nl">0</span> + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Overwrites previous target with <b class="tag">ONE</b></span>
+      </div></div></div></div></div>
+<p>Each call to <code>setVotes</code> tells React: <em>"When you process the queue, replace votes with 1"</em>. Calling it three times simply overwrites the queued target value with 1 three times. When the event handler finishes, React processes the queue, sees that the final requested value is 1, and re-renders with <code>votes = 1</code>.</p>
+</div>
+<div class="keep-together">
+<h3>The Updater Function: Chaining in the Queue</h3>
+<p>To apply multiple updates to the same state variable before the next render pass, you must pass an <strong>updater function</strong> rather than a raw replacement value:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Updater Function Syntax</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">setVotes</span>((prev) =&gt; prev + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Transforms pending queue <b class="tag">STATE</b></span>
+      </div></div></div></div></div>
+<p>An updater function is a pure calculation function: it takes the <strong>pending state</strong> from the previous operation in the queue and returns the next state value. Instead of telling React <em>"replace state with this static number"</em>, an updater function tells React: <em>"take whatever value is currently in the queue, and calculate the next value from it"</em>.</p>
+<p>To examine how updater functions process in production, inspect the reader applause section of The National Times. The layout container <code>ApplauseSection.jsx</code> renders the interactive <code>BoostButton.jsx</code>:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>ApplauseSection.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>BoostButton.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ApplauseSection</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-button"><div class="component-explorer-label"><span>BoostButton</span><span class="component-explorer-props">initialVotes=0</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn">Total Boosts: 3</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above illustrates this layout. On the left, <code>ApplauseSection.jsx</code> wraps the interactive voting control. On the right, the rendered view displays the current boost tally alongside the interactive button. When readers click the button, updater functions ensure every tap registers cleanly without dropping counts.</p>
+<p>Here is the implementation of our boost control, <code>BoostButton.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BoostButton.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">BoostButton</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [votes, setVotes] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">handleTripleBoost</span>() {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="fn">setVotes</span>((prev) =&gt; prev + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Updater function chains in <b class="tag">QUEUE</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="fn">setVotes</span>((prev) =&gt; prev + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Receives previous pending <b class="tag">VALUE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="fn">setVotes</span>((prev) =&gt; prev + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Increments queue total to <b class="tag">THREE</b></span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">11</span><span class="src"></span></div>
+<div class="row even"><span class="num">12</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    &lt;div className=<span class="str">"boost-panel"</span>&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      &lt;span className=<span class="str">"vote-counter"</span>&gt;Total Boosts: {votes}&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      &lt;button onClick={handleTripleBoost}&gt;+<span class="nl">3</span> Triple Boost&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Applies chained updates <b class="tag">CLEANLY</b></span>
+      </div></div>
+<div class="row even"><span class="num">16</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">18</span><span class="src">}</span></div></div></div></div>
+<p>Inside <code>BoostButton.jsx</code>, <code>handleTripleBoost</code> passes updater functions to <code>setVotes</code>. When the user clicks "+3 Triple Boost", React adds three updater functions to its internal update queue. When the handler completes, React evaluates the queue sequentially:</p>
+<ol><li>Step 1: Pending state is <code>0</code>. First function returns <code>0 + 1 = 1</code>.</li>
+<li>Step 2: Pending state is now <code>1</code>. Second function returns <code>1 + 1 = 2</code>.</li>
+<li>Step 3: Pending state is now <code>2</code>. Third function returns <code>2 + 1 = 3</code>.</li></ol>
+<p>React stores <code>3</code> as the final state and triggers a single re-render, displaying "Total Boosts: 3" on the screen.</p>
+<p>Now inspect the parent layout container, <code>ApplauseSection.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ApplauseSection.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> BoostButton <span class="kw">from</span> <span class="str">'./BoostButton.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ApplauseSection</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;section className=<span class="str">"applause-section"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h3&gt;Reader Appreciation&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;BoostButton /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Mounts triple boost <b class="tag">COUNTER</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>In <code>ApplauseSection.jsx</code>, automatic batching ensures that no matter how many state updates are chained inside <code>BoostButton</code>, the entire section experiences only one single re-render pass.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .queue-box {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.4;
+    }
+    .rce-theme .step-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .step-good { background: #d1fae5; color: #065f46; }
+    .rce-theme .step-bad { background: #fee2e2; color: #dc2626; }
+    .rce-theme .final-score {
+      margin-top: 0.35rem;
+      font-weight: 700;
+      font-size: 0.78rem;
+    }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — State Update Queue & Updater Functions</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Applause System</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            ApplauseSection.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            BoostButton.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            setVotes(prev =&gt; prev + 1) × 3
+            <span class="rce-node-props">✓ CHAINED QUEUE</span>
+          </div>
+          <div class="queue-box">
+            <div><span class="step-tag step-good">Queue Step 1</span> (prev =&gt; prev + 1) : 0 ➔ 1</div>
+            <div><span class="step-tag step-good">Queue Step 2</span> (prev =&gt; prev + 1) : 1 ➔ 2</div>
+            <div><span class="step-tag step-good">Queue Step 3</span> (prev =&gt; prev + 1) : 2 ➔ 3</div>
+            <div class="final-score" style="color:#059669;">Final State: Total Boosts = 3</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            Updater functions chain calculations in React's internal FIFO update queue.<br>
+            Each function receives the pending state from the previous queue operation.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            setVotes(votes + 1) × 3
+            <span class="rce-node-props">✕ OVERWRITTEN QUEUE</span>
+          </div>
+          <div class="queue-box">
+            <div><span class="step-tag step-bad">Queue Step 1</span> setVotes(0 + 1) ➔ Queued value: 1</div>
+            <div><span class="step-tag step-bad">Queue Step 2</span> setVotes(0 + 1) ➔ Replaces with: 1</div>
+            <div><span class="step-tag step-bad">Queue Step 3</span> setVotes(0 + 1) ➔ Replaces with: 1</div>
+            <div class="final-score" style="color:#dc2626;">Final State: Total Boosts = 1 (Lost 2 boosts!)</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Direct replacement passes current snapshot constant (0 + 1).<br>
+            All three calls evaluate to 1; subsequent calls overwrite earlier entries.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 17.1: Fig 17.1: State queue processing: chained updater functions versus direct replacement overwrites</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Mixing Replacement Values and Updaters</h3>
+<p>What happens if an event handler mixes raw values and updater functions within the same queue? React processes each instruction in exact FIFO (First-In, First-Out) sequence:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Mixed Queue Execution Order</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">setVotes</span>(votes + <span class="nl">5</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Direct replacement sets queue to <b class="tag">FIVE</b></span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="fn">setVotes</span>((prev) =&gt; prev + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Updater calculates five plus one to <b class="tag">SIX</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="fn">setVotes</span>(<span class="nl">42</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Direct replacement overwrites queue to <b class="tag">FORTY-TWO</b></span>
+      </div></div></div></div></div>
+<p>When React resolves this queue:</p>
+<ul>
+<li>The first call sets the pending value to <code>5</code>.</li>
+<li>The second call receives <code>5</code> and calculates <code>6</code>.</li>
+<li>The third call ignores the pending value and overwrites the queue with <code>42</code>.</li>
+</ul>
+<p>The final rendered state will be <code>42</code>.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why do updater functions have to be pure?</strong> When React processes your update queue, it may need to run your updater functions more than once if an update is interrupted by a high-priority user interaction or during development in Strict Mode. If your updater function mutates outside variables or triggers side effects, running it twice corrupts application memory. Updater functions must behave like pure mathematical formulas: they take previous state and return next state, nothing more.</div>
+</aside>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Use updater functions <code>setState(prev =&gt; next)</code> whenever the next state depends on the previous state to ensure clean queue chaining across batched updates.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how React queues state updates, explain automatic batching and the FIFO queue processing model. Contrast direct state replacements with updater functions: detail that <code>setCount(count + 1)</code> passes a frozen snapshot value, meaning multiple calls simply overwrite the queue with identical constants. In contrast, updater functions (<code>prev =&gt; prev + 1</code>) queue pure state transformers that React chains sequentially against intermediate pending state. Conclude by emphasizing that updater functions are also essential in asynchronous closures to guarantee updates evaluate against the latest pending state rather than stale closure snapshots.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Quantity increment and decrement counters: adjusting item counts in shopping baskets where users click rapidly.</li>
+<li>Multi-step wizard controllers: stepping through multiple wizard state flags within a single automated transaction.</li>
+<li>Asynchronous polling hooks: updating real-time feeds where background timers update counters based on the latest pending state.</li>
+<li>Keyboard navigation handlers: updating active list item indices when users hold down arrow keys.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Automatic Batching</strong>: React's built-in performance optimization that groups multiple state updates into a single re-render pass.</li>
+<li><strong>Update Queue</strong>: React's internal FIFO data structure that buffers state modifications until an active JavaScript event completes.</li>
+<li><strong>Updater Function</strong>: A pure callback (<code>prev =&gt; next</code>) passed to a state setter that calculates the next state from the latest pending queue value.</li>
+<li><strong>Pending State</strong>: The intermediate state value computed by React while iterating through updater functions in the update queue.</li>
+<li><strong>Replacement Update</strong>: Calling a state setter with a raw value that directly sets or overwrites the pending state in the update queue.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>State Batching and Updater Functions: Queue Processing Architecture</strong></p>
+<p>In daily production, mastering <strong>state batching and updater functions</strong> ensures your components execute complex, multi-stage state transitions reliably without UI jitter. By utilizing updater functions whenever state updates depend on previous pending values, you prevent stale closure bugs and leverage React's queue processing engine to its fullest. Here is your streetwise review.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Batching Mechanics, Update Queues, and Updater Functions</span></div>
+<ol><li>Rely on <strong>automatic batching</strong> to optimize render performance.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) React waits until all code in the event handler completes before processing state updates.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Multiple <code>setState</code> calls are coalesced into a single re-render pass, preventing layout thrashing.</li>
+<li>Avoid the <strong>replacement update trap</strong> when updating state multiple times.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Calling <code>setCount(count + 1)</code> multiple times in a handler evaluates to identical replacement values.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Direct value calls overwrite previous queue entries with the current render's frozen snapshot.</li>
+<li>Use <strong>updater functions</strong> to chain calculations from pending state.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Pass a pure function <code>(prev =&gt; prev + 1)</code> to tell React to calculate from the latest queued state.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Updater functions must remain pure: they only calculate and return the next state value.</li></ol>
+<p class="summary-principle">➔ NEVER call direct replacement updates multiple times expecting them to accumulate.</p>
+<p class="summary-principle">➔ ALWAYS use an updater function (<code>prev =&gt; next</code>) when the next state depends on the previous state.</p>
+<p class="summary-principle">➔ IF updating state inside an asynchronous callback THEN <strong>prefer updater functions to avoid referencing stale snapshot closures</strong>.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use updater functions when performing sequential state updates in a single handler.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BoostButton.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleTripleBoost</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setVotes</span>((prev) =&gt; prev + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setVotes</span>((prev) =&gt; prev + <span class="nl">1</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">setVotes</span>((prev) =&gt; prev + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Never call direct replacement updates multiple times expecting cumulative additions.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BoostButton.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleTripleBoost</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setVotes</span>(votes + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setVotes</span>(votes + <span class="nl">1</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">setVotes</span>(votes + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>UPDATER FUNCTION</strong><br>(Chained Queue)</th><th><strong>DIRECT REPLACEMENT</strong><br>(Overwrite Value)</th><th><strong>LOCAL ACCUMULATOR</strong><br>(Manual Calculation)</th></tr></thead><tbody><tr><td><strong>Syntax pattern</strong></td><td><code>setVotes(prev =&gt;</code><br><code>prev + 1)</code></td><td><code>setVotes(votes + 1)</code></td><td><code>const next = v + 3;</code><br><code>setVotes(next);</code></td></tr><tr><td><strong>Queue behavior</strong></td><td>Evaluates sequentially<br>against pending state</td><td>Overwrites earlier values<br>in the update queue</td><td>Sets single final value<br>directly into queue</td></tr><tr><td><strong>Snapshot reliance</strong></td><td>Independent of current<br>frozen snapshot</td><td>Depends strictly on<br>current render snapshot</td><td>Depends strictly on<br>current render snapshot</td></tr><tr><td><strong>Multiple updates</strong></td><td>Accurately accumulates<br>all chained operations</td><td>Only the final call<br>takes effect</td><td>Applies total jump<br>in one single call</td></tr><tr><td><strong>Recommended use</strong></td><td>Counters, toggles, and<br>async closure updates</td><td>Direct resets (setting<br>text input to empty)</td><td>Known fixed increments<br>(e.g. adding 3 points)</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,1289 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 14: Component Memory with useState — Edition v6.4-6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v6.4-6";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 14: Component Memory with useState</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">Why do ordinary variables forget their values between renders, and how does useState remember?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Clara opens her code editor at The National Times to add an interactive reader reaction widget.</li>
+<li>The editorial team wants readers to upvote breaking dispatches and track reading reactions on the morning reading desk.</li>
+<li>Clara increments a local let likes = 0 variable inside the click handler, but the button text never updates on screen.</li>
+<li>Why do ordinary variables forget their values between renders, and how does useState remember?</li>
+<li>Modifying local variables leaves user interfaces frozen, while calling setters during render crashes the application in an infinite loop.</li>
+<li>Many developers struggle with understanding where React stores state outside the component function and why re-renders wipe local variables.</li>
+<li>Today, we learn how components remember data across renders and keep the screen in sync with user actions.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Friction of Ephemeral Local Variables</h3>
+<p>Every interactive web application needs to remember data that changes over time, like an upvote tally, a dark mode toggle, or the text typed into an input. In standard JavaScript functions, local variables exist only while the function executes and vanish the moment it returns. React components are functions called repeatedly whenever the interface redraws, so preserving data across renders requires an external storage mechanism that notifies the engine when values change.</p>
+<p>To see this in action on The National Times, Clara sits at her desk to build an article reaction widget: <code>src/components/StoryCard.jsx</code>. She wants readers to click an upvote button to celebrate breaking dispatches. She begins with standard JavaScript intuition by declaring a local counter variable: <span class="code-line-callout"><code><span class="kw">let</span> likes = <span class="nl">0</span></code></span> Inside the button's click handler, she writes <code>likes = likes + 1</code> and logs the result to the browser console.</p>
+<p>It is common for an engineer to expect that incrementing <code>likes</code> will cause the button text to update on screen. But when Clara opens her browser and clicks the button, the rendered text stubbornly displays "Likes (0)". In the console, the messages "Likes: 1", "Likes: 2", and "Likes: 3" appear with every click, proving that the variable is changing in memory. Even more confusingly, when an unrelated search query or parent filter re-renders the page, the next click logs "Likes: 1" all over again.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Naive Local Variable Attempt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryCard</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">let</span> likes = <span class="nl">0</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Local variable allocated on each call</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">function</span> <span class="fn">handleLike</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    likes = likes + <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Modifies local variable in memory</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">    console.<span class="fn">log</span>(<span class="str">'Likes:'</span>, likes); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Prints incremented number</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;button type=<span class="str">"button"</span> onClick={handleLike}&gt;<span class="fn">Likes</span> ({likes})&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Why did the button text refuse to change? In JavaScript, functions create a new stack frame whenever they run. Local variables declared with <code>let</code> or <code>const</code> exist only during that single invocation. When <code>StoryCard</code> finishes rendering, its execution frame disappears. When the user clicks the button, <code>handleLike</code> increments the variable in its closure, but React is never notified that anything changed. React does not inspect local variables, so it schedules no re-render. When another component triggers a re-render later, React calls <code>StoryCard</code> from the top, allocating a fresh <code>likes</code> variable initialized to <code>0</code>.</p>
+<p>In legacy browser scripting, developers worked around this limitation by mutating DOM nodes directly with <span class="code-line-callout"><code>document.<span class="fn">getElementById</span>(<span class="str">'likes'</span>).textContent = likes</code></span> or storing counts on global objects like <code>window.likes</code>. In React, directly touching the DOM bypasses virtual DOM reconciliation (see Lecture 1), and mutating external variables violates component purity (see Lecture 12). React requires a declarative mechanism that preserves values across calls and notifies the engine to redraw the screen.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><p><strong>Why does incrementing a local variable fail to update the screen?</strong></p>
+  <p>Ordinary local variables exist only during a single function execution and vanish upon return. Reassigning a local variable never notifies React to redraw the screen, and the next render re-evaluates the function from scratch. Using <span class="code-line-callout"><code><span class="kw">const</span> [count, setCount] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> stores the value in React's external memory cell and provides a setter that schedules a fresh render pass with the updated value.</p></div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Component Execution and the Need for Persistent Memory</h3>
+<p>To understand why React needs <code>useState</code>, we must examine what happens when a function component renders. In standard JavaScript, calling a function creates a fresh execution context: local variables are allocated, code runs line by line, the return value is handed to the caller, and the stack frame is cleaned up. A React component is invoked not once, but repeatedly throughout the lifecycle of an application. Every time data changes or a parent updates, React calls the component function again to compute a fresh tree of UI descriptors. Because every render is a brand-new function call, any variable declared with <code>let</code> or <code>const</code> inside the component body is re-created from scratch.</p>
+<p>If local variables are discarded on every render, where does state actually live? React stores component state outside the component function, in an internal memory cell associated with that component's position in the UI tree. You can picture this as a shelf of memory slots maintained by React in the background. When your component function runs, calling <code>useState</code> reaches out to React's internal shelf and asks for the current value assigned to this specific slot. On the very first render (the initial mount), React initializes the slot with the argument you passed (<code>0</code>). On all subsequent renders, React ignores that initial argument and hands back whatever value is currently stored in the slot.</p>
+<p>The <code>useState</code> hook returns a JavaScript array containing exactly two items, which developers unpack using <strong>array destructuring</strong>: <span class="code-line-callout"><code><span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> The first element (<code>likes</code>) is the current state value for this render pass; it is treated as a read-only constant during the execution of the component. The second element (<code>setLikes</code>) is a setter function that allows you to change the state. When you invoke <code>setLikes(nextValue)</code>, React updates the value stored on its internal shelf and queues a re-render for this component instance.</p>
+<p>It is critical to distinguish between re-renders and page reloads. A re-render occurs within the living JavaScript application: React re-executes the component function in memory, preserves internal state cells, and updates only the changed DOM nodes. In contrast, a full browser page reload (or navigation) destroys the entire JavaScript runtime environment, clearing all memory cells and resetting all components back to their initial state. <code>useState</code> provides persistent memory across renders within a living session, not persistent storage across browser restarts.</p>
+</div>
+<div class="keep-together">
+<h3>Principles of React: Component Memory and State</h3>
+<p>When preparing for senior technical interviews, candidates must articulate why local variables fail to persist across renders, how React manages state outside the component function scope, why setters are mandatory for updates, and how multiple instances maintain isolated memory. To master these core concepts, we formalize the six governing principles of component memory and state:</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Expect a Local Variable to Forget and to Change Nothing on Screen</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">ephemeral variable</span>
+          <span class="gloss-def">a local variable created inside a function that disappears when execution finishes</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">render pass</span>
+          <span class="gloss-def">a single complete call of a component function to calculate its return markup</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">An ordinary local variable belongs exclusively to a single function execution. When we modify a local variable inside an event handler, React receives zero notification that data changed and schedules no update, leaving the screen unchanged. Whenever the component renders again, the function executes from the top and resets the local variable to its initial starting value.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>When a component renders, JavaScript executes the function body from the top down. Declaring <span class="code-line-callout"><code><span class="kw">let</span> likes = <span class="nl">0</span></code></span> allocates a slot on the call stack for that invocation only. If an event handler reassigns <code>likes = likes + 1</code>, the change takes place purely within that closure's local scope. React has no knowledge that a JavaScript variable was modified because variables do not dispatch notifications. Furthermore, when an unrelated event (such as a parent re-render or timer) prompts React to redraw the component, React invokes the function again. That new call allocates a brand-new <code>likes</code> variable initialized to <code>0</code>. A local variable is completely ephemeral: it cannot persist data between calls, and modifying it cannot update the browser screen.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Ephemeral Variable Execution</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">LocalCounter</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">let</span> count = <span class="nl">0</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Re-created on every render</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">function</span> <span class="fn">handleClick</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    count = count + <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Updates local copy only</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">    console.<span class="fn">log</span>(<span class="str">'Count:'</span>, count); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Logs incremented number</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;button type=<span class="str">"button"</span> onClick={handleClick}&gt;<span class="fn">Clicked</span> ({count})&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice that clicking the button runs <code>handleClick</code> and increments <code>count</code> in local memory, but React never schedules a re-render. The button text remains permanently fixed at its initial rendered string.</p>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Store in State Exactly What Must Survive a Re-Render</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">state variable</span>
+          <span class="gloss-def">a persistent value preserved by React across component function executions</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">transient calculation</span>
+          <span class="gloss-def">an intermediate value computed and discarded within a single handler run</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">We store in state only data that must survive between renders and directly affects what the component displays on screen. Values calculated and consumed entirely inside a single event handler, such as a formatted sharing link or temporary math result, belong in ordinary local variables because every state setter call requests a full re-render.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">State preserves counter</span></div><div class="case-code-line"><span class="kw">const</span> shareUrl = <span class="str">`/stories/${id}`</span>;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Local transient calculation</span></div></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-watermark-bg"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> [shareUrl, setShareUrl] = <span class="hook">useState</span>(<span class="str">''</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Redundant state</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>Novice engineers often swing between two extremes: using zero state (leaving the UI unresponsive) or placing every variable into <code>useState</code>. Every call to a state setter instructs React to schedule a re-render of the component and its children. If an event handler formats a string to send to an analytics server or calculates a temporary URL for clipboard copying, that value does not need to survive beyond the handler's execution, nor does it alter the JSX structure. Storing transient calculations in state forces React to re-render the component tree unnecessarily, wasting CPU cycles and introducing subtle race conditions. We reserve state strictly for values that the component must remember across renders to decide what to paint on screen.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">State vs Local Variable</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleCard</span>({ id }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">State preserves counter</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">function</span> <span class="fn">handleShare</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="kw">const</span> shareUrl = <span class="str">`/stories/${id}`</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Transient calculation</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">    navigator.clipboard.<span class="fn">writeText</span>(shareUrl); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Copies url to clipboard</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> &lt;button onClick={() =&gt; <span class="fn">setLikes</span>(likes + <span class="nl">1</span>)}&gt;<span class="fn">Likes</span> ({likes})&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice the division of responsibilities: <code>likes</code> is stored in state because it controls the button label across renders, while <code>shareUrl</code> is a local variable because it is used only while <code>handleShare</code> executes.</p>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Expect React to Hand Back the Stored Value on Every Render</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">initial render</span>
+          <span class="gloss-def">the first time React calls a component function to create and insert its DOM nodes</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">internal state cell</span>
+          <span class="gloss-def">an isolated memory record kept by React outside the component function</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">React stores component state outside our function in an internal memory cell tied to the component's position in the UI tree. On the initial render, <code>useState(initialValue)</code> registers the initial value in that cell and returns it. On every subsequent render, React ignores the initial argument and returns the latest value from its internal cell.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>When beginners look at <span class="code-line-callout"><code><span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> they frequently wonder: "If the component executes again, why doesn't <code>useState(0)</code> reset <code>likes</code> to <code>0</code> every single time?" The answer lies in how React tracks hook execution. State does not reside within the function scope; it resides on an internal Fiber record that React preserves between calls. When React renders a component for the first time, it creates an internal state cell and initializes it with the argument <code>0</code>. On all subsequent renders, React recognizes that a state cell already exists for this hook call. It ignores the argument <code>0</code> entirely and retrieves the latest value stored in that cell. The initial argument acts strictly as a one-time seed value during initial mounting.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">State Memory Retrieval</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryMetrics</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Ignores 0 on re-renders</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  console.<span class="fn">log</span>(<span class="str">'Current likes value:'</span>, likes); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Prints stored value</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;button type=<span class="str">"button"</span> onClick={() =&gt; <span class="fn">setLikes</span>(likes + <span class="nl">1</span>)}&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      <span class="fn">Like</span> ({likes})</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>When this component mounts, <code>likes</code> evaluates to <code>0</code>. After clicking the button, React invokes <code>StoryMetrics</code> a second time: <code>useState(0)</code> runs, but React hands back <code>1</code> from its internal state cell.</p>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">Change State Only by Calling Its Setter</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">state setter</span>
+          <span class="gloss-def">the update function returned by useState that requests a new render with a new value</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">direct mutation</span>
+          <span class="gloss-def">attempting to reassign or modify a state variable in place without using its setter</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">The state variable returned by <code>useState</code> is a read-only snapshot for the current render. We never assign a new value directly to the state variable. Calling the setter function (<code>setLikes</code>) is the only way to update React's internal state cell and schedule a fresh render to redraw the screen.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setLikes</span>(likes + <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Updates React memory and schedules re-render</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">likes = likes + <span class="nl">1</span>;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Throws TypeError on const or fails to update UI</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>In React, state variables are meant to be treated as immutable snapshots of data for the current execution frame. When you destructure <span class="code-line-callout"><code><span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> declaring <code>likes</code> as a <code>const</code> enforces this contract at the JavaScript language level: writing <code>likes = likes + 1</code> immediately crashes with <span class="code-line-callout"><code>TypeError: Assignment to constant variable</code></span> Even if you deliberately declared it with <span class="code-line-callout"><code><span class="kw">let</span> [likes, setLikes]</code></span> assigning to <code>likes</code> changes only a local identifier in that single closure. React is not a proxy engine; it does not intercept assignments to local variables. The setter function (<code>setLikes</code>) is the sole communication mechanism provided by React to record a new state value and place this component into the re-render queue.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">State Setter Updates</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ReactionCounter</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Destructures value and setter</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">function</span> <span class="fn">handleLike</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">setLikes</span>(likes + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Communicates update to React</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;button type=<span class="str">"button"</span> onClick={handleLike}&gt;<span class="fn">Like</span> ({likes})&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice that <code>handleLike</code> does not modify <code>likes</code> directly. It passes <code>likes + 1</code> into <code>setLikes</code>, instructing React to store the next number and schedule a render pass.</p>
+<aside class="callout callout-principle" data-principle="5">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 5</span></div>
+    <h4 class="principle-title">Expect Each Rendered Instance to Keep Its Own State</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">component instance</span>
+          <span class="gloss-def">a distinct mounted occurrence of a component placed in the UI tree</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">isolated state</span>
+          <span class="gloss-def">private memory allocated to one component instance that siblings cannot see</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">State belongs to a specific rendered instance of a component on screen, not to the component function or its source file. If we render <code>&lt;StoryCard /&gt;</code> three times, React creates three separate state cells in memory. Clicking a button inside the first card updates only that card's count, leaving the other two instances completely unaffected.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>In object-oriented programming, a class definition is separate from its instantiated objects; similarly, in React, a component definition is separate from its mounted component instances. If you define a <code>StoryCard</code> component that holds <span class="code-line-callout"><code><span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> and render <code>&lt;StoryCard /&gt;</code> twice inside <code>App.jsx</code>, React tracks each card by its unique location in the UI tree. It creates two completely independent state cells in memory. Clicking "Like" on the first card invokes the first card's setter, incrementing its internal cell to <code>1</code> and scheduling a re-render strictly for that first card. The second card remains at <code>0</code>, and its function does not even run. Furthermore, state is completely private: <code>App</code> cannot read or modify the <code>likes</code> state of either child card. If two sibling cards ever need to share a synchronized count, that state must be lifted into their common parent (a pattern explored in Lecture 23).</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Independent Component Instances</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> StoryCard <span class="kw">from</span> <span class="str">'./StoryCard.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryFeed</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"story-feed"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;StoryCard title=<span class="str">"Transit Accord"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Maintains its own state slot</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;StoryCard title=<span class="str">"Clean Energy"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Maintains separate state slot</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Each rendered <code>&lt;StoryCard /&gt;</code> instance maintains its own isolated state slot. Upvoting the "Transit Accord" card updates its counter without triggering an update in the "Clean Energy" card.</p>
+<aside class="callout callout-principle" data-principle="6">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 6</span></div>
+    <h4 class="principle-title">Call Setters from Handlers, Never Unconditionally During Render</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">infinite render loop</span>
+          <span class="gloss-def">a crash where setting state during render immediately triggers another render</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">A state setter requests a new render, so we must invoke setters exclusively inside event handlers when a user interacts with the page. Calling a setter directly in the component body or invoking it inside JSX curly braces runs the setter during render, causing React to abort with a fatal "Too many re-renders" infinite loop error.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">&lt;button onClick={() =&gt; <span class="fn">setLikes</span>(likes + <span class="nl">1</span>)}&gt;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Defers setter to click</span></div><div class="case-code-line">  Like</div><div class="case-code-line">&lt;/button&gt;</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">&lt;button onClick={<span class="fn">setLikes</span>(likes + <span class="nl">1</span>)}&gt;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Invokes setter during render</span></div><div class="case-code-line">  Like</div><div class="case-code-line">&lt;/button&gt;</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>In Lecture 13, you learned that expressions inside JSX curly braces evaluate immediately during the render pass. If you write <code>onClick={setLikes(likes + 1)}</code>, JavaScript calls <code>setLikes</code> right away while constructing the element tree. Calling a setter instructs React to schedule a new render. React attempts to render the component again, but during that second render, JavaScript encounters <code>onClick={setLikes(likes + 1)}</code> again, calling the setter once more. This creates an unconstrained recursive loop: render calls setter, setter calls render. To prevent the browser tab from freezing completely, React halts execution and throws an unrecoverable runtime crash: <span class="code-line-callout"><code>Error: Too many re-renders. React limits the number <span class="kw">of</span> renders to prevent an infinite loop.</code></span> To prevent this failure, always wrap parameterized setter calls in an arrow function (<span class="code-line-callout"><code>onClick={() =&gt; <span class="fn">setLikes</span>(likes + <span class="nl">1</span>)}</code></span>), ensuring the setter executes strictly when the user physically clicks.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Deferred Setter Execution</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">UpvoteButton</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [count, setCount] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">State preserved across renders</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;button type=<span class="str">"button"</span> onClick={() =&gt; <span class="fn">setCount</span>(count + <span class="nl">1</span>)}&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      <span class="fn">Applaud</span> ({count})</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>By wrapping <code>setCount</code> inside an arrow function, the setter remains uncalled during render, executing only when the reader triggers a browser click event.</p>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for story-metrics - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">story-metrics - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryCard</span><span class="component-explorer-props">story={leadStory}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-span" data-elem="[span.badge]"><div class="ui-elem-content">Lead Story</div></div><div class="ui-elem ui-tag-h3" data-elem="[h3.headline]"><div class="ui-elem-content">City Transit Overhaul</div></div><div class="ui-elem ui-tag-button" data-elem="[button.bookmark-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Saved</span></div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ReactionButton</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.like-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Upvotes: 0</span></div></div></div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryCard</span><span class="component-explorer-props">story={secondStory}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-span" data-elem="[span.badge]"><div class="ui-elem-content">Economy</div></div><div class="ui-elem ui-tag-h3" data-elem="[h3.headline]"><div class="ui-elem-content">Green Energy Accord</div></div><div class="ui-elem ui-tag-button" data-elem="[button.bookmark-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Save</span></div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ReactionButton</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.like-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Upvotes: 0</span></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="story-metrics: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">story-metrics: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Shell container rendering the newsroom desk with multiple independent story cards</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryCard.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Presentation card holding article headline and managing its own bookmark state</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ReactionButton.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-leaf">leaf</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Stateful reaction button managing independent upvote tallies with useState</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Warm Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #d98c47; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #f3caa3; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we declare the newsroom desk container</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we construct the interactive story card</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/StoryCard.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we build the stateful reaction control</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/ReactionButton.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 14.1: Figure 14.1: The progressive assembly pipeline of the story metrics application.</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we declare the newsroom desk container';">First, we declare the newsroom desk container</div>
+      <div class="card-components"><span class="component-tag">&lt;src/App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <code>src/App.jsx</code>, we establish the top-level container for our newsroom desk. We define a list of stories, each with an <code>id</code>, <code>title</code>, and <code>category</code>. Inside the <code>App</code> component body, we map over this collection and render two instances of <code>&lt;StoryCard /&gt;</code>. Notice that <code>App</code> does not own or manage upvote counts or bookmark flags; it simply distributes article data downward through props. Because state is isolated to each mounted component instance (Principle 5), rendering two <code>&lt;StoryCard /&gt;</code> elements automatically prepares two completely independent state containers in React's memory. When readers upvote or bookmark one story, the other card remains completely unaffected.</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> StoryCard <span class="kw">from</span> <span class="str">'./components/StoryCard.jsx'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Imports child card</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">const</span> stories = [</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  { id: <span class="str">'st-1'</span>, category: <span class="str">'Lead Story'</span>, title: <span class="str">'City Transit Overhaul'</span> },</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  { id: <span class="str">'st-2'</span>, category: <span class="str">'Economy'</span>, title: <span class="str">'Green Energy Accord'</span> }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">];</span></div>
+<div class="row odd"><span class="num">7</span><span class="src"></span></div>
+<div class="row even"><span class="num">8</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;main className=<span class="str">"newsroom-desk"</span>&gt;</span></div></div></div></div>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">10</span><span class="src">      &lt;h1&gt;Morning Reading Desk&lt;/h1&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;section className=<span class="str">"story-grid"</span>&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">        {stories.<span class="fn">map</span>((story) =&gt; (</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">          &lt;StoryCard key={story.id} story={story} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px;">
+        <span class="text">Distributes props</span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">        ))}</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">18</span><span class="src">}</span></div></div></div></div>
+<p>Notice how <code>App</code> remains lean and declarative: it provides structure and iterates over stories, leaving all state management to the cards and reaction controls.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we construct the interactive story card';">Next, we construct the interactive story card</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/StoryCard.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <code>src/components/StoryCard.jsx</code>, we construct the article card boundary. The card receives the <code>story</code> object through prop destructuring. To allow readers to save articles for later reading, we declare our first state variable: <span class="code-line-callout"><code><span class="kw">const</span> [isBookmarked, setIsBookmarked] = <span class="hook">useState</span>(<span class="kw">false</span>)</code></span> Notice that <code>isBookmarked</code> is a boolean state that directly controls what the button says: if <code>isBookmarked</code> is true, the button renders "Saved", and if false, it renders "Save". Inside <code>handleToggleBookmark</code>, we call <span class="code-line-callout"><code><span class="fn">setIsBookmarked</span>(!isBookmarked)</code></span> to schedule a re-render. Furthermore, <code>StoryCard</code> mounts the child <code>&lt;ReactionButton /&gt;</code> control. Notice how responsibilities remain modular: <code>StoryCard</code> manages bookmarking, while delegating upvote tallying to a specialized child component.</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> ReactionButton <span class="kw">from</span> <span class="str">'./ReactionButton.jsx'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Imports reaction button</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryCard</span>({ story }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [isBookmarked, setIsBookmarked] = <span class="hook">useState</span>(<span class="kw">false</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Bookmark state</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">function</span> <span class="fn">handleToggleBookmark</span>() {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="fn">setIsBookmarked</span>(!isBookmarked); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Toggles state and schedules render</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;article className=<span class="str">"story-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      &lt;span className=<span class="str">"badge"</span>&gt;{story.category}&lt;/span&gt;</span></div></div></div></div>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">10</span><span class="src">      &lt;h3&gt;{story.title}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;div className=<span class="str">"card-actions"</span>&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">        &lt;button type=<span class="str">"button"</span> onClick={handleToggleBookmark}&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">          {isBookmarked ? <span class="str">'Saved'</span> : <span class="str">'Save'</span>} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px;">
+        <span class="text">Renders label from state</span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">        &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">        &lt;ReactionButton /&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">}</span></div></div></div></div>
+<p>Notice that clicking "Save" changes only <code>isBookmarked</code> on this specific card. The reaction button inside the card remains completely unaffected until the reader clicks its upvote button.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we build the stateful reaction control';">Finally, we build the stateful reaction control</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/ReactionButton.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/ReactionButton.jsx</code></span> we build the terminal reaction button. The component declares a numeric state variable initialized to zero: <span class="code-line-callout"><code><span class="kw">const</span> [upvotes, setUpvotes] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> Inside <code>handleUpvote</code>, we call <code>setUpvotes(upvotes + 1)</code>. When the user clicks the button, React records the new upvote count in its internal memory cell and schedules a re-render for this specific <code>ReactionButton</code> instance. Because we use a semantic <code>&lt;button type="button"&gt;</code>, the control supports full keyboard accessibility with Enter and Space keys (see Lecture 13). Notice that because each <code>StoryCard</code> mounted its own <code>&lt;ReactionButton /&gt;</code>, each button maintains its own independent upvote tally. Upvoting the first story increments its count to 1 without triggering a render in the second story card.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ReactionButton.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ReactionButton</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [upvotes, setUpvotes] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Isolated state counter</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">function</span> <span class="fn">handleUpvote</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">setUpvotes</span>(upvotes + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Updates internal cell and schedules render</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;button type=<span class="str">"button"</span> onClick={handleUpvote}&gt;Upvotes: {upvotes}&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice how clean the control is: it owns its upvote count completely, uses <code>useState</code> to persist the number across renders, and communicates updates strictly through <code>setUpvotes</code>.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>newsroom desk shell</strong> maps article data into isolated card instances without holding local UI state.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>StoryCard</span><span class="component-explorer-props">story={story}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>interactive story card</strong> manages its private bookmark toggle and renders child controls.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ReactionButton</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>stateful reaction button</strong> encapsulates its own upvote counter using useState.</p></div></div></div></div></div></div></div></div>
+</div>
+<p>Examine how this three-file architecture handles component memory cleanly. In a naive implementation, an engineer might have written <span class="code-line-callout"><code><span class="kw">let</span> likes = <span class="nl">0</span></code></span> or attempted to increment an external variable, resulting in frozen user interfaces and lost counts. Or they might have attempted to pass all state upward into <code>App.jsx</code>, bloating the root container with unrelated click handlers. By contrast, our architecture places state exactly where it is needed: <code>StoryCard</code> encapsulates bookmarking, while <code>ReactionButton</code> encapsulates upvote counts. Each component instance manages its own private memory on React's external shelf, updating the screen reliably without interfering with neighboring cards.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    main .architecture-audit-figure .audit-table th.th-col-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      font-size: 0.81rem;
+      line-height: 1.4;
+      vertical-align: top !important;
+      color: #334155;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .audit-table td.td-layer,
+    main .architecture-audit-figure .audit-table td.td-layer {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .layer-tag {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 1px;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-size: 0.72rem;
+      color: #64748b;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .architecture-audit-figure .audit-table td.td-naive,
+    main .architecture-audit-figure .audit-table td.td-naive {
+      color: #475569;
+    }
+    .architecture-audit-figure .audit-table td.td-reality,
+    main .architecture-audit-figure .audit-table td.td-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+      color: #1e293b;
+    }
+    .architecture-audit-figure .bullet {
+      font-weight: 800;
+      margin-right: 3px;
+    }
+    .architecture-audit-figure .bullet-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .bullet-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .verdict-row td {
+      border-top: 2px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 10px 12px !important;
+      background: #f1f5f9;
+    }
+    .architecture-audit-figure .verdict-row td.td-reality {
+      background: #e2e8f0 !important;
+    }
+    .architecture-audit-figure .verdict-badge {
+      font-weight: 800;
+      font-size: 0.82rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Component Memory &amp; State Architecture</div>
+    <div class="audit-title">The Architecture of Component Memory</div>
+    <p class="audit-subtitle">Contrasting ephemeral local variables and render-time mutations with persistent React state cells and scheduled re-renders</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Dimension</span>
+          <span class="th-main">Memory Mechanism</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">Anti-Pattern</span>
+          <span class="th-main">Fragile Local Variables</span>
+          <span class="th-sub sub-danger">Ephemeral Data &amp; Frozen Screens</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">React Reality</span>
+          <span class="th-main">useState Memory</span>
+          <span class="th-sub sub-teal">Persistent Cells &amp; Scheduled Renders</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Variable Lifetime</span>
+          <span class="layer-role">Call Stack Memory</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Ephemeral Function Scope</strong><br>
+          Local variables (<code>let likes = 0</code>) are allocated on the JavaScript call stack and discarded the moment the function returns, losing all memory.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>External Fiber State Slot</strong><br>
+          React maintains state outside the component function in an internal memory record keyed to the component's position in the UI tree.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Visual Updates</span>
+          <span class="layer-role">Engine Notification</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Silent In-Memory Mutation</strong><br>
+          Reassigning <code>likes = likes + 1</code> modifies local memory without notifying React, leaving the browser screen frozen at its starting text.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Scheduled Re-Render Queue</strong><br>
+          Invoking the setter function (<code>setLikes</code>) updates the internal cell and schedules a fresh render pass to update the DOM.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Render Stability</span>
+          <span class="layer-role">Initial Value Handling</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Repeated Variable Reset</strong><br>
+          Every render pass re-executes the function from the top, resetting ordinary local variables back to their initial values.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>One-Time Initial Seeding</strong><br>
+          The argument in <code>useState(0)</code> seeds the cell once during initial mount; on all future renders, React returns the current stored value.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Instance Scope</span>
+          <span class="layer-role">Component Identity</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Module Scope Leakage</strong><br>
+          Storing counts in module-level variables shares mutable state across all cards, leaking side effects between unrelated stories.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Isolated Instance Memory</strong><br>
+          Each rendered <code>&lt;StoryCard /&gt;</code> receives its own distinct state slot, ensuring updates affect only that specific instance.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Execution Timing</span>
+          <span class="layer-role">Update Lifecycle</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Unconditional Render Invocation</strong><br>
+          Calling a setter during render (<code>onClick={setLikes(1)}</code>) triggers an immediate re-render, creating a fatal infinite loop.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Deferred Event Execution</strong><br>
+          Wrapping setter calls in event handlers (<code>onClick={() =&gt; setLikes(1)}</code>) defers updates until the user interacts.
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td class="td-layer">
+          <span class="verdict-badge">Verdict</span>
+        </td>
+        <td class="td-naive">
+          <strong>Frozen Screens &amp; Infinite Crashes</strong><br>
+          Relying on local variables leaves interfaces unresponsive, while calling setters during render crashes the application with runaway loops.
+        </td>
+        <td class="td-reality">
+          <strong>Deterministic State &amp; Pure Renders</strong><br>
+          Encapsulating state in <code>useState</code> and triggering updates from event handlers guarantees stable, persistent, and isolated component memory.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 14.2: Figure 14.2: Architecture audit table contrasting naive local variables with React useState component memory.</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Interactive Counters, Upvotes, and Reaction Bars</strong>: Social media feeds, news dashboards, and review platforms track like tallies, clapping metrics, and thumbs-up votes using encapsulated state hooks.</li>
+<li><strong>Accordion Panels, Drawers, and Disclosure Widgets</strong>: Collapsible FAQ items, navigation menus, and sliding drawers track their open or closed visibility state using boolean flags (<code>isOpen</code>, <code>setIsOpen</code>).</li>
+<li><strong>Bookmark Flags and Toggle Switches</strong>: Reading applications allow users to mark articles for later or toggle reader preferences (such as high-contrast mode) using local state switches.</li>
+<li><strong>Form Field Controllers and Validation Feedback</strong>: Text inputs, checkboxes, and rating selectors record user inputs and display immediate validation feedback before form submission.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Component State</strong> ◼ Persistent memory maintained by React across render passes that stores data affecting what appears on the screen.</li>
+<li><strong>State Setter Function</strong> ◼ The updater function returned by <code>useState</code> that updates React's internal state record and schedules a component re-render.</li>
+<li><strong>Render Pass</strong> ◼ A single complete execution of a component function by React to calculate its tree of UI descriptors.</li>
+<li><strong>Internal State Cell</strong> ◼ An isolated data structure maintained by React outside the component function, mapped to the component's position in the UI tree.</li>
+<li><strong>Infinite Render Loop</strong> ◼ A runtime crash caused by invoking a state setter unconditionally during the render pass, repeatedly triggering new renders without stopping.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li>Comprehensive reference documentation on the <code>useState</code> hook parameters, return values, and caveats (see <a href="https://react.dev/reference/react/useState">react.dev/reference/react/useState</a>).</li>
+<li>In-depth guide on understanding state as a snapshot and why variables appear frozen inside closures (see <a href="https://react.dev/learn/state-as-a-snapshot">react.dev/learn/state-as-a-snapshot</a>).</li>
+<li>Architectural patterns for queueing state updates and using updater functions for batching (see <a href="https://react.dev/learn/queueing-a-series-of-state-updates">react.dev/learn/queueing-a-series-of-state-updates</a>).</li>
+<li>Best practices for choosing minimal state structures and calculating derived values without redundant state (see <a href="https://react.dev/learn/choosing-the-state-structure">react.dev/learn/choosing-the-state-structure</a>).</li>
+<li>Detailed mechanics of preserving versus resetting state based on position in the UI tree and key attributes (see <a href="https://react.dev/learn/preserving-and-resetting-state">react.dev/learn/preserving-and-resetting-state</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Ephemeral Variables vs Persistent State</span></div>
+<p class="summary-principle">➔ ALWAYS use <code>useState</code> for data that must survive between renders and directly affects the user interface.</p>
+<p class="summary-principle">➔ NEVER rely on local variables (<span class="code-line-callout"><code><span class="kw">let</span> count = <span class="nl">0</span></code></span>) to track data across user interactions.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Store interactive data in React state</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">LikeButton</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> &lt;button onClick={() =&gt; <span class="fn">setLikes</span>(likes + <span class="nl">1</span>)}&gt;Likes: {likes}&lt;/button&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Increment local variables inside click handlers</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">LikeButton</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">let</span> likes = <span class="nl">0</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> &lt;button onClick={() =&gt; { likes = likes + <span class="nl">1</span>; }}&gt;Likes: {likes}&lt;/button&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">State Modification and Setters</span></div>
+<p class="summary-principle">➔ ALWAYS call the state setter function (<code>setCount</code>) to update state and schedule a re-render.</p>
+<p class="summary-principle">➔ NEVER mutate a state variable directly (<code>count = count + 1</code>).</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Pass the next value to the setter function</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">Counter</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [count, setCount] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> &lt;button onClick={() =&gt; <span class="fn">setCount</span>(count + <span class="nl">1</span>)}&gt;Next&lt;/button&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Directly reassign the state variable</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">Counter</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">let</span> [count, setCount] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> &lt;button onClick={() =&gt; { count = count + <span class="nl">1</span>; }}&gt;Next&lt;/button&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Execution Timing and Infinite Loops</span></div>
+<p class="summary-principle">➔ ALWAYS invoke state setters inside event handlers or delayed callback wrappers.</p>
+<p class="summary-principle">➔ NEVER invoke a state setter directly during the render pass or in naked JSX braces.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Wrap parameterized setter calls in an arrow function</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">UpvoteAction</span>({ onUpvote }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> &lt;button onClick={() =&gt; <span class="fn">onUpvote</span>(<span class="nl">1</span>)}&gt;Upvote&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Call the setter immediately in JSX curly braces</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">UpvoteAction</span>({ onUpvote }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> &lt;button onClick={<span class="fn">onUpvote</span>(<span class="nl">1</span>)}&gt;Upvote&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>EPHEMERAL LOCAL VARIABLE</strong><br>(Naive Function Scope)</th><th><strong>REACT USESTATE MEMORY</strong><br>(Persistent State Engine)</th></tr></thead><tbody><tr><td><strong>Storage Location</strong></td><td>Allocated on temporary JavaScript call stack frame</td><td>Maintained externally in React internal Fiber state cells</td></tr><tr><td><strong>Render Persistence</strong></td><td>Discarded on return; reset to initial value on each call</td><td>Preserved across render passes for the lifetime of component</td></tr><tr><td><strong>Re-render Trigger</strong></td><td>None: React is unaware that local variables changed</td><td>Setter call queues a re-render and updates browser DOM</td></tr><tr><td><strong>Update Mechanism</strong></td><td>Direct assignment (<code>count = count + 1</code>)</td><td>Invoking setter function (<code>setCount(count + 1)</code>)</td></tr><tr><td><strong>Instance Isolation</strong></td><td>Scoped to individual function call execution</td><td>Private to specific component instance in UI tree</td></tr><tr><td><strong>Initial Value Role</strong></td><td>Evaluated on every call, repeatedly resetting value</td><td>Used once on initial mount; ignored on later renders</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

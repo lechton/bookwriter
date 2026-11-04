@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 3: Reading Request Payloads with Body and DTOs</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 3: Reading Request Payloads with Body and DTOs</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you read the JSON payload sent in a POST request?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer builds the subscriber signup system for The National Times website.</li>
+<li>The server records reader accounts with email addresses, because the paper delivers daily newsletters to verified email addresses.</li>
+<li>The developer writes a network endpoint to receive each subscriber signup submission.</li>
+<li>A reader submits the signup form, but the server prints undefined for the email address.</li>
+<li>Why does the server print undefined when the reader submitted a valid email address?</li>
+<li>The incoming network stream sent raw text that the server never extracted into an object.</li>
+<li>Today you will learn how the server captures and types incoming data sent in requests.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Problem of the Empty Request Body</h3>
+<p>When a client application submits an HTTP POST request containing a JSON payload, that data travels across the network as a continuous stream of raw bytes inside the HTTP message body. Unlike URL query parameters or route path segments, which arrive inside the HTTP request header, payload data requires buffering and parsing before application code can inspect it.</p>
+<p>In low-level Node.js development, consuming an HTTP body requires listening to asynchronous chunk events on the request stream and manually assembling the raw string.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Manual Stream Listener</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> http <span class="kw">from</span> <span class="str">'node:http'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">const</span> server = http.<span class="fn">createServer</span>((req, res) =&gt; {</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">if</span> (req.method === <span class="str">'POST'</span> &amp;&amp; req.url === <span class="str">'/users'</span>) {</span></div>
+<div class="row"><span class="num">5</span><span class="src">    <span class="kw">let</span> rawData = <span class="str">''</span>;</span></div>
+<div class="row"><span class="num">6</span><span class="src">    req.<span class="fn">on</span>(<span class="str">'data'</span>, (chunk) =&gt; { rawData += chunk; }); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">WRONG:</b> manually buffers streaming socket <b class="tag">CHUNKS</b></span>
+      </div></div>
+<div class="row"><span class="num">7</span><span class="src">    req.<span class="fn">on</span>(<span class="str">'end'</span>, () =&gt; {</span></div>
+<div class="row"><span class="num">8</span><span class="src">      <span class="kw">const</span> user = JSON.<span class="fn">parse</span>(rawData);</span></div>
+<div class="row"><span class="num">9</span><span class="src">      res.<span class="fn">writeHead</span>(<span class="nl">201</span>, { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> });</span></div>
+<div class="row"><span class="num">10</span><span class="src">      res.<span class="fn">end</span>(JSON.<span class="fn">stringify</span>(user));</span></div>
+<div class="row"><span class="num">11</span><span class="src">    });</span></div>
+<div class="row"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row"><span class="num">13</span><span class="src">});</span></div></div></div>
+<p>If a developer neglects this streaming lifecycle and attempts to read <code>req.body</code> directly in vanilla Node.js, the value is <code>undefined</code>. Even in basic Express applications, developers must configure external middleware to parse incoming bodies into memory.</p>
+<p>Furthermore, raw JSON parsing offers no architectural guarantee about the structure of incoming data. A client can submit missing fields, unexpected types, or extra malicious properties. Without a clear contract, every route handler becomes cluttered with repetitive manual validation checks.</p>
+</div>
+<div class="keep-together">
+<h3>Capturing Payloads with the Body Decorator</h3>
+<p>To capture incoming payload data cleanly, NestJS provides the <strong><code>@Body()</code> decorator</strong> (a parameter decorator that extracts the parsed HTTP request body from the incoming request and injects it as an argument into your route handler).</p>
+<p>When a client issues a request with a <code>Content-Type: application/json</code> header, the underlying HTTP platform automatically parses the raw network stream into a JavaScript object. The <code>@Body()</code> decorator then extracts that parsed object and hands it directly to your method parameter.</p>
+<p>To handle creation requests, we pair <code>@Body()</code> with the <code>@Post()</code> HTTP method decorator:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Basic Post Handler</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@<span class="fn">Post</span>()</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="fn">create</span>(@<span class="fn">Body</span>() rawBody: any) {</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="kw">return</span> rawBody; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> uses un-typed any instead of a structural <b class="tag">CONTRACT</b></span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div></div></div>
+<p>By default, NestJS assigns an HTTP status code of <strong>201 Created</strong> to successful POST handlers, contrasting with GET handlers which default to 200 OK. This aligns with REST standards, signaling that the incoming request successfully created a new resource.</p>
+<p>However, typing <code>@Body()</code> as <code>any</code> reintroduces ambiguity: the editor cannot autocomplete properties, and your code cannot verify what fields the client provided.</p>
+</div>
+<div class="keep-together">
+<h3>Defining Contracts with Data Transfer Objects</h3>
+<p>To establish a reliable contract for incoming payloads, NestJS relies on Data Transfer Objects. A <strong>Data Transfer Object (DTO)</strong> (an object that defines the exact structure and schema of data transmitted across the network for a specific operation) formalizes what fields an endpoint expects.</p>
+<p>In TypeScript, developers often default to defining contracts with interfaces. However, NestJS strongly recommends defining DTOs using <strong>classes</strong>.</p>
+<p>This introduces a common structural surprise: a DTO class typically contains only property declarations with no methods and no constructor:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">app.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">class</span> CreateUserDto {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  name: string;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  role: string;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div></div></div>
+<p>Why write an empty-looking class instead of a TypeScript interface?</p>
+<p>The answer lies in how TypeScript compiles to JavaScript. In TypeScript, an <code>interface</code> is a compile-time type that is completely erased during transpilation. At runtime, interfaces do not exist in the JavaScript output.</p>
+<p>In contrast, an ES6 <code>class</code> remains intact as a real constructor function and prototype in compiled JavaScript. NestJS relies heavily on runtime metadata reflection. Because classes survive compilation, NestJS can inspect the runtime metatype of method arguments. This capability allows validation pipes to inspect property rules, sanitize payloads, and automatically strip unauthorized properties before the handler executes.</p>
+<p>To see this in action on The National Times, our staff creation endpoint requires three files working together. First, <code>create-user.dto.ts</code> defines the required shape for new staff accounts. Second, <code>users.controller.ts</code> exposes <code>POST /users</code> and binds the DTO via <code>@Body()</code>. Third, <code>app.module.ts</code> registers the controller. When a client submits <code>{ "name": "Elena Rostova", "role": "Staff Writer" }</code>, the controller captures the payload and returns the created record with an HTTP 201 Created status.</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times-api — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times-api — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>controllers</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8"/><path d="M8 16h5"/></svg><span>users.controller.ts</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>modules</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8"/><path d="M8 16h5"/></svg><span>app.module.ts</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>src</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8"/><path d="M8 16h5"/></svg><span>create-user.dto.ts</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>app.module</span><span class="component-explorer-props">mounts application controllers</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-navigation"><div class="component-explorer-label"><span>users.controller</span><span class="component-explorer-props">POST /users</span></div><div class="component-explorer-surface surface-navigation"><i></i><i></i><i></i></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>create-user.dto</span><span class="component-explorer-props">incoming JSON payload</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">{&quot;name&quot;: &quot;Elena Rostova&quot;, &quot;role&quot;: &quot;Staff Writer&quot;}</span><span class="surface-render-line">Status: <strong>201 Created</strong></span></div></div></div></div></div></div></div>
+		</div>
+	</div>
+	</section>
+<p>The component explorer panel above displays this hierarchy. In the left file tree, <code>create-user.dto.ts</code> resides in <code>src/</code>, <code>users.controller.ts</code> in <code>controllers/</code>, and <code>app.module.ts</code> in <code>modules/</code>. On the right canvas, <code>app.module.ts</code> contains <code>users.controller.ts</code>, which wraps <code>create-user.dto.ts</code>. When a client submits a POST request to <code>/users</code>, the controller receives the parsed body and emits the observable response: an HTTP 201 Created status alongside the new record.</p>
+<p>Here is the implementation of <code>create-user.dto.ts</code>:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">create-user.dto.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">class</span> CreateUserDto {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  name: string; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> declares expected property on runtime <b class="tag">CLASS</b></span>
+      </div></div>
+<div class="row"><span class="num">3</span><span class="src">  role: string; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> preserved in compiled output for metadata <b class="tag">REFLECTION</b></span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div></div></div>
+<p>Here is <code>users.controller.ts</code> consuming the DTO:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">users.controller.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { Controller, Post, Body } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { CreateUserDto } <span class="kw">from</span> <span class="str">'./create-user.dto'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">@<span class="fn">Controller</span>(<span class="str">'users'</span>)</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">export</span> <span class="kw">class</span> UsersController {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  @<span class="fn">Post</span>()</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="fn">create</span>(@<span class="fn">Body</span>() createUserDto: CreateUserDto) {</span></div>
+<div class="row"><span class="num">8</span><span class="src">    <span class="kw">return</span> {</span></div>
+<div class="row"><span class="num">9</span><span class="src">      id: <span class="nl">101</span>,</span></div>
+<div class="row"><span class="num">10</span><span class="src">      ...createUserDto,</span></div>
+<div class="row"><span class="num">11</span><span class="src">    }; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> receives parsed payload and returns created <b class="tag">RECORD</b></span>
+      </div></div>
+<div class="row"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row"><span class="num">13</span><span class="src">}</span></div></div></div>
+<p>And here is <code>app.module.ts</code> registering the controller:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">app.module.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { Module } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { UsersController } <span class="kw">from</span> <span class="str">'./users.controller'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">@<span class="fn">Module</span>({</span></div>
+<div class="row"><span class="num">5</span><span class="src">  controllers: [UsersController], </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> registers controller to handle post <b class="tag">REQUESTS</b></span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">})</span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="kw">export</span> <span class="kw">class</span> AppModule {}</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>Selective Body Property Extraction</h3>
+<p>While passing a full DTO to <code>@Body()</code> is the standard approach for complex payloads, the <code>@Body()</code> decorator also supports selective property extraction. By passing a property key string to the decorator, you can extract a single top-level attribute directly:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Single Property Extraction</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@<span class="fn">Post</span>(<span class="str">'role'</span>)</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="fn">updateRole</span>(@<span class="fn">Body</span>(<span class="str">'role'</span>) newRole: string) {</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="kw">return</span> { updatedRole: newRole }; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> extracts single field without whole body <b class="tag">WRAPPER</b></span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div></div></div>
+<p>Passing a key such as <code>@Body('role')</code> plucks only <code>req.body.role</code> from the incoming payload and assigns it directly to <code>newRole</code>. This pattern is useful for lightweight endpoints that require only one property, such as toggling a flag or updating a single string.</p>
+<p>However, for resource creation and update endpoints, whole DTO classes remain superior because they centralize data structure, document expectations, and integrate seamlessly with validation pipes.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Defining DTOs as classes rather than interfaces ensures that type metadata survives compilation for runtime validation and pipe transformation.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> Explain why DTOs in NestJS must be declared as classes rather than TypeScript interfaces. TypeScript interfaces are erased during transpilation, leaving no trace in runtime JavaScript. Classes are preserved as real constructor functions, allowing the NestJS reflection system and ValidationPipe to inspect property types, enforce validation rules, and automatically strip unauthorized properties at runtime.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Subscriber registration: accepting <code>POST /subscribers</code> with email addresses and subscription plan preferences to enroll new readers.</li>
+<li>Article publication workflows: receiving <code>POST /articles</code> containing markdown content, editorial tags, and author identifiers from journalists.</li>
+<li>Reader comment submissions: processing <code>POST /comments</code> payloads with article references, user feedback text, and parent comment IDs.</li>
+<li>Password authentication: handling <code>POST /auth/login</code> containing user credentials to verify identity and return JSON Web Tokens.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Request Body Capture and DTO Contracts</strong></p>
+<p>In daily production, reliably parsing incoming JSON payloads while enforcing structural contracts defines whether your API remains resilient against malformed client submissions. While manual stream listening is error-prone, NestJS pairs the <code>@Body()</code> decorator with class-based DTOs to deliver automatic parsing and runtime reflection. Here is your streetwise review.</p>
+<p>❒ Body Extraction and HTTP Method Semantics</p>
+<ol><li>Avoid <strong>manually parsing raw request socket streams</strong> in route handlers.<br>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO NOT DO THIS:</strong> Attaching manual stream chunk listeners creates boilerplate and bypasses framework serialization.
+<div class="mini-code wrong">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 0 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 0 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>req.<span class="fn">on</span>(<span class="str">'data'</span>, (chunk) =&gt; {</div><div>  body += chunk;</div><div>});</div></code></div>
+</div>
+&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Use the <code>@Body()</code> decorator to inject the automatically parsed JSON payload.
+<div class="mini-code right">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Post</span>()</div><div><span class="fn">create</span>(@<span class="fn">Body</span>() createUserDto: CreateUserDto) {</div><div>  <span class="kw">return</span> createUserDto;</div><div>}</div></code></div>
+</div></li>
+<li>Rely on <strong>standard HTTP POST semantics</strong> for resource creation.<br>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO NOT DO THIS:</strong> Manually setting status code 201 headers on every POST route creates unnecessary noise.
+<div class="mini-code wrong">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 0 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 0 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Post</span>()</div><div><span class="fn">create</span>(@<span class="fn">Res</span>() res: any) {</div><div>  res.<span class="fn">status</span>(<span class="nl">201</span>).<span class="fn">send</span>();</div><div>}</div></code></div>
+</div>
+&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Let the <code>@Post()</code> decorator automatically apply the standard 201 Created status code.
+<div class="mini-code right">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Post</span>()</div><div><span class="fn">create</span>(@<span class="fn">Body</span>() createUserDto: CreateUserDto) {</div><div>  <span class="kw">return</span> createUserDto;</div><div>}</div></code></div>
+</div></li></ol>
+<p>❒ Class-Based DTOs versus TypeScript Interfaces</p>
+<ol><li>Always define Data Transfer Objects using <strong>ES6 classes rather than interfaces</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Declare DTO classes so metadata survives compilation for validation and transformation pipes.
+<div class="mini-code right">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div><span class="kw">export</span> <span class="kw">class</span> CreateUserDto {</div><div>  name: string;</div><div>  role: string;</div><div>}</div></code></div>
+</div></li></ol>
+<p>➔ NEVER use TypeScript interfaces for DTOs when runtime validation or reflection is needed.</p>
+<p>➔ ALWAYS decorate creation handlers with <code>@Post()</code> to communicate semantic intent and return 201 Created.</p>
+<p>➔ IF an endpoint only requires one property THEN <strong>extract that single key directly with <code>@Body('key')</code></strong>.</p>
+<table><thead><tr><th></th><th><strong>TYPESCRIPT INTERFACE</strong><br>(Compile-time)</th><th><strong>ES6 DTO CLASS</strong><br>(Runtime Metatype)</th></tr></thead><tbody><tr><td><strong>Runtime presence</strong></td><td>Erased completely during transpilation</td><td>Preserved as real constructor function</td></tr><tr><td><strong>Metadata reflection</strong></td><td>Inaccessible to NestJS at runtime</td><td>Fully accessible to reflection system</td></tr><tr><td><strong>Pipe validation</strong></td><td>Cannot be targeted by validation pipes</td><td>Directly integrates with validation pipes</td></tr><tr><td><strong>Property declarations</strong></td><td>Declares contract with zero code output</td><td>Defines real runtime shape and properties</td></tr><tr><td><strong>Status code default</strong></td><td>Unrelated to HTTP status code handling</td><td>Pairs with<br><code>@Post()</code><br>for 201 Created</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

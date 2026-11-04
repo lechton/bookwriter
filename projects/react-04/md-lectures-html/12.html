@@ -1,0 +1,1065 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 12: How React Sees Your UI as a Tree</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 12: How React Sees Your UI as a Tree</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How does React see your UI as a tree, and why does that view matter?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Elena Vance develops the live editorial workspace and breaking news portal for The National Times.</li>
+<li>Her application spans dozens of modular files containing layout containers, alert banners, story lists, and date utilities.</li>
+<li>The portal takes three seconds to load on mobile because of slow imports, and updating one breaking alert re-renders unrelated news desks.</li>
+<li>How does React see your UI as a tree, and why does that view matter?</li>
+<li>If you confuse the module tree with the render tree, you cannot diagnose bundle bloat, and you hunt for re-render bugs in the wrong files.</li>
+<li>A single codebase produces three distinct tree structures: one for files on disk, one for component markup, and one for active renders in memory.</li>
+<li>Today you learn how React constructs each tree, which tree explains re-renders versus slow imports, and how to use this mental model to optimize your applications.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Three Trees of a React Application: Modules, Components, and Renders</h3>
+<p>In earlier lessons, we learned that React applications consist of modular JavaScript files that export components (see Lecture 7) and compose them together using JSX markup (see Lecture 4). When starting out, developers often picture an application as a flat folder of files on a hard drive or a flat list of HTML elements on a web page. However, web browsers and UI frameworks do not treat interfaces as flat lists. The browser models HTML as a Document Object Model tree and CSS as a CSS Object Model tree. To manage composition, data flow, and rendering performance, React models your application using tree structures.</p>
+<p>What is a <strong>tree</strong> in software architecture? A tree is a relationship model where every item is a node, and nodes connect to one another through parent-child branches. In a tree, exactly one node sits at the very top: the <strong>root</strong>. Every other node sits below the root, branching downward into children, nested children, and terminal UI controls. In React, this tree structure is not a theoretical abstraction. React actively manages three distinct trees inside your application: (a) The <strong>module dependency tree</strong> models how JavaScript files import one another on disk. Its consequence is that build tools know which files to bundle and which unused files to eliminate. (b) The <strong>component tree</strong> models how components nest inside each other in your JSX markup. Its consequence is that props flow strictly downward from parent to child along the component hierarchy. (c) The <strong>render tree</strong> models the active component instances rendered during a specific render pass. Its consequence is that React knows which DOM nodes to update and where to preserve component state.</p>
+<p>When you write modular code, you split components and utilities across distinct files on disk. You connect them using <code>import</code> and <code>export</code> statements (see Lecture 7). Developers often assume that importing a component file automatically renders it on screen, or that non-component helper modules become part of the React component hierarchy. In reality, the build-time file graph and the runtime render graph are completely different systems.</p>
+<p>What is the <strong>module dependency tree</strong>? React draws a strict boundary between files bundled by your build tool and components rendered by the engine. One is the <strong>module dependency tree</strong>, governed by the bundler; the other is the <strong>render tree</strong>, governed by React. In plain JavaScript, you import files using <code>import</code> statements at the top of each script. When you run a build command with Vite or Rollup (see Lecture 2), the bundler starts at your entrypoint file (<code>main.jsx</code>) and crawls every <code>import</code> declaration to assemble the <strong>module dependency tree</strong>. The law of the module dependency tree states: every file reachable through an import statement is bundled into your application package, whether that code executes on screen today or not; non-component files like utilities, styles, and data arrays belong to the module tree, and this tree alone explains your bundle size and slow initial imports.</p>
+<p>Here is the minimal code contrast between static module imports and dynamic component rendering:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StaticImportVsRenderTree</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> BreakingAlert <span class="kw">from</span> <span class="str">'./BreakingAlert.jsx'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">1. Module tree: always bundled into client <b class="tag">PAYLOAD</b></span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> { formatDate } <span class="kw">from</span> <span class="str">'./dateUtils.js'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">2. Module tree: non-component helper bundled at <b class="tag">BUILD</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">{isAlertActive ? &lt;BreakingAlert /&gt; : <span class="kw">null</span>} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">3. Render tree: evaluates node conditionally during <b class="tag">RENDER</b></span>
+      </div></div></div></div></div>
+<p>Look at the code in <code>StaticImportVsRenderTree</code>. The file imports both <code>BreakingAlert.jsx</code> and <code>dateUtils.js</code> at the top of the file. Notice that <code>dateUtils.js</code> is a plain JavaScript function, not a React component returning JSX. Does <code>dateUtils.js</code> appear in React's component tree or render tree? No. React only tracks component functions that return JSX. Build tools like Vite use the module dependency tree to package code, but React completely ignores non-component modules when building the render tree.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does React need three different trees?</strong> Imagine organizing a daily newspaper printing plant at The National Times. In the file archives, you keep hundreds of reporter notebooks, reference dictionaries, photo archives, and raw notes. That archive is your <strong>module dependency tree</strong>: all the files stored on disk. On the editor's whiteboard, you sketch the template for today's front page: the masthead at the top, the lead story in the center, and a weather box at the bottom. That template is your <strong>component tree</strong>: the blueprint of how sections nest together. Finally, the printing press rolls out tonight's evening edition. If there is no hurricane today, the hurricane warning box is left off the press! That printed paper held by a reader is your <strong>render tree</strong>: only the components actually printed in tonight's pass. React separates file dependencies on disk from active components in memory so that your build tools can package code efficiently while your UI engine renders only what the user needs to see.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Mechanical Divergence: Module Tree vs Render Tree</h3>
+<p>In Lecture 9, we learned how to pass components as children through JSX slot composition, and in Lecture 10, we learned how to conditionally render elements using ternary operators and logical AND expressions. In both cases, the relationship between files on disk diverges dramatically from the relationship between components on screen. When developers look only at their file import statements, they make incorrect assumptions about which components re-render and which files cause slow network downloads.</p>
+<p>Consider how conditional rendering affects the render tree. When an editor toggles a breaking news alert off, the parent component evaluates a condition like <span class="code-line-callout"><code>isAlertActive &amp;&amp; &lt;BreakingAlert /&gt;</code></span> In the file system, <code>EditorialPortal.jsx</code> still imports <code>BreakingAlert.jsx</code>. The file is physically on the user's computer. But in React's in-memory render tree, the <code>BreakingAlert</code> node does not exist during that render pass! What is the <strong>render tree</strong>? React defines the <strong>render tree</strong> as the hierarchical tree of React component instances that actively execute and return JSX during a specific render pass. The law of the render tree states: the render tree represents a single render pass in time; only components actively returned by the current execution branch exist in the render tree, and a component re-render cascades strictly downward to its descendants in the render tree.</p>
+<p>Look at how the module tree and render tree diverge when using children slot composition:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CompositionDivergence</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">NewsWorkspace</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;EditorialPortal&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;StoryFeed /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Render tree: StoryFeed renders as nested child of EditorialPortal</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;/EditorialPortal&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>Look at <code>CompositionDivergence</code>. In the module dependency tree, <code>NewsWorkspace</code> imports <code>EditorialPortal.jsx</code> and <code>StoryFeed.jsx</code>. Does <code>EditorialPortal.jsx</code> import <code>StoryFeed.jsx</code>? When using slot composition, it does not! <code>EditorialPortal.jsx</code> simply renders <code>{children}</code> without knowing what component is passed into it (see Lecture 9). In the module tree, <code>StoryFeed.jsx</code> is a sibling of <code>EditorialPortal.jsx</code>. But look at the render tree: when React executes this code, <code>StoryFeed</code> is rendered inside <code>EditorialPortal</code> as its nested child! If you only read file imports, you would never guess that <code>StoryFeed</code> lives inside <code>EditorialPortal</code> on screen. The render tree models runtime nesting; the module tree models disk imports.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Which tree causes slow mobile page loads?</strong> Imagine packing a delivery truck for The National Times. You pack the daily newspapers. But the driver also tosses in heavy printing presses, extra rolls of paper, and repair tools just in case. The truck is overloaded before it even leaves the garage! In web development, your <strong>module dependency tree</strong> is that delivery truck. When you write an import statement for a heavy date library or chart widget, the bundler packs it into the JavaScript bundle. Even if conditional logic never renders that chart on screen, the reader's phone must download all that code over the cellular network. This is the <strong>slow imports</strong> trap of the <strong>module dependency tree</strong>. The <strong>render tree</strong> only runs code that renders, but the <strong>module dependency tree</strong> ships every file you import. Tracing your module tree reveals bloated imports, while code splitting cuts unused branches from your initial download.</div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example EditorialPortal BreakingAlert';">Let's Design a Practical Example EditorialPortal BreakingAlert</div>
+      
+    </div>
+  </div>
+</div>
+<p>To experience how the three trees operate in a production application, consider the editorial workspace on The National Times. The layout <code>EditorialPortal.jsx</code> coordinates a conditional breaking news alert (<code>BreakingAlert.jsx</code>) that editors can dismiss, an editorial story container (<code>StoryFeed.jsx</code>), an individual article card (<code>StoryItem.jsx</code>), and a non-component timestamp formatting utility (<code>dateUtils.js</code>).</p>
+<p>Before writing any code, examine the final rendered interface we are building. Notice that this visual panel represents the authentic rendered user interface on screen, without code distractions:</p>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for national-times - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>EditorialPortal</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>BreakingAlert</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-badge">Breaking News</span><span class="surface-ui-btn">Dismiss Alert</span></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryFeed</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>StoryItem</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-badge">Metro</span><span class="surface-ui-btn">Read Story</span></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The rendered canvas displays the visual destination of our application. The parent container <code>EditorialPortal.jsx</code> hosts the workspace. At the top sits the dismissible breaking news alert. Below it sits the published story feed, displaying article cards with live formatted timestamps.</p>
+<p>Here is the file layout on disk:</p>
+
+<section class="file-explorer" aria-label="national-times: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">national-times: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">EditorialPortal.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Top-level container coordinating editorial layout and alert state</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-line"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">BreakingAlert.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Conditional alert banner shown only when breaking news occurs</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-line"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryFeed.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Feed container rendering published editorial stories</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-line"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryItem.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Individual story card formatting headline and publication date</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">utils/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-js" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fef3c7"/><polyline points="14 2 14 8 20 8"/><path d="M10 13v4a1 1 0 0 1-2 0"/><path d="M14 13h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v2"/></svg>
+					</div>
+					<span class="fe-name-text">dateUtils.js</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-state">state</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Non-component module formatting timestamps for story cards</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<p>To construct this architecture, we follow a top-down assembly pipeline: we start with the parent portal container and then build each nested child inside it:</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Orange / Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #e09f67; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #eac4a1; }
+
+    /* Step 4 Colors (Green) */
+    .assembly-steps-figure .step-4 .card-edge { background: #74ad68; }
+    .assembly-steps-figure .step-4 .card-main { background: #d2ebc9; }
+    .assembly-steps-figure .step-4 .card-divider { background: #b2d5a5; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the parent container EditorialPortal.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;EditorialPortal /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the conditional alert BreakingAlert.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;BreakingAlert /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Then, we declare the feed container StoryFeed.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;StoryFeed /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card step-4">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">4</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we seal the utility consumer StoryItem.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;StoryItem /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 12.1: Progressive code assembly pipeline: starting from the parent portal and assembling nested children.</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the parent container EditorialPortal.jsx';">First, we construct the parent container EditorialPortal.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>We start our implementation at the top: the parent container <code>EditorialPortal.jsx</code>.</p>
+<p>We begin here because the parent defines the layout and dictates the data architecture for the entire view. It decides which child component enters the render tree conditionally and passes data downward:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">EditorialPortal.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">EditorialPortal</span>({ stories }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [isAlertOpen, setIsAlertOpen] = <span class="hook">useState</span>(<span class="kw">true</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Controls conditional banner visibility in the render tree</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"portal-layout"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      {isAlertOpen &amp;&amp; &lt;BreakingAlert onDismiss={() =&gt; <span class="fn">setIsAlertOpen</span>(<span class="kw">false</span>)} /&gt;} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Mounted conditionally; absent from render tree when false</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;StoryFeed stories={stories} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Passes headline array downward through component tree</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Look at line 3: <span class="code-line-callout"><code><span class="kw">const</span> [isAlertOpen, setIsAlertOpen] = <span class="hook">useState</span>(<span class="kw">true</span>)</code></span> We declare state here because alert visibility determines whether <code>BreakingAlert</code> participates in the active render tree.</p>
+<p>Now look at line 6: <span class="code-line-callout"><code>{isAlertOpen &amp;&amp; &lt;BreakingAlert onDismiss={() =&gt; <span class="fn">setIsAlertOpen</span>(<span class="kw">false</span>)} /&gt;}</code></span> We have not coded <code>BreakingAlert</code> yet. But right here in the parent, we establish its contract. When <code>isAlertOpen</code> is true, React evaluates the right side of the <code>&amp;&amp;</code> operator and includes <code>BreakingAlert</code> in the render tree. When <code>isAlertOpen</code> is false, React returns <code>false</code>, completely excluding <code>BreakingAlert</code> from the render tree. We will build that child next in step 2.</p>
+<p>Now look at line 7: <span class="code-line-callout"><code>&lt;StoryFeed stories={stories} /&gt;</code></span> Notice that <code>StoryFeed</code> is rendered unconditionally. It forms a permanent branch in both the component tree and the render tree, receiving the array of stories from its parent. We will build that container in step 3.</p>
+<p>To recap this first step: the parent container roots the local render tree, owns the conditional visibility state, and establishes explicit contracts for its children.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the conditional alert BreakingAlert.jsx';">Next, we build the conditional alert BreakingAlert.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 2, we fulfill the contract established by the parent: we build <code>BreakingAlert.jsx</code>.</p>
+<p>This child component renders an urgent headline banner and a button allowing editors to dismiss the alert:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BreakingAlert.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">BreakingAlert</span>({ onDismiss }) { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Receives dismiss action callback established by parent contract</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;aside className=<span class="str">"alert-banner"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;span className=<span class="str">"badge-urgent"</span>&gt;Breaking News&lt;/span&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Renders urgent headline alert badge when node is in render tree</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;p&gt;High wind warning issued <span class="kw">for</span> metropolitan harbor district.&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;button onClick={onDismiss}&gt;Dismiss Alert&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Forwards click upward to remove component from render tree</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/aside&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice the function parameters: we destructure <code>{ onDismiss }</code> directly from props. That matches the contract we wrote in step 1.</p>
+<p>Look at the button click handler on line 6: <span class="code-line-callout"><code>&lt;button onClick={onDismiss}&gt;Dismiss Alert&lt;/button&gt;</code></span></p>
+<p>Where does <code>onDismiss</code> come from? Look back at Step 1 in <code>EditorialPortal.jsx</code>. The parent declared <span class="code-line-callout"><code><span class="kw">const</span> [isAlertOpen, setIsAlertOpen] = <span class="hook">useState</span>(<span class="kw">true</span>)</code></span> and rendered: <span class="code-line-callout"><code>&lt;BreakingAlert onDismiss={() =&gt; <span class="fn">setIsAlertOpen</span>(<span class="kw">false</span>)} /&gt;</code></span></p>
+<p>Notice what happened: the parent passed an updater callback to the child under the prop name <code>onDismiss</code>. <code>BreakingAlert</code> does not own state, and it does not decide whether it exists in the DOM. It only holds a telephone line called <code>onDismiss</code>.</p>
+<p>When the editor clicks the dismiss button, the native browser <code>onClick</code> fires and calls <code>onDismiss()</code>. That call immediately executes <code>setIsAlertOpen(false)</code> back in <code>EditorialPortal</code>. When <code>EditorialPortal</code> re-renders with <span class="code-line-callout"><code>isAlertOpen === <span class="kw">false</span></code></span> React evaluates the JSX condition, omits <code>BreakingAlert</code> from the render tree, and unmounts its DOM node.</p>
+<p>This is standard <strong>inverse data flow</strong>: data flows down through props, and user actions flow up through callbacks.</p>
+<p>What would happen if <code>BreakingAlert</code> managed its own visibility state with a local <code>useState</code> hook?</p>
+<p>If you put the visibility state inside <code>BreakingAlert</code>, the banner could hide its own markup, but the parent <code>EditorialPortal</code> would never know the alert was dismissed. Unrelated news desks could not coordinate with the alert state, and external WebSocket listeners could not reopen the banner when new alerts arrive. You would have alert state trapped inside a presentation component.</p>
+<p>By separating them, <code>BreakingAlert</code> owns zero <code>useState</code> and zero <code>useEffect</code>. It is a pure presenter: given <code>onDismiss</code>, it renders the banner and forwards user clicks upward.</p>
+<p>This separation gives you two concrete superpowers:</p>
+<ol><li>If tomorrow you replace this banner with a modal dialog, you touch zero state logic in <code>EditorialPortal</code>.</li>
+<li>If you change alert visibility to derive from an editorial WebSocket stream in <code>EditorialPortal</code>, you touch zero lines of markup inside <code>BreakingAlert</code>.</li></ol>
+<p>To recap this step: user actions flow upward through <code>onDismiss</code>, updating parent state to remove the component from the subsequent render tree pass.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Then, we declare the feed container StoryFeed.jsx';">Then, we declare the feed container StoryFeed.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 3, we build our second child component: <code>StoryFeed.jsx</code>.</p>
+<p>This container component receives the stories collection from <code>EditorialPortal</code> and maps each record to an individual card:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryFeed.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryFeed</span>({ stories }) { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Receives story records from parent to populate feed subtree</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;section className=<span class="str">"feed-container"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;h2&gt;Published Stories&lt;/h2&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      {stories.<span class="fn">map</span>((story) =&gt; (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">        &lt;StoryItem key={story.id} story={story} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 76px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Maps each record to a child node in the render tree</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">      ))}</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice line 1: <span class="code-line-callout"><code><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryFeed</span>({ stories })</code></span> We destructure <code>stories</code> directly from props, matching the Step 1 contract.</p>
+<p>Now look at line 5: <span class="code-line-callout"><code>{stories.<span class="fn">map</span>((story) =&gt; &lt;StoryItem key={story.id} story={story} /&gt;)}</code></span> Notice how <code>StoryFeed</code> acts as a branching node in the render tree. For every story object in the array, React instantiates a <code>&lt;StoryItem /&gt;</code> component in the render tree.</p>
+<p>Never forget to include a unique and stable <code>key</code> prop on mapped items (see Lecture 11). Notice we wrote <code>key={story.id}</code>. The key provides React with a permanent identity for each child node in the render tree, ensuring that DOM state and scroll positions are preserved across re-renders.</p>
+<p>Notice the architectural role of <code>StoryFeed</code>: in the component tree, it sits between <code>EditorialPortal</code> and <code>StoryItem</code>. In the render tree, it distributes data downward to each child card.</p>
+<p>To recap this step: <code>StoryFeed</code> forms an intermediate branch in the render tree, translating an array of data into an array of child component nodes.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Finally, we seal the utility consumer StoryItem.jsx';">Finally, we seal the utility consumer StoryItem.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 4, we build <code>StoryItem.jsx</code> and introduce our non-component utility module <code>dateUtils.js</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryItem.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { formatDate } <span class="kw">from</span> <span class="str">'../utils/dateUtils.js'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Imports non-component helper; exists in module tree only</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryItem</span>({ story }) { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Terminal child node receiving story props from StoryFeed parent</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> formattedTime = <span class="fn">formatDate</span>(story.timestamp); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Executes utility calculation during render pass</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;article className=<span class="str">"story-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h3&gt;{story.title}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;time&gt;{formattedTime}&lt;/time&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Look at line 1: <span class="code-line-callout"><code><span class="kw">import</span> { formatDate } <span class="kw">from</span> <span class="str">'../utils/dateUtils.js'</span></code></span> Here is the utility module it imports:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">dateUtils.js</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">formatDate</span>(timestamp) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> date = <span class="kw">new</span> <span class="fn">Date</span>(timestamp);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> date.<span class="fn">toLocaleTimeString</span>([], { hour: <span class="str">'2-digit'</span>, minute: <span class="str">'2-digit'</span> });</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+<p>Look at how <code>dateUtils.js</code> behaves across our three trees. Does <code>dateUtils.js</code> return JSX? No. It is a pure JavaScript module exporting a helper function. In the <strong>module dependency tree</strong>, <code>dateUtils.js</code> is an essential node connected to <code>StoryItem.jsx</code>. The bundler traces this import and packages <code>formatDate</code> into the JavaScript bundle. But in the <strong>component tree</strong> and the <strong>render tree</strong>, <code>dateUtils.js</code> does not exist! Only <code>StoryItem</code> appears as a node in the render tree.</p>
+<p>What would happen if <code>StoryItem</code> inlined raw date parsing algorithms or imported a massive 500-kilobyte date library directly?</p>
+<p>If each story card imported large date libraries or performed heavy regex parsing inline, your component code would be tangled with low-level math. More importantly, every file that imported that library would expand the module dependency tree, ballooning client download size and creating slow page loads on mobile networks.</p>
+<p>By separating them, <code>dateUtils.js</code> contains zero JSX and zero React imports; it is a pure JavaScript utility. <code>StoryItem.jsx</code> contains zero custom timestamp parsing logic.</p>
+<p>This separation gives you two concrete superpowers:</p>
+<ol><li>If tomorrow you switch date formatting to relative time (such as "5 minutes ago"), you update <code>dateUtils.js</code> without touching <code>StoryItem.jsx</code>.</li>
+<li>If you redesign the story card layout, you touch zero lines of date formatting math.</li></ol>
+<p>To recap this step: non-component utility modules participate in the module dependency tree to provide helper logic, but never appear as nodes in the render tree.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Lessons from the Experiment: Naive Expectation vs Reality</h3>
+<p>Developers instinctively assume that all files in their application participate in React's component tree, and that importing a file permanently keeps it active in memory. This naive expectation leads developers to confuse bundle-size issues with runtime re-render performance.</p>
+<p>In our experiment, <code>BreakingAlert.jsx</code> was statically imported at the top of <code>EditorialPortal.jsx</code>. It always exists in the module dependency tree on disk. But the moment the editor clicked dismiss, React excluded <code>BreakingAlert</code> from the render tree pass. Conversely, <code>dateUtils.js</code> was imported by <code>StoryItem.jsx</code>, adding its bytes to the module bundle, but it never entered the render tree because it is not a component.</p>
+<p>To see the architectural hierarchy and component relationships at a glance, examine how each component functions in direct relation to the others:</p>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>EditorialPortal</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>parent component</strong> coordinates the overall editorial workspace. It owns the <strong>alert toggle state</strong>. Also, it actively provides the <strong>dismiss callback</strong> downward to <strong>BreakingAlert</strong>. Notice it renders <strong>BreakingAlert</strong> conditionally based on state. Why? To illustrate that components missing from a render pass vanish from the render tree.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>BreakingAlert</span><span class="component-explorer-props">onDismiss={handleDismiss}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>conditional child component</strong>. It receives one thing from the parent: the <strong>dismiss callback (<code>onDismiss</code>)</strong>. Notice it exists permanently in the module dependency tree on disk. When does it enter the render tree? Only during render passes where the alert condition is true.</p></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryFeed</span><span class="component-explorer-props">stories={stories}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>intermediate container component</strong>. It receives the <strong>stories collection</strong> from the parent and maps each record to a child card. Notice it forms a structural bridge in the render tree, passing individual story data downward.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>StoryItem</span><span class="component-explorer-props">story={story}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>terminal child component</strong>. It receives a single <strong>story object</strong> as a prop. Notice it imports a non-component helper <strong><code>dateUtils.js</code></strong>. Does the helper enter the render tree? Never; non-component modules exist solely in the module dependency tree.</p></div></div></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-top: 1px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 9px 12px !important;
+      vertical-align: top !important;
+      font-size: 0.82rem;
+      line-height: 1.4;
+      color: #334155;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .audit-table td.reality-cell,
+    main .architecture-audit-figure .audit-table td.reality-cell {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .layer-num {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 1px;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #64748b;
+    }
+    .architecture-audit-figure .item-title {
+      display: block;
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .text-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .item-desc {
+      display: block;
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+    }
+    .architecture-audit-figure .audit-table tr.verdict-row td,
+    main .architecture-audit-figure .audit-table tr.verdict-row td {
+      border-top: 2px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding-top: 10px !important;
+      padding-bottom: 10px !important;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .audit-table tr.verdict-row td.reality-cell,
+    main .architecture-audit-figure .audit-table tr.verdict-row td.reality-cell {
+      background: #f8fafc !important;
+    }
+    .architecture-audit-figure .verdict-label {
+      display: block;
+      font-size: 0.90rem;
+      font-weight: 800;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .architecture-audit-figure .verdict-tag {
+      display: inline-block;
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .verdict-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .verdict-teal {
+      color: #0e7490;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Lessons from the Code</div>
+    <div class="audit-title">Architecture Audit: Module, Component, and Render Trees</div>
+    <p class="audit-subtitle">An architectural evaluation of build-time module dependencies, component blueprints, and dynamic render trees across newsroom portal layers.</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Component Layer</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-main">Naive Expectation</span>
+          <span class="th-sub sub-danger">(Flat File Model)</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-main">What Happened</span>
+          <span class="th-sub sub-teal">(Three-Tree Reality)</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <span class="layer-num">1. The Parent Container</span>
+          <span class="layer-role">(EditorialPortal.jsx)</span>
+        </td>
+        <td>
+          <span class="item-title">Global State Re-execution</span>
+          <span class="item-desc">Developers treat the project as a flat list of files, assuming that updating state in one component forces every file on disk to re-evaluate and rebuild the entire DOM.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Subtree Re-render Boundaries</span>
+          <span class="item-desc">In the module tree, the bundler packages imports statically. In the render tree, React roots execution here; state updates cascade downward strictly through active descendants, leaving external trees untouched.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">2. The Conditional Child</span>
+          <span class="layer-role">(BreakingAlert.jsx)</span>
+        </td>
+        <td>
+          <span class="item-title">Permanent In-Memory Node</span>
+          <span class="item-desc">Developers assume that because a file is imported at the top of a script, it permanently occupies memory and runs on every render pass regardless of conditions.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Dynamic Render Tree Membership</span>
+          <span class="item-desc">While the module tree retains the file in the bundle, the render tree evaluates dynamically. When dismissed, React returns null, completely excluding the component from that render pass.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">3. The Intermediate Container</span>
+          <span class="layer-role">(StoryFeed.jsx)</span>
+        </td>
+        <td>
+          <span class="item-title">Cosmetic Markup Grouping</span>
+          <span class="item-desc">Developers assume nesting components is purely visual code organization that provides zero runtime architectural benefit beyond writing smaller files.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Structural Tree Branching</span>
+          <span class="item-desc">StoryFeed encapsulates collection mapping, coordinating props distribution and stable key identity down to individual story cards across render passes.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">4. Terminal Item & Utility</span>
+          <span class="layer-role">(StoryItem.jsx + dateUtils.js)</span>
+        </td>
+        <td>
+          <span class="item-title">Uniform Component Inclusion</span>
+          <span class="item-desc">Developers assume non-component utility modules participate in React's component tree and render cycle, blurring helper logic with UI elements.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Module-Only Utility Isolation</span>
+          <span class="item-desc">dateUtils.js exists strictly in the module dependency tree. It never enters the component or render trees. Heavy third-party imports in helpers bloat download bundles, not render passes.</span>
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td>
+          <span class="verdict-label">Final Verdict</span>
+        </td>
+        <td>
+          <span class="verdict-tag verdict-danger">Fragile Coupling</span>
+          <span class="item-desc">Confusing module imports with render passes leads to mystery re-renders, un-split bundle bloat, and broken state lifecycles.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="verdict-tag verdict-teal">Bulletproof Modularity</span>
+          <span class="item-desc">Distinguishing the module tree from the render tree isolates bundle size optimizations from runtime re-render boundaries.</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 12.2: Architecture audit: evaluating module tree, component tree, and render tree responsibilities across application layers.</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Tree Traversal, Re-render Blast Radius, and Bundle Splitting</h3>
+<p>Now that we understand the three trees, we can answer the two questions posed in our opening hook: which tree explains re-renders, and which explains slow imports?</p>
+<p>Which tree explains re-renders? The <strong>render tree</strong>. When state updates in a React component, React does not re-render your entire application blindly. Instead, React locates the updated component in the render tree and traverses downward. When a component re-renders, React recursively re-renders all of its descendants down that specific branch of the render tree. This cascading re-render is known as the <strong>render blast radius</strong>. Components higher up the tree (ancestors) and components on sibling branches do not re-render. If a top-level parent component holds frequently changing state, its render blast radius encompasses the entire page. Moving state down to terminal UI controls narrows the render blast radius to only the nodes that genuinely require updates.</p>
+<p>Which tree explains slow imports? The <strong>module dependency tree</strong>. When a user loads The National Times on a mobile phone, the browser must download every byte of JavaScript bundled by your build tool. If you import a heavy library inside a component, the bundler follows that import statement and includes the library in the client bundle. Even if that component is hidden behind a conditional flag and never added to the render tree, the user still downloads the bytes over the network! This is why unused or rarely used imports cause slow page loads.</p>
+<p>To solve slow imports without altering your render tree, modern applications use <strong>code splitting</strong> via dynamic imports and <code>React.lazy()</code>. Code splitting tells your bundler to split a branch of the <strong>module dependency tree</strong> into a separate JavaScript file. The browser only downloads that chunk over the network when the component is about to enter the <strong>render tree</strong>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CodeSplittingPattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { lazy, Suspense } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">const</span> BreakingAlert = <span class="fn">lazy</span>(() =&gt; <span class="kw">import</span>(<span class="str">'./BreakingAlert.jsx'</span>));</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SafePortal</span>({ isAlertOpen }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">if</span> (!isAlertOpen) <span class="kw">return</span> <span class="kw">null</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Node excluded from render tree</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;Suspense fallback={&lt;p&gt;Loading alert...&lt;/p&gt;}&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;BreakingAlert /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Downloads chunk only when entering render tree</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/Suspense&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how React sees your UI as a tree, explain the critical divergence between the module dependency tree and the render tree. The module tree is static, composed of files and imports analyzed by your bundler at build time; it explains bundle size and slow initial page loads. The render tree is dynamic, composed of component instances executing during a specific render pass; it explains re-render cascades, props flow, and component state preservation. Senior engineers inspect the module tree to optimize initial load times, and inspect the render tree to optimize runtime re-renders.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Editorial breaking news banners: Dismissing an alert removes the banner node from the runtime render tree while keeping its module bundled on disk.</li>
+<li>Heavy analytics dashboards: Using code splitting to detach complex charting libraries from the initial module dependency tree until an editor opens the metrics tab.</li>
+<li>Nested navigation layouts: Passing sidebar navigation as children through slot composition, where files diverge between module imports and render tree nesting.</li>
+<li>Theme and authentication gates: Swapping entirely different component subtrees in the render tree when a user signs in or switches between reading modes.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Module Dependency Tree</strong>: The static graph of JavaScript files, CSS stylesheets, and assets connected by import statements, analyzed by build tools to package application bundles.</li>
+<li><strong>Component Tree</strong>: The hierarchical representation of components defined and composed in JSX markup, establishing parent-child relationships and props contracts.</li>
+<li><strong>Render Tree</strong>: The dynamic in-memory graph of React component instances evaluated during a specific render pass, determining what paints to the physical DOM.</li>
+<li><strong>Render Blast Radius</strong>: The subtree of descendant components that automatically re-render when an ancestor component updates its state.</li>
+<li><strong>Code Splitting</strong>: The architectural practice of splitting the module dependency tree into smaller chunks downloaded on demand, reducing initial bundle size.</li>
+<li><strong>Slot Composition</strong>: The pattern of passing JSX elements as the children prop to a parent component, causing module tree imports to diverge from render tree nesting.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Understanding Your UI as a Tree: The Module, Component, and Render Trees</strong></p>
+<p>In production applications, recognizing how React sees your code as three distinct tree structures prevents both bundle bloat and unexpected re-renders. Here is your streetwise review.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Principles of Tree Architecture in React</span></div>
+<ol><li>The <strong>module dependency tree</strong> governs build size and bundle packaging.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Every file connected by an <code>import</code> statement is bundled into your client package at build time.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Non-component modules like utilities and constants belong exclusively to the module tree.</li>
+<li>The <strong>render tree</strong> governs runtime execution, re-render cascades, and component state.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) The render tree represents a single render pass in memory; inactive conditional branches do not exist in it.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) When state updates, React re-renders that component and cascades updates downward through its render tree descendants.</li>
+<li>Distinguish build-time static imports from runtime dynamic render passes.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) If your application suffers from slow initial page loads, inspect and split your <strong>module dependency tree</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) If your application suffers from typing lag or unnecessary re-renders, inspect and optimize your <strong>render tree</strong>.</li></ol>
+<p class="summary-principle">➔ NEVER assume that importing a component file automatically places it into the runtime render tree.</p>
+<p class="summary-principle">➔ ALWAYS trace initial download latency to the module dependency tree and re-render cascades to the render tree.</p>
+<p class="summary-principle">➔ IF you need to prevent heavy rarely used code from bloating the initial download THEN <strong>split the module tree using dynamic imports and lazy loading</strong>.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Isolate conditional components and helpers so the render tree stays lean and bundlers can split code.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">EditorialPortal.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">EditorialPortal</span>({ isAlertOpen, stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;main className=<span class="str">"portal-layout"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      {isAlertOpen &amp;&amp; &lt;BreakingAlert /&gt;}</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;StoryFeed stories={stories} /&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Never entangle conditional views into monolithic containers with CSS display toggles that bloat the render tree.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">MonolithicRenderTreePattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">MonolithicPortal</span>({ isAlertOpen, stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;main className=<span class="str">"portal-layout"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;div className=<span class="str">"alert-box"</span> style={{ display: isAlertOpen ? <span class="str">'block'</span> : <span class="str">'none'</span> }}&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">        &lt;p&gt;Warning: High wind <span class="kw">in</span> harbor&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;section&gt;{stories.<span class="fn">map</span>(s =&gt; &lt;article key={s.id}&gt;{s.title}&lt;/article&gt;)}&lt;/section&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>MODULE DEPENDENCY TREE</strong><br>(Build &amp; Bundler)</th><th><strong>RENDER TREE</strong><br>(Runtime &amp; React Engine)</th></tr></thead><tbody><tr><td><strong>What Nodes Represent</strong></td><td>JavaScript files and assets on disk<br>(<code>.jsx</code>, <code>.js</code>, CSS, images)</td><td>Active React component instances<br>evaluated during a render pass</td></tr><tr><td><strong>What Edges Represent</strong></td><td>Static <code>import</code> declarations<br>at the top of each file</td><td>Parent-child <code>renders</code> relationships<br>evaluated from JSX return values</td></tr><tr><td><strong>Includes Non-Components</strong></td><td>Yes: utilities, constants, data<br>arrays, and third-party libraries</td><td>No: only components that return JSX<br>participate in the render tree</td></tr><tr><td><strong>Evaluation Timing</strong></td><td>Analyzed statically at build time<br>by tools like Vite and Rollup</td><td>Evaluated dynamically at runtime<br>on every component render pass</td></tr><tr><td><strong>What It Explains</strong></td><td>Bundle size, download latency,<br>and slow initial page imports</td><td>Cascading re-renders, state lifetime,<br>and props data flow</td></tr><tr><td><strong>Optimization Strategy</strong></td><td>Code splitting and dynamic imports<br>via <code>React.lazy()</code></td><td>Moving state down, memoization, and<br>slot composition with <code>children</code></td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

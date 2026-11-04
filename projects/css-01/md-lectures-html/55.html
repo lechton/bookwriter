@@ -1,0 +1,1119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 55: Scalable Dark Mode Architecture: Color-Scheme Orchestration and FOUC Prevention</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 55: Scalable Dark Mode Architecture: Color-Scheme Orchestration and FOUC Prevention</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">How do you orchestrate a scalable dark mode system using prefers-color-scheme and custom properties?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Julian leads frontend development for The National Times late-night news edition.</li>
+<li>Subscribers reading articles in dark rooms demand a dark mode theme to prevent acute eye strain.</li>
+<li>The engineering team builds a manual theme switcher using a deferred JavaScript bundle and localStorage.</li>
+<li>On every page load, readers experience a blinding two-hundred-millisecond white flash before the script executes.</li>
+<li>How do you orchestrate a scalable dark mode system using prefers-color-scheme and custom properties?</li>
+<li>Waiting for client-side JavaScript to apply dark classes causes a Flash of Unstyled Content and leaves native browser chrome glaring white.</li>
+<li>Orchestrate custom property tokens under @media (prefers-color-scheme: dark), declare color-scheme on the root, and execute inline blocking scripts before paint.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The White Strobe Catastrophe: Flash of Unstyled Content and Root Native Chrome</h3>
+<p>Dark mode has transitioned from a trendy visual flourish into an essential accessibility requirement. For readers with photophobia, migraines, or visual fatigue, high-contrast black text on bright white backgrounds causes physical pain. However, implementing dark mode incorrectly can create a visual defect far worse than a standard white theme: the <strong>white strobe flash</strong>.</p>
+<p>When a developer implements dark mode using only client-side JavaScript, they typically store the user's preference in browser <code>localStorage</code>. When the user loads a webpage, the browser downloads the HTML document and stylesheet first. Because JavaScript files are deferred or bundled asynchronously to protect performance, the browser engine performs its <strong>first paint</strong> using default light styles.</p>
+<p>Two hundred milliseconds later, the JavaScript bundle finishes downloading, parses the stored theme preference, and attaches a <code>.dark-theme</code> class to the <code>&lt;body&gt;</code> element. The screen abruptly violently flashes from pure white to dark slate. This defect is known in web performance engineering as <strong>FOUC</strong> (Flash of Unstyled Content) or a <strong>theme strobe</strong>. For a reader sitting in a dark bedroom at midnight, this sudden white flash is physically blinding.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">fouc-trap.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;!DOCTYPE html&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">&lt;html lang=<span class="str">"en"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;head&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;link rel=<span class="str">"stylesheet"</span> href=<span class="str">"styles.css"</span>&gt; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Default CSS paints white background first</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;script src=<span class="str">"theme-bundle.js"</span> defer&gt;&lt;/script&gt; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Deferred script executes too late, causing white strobe</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/head&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;body&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"story"</span>&gt;...&lt;/article&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;/body&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">&lt;/html&gt;</span></div></div></div></div>
+<p>Notice the architecture above. Because <code>theme-bundle.js</code> is marked with <code>defer</code>, it executes after HTML parsing completes. The browser paints white pixels immediately, creating a jarring flash when the script finally flips the theme.</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p><strong>Industry Naming Conventions: Semantic Tokens Versus Hardcoded Values:</strong> In enterprise design systems like GitHub Primer or Salesforce Lightning, engineers never write raw hex codes inside component stylesheets. If a button declares <code>background-color: #ffffff</code>, that rule is permanently locked into a light theme. Professional design systems introduce an abstraction layer called <strong>semantic design tokens</strong>. Instead of writing raw colors, components reference contextual roles like <code>--surface-canvas</code> or <code>--text-primary</code>. When switching themes, you invert the tokens at the root level, leaving all component selectors completely untouched.</p>
+  </div>
+</aside>
+<p>To eliminate the white strobe, modern CSS provides the <strong><code>prefers-color-scheme</code> media feature</strong>. This media feature allows CSS to query the user's operating system preference directly during stylesheet parsing, before any JavaScript downloads or executes.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">native-dark-scheme.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">:root </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">color-scheme</span>: light dark; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Informs browser engine to support both light and dark native rendering</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">--surface-canvas</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Baseline light canvas background token</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">--text-primary</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> High-contrast slate text token for light mode</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">@media (prefers-color-scheme: dark) </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src"><span class="sel">  :root </span>{</span></div>
+<div class="row"><span class="num">9</span><span class="src">    <span class="prop">--surface-canvas</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Inverts canvas token to dark slate automatically</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src">    <span class="prop">--text-primary</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Inverts text token to crisp light gray</span></div></div></div>
+<div class="row"><span class="num">11</span><span class="src">  }</span></div>
+<div class="row"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+<p>Notice the declarations above:</p>
+<ul><li>The <strong><code>color-scheme: light dark</code> property</strong> informs the browser engine that the document supports both themes. The browser immediately adjusts default scrollbars, form controls, and the root canvas background to dark mode during the very first paint pass.</li>
+<li>Inside <code>@media (prefers-color-scheme: dark)</code>, we do not duplicate a single component selector. We simply redefine the <code>--surface-canvas</code> and <code>--text-primary</code> custom property tokens.</li></ul>
+<figure class="css-figure">
+<style>
+  .print-fig {
+    width: 100%;
+    max-width: 840px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #000000;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-fig * {
+    box-sizing: border-box;
+  }
+
+  .print-fig .compare-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+
+  .print-fig .pill {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 2px solid;
+    border-radius: 4px;
+  }
+
+  .print-fig .pill-wrong {
+    background: #9f1239;
+    color: #ffffff;
+    border-color: #9f1239;
+  }
+
+  .print-fig .pill-right {
+    background: #0e7490;
+    color: #ffffff;
+    border-color: #0e7490;
+  }
+
+  .print-fig .compare-grid {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .print-fig .print-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 2px solid;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .print-fig .card-wrong { border-color: #9f1239; }
+  .print-fig .card-right { border-color: #0e7490; }
+
+  .print-fig .card-title-bar {
+    padding: 10px 16px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid;
+  }
+
+  .print-fig .card-wrong .card-title-bar {
+    background: #9f1239;
+    color: #ffffff;
+    border-bottom-color: #9f1239;
+  }
+
+  .print-fig .card-right .card-title-bar {
+    background: #0e7490;
+    color: #ffffff;
+    border-bottom-color: #0e7490;
+  }
+
+  .print-fig .card-canvas {
+    padding: 14px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #f8fafc;
+    justify-content: space-between;
+  }
+
+  /* Timeline Frames */
+  .print-fig .timeline-track {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 10px;
+  }
+
+  .print-fig .frame-sequence {
+    display: flex;
+    gap: 8px;
+  }
+
+  .print-fig .screen-frame {
+    flex: 1;
+    border-radius: 4px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1.5px solid;
+    font-family: "SF Mono", Menlo, Monaco, monospace;
+    font-size: 8.5px;
+    font-weight: 700;
+  }
+
+  .print-fig .frame-white-strobe {
+    background: #ffffff;
+    border-color: #f43f5e;
+    color: #9f1239;
+    box-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
+  }
+
+  .print-fig .frame-dark-target {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f8fafc;
+  }
+
+  .print-fig .frame-dark-instant {
+    background: #0f172a;
+    border-color: #0284c7;
+    color: #38bdf8;
+  }
+
+  .print-fig .screen-bar {
+    height: 4px;
+    border-radius: 2px;
+  }
+
+  .print-fig .bar-light { background: #94a3b8; }
+  .print-fig .bar-dark { background: #334155; }
+  .print-fig .bar-accent { background: #38bdf8; }
+
+  .print-fig .status-badge {
+    font-family: "SF Mono", Menlo, Monaco, monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: fit-content;
+  }
+
+  .print-fig .badge-fail {
+    background: #ffe4e6;
+    color: #9f1239;
+    border: 1px solid #f43f5e;
+  }
+
+  .print-fig .badge-pass {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #38bdf8;
+  }
+
+  .print-fig .summary-note {
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    border: 1px solid;
+  }
+
+  .print-fig .card-wrong .summary-note {
+    background: #ffe4e6;
+    border-color: #9f1239;
+    color: #881337;
+  }
+
+  .print-fig .card-right .summary-note {
+    background: #e0f2fe;
+    border-color: #0e7490;
+    color: #075985;
+  }
+
+  .print-fig .card-footer {
+    padding: 10px 14px;
+    font-size: 11.5px;
+    line-height: 1.35;
+    font-weight: 500;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+
+  .print-fig .card-wrong .card-footer { color: #9f1239; }
+  .print-fig .card-right .card-footer { color: #0e7490; }
+</style>
+
+<div class="print-fig">
+  <div class="compare-header">
+    <div class="pill pill-wrong">Asynchronous JS Toggle White Strobe</div>
+    <div class="pill pill-right">Declarative CSS Tokens &amp; Instant First Paint</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Asynchronous Script FOUC Card -->
+    <div class="print-card card-wrong">
+      <div class="card-title-bar">
+        <span>DEFERRED CLIENT-SIDE TOGGLE</span>
+        <span>THEME FLASH OF UNSTYLED CONTENT</span>
+      </div>
+      <div class="card-canvas">
+        <div class="timeline-track">
+          <div style="font-size: 9.5px; font-weight: 700; color: #475569; font-family: monospace;">
+            PAGE LOAD LIFECYCLE (350MS DURATION)
+          </div>
+          <div class="frame-sequence">
+            <div class="screen-frame frame-white-strobe">
+              <span>0ms - 280ms</span>
+              <div class="screen-bar bar-light" style="width: 70%;"></div>
+              <div class="screen-bar bar-light" style="width: 90%;"></div>
+              <span style="color: #e11d48; margin-top: 2px;">⚡ WHITE FLASH</span>
+            </div>
+            <div class="screen-frame frame-dark-target">
+              <span>280ms+ (JS RUNS)</span>
+              <div class="screen-bar bar-dark" style="width: 70%;"></div>
+              <div class="screen-bar bar-dark" style="width: 90%;"></div>
+              <span style="color: #94a3b8; margin-top: 2px;">dark theme</span>
+            </div>
+          </div>
+          <span class="status-badge badge-fail">RETINAL STROBE DISASTER</span>
+        </div>
+
+        <div class="summary-note">
+          ✕ <b>The White Flash Catastrophe:</b> The browser paints default white HTML before client scripts execute. Night readers sitting in dark rooms receive a blinding 250ms white flash on every page navigation.
+        </div>
+      </div>
+      <div class="card-footer">
+        Deferred JavaScript class swaps cannot prevent the browser's initial white paint pass.
+      </div>
+    </div>
+
+    <!-- Declarative Tokens Solution Card -->
+    <div class="print-card card-right">
+      <div class="card-title-bar">
+        <span>PREFERS-COLOR-SCHEME &amp; TOKENS</span>
+        <span>ZERO STROBE FRAME 0 PAINT</span>
+      </div>
+      <div class="card-canvas">
+        <div class="timeline-track">
+          <div style="font-size: 9.5px; font-weight: 700; color: #475569; font-family: monospace;">
+            PAGE LOAD LIFECYCLE (INSTANT CSS)
+          </div>
+          <div class="frame-sequence">
+            <div class="screen-frame frame-dark-instant">
+              <span>0ms (FIRST PAINT)</span>
+              <div class="screen-bar bar-accent" style="width: 70%;"></div>
+              <div class="screen-bar bar-dark" style="width: 90%;"></div>
+              <span style="color: #38bdf8; margin-top: 2px;">✓ NATIVE DARK</span>
+            </div>
+            <div class="screen-frame frame-dark-instant">
+              <span>280ms (HYDRATED)</span>
+              <div class="screen-bar bar-accent" style="width: 70%;"></div>
+              <div class="screen-bar bar-dark" style="width: 90%;"></div>
+              <span style="color: #38bdf8; margin-top: 2px;">✓ STABLE DARK</span>
+            </div>
+          </div>
+          <span class="status-badge badge-pass">SEAMLESS NIGHT READING</span>
+        </div>
+
+        <div class="summary-note">
+          ✓ <b>Zero White Flash:</b> Declaring <code>color-scheme: light dark</code> on <code>:root</code> with <code>prefers-color-scheme</code> tokens instructs the browser engine to paint dark from frame zero with zero strobe.
+        </div>
+      </div>
+      <div class="card-footer">
+        CSS-driven media queries evaluate synchronously during HTML parsing before first paint.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 55.1: Asynchronous JS Toggle White Strobe (left) Versus Declarative CSS Tokens &amp; Instant First Paint (right): Deferred JavaScript on the left paints a blinding 250ms white flash before flipping dark. On the right, declarative color-scheme and prefers-color-scheme tokens paint dark from frame zero with zero strobe.</figcaption>
+</figure>
+<p>Figure 55.1 contrasts the deferred JavaScript strobe failure with native CSS token orchestration. The left panel shows the jarring white flash caused by waiting for external scripts. The right panel shows how declaring <code>color-scheme</code> and token overrides in CSS guarantees seamless, dark-from-frame-zero rendering.</p>
+</div>
+<div class="keep-together">
+<h3>The Three-Tier Token Cascade and prefers-color-scheme</h3>
+<p>A scalable dark mode system requires a clean, maintainable architecture. If you attempt to implement dark mode by creating <code>.dark-theme</code> modifier overrides for every button, card, header, and input, your stylesheet size will double. When another developer adds a new component six months later, they will forget to write the dark overrides, causing visual contrast bugs in production.</p>
+<p>To build a scalable architecture, professional engineering teams deploy the <strong>Three-Tier Token Cascade</strong>:</p>
+<ol><li><strong>Tier 1: Primitive Tokens (The Color Palette):</strong> Raw, immutable color values with descriptive numerical names (for example, <code>--color-slate-900: #0f172a</code> and <code>--color-slate-50: #f8fafc</code>). These tokens define your design system's palette and never change based on theme.</li>
+<li><strong>Tier 2: Semantic Theme Tokens (Contextual Purpose):</strong> Purpose-driven tokens that describe how colors are used in the interface (for example, <code>--surface-bg</code>, <code>--surface-card</code>, <code>--text-primary</code>, and <code>--border-subtle</code>). These tokens map directly to primitive tokens and invert based on theme.</li>
+<li><strong>Tier 3: Component Consuming Properties:</strong> Actual UI component styles that consume semantic tokens (for example, <code>.story-card { background: var(--surface-card); }</code>). Component styles contain zero hardcoded colors and require zero dark mode overrides.</li></ol>
+<p>Let us unpack the four foundational pillars of dark mode token architecture:</p>
+<ol><li><strong>Technical Nomenclature and Syntax Decoding:</strong> The property <code>color-scheme</code> is an engine-level instruction telling the browser which color modes the document is prepared to render. The media query <code>prefers-color-scheme</code> detects the user's operating system appearance setting (<code>light</code> or <code>dark</code>).</li>
+<li><strong>Tactile Everyday Analogy:</strong> Think of primitive tokens as jars of paint on an artist's workbench. Semantic tokens are the labels on the canvas indicating "sky" or "ground". In daytime mode, the artist dips the sky brush into blue paint. In night mode, the artist dips the same sky brush into dark navy paint. The canvas labels never move; only the paint source changes.</li>
+<li><strong>The "Why We Suffered Before" Contrast:</strong> Before custom properties, teams maintained two entire stylesheets or thousands of duplicate rules like <code>.dark-theme .story-card { background: #1e293b; }</code>. This led to massive CSS bundle bloat, high specificity collisions, and painful maintenance regressions.</li>
+<li><strong>The Physical Browser Calculation Routine:</strong> When the browser computes styles, custom properties resolve dynamically through the DOM tree. Redefining a token at <code>:root</code> instantly updates every element referencing that variable without triggering costly HTML DOM restructuring.</li></ol>
+<blockquote>"The 'prefers-color-scheme' media feature reflects the user's desire that the page use a light color scheme or dark color scheme... Indicates that the page color scheme is a dark color scheme (light text on dark background)."<br><br><em>CSS Working Group, Media Queries Level 5 (<code>resources/spec/csswg-drafts/mediaqueries-5/Overview.bs</code>)</em></blockquote>
+<p>Here is how you organize the three-tier token cascade in production CSS:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">token-cascade.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">:root </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  --slate-50: #f8fafc; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Tier 1 primitive palette token for light surface</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  --slate-800: #1e293b; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Primitive dark surface token</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">  --slate-900: #0f172a; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Primitive dark canvas token</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">--surface-body</span>: <span class="fn">var</span>(--slate-<span class="nl">50</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Tier 2 semantic token for light canvas</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">--surface-card</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Semantic token for light card surface</span></div></div></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">--text-primary</span>: <span class="fn">var</span>(--slate-<span class="nl">900</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Semantic token for high-contrast light text</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div>
+<div class="row"><span class="num">9</span><span class="src"></span></div>
+<div class="row"><span class="num">10</span><span class="src"><span class="sel">@media (prefers-color-scheme: dark) </span>{</span></div>
+<div class="row"><span class="num">11</span><span class="src"><span class="sel">  :root </span>{</span></div>
+<div class="row"><span class="num">12</span><span class="src">    <span class="prop">--surface-body</span>: <span class="fn">var</span>(--slate-<span class="nl">900</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Semantic token inverts to dark canvas</span></div></div></div>
+<div class="row"><span class="num">13</span><span class="src">    <span class="prop">--surface-card</span>: <span class="fn">var</span>(--slate-<span class="nl">800</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Semantic token inverts to dark card surface</span></div></div></div>
+<div class="row"><span class="num">14</span><span class="src">    <span class="prop">--text-primary</span>: <span class="fn">var</span>(--slate-<span class="nl">50</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Semantic token inverts to light text</span></div></div></div>
+<div class="row"><span class="num">15</span><span class="src">  }</span></div>
+<div class="row"><span class="num">16</span><span class="src">}</span></div>
+<div class="row"><span class="num">17</span><span class="src"></span></div>
+<div class="row"><span class="num">18</span><span class="src"><span class="sel">.story-card </span>{</span></div>
+<div class="row"><span class="num">19</span><span class="src">  <span class="prop">background-color</span>: <span class="fn">var</span>(--surface-card); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Tier 3 component consumes token; zero theme overrides</span></div></div></div>
+<div class="row"><span class="num">20</span><span class="src">  <span class="prop">color</span>: <span class="fn">var</span>(--text-primary); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Automatically legible across both themes</span></div></div></div>
+<div class="row"><span class="num">21</span><span class="src">  <span class="prop">border-radius</span>: <span class="nl">8px</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Clean container boundary geometry</span></div></div></div>
+<div class="row"><span class="num">22</span><span class="src">}</span></div></div></div></div>
+<p>Notice the elegance of Tier 3. The <code>.story-card</code> component contains only three declarations. It requires zero media queries and zero <code>.dark-theme</code> parent selectors. When the operating system switches to dark mode, the browser recomputes <code>--surface-card</code> and <code>--text-primary</code> at the root, and the card updates instantly.</p>
+<figure class="css-figure">
+<style>
+  .print-fig {
+    width: 100%;
+    max-width: 840px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #000000;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-fig * {
+    box-sizing: border-box;
+  }
+
+  .print-fig .compare-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+
+  .print-fig .pill {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 2px solid;
+    border-radius: 4px;
+  }
+
+  .print-fig .pill-wrong {
+    background: #9f1239;
+    color: #ffffff;
+    border-color: #9f1239;
+  }
+
+  .print-fig .pill-right {
+    background: #0e7490;
+    color: #ffffff;
+    border-color: #0e7490;
+  }
+
+  .print-fig .compare-grid {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .print-fig .print-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 2px solid;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .print-fig .card-wrong { border-color: #9f1239; }
+  .print-fig .card-right { border-color: #0e7490; }
+
+  .print-fig .card-title-bar {
+    padding: 10px 16px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid;
+  }
+
+  .print-fig .card-wrong .card-title-bar {
+    background: #9f1239;
+    color: #ffffff;
+    border-bottom-color: #9f1239;
+  }
+
+  .print-fig .card-right .card-title-bar {
+    background: #0e7490;
+    color: #ffffff;
+    border-bottom-color: #0e7490;
+  }
+
+  .print-fig .card-canvas {
+    padding: 14px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #f8fafc;
+    justify-content: space-between;
+  }
+
+  /* Token Architecture Stack */
+  .print-fig .token-architecture {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 8px;
+  }
+
+  .print-fig .token-tier {
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-family: "SF Mono", Menlo, Monaco, monospace;
+    font-size: 9.5px;
+    border: 1px solid;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .print-fig .card-wrong .tier-duplicate {
+    background: #fff1f2;
+    border-color: #fecdd3;
+    color: #9f1239;
+  }
+
+  .print-fig .card-right .tier-primitive {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+  }
+
+  .print-fig .card-right .tier-semantic {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #0369a1;
+  }
+
+  .print-fig .card-right .tier-component {
+    background: #f0fdf4;
+    border-color: #86efac;
+    color: #166534;
+  }
+
+  .print-fig .tier-header {
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 8.5px;
+    letter-spacing: 0.05em;
+  }
+
+  .print-fig .token-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9px;
+  }
+
+  .print-fig .swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid #000000;
+    vertical-align: -1px;
+    margin-right: 4px;
+  }
+
+  .print-fig .summary-note {
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    border: 1px solid;
+  }
+
+  .print-fig .card-wrong .summary-note {
+    background: #ffe4e6;
+    border-color: #9f1239;
+    color: #881337;
+  }
+
+  .print-fig .card-right .summary-note {
+    background: #e0f2fe;
+    border-color: #0e7490;
+    color: #075985;
+  }
+
+  .print-fig .card-footer {
+    padding: 10px 14px;
+    font-size: 11.5px;
+    line-height: 1.35;
+    font-weight: 500;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+
+  .print-fig .card-wrong .card-footer { color: #9f1239; }
+  .print-fig .card-right .card-footer { color: #0e7490; }
+</style>
+
+<div class="print-fig">
+  <div class="compare-header">
+    <div class="pill pill-wrong">Brittle Selector Duplication</div>
+    <div class="pill pill-right">Three-Tier Semantic Token Cascade</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Selector Duplication Card -->
+    <div class="print-card card-wrong">
+      <div class="card-title-bar">
+        <span>SELECTOR EXPLOSION</span>
+        <span>.DARK-THEME OVERRIDES</span>
+      </div>
+      <div class="card-canvas">
+        <div class="token-architecture">
+          <div class="token-tier tier-duplicate">
+            <span class="tier-header">LIGHT STYLESHEET (100+ SELECTORS)</span>
+            <span class="token-row">body { background: #ffffff; color: #1e293b; }</span>
+            <span class="token-row">.story-card { background: #f8fafc; border: #e2e8f0; }</span>
+            <span class="token-row">.btn-primary { background: #0e7490; }</span>
+          </div>
+
+          <div class="token-tier tier-duplicate">
+            <span class="tier-header">DARK DUPLICATION (100+ COPIED RULES)</span>
+            <span class="token-row">.dark-theme body { background: #0f172a; color: #f8fafc; }</span>
+            <span class="token-row">.dark-theme .story-card { background: #1e293b; }</span>
+            <span class="token-row">.dark-theme .btn-primary { background: #38bdf8; }</span>
+          </div>
+        </div>
+
+        <div class="summary-note">
+          ✕ <b>Stylesheet Bloat &amp; Drift:</b> Duplicating every component selector under <code>.dark-theme</code> doubles CSS bundle size, breaks specificity, and guarantees color bugs whenever new components are added.
+        </div>
+      </div>
+      <div class="card-footer">
+        Manual selector duplication creates massive maintenance debt and specificity escalation.
+      </div>
+    </div>
+
+    <!-- Semantic Token Cascade Card -->
+    <div class="print-card card-right">
+      <div class="card-title-bar">
+        <span>CSS CUSTOM PROPERTIES</span>
+        <span>TOKEN MAPPING INVERSION</span>
+      </div>
+      <div class="card-canvas">
+        <div class="token-architecture">
+          <div class="token-tier tier-primitive">
+            <span class="tier-header">TIER 1: PALETTE PRIMITIVES</span>
+            <span class="token-row">--slate-50: #f8fafc; | --slate-900: #0f172a;</span>
+          </div>
+
+          <div class="token-tier tier-semantic">
+            <span class="tier-header">TIER 2: SEMANTIC THEME TOKENS</span>
+            <span class="token-row">Light: --surface-bg: var(--slate-50);</span>
+            <span class="token-row">Dark:  --surface-bg: var(--slate-900);</span>
+          </div>
+
+          <div class="token-tier tier-component">
+            <span class="tier-header">TIER 3: SINGLE COMPONENT RULE (ZERO COPIES)</span>
+            <span class="token-row">.story-card { background: var(--surface-bg); }</span>
+          </div>
+        </div>
+
+        <div class="summary-note">
+          ✓ <b>Zero Component Duplication:</b> Components only reference semantic tokens. Flipping from light to dark mode redefines only the token values at the root, leaving component code 100% untouched.
+        </div>
+      </div>
+      <div class="card-footer">
+        Custom properties decouple visual theming from component selectors and DOM geometry.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 55.2: Brittle Selector Duplication (left) Versus Three-Tier Semantic Token Cascade (right): Duplicating selectors on the left doubles stylesheet size and creates maintenance debt. On the right, components only reference semantic tokens, allowing seamless theme switching with zero duplicated selectors.</figcaption>
+</figure>
+<p>Figure 55.2 demonstrates the power of the three-tier token cascade. On the left side, legacy stylesheets explode with duplicate selectors. On the right side, the three-tier architecture separates raw colors from contextual roles, keeping component styles completely decoupled from theme logic.</p>
+</div>
+<div class="keep-together">
+<h3>Synchronizing System Preferences, Manual Toggles, and Form Controls</h3>
+<p>While supporting the operating system's <code>prefers-color-scheme</code> setting is mandatory, production websites must also provide a <strong>manual theme toggle</strong>. A user working on a laptop set to light mode might still prefer dark mode on The National Times while reading an investigative report late at night.</p>
+<p>However, offering a manual toggle reintroduces the threat of the white strobe flash! If the user selected dark mode on your site yesterday, how do you prevent the page from flashing white today before your JavaScript loads?</p>
+<p>The solution is an <strong>inline pre-render execution script</strong>. You place a tiny, self-contained JavaScript snippet directly inside the <code>&lt;head&gt;</code> tag, positioned before any stylesheet links or body content. Because inline scripts in <code>&lt;head&gt;</code> execute synchronously, the script reads <code>localStorage</code> and sets a <code>data-theme</code> attribute on the root <code>&lt;html&gt;</code> element <em>before the browser paints its first frame</em>.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">blocking-head-script.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;head&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;meta charset=<span class="str">"utf-8"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;title&gt;The National Times&lt;/title&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;script&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">    (<span class="kw">function</span>() {</span></div>
+<div class="row"><span class="num">6</span><span class="src">      <span class="kw">const</span> savedTheme = localStorage.<span class="fn">getItem</span>(<span class="str">'user-theme'</span>);</span></div>
+<div class="row"><span class="num">7</span><span class="src">      <span class="kw">if</span> (savedTheme) {</span></div>
+<div class="row"><span class="num">8</span><span class="src">        document.documentElement.<span class="fn">setAttribute</span>(<span class="str">'data-theme'</span>, savedTheme);</span></div>
+<div class="row"><span class="num">9</span><span class="src">      }</span></div>
+<div class="row"><span class="num">10</span><span class="src">    })();</span></div>
+<div class="row"><span class="num">11</span><span class="src">  &lt;/script&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">  &lt;link rel=<span class="str">"stylesheet"</span> href=<span class="str">"theme.css"</span>&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">&lt;/head&gt;</span></div></div></div></div>
+<p>Notice why this script is completely immune to FOUC. The inline script executes synchronously during initial HTML parsing. By the time the browser parses the <code>&lt;link&gt;</code> tag and paints the first pixel, the <code>data-theme="dark"</code> attribute is already present on <code>&lt;html&gt;</code>. The browser paints the dark theme immediately, with zero white strobe.</p>
+<p>To synchronize manual overrides with operating system preferences, you combine media queries with data attribute selectors in your stylesheet:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">synchronized-theming.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">:root,</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="sel">[data-theme="light"] </span>{</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">color-scheme</span>: light; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Explicit light mode declaration</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">--surface-body</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">--text-main</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src"><span class="sel">@media (prefers-color-scheme: dark) </span>{</span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="sel">  :root:not([data-theme="light"]) </span>{</span></div>
+<div class="row"><span class="num">10</span><span class="src">    <span class="prop">color-scheme</span>: dark; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> System dark mode when no manual light override exists</span></div></div></div>
+<div class="row"><span class="num">11</span><span class="src">    <span class="prop">--surface-body</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">12</span><span class="src">    <span class="prop">--text-main</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>;</span></div>
+<div class="row"><span class="num">13</span><span class="src">  }</span></div>
+<div class="row"><span class="num">14</span><span class="src">}</span></div>
+<div class="row"><span class="num">15</span><span class="src"></span></div>
+<div class="row"><span class="num">16</span><span class="src"><span class="sel">[data-theme="dark"] </span>{</span></div>
+<div class="row"><span class="num">17</span><span class="src">  <span class="prop">color-scheme</span>: dark; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Explicit manual dark override</span></div></div></div>
+<div class="row"><span class="num">18</span><span class="src">  <span class="prop">--surface-body</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">19</span><span class="src">  <span class="prop">--text-main</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>;</span></div>
+<div class="row"><span class="num">20</span><span class="src">}</span></div></div></div></div>
+<p>Notice the selector <code>:root:not([data-theme="light"])</code> inside the media query:</p>
+<ul><li>If the user has set no manual preference, the system preference applies.</li>
+<li>If the user manually clicks "Light", <code>data-theme="light"</code> overrides the system dark preference.</li>
+<li>If the user manually clicks "Dark", <code>[data-theme="dark"]</code> forces dark mode even on a light OS.</li></ul>
+<p>Declaring <code>color-scheme: dark</code> on all dark variations ensures that the browser automatically updates native UI controls:</p>
+<ul><li><strong>Scrollbars:</strong> Browser scrollbars render as sleek dark slate tracks rather than harsh white strips.</li>
+<li><strong>Form Inputs:</strong> HTML <code>&lt;input&gt;</code>, <code>&lt;select&gt;</code>, and <code>&lt;textarea&gt;</code> controls automatically display dark backgrounds and light text without custom CSS hacks.</li>
+<li><strong>Media Optimization:</strong> Editorial photos can be slightly dimmed in dark mode (<code>filter: brightness(0.85)</code>) to prevent high-luminance imagery from jarring dark-adapted eyes.</li></ul>
+<figure class="css-figure">
+<style>
+  .print-fig {
+    width: 100%;
+    max-width: 840px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #000000;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-fig * {
+    box-sizing: border-box;
+  }
+
+  .print-fig .compare-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+
+  .print-fig .pill {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 2px solid;
+    border-radius: 4px;
+  }
+
+  .print-fig .pill-wrong {
+    background: #9f1239;
+    color: #ffffff;
+    border-color: #9f1239;
+  }
+
+  .print-fig .pill-right {
+    background: #0e7490;
+    color: #ffffff;
+    border-color: #0e7490;
+  }
+
+  .print-fig .compare-grid {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .print-fig .print-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 2px solid;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .print-fig .card-wrong { border-color: #9f1239; }
+  .print-fig .card-right { border-color: #0e7490; }
+
+  .print-fig .card-title-bar {
+    padding: 10px 16px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid;
+  }
+
+  .print-fig .card-wrong .card-title-bar {
+    background: #9f1239;
+    color: #ffffff;
+    border-bottom-color: #9f1239;
+  }
+
+  .print-fig .card-right .card-title-bar {
+    background: #0e7490;
+    color: #ffffff;
+    border-bottom-color: #0e7490;
+  }
+
+  .print-fig .card-canvas {
+    padding: 14px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #f8fafc;
+    justify-content: space-between;
+  }
+
+  /* Browser Chrome Simulation */
+  .print-fig .browser-window {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #0f172a;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .print-fig .chrome-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1e293b;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-family: "SF Mono", Menlo, Monaco, monospace;
+    font-size: 9px;
+    color: #94a3b8;
+  }
+
+  .print-fig .mock-viewport {
+    display: flex;
+    gap: 6px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    padding: 6px;
+  }
+
+  .print-fig .mock-content-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .print-fig .form-element-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .print-fig .mock-input {
+    border-radius: 3px;
+    padding: 3px 6px;
+    font-family: monospace;
+    font-size: 8.5px;
+    border: 1px solid;
+  }
+
+  .print-fig .card-wrong .mock-input {
+    background: #ffffff; /* Glaring white input defect */
+    color: #000000;
+    border-color: #cbd5e1;
+  }
+
+  .print-fig .card-right .mock-input {
+    background: #1e293b;
+    color: #f8fafc;
+    border-color: #475569;
+  }
+
+  .print-fig .mock-scrollbar {
+    width: 8px;
+    border-radius: 4px;
+  }
+
+  .print-fig .card-wrong .mock-scrollbar {
+    background: #ffffff; /* White scrollbar strip defect */
+    border: 1px solid #e2e8f0;
+  }
+
+  .print-fig .card-right .mock-scrollbar {
+    background: #1e293b;
+    border: 1px solid #334155;
+  }
+
+  .print-fig .summary-note {
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    border: 1px solid;
+  }
+
+  .print-fig .card-wrong .summary-note {
+    background: #ffe4e6;
+    border-color: #9f1239;
+    color: #881337;
+  }
+
+  .print-fig .card-right .summary-note {
+    background: #e0f2fe;
+    border-color: #0e7490;
+    color: #075985;
+  }
+
+  .print-fig .card-footer {
+    padding: 10px 14px;
+    font-size: 11.5px;
+    line-height: 1.35;
+    font-weight: 500;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+
+  .print-fig .card-wrong .card-footer { color: #9f1239; }
+  .print-fig .card-right .card-footer { color: #0e7490; }
+</style>
+
+<div class="print-fig">
+  <div class="compare-header">
+    <div class="pill pill-wrong">Unadapted Browser Controls Defect</div>
+    <div class="pill pill-right">Declarative color-scheme Integration</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Unadapted Native Chrome Card -->
+    <div class="print-card card-wrong">
+      <div class="card-title-bar">
+        <span>OMITTING COLOR-SCHEME</span>
+        <span>WHITE CHROME &amp; SCROLLBARS</span>
+      </div>
+      <div class="card-canvas">
+        <div class="browser-window">
+          <div class="chrome-bar">
+            <span>BROWSER VIEWPORT</span>
+            <span style="color: #fda4af;">NO COLOR-SCHEME PROPERTY</span>
+          </div>
+          <div class="mock-viewport">
+            <div class="mock-content-area">
+              <div style="font-size: 9px; color: #f8fafc; font-weight: 600;">Dark themed body background</div>
+              <div class="form-element-row">
+                <span class="mock-input">Search input...</span>
+                <span style="color: #fda4af; font-size: 8px; font-weight: 700;">✕ BLINDING WHITE INPUT</span>
+              </div>
+            </div>
+            <div class="mock-scrollbar"></div>
+          </div>
+        </div>
+
+        <div class="summary-note">
+          ✕ <b>Native Form &amp; Scrollbar Mismatch:</b> When you only theme your custom CSS, the browser does not know the page is dark. Default text inputs, dropdowns, and scrollbars render in harsh, blinding white.
+        </div>
+      </div>
+      <div class="card-footer">
+        Failing to declare color-scheme breaks user-agent native control rendering in dark mode.
+      </div>
+    </div>
+
+    <!-- Declarative color-scheme Card -->
+    <div class="print-card card-right">
+      <div class="card-title-bar">
+        <span>COLOR-SCHEME: LIGHT DARK</span>
+        <span>SYNCHRONIZED USER-AGENT CHROME</span>
+      </div>
+      <div class="card-canvas">
+        <div class="browser-window">
+          <div class="chrome-bar">
+            <span>BROWSER VIEWPORT</span>
+            <span style="color: #7dd3fc;">:ROOT { COLOR-SCHEME: LIGHT DARK; }</span>
+          </div>
+          <div class="mock-viewport">
+            <div class="mock-content-area">
+              <div style="font-size: 9px; color: #f8fafc; font-weight: 600;">Dark themed body background</div>
+              <div class="form-element-row">
+                <span class="mock-input">Search input...</span>
+                <span style="color: #7dd3fc; font-size: 8px; font-weight: 700;">✓ DARK NATIVE INPUT</span>
+              </div>
+            </div>
+            <div class="mock-scrollbar"></div>
+          </div>
+        </div>
+
+        <div class="summary-note">
+          ✓ <b>Complete System Harmony:</b> Declaring <code>color-scheme: light dark</code> informs the browser engine to automatically invert scrollbars, form controls, and default canvas surfaces to dark mode.
+        </div>
+      </div>
+      <div class="card-footer">
+        Synchronizes operating system preferences, form widgets, and custom CSS tokens effortlessly.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 55.3: Unadapted Browser Controls Defect (left) Versus Declarative color-scheme Integration (right): Omitting color-scheme on the left leaves native text inputs and scrollbars blindingly white in dark mode. Declaring color-scheme: light dark on the right automatically synchronizes all user-agent chrome into dark mode.</figcaption>
+</figure>
+<p>Figure 55.3 highlights the visual importance of the <code>color-scheme</code> property. The left panel shows how custom dark stylesheets leave default browser inputs and scrollbars blindingly white. The right panel demonstrates how <code>color-scheme: light dark</code> instructs the browser engine to harmonize native form controls with your dark theme.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>To impress the interviewer:</strong> Master the full lifecycle of dark mode orchestration: (1) <strong>FOUC Prevention:</strong> Explain why an inline, blocking script in <code>&lt;head&gt;</code> is required to read <code>localStorage</code> before the first paint pass; (2) <strong>Native Integration:</strong> Emphasize the role of <code>color-scheme: light dark</code> in styling browser scrollbars and form inputs without custom CSS; (3) <strong>Three-Tier Architecture:</strong> Demonstrate how primitive tokens, semantic tokens, and component properties eliminate selector duplication; and (4) <strong>Tri-State Synchronization:</strong> Explain how <code>:root:not([data-theme="light"])</code> cleanly balances system OS preferences with manual user overrides.</p>
+  </div>
+</aside>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">
+  <p>Orchestrating scalable dark mode requires three-tier semantic tokens, prefers-color-scheme media queries, color-scheme native chrome adaptation, and synchronous head script execution to prevent white strobe flashes.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Editorial Publishing Portals:</strong> Providing automatic night reading modes alongside sticky manual theme toggles for subscribers.</li>
+<li><strong>Developer Documentation Platforms:</strong> Designing dark-themed code snippet viewers with synchronized syntax highlighting and copy buttons.</li>
+<li><strong>Financial Trading Terminals:</strong> Rendering dark data dashboards to reduce eye fatigue for analysts monitoring live market movements over twelve-hour shifts.</li>
+<li><strong>Mobile Web Applications:</strong> Harmonizing web view chrome, mobile status bars, and modal sheets with iOS and Android system appearance settings.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong><code>prefers-color-scheme</code></strong>: A CSS media feature used to detect whether the user has requested a light or dark theme in their operating system settings.</li>
+<li><strong><code>color-scheme</code></strong>: A CSS property declared on <code>:root</code> that signals to the browser engine which color modes the document supports, automatically styling native scrollbars and form inputs.</li>
+<li><strong>Flash of Unstyled Content (FOUC)</strong>: A visual defect where a webpage flashes an unstyled or light theme before client-side scripts execute and apply dark styles.</li>
+<li><strong>Semantic Design Tokens</strong>: Abstract CSS custom property names representing functional UI roles (like <code>--surface-canvas</code> or <code>--text-primary</code>) rather than hardcoded hex values.</li>
+<li><strong>Primitive Tokens</strong>: Foundational color variables in a design system palette named by hue and lightness (like <code>--slate-900</code> or <code>--teal-500</code>).</li>
+<li><strong>Inline Pre-Render Execution</strong>: A synchronous JavaScript snippet placed in <code>&lt;head&gt;</code> that reads stored theme preferences and sets attributes before the browser paints.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Orchestrating Scalable and Accessible Dark Mode Systems</strong></p>
+<p>A world-class dark mode architecture prevents visual strobe defects while ensuring effortless maintenance and native browser integration.</p>
+<ol><li>Asynchronous JavaScript theme toggles cause a Flash of Unstyled Content, blinding night readers with a sudden white flash.</li>
+<li>The <code>prefers-color-scheme</code> media query allows CSS to detect operating system appearance settings synchronously during initial parse.</li>
+<li>Declaring <code>color-scheme: light dark</code> on <code>:root</code> instructs the browser to automatically adapt native scrollbars, inputs, and canvas backgrounds.</li>
+<li>The three-tier token cascade separates raw primitive colors from semantic theme roles, leaving component stylesheets 100% free of theme overrides.</li>
+<li>Inverting semantic tokens at <code>:root</code> updates every component on the page dynamically without modifying DOM classes or triggering reflows.</li>
+<li>A manual theme switcher requires a tiny inline script in <code>&lt;head&gt;</code> to read <code>localStorage</code> and set root attributes before first paint.</li>
+<li>Combining <code>:root:not([data-theme="light"])</code> inside media queries seamlessly balances system preferences with manual overrides.</li>
+<li>Native form controls and images adapt gracefully when paired with <code>color-scheme</code> and subtle brightness filters.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Use deferred client-side JavaScript to apply dark mode classes, creating a jarring white flash on every page load.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.dark-theme body </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">background-color</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">.dark-theme .story-card </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">background-color</span>: <i class="swatch" style="background:#1e293b"></i><span class="clr">#1e293b</span>;</span></div>
+<div class="row"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Abstract colors into semantic tokens under prefers-color-scheme and declare color-scheme on the root element.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">:root </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">color-scheme</span>: light dark;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">--surface-canvas</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">--text-primary</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">@media (prefers-color-scheme: dark) </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src"><span class="sel">  :root </span>{</span></div>
+<div class="row"><span class="num">9</span><span class="src">    <span class="prop">--surface-canvas</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">10</span><span class="src">    <span class="prop">--text-primary</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>;</span></div>
+<div class="row"><span class="num">11</span><span class="src">  }</span></div>
+<div class="row"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+</div>
+<p>➔ NEVER rely on deferred client-side JavaScript to set initial dark mode themes; use CSS media queries and synchronous <code>&lt;head&gt;</code> scripts to prevent FOUC.</p>
+<p>➔ ALWAYS declare <code>color-scheme: light dark</code> on <code>:root</code> so the browser engine can automatically invert native scrollbars and form inputs.</p>
+<p>➔ IF authoring reusable UI components THEN consume semantic tokens (<code>--surface-canvas</code>) rather than writing bespoke <code>.dark-theme</code> selector overrides.</p>
+<table><thead><tr><th></th><th><strong>NAIVE JAVASCRIPT CLASS SWAP</strong><br>(legacy toggle)</th><th><strong>TOKEN ORCHESTRATION</strong><br>(prefers-color-scheme + tokens)</th></tr></thead><tbody><tr><td><strong>First Paint Behavior</strong></td><td>Flashes white strobe for<br>200ms before script runs</td><td>Paints dark from frame zero<br>with zero visual strobe</td></tr><tr><td><strong>CSS Architecture</strong></td><td>Duplicates hundreds of<br>selectors under <code>.dark-theme</code></td><td>Single component rule;<br>inverts tokens at <code>:root</code></td></tr><tr><td><strong>Native Form Controls</strong></td><td>Inputs and scrollbars remain<br>blindingly bright white</td><td>Automatically inverted via<br><code>color-scheme:</code><br><code>light dark</code></td></tr><tr><td><strong>System Preference Sync</strong></td><td>Ignores OS preference unless<br>complex JS listeners run</td><td>Responds natively via<br><code>prefers-color-scheme</code></td></tr><tr><td><strong>Maintenance Burden</strong></td><td>Every new component requires<br>manual dark overrides</td><td>Zero component overrides;<br>scales automatically</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,1227 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 11: Rendering Lists and Keys in React — Edition v6.7-7</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v6.7-7";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 11: Rendering Lists and Keys in React</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you render a list from an array, and why does React demand a key on every item?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Marcus sits down at his workstation at The National Times to build the morning news feed.</li>
+<li>The editorial team provides a list of breaking stories as a JavaScript array, and Marcus needs to display each story as an interactive card on the homepage.</li>
+<li>When an urgent breaking headline arrives at the top of the feed, Marcus prepends it to the array, but an editor's typed correction note on the first story suddenly jumps to the new breaking headline.</li>
+<li>Why does React attach existing user input to the wrong story when a new item is added to the front of a list?</li>
+<li>Relying on array indices as keys or omitting keys entirely causes React to match elements by position rather than identity, scrambling form inputs, audio players, and checkboxes across unrelated items.</li>
+<li>Many developers also struggle with blank screens when their array map callback uses curly braces but forgets the explicit return statement.</li>
+<li>Today, we master transforming data arrays into JSX elements using the map method, understand how keys provide persistent identity across renders, and build resilient list interfaces.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Friction of Static Repetition and Dynamic Feeds</h3>
+<p>Every modern web application displays dynamic collections of data (such as articles in a news feed, products in a catalog, or messages in an inbox). In basic HTML, every item is written by hand as a separate tag. When you build applications with React, writing hardcoded tags for every item (<span class="code-line-callout"><code>&lt;StoryCard story={story1} /&gt;</code></span> <span class="code-line-callout"><code>&lt;StoryCard story={story2} /&gt;</code></span>) makes code repetitive and rigid. If a newsroom publishes twenty new articles or removes an old report, an engineer would have to edit the component file and redeploy the code.</p>
+<p>To see this in action on The National Times, you open your editor to build the main news feed: <code>src/App.jsx</code>. The editorial team gives you an array of story objects from their database. Each story has a unique <code>id</code>, a <code>title</code>, and a <code>category</code>. You want to display these stories in a clean list where editors can type notes directly into each story card.</p>
+<p>It is possible that a developer may reach for the array <code>map()</code> method and write <span class="code-line-callout"><code>{stories.<span class="fn">map</span>((story, index) =&gt; &lt;StoryRow key={index} story={story} /&gt;)}</code></span> assuming that the array index is a simple and harmless choice for the key. When they do, the initial page appears to render without issues:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Naive Index Key Attempt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">Feed</span>({ stories }) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">WRONG: Using array index as key causes state drift on prepend</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;ul&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      {stories.<span class="fn">map</span>((story, index) =&gt; (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">        &lt;li key={index}&gt;&lt;input placeholder=<span class="str">"Add note..."</span> /&gt;&lt;/li&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      ))}</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/ul&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice what happens when the collection changes. Suppose an editor types "verify budget figures" into the note input for the first story ("City Transit Accord Finalized"). Suddenly, breaking news occurs, and an urgent story is prepended to the top of the array at index 0. The browser updates, but the editor's typed note does not stay with the transit story. Instead, the note "verify budget figures" now appears inside the note input for the brand new urgent story!</p>
+<p>This bug happens because index keys force React to match elements by their numerical position (<code>0</code> to <code>0</code>, <code>1</code> to <code>1</code>) rather than their real identity. When the new story enters at index 0, React compares the previous index 0 with the new index 0. React updates the text title inside the existing DOM node, but it leaves the internal input text untouched. The physical input stays at index 0, attached to the wrong article.</p>
+<p>To solve this problem, React combines standard JavaScript array transformations with <strong>stable element keys</strong>. Instead of hardcoding markup or using fragile indices, you transform arrays of data into arrays of JSX elements using <code>.map()</code>. Crucially, you assign each item a stable, unique <code>key</code> prop based on permanent data (such as a database ID). This key gives each item a permanent identity across renders, ensuring that React moves the physical DOM node and its typed text to the correct new position.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><p><strong>Why do user inputs jump to the wrong item when using index keys?</strong></p>
+  <p>When using array indices as keys (<code>key={index}</code>), React tracks elements purely by their numerical order rather than their data identity. When an item is prepended at index 0, every existing item shifts down by one position. React looks at index 0, sees that the title text changed, and mutates the existing DOM node in place. However, the browser's internal input buffer lives directly inside the physical DOM node. Because React reuses the existing node at index 0 instead of moving it, whatever text the user typed stays in that first box. To the user, their typed input appears to jump to the wrong story. To prevent this, you must always provide a permanent database ID (<code>key={story.id}</code>) so React can move the actual DOM node to its new position.</p></div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>How JavaScript Transforms Arrays and How React Understands Collections</h3>
+<p>To understand how React renders lists, we must first look at what a list actually is in React. React does not introduce a proprietary <code>&lt;List&gt;</code> component or a custom loop directive like <code>v-for</code> or <code>*ngFor</code>. In React, a list is simply a standard JavaScript array containing JSX elements. In earlier lessons, you learned that curly braces <code>{}</code> inside JSX open an evaluation window for JavaScript expressions. When you put an array of JSX elements inside curly braces—such as <span class="code-line-callout"><code>{[&lt;li key=<span class="str">"1"</span>&gt;A&lt;/li&gt;, &lt;li key=<span class="str">"2"</span>&gt;B&lt;/li&gt;]}</code></span>—React unpacks that array and renders each item in sequential order into the browser DOM.</p>
+<p>For developers who are newer to JavaScript, let us briefly review the <strong><code>map()</code> array method</strong>. The <code>map()</code> method is a standard JavaScript function available on all arrays. It takes a callback function, runs that function once on each item in the array, and returns a <strong>brand-new array</strong> containing the transformed items. The original array remains completely untouched. For example, <span class="code-line-callout"><code>[<span class="nl">1</span>, <span class="nl">2</span>, <span class="nl">3</span>].<span class="fn">map</span>(n =&gt; n * <span class="nl">2</span>)</code></span> produces <code>[2, 4, 6]</code>. In React, instead of multiplying numbers, our callback function takes a data object (like a story) and returns a JSX element (like <span class="code-line-callout"><code>&lt;StoryRow key={story.id} story={story} /&gt;</code></span>).</p>
+<p>Next, let us review the difference between an arrow function with an <strong>implicit return</strong> and an arrow function with a <strong>block body</strong>. In JavaScript, when you write an arrow function without curly braces on the right side of the arrow (<span class="code-line-callout"><code>story =&gt; &lt;StoryRow story={story} /&gt;</code></span>), JavaScript uses an implicit return. It automatically returns the expression right after the arrow. However, if you add curly braces after the arrow (<code>story =&gt; { ... }</code>), you create a block body. A block body executes code statements line by line, but it returns <code>undefined</code> unless you explicitly write the <code>return</code> keyword. If you write <span class="code-line-callout"><code>stories.<span class="fn">map</span>(story =&gt; { &lt;StoryRow story={story} /&gt; })</code></span> the callback returns <code>undefined</code> for every story, and your list renders completely blank.</p>
+<p>Finally, we must understand why React demands a <strong><code>key</code> prop</strong> on every item in a list. When an application updates, React creates a new tree of element descriptions and compares it with the previous tree to decide what needs to change in the browser DOM. When React compares two lists of child elements, it needs a way to tell which item in the new list matches which item in the old list. Without keys, React falls back to <strong>positional matching</strong>: it compares the first new item to the first old item, the second to the second, and so on. If an item is inserted, deleted, or reordered, positional matching overwrites DOM nodes in place and scrambles state. With unique, stable keys, React can track each item throughout its lifetime, moving existing DOM nodes smoothly and preserving user inputs.</p>
+</div>
+<div class="keep-together">
+<h3>Principles of React: The Core Laws of Lists and Keys</h3>
+<p>When preparing for technical interviews, candidates must clearly explain how to transform arrays into JSX, why block bodies in arrow functions can cause silent blank screens, how React uses keys during reconciliation, why array indices and random numbers make dangerous keys, and why child components cannot read <code>props.key</code>. To master these concepts, we formalize the six governing principles of lists and keys:</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Build a List by Mapping Data to an Array of Elements</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">array transformation</span>
+          <span class="gloss-def">converting an array of raw data objects into a new array of JSX element descriptors using map</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">declarative list rendering</span>
+          <span class="gloss-def">placing an array of element descriptors inside JSX curly braces for React to unpack and render in order</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">We transform an array of data objects into an array of JSX elements using the standard JavaScript <code>map()</code> method. When we place the resulting array inside JSX curly braces, React automatically renders each element in sequential order. This ensures the structure of the user interface follows the data rather than hardcoded markup.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>In React, the user interface is a direct projection of data (<code>UI = f(data)</code>). When you have a collection of items, you do not write imperative loops that append elements to the page one by one. Instead, you call <span class="code-line-callout"><code>stories.<span class="fn">map</span>(story =&gt; &lt;StoryRow key={story.id} story={story} /&gt;)</code></span></p>
+<p>Under the hood, <code>map()</code> runs your callback function once for every story in the array and returns a new array of lightweight React element objects in memory.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Data Array to JSX Mapping</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> stories = [</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  { id: <span class="str">'story-1'</span>, title: <span class="str">'Transit Budget Approved'</span> },</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  { id: <span class="str">'story-2'</span>, title: <span class="str">'Clean Energy Project Begins'</span> },</span></div>
+<div class="row even"><span class="num">4</span><span class="src">];</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">const</span> storyElements = stories.<span class="fn">map</span>(story =&gt; (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  &lt;li key={story.id}&gt;{story.title}&lt;/li&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">));</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">console.<span class="fn">log</span>(storyElements); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Array of React element objects</span>
+      </div></div></div></div></div>
+<p>When you inspect <code>storyElements</code> in the console, you see an array of plain JavaScript objects, where each object has a <code>type</code> property (such as <code>'li'</code>) and a <code>props</code> property containing <code>{ children: story.title }</code>. When you place <code>{storyElements}</code> inside your JSX return statement, React unpacks that array and paints the corresponding DOM elements in sequential order. If the data array grows from two stories to three, React produces three element objects and adds the third node to the screen.</p>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Return the JSX from the Map Callback</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">expression body</span>
+          <span class="gloss-def">an arrow function without curly braces that automatically returns the single expression after =&gt;</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">block body</span>
+          <span class="gloss-def">an arrow function with curly braces that requires an explicit return statement to output a value</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">When writing a <code>map()</code> callback function, ensure it returns a JSX element. If you use an arrow function with curly braces, you must write an explicit <code>return</code> statement. If you omit the <code>return</code> statement, the callback returns <code>undefined</code> for every item, and the list silently renders completely empty.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">stories.<span class="fn">map</span>(story =&gt; (</div><div class="case-code-line">  &lt;StoryRow key={story.id} story={story} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Clean implicit return emits element</span></div><div class="case-code-line">))</div></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-watermark-bg"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">stories.<span class="fn">map</span>(story =&gt; {</div><div class="case-code-line">  &lt;StoryRow key={story.id} story={story} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Block body without return yields undefined</span></div><div class="case-code-line">})</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>The official React documentation marks this pattern as an important pitfall because the mistake is completely silent. In JavaScript, an arrow function can be written with an expression body or a block body. In an expression body (<span class="code-line-callout"><code>story =&gt; &lt;StoryRow ... /&gt;</code></span>), there are no curly braces around the body, and JavaScript implicitly returns the value.</p>
+<p>However, if you write curly braces after the arrow (<span class="code-line-callout"><code>story =&gt; { &lt;StoryRow ... /&gt; }</code></span>), JavaScript treats those braces as a code block. Inside a code block, statements execute sequentially, but nothing is returned unless you explicitly write the <code>return</code> keyword.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Implicit vs Explicit Return in Map</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> implicitList = stories.<span class="fn">map</span>(story =&gt; (</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Implicit return: automatically returns element after arrow</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  &lt;StoryRow key={story.id} story={story} /&gt;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">));</span></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="kw">const</span> explicitList = stories.<span class="fn">map</span>(story =&gt; {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Explicit return: required when using block body with braces</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;StoryRow key={story.id} story={story} /&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">});</span></div></div></div></div>
+<p>When <code>map()</code> runs a block-body callback without a <code>return</code> statement over an array of ten stories, it collects ten <code>undefined</code> values and returns <code>[undefined, undefined, ...]</code>. Because React's suppression whitelist renders zero DOM nodes for <code>undefined</code>, the container element (<code>&lt;ul&gt;</code> or <code>&lt;div&gt;</code>) renders completely blank. The browser console produces no errors and no warnings. Whenever a list renders blank, check whether your arrow function uses curly braces without an explicit <code>return</code>.</p>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Put a Unique Key on the Outermost Element Returned by Map</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">outermost element</span>
+          <span class="gloss-def">the top-level JSX tag returned directly by the map callback function</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">sibling uniqueness</span>
+          <span class="gloss-def">the requirement that keys must be distinct among elements within the same array</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Place the <code>key</code> prop on the outermost element directly returned inside the <code>map()</code> call, never on elements nested inside a child component. The key must be unique among its sibling elements in that array. If an item returns multiple sibling nodes, wrap them in a <code>&lt;Fragment key={...}&gt;</code> instead of an empty <code>&lt;&gt;</code> tag.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">stories.<span class="fn">map</span>(story =&gt; (</div><div class="case-code-line">  &lt;StoryRow key={story.id} story={story} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Key placed on outermost element returned by map</span></div><div class="case-code-line">))</div></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-watermark-bg"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">stories.<span class="fn">map</span>(story =&gt; (</div><div class="case-code-line">  &lt;StoryRow story={story} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Missing key on child component: key placed inside StoryRow root li</span></div><div class="case-code-line">))</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>A frequent mistake happens when developers extract a list row into its own component. When you take the code from <span class="code-line-callout"><code>&lt;li key={story.id}&gt;{story.title}&lt;/li&gt;</code></span> and move it into a new component named <code>&lt;StoryRow /&gt;</code>, you might be tempted to put the <code>key</code> prop on the <code>&lt;li&gt;</code> inside <code>StoryRow.jsx</code>.</p>
+<p>When you do this, React immediately prints a warning in the console: <em>"Warning: Each child in a list should have a unique 'key' prop. Check the render method of <code>Feed</code>."</em></p>
+<div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Key on Extracted Row Component</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">Feed</span>({ stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;ul&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      {stories.<span class="fn">map</span>(story =&gt; (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">        &lt;StoryRow key={story.id} story={story} /&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      ))}</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/ul&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>React evaluates keys at the array level where the items are mapped. It needs the key directly on the tag returned by the <code>map</code> callback—<span class="code-line-callout"><code>&lt;StoryRow key={story.id} /&gt;</code></span>—so it knows which <code>&lt;StoryRow&gt;</code> component corresponds to which item. Furthermore, keys only need to be unique among <strong>siblings</strong> in that specific array; using the same key in a completely different list is completely fine.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Keyed Fragment for Multi-Node Items</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { Fragment } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">function</span> <span class="fn">StoryList</span>({ stories }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> stories.<span class="fn">map</span>(story =&gt; (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;Fragment key={story.id}&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;dt&gt;{story.title}&lt;/dt&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;dd&gt;{story.category}&lt;/dd&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/Fragment&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  ));</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>If an item in your list must return two adjacent elements without adding an extra wrapper <code>&lt;div&gt;</code> to the DOM (for example, a <code>&lt;dt&gt;</code> term and a <code>&lt;dd&gt;</code> description in a definition list), you cannot use the empty <code>&lt;&gt;...&lt;/&gt;</code> shorthand because shorthand fragments cannot accept props. You must import <code>Fragment</code> from <code>'react'</code> and write <code>&lt;Fragment key={story.id}&gt;</code>.</p>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">Treat Keys as the Identity React Uses to Match Items Between Renders</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">element identity</span>
+          <span class="gloss-def">a persistent identifier that ties a virtual element to its physical DOM node across renders</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">positional diffing</span>
+          <span class="gloss-def">React's fallback reconciliation model that compares items by numerical index when keys are missing or unstable</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">React uses keys as permanent identifiers to match elements between renders. When a list re-renders, React pairs each new element with the previous element that shares the same key and preserves its physical DOM node. Without keys, React pairs elements purely by position, rewriting DOM content in place and breaking local element state.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>This principle explains the core mechanism behind React's reconciliation engine. When React renders components into the browser, it creates real DOM nodes. Certain DOM elements hold internal state that lives exclusively inside the browser: text typed into an uncontrolled <code>&lt;input&gt;</code>, the scroll position of a box, or the state of a checkbox.</p>
+<p>When a list re-renders, React must decide whether to create new DOM nodes, delete old ones, or update existing nodes.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Array Prepend Mutation Scenario</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> initialFeed = [</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  { id: <span class="str">'story-1'</span>, title: <span class="str">'City Transit Plan'</span> },</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  { id: <span class="str">'story-2'</span>, title: <span class="str">'Clean Energy Project'</span> },</span></div>
+<div class="row even"><span class="num">4</span><span class="src">];</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="kw">const</span> updatedFeed = [</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Urgent story prepended at index 0</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  { id: <span class="str">'urgent-99'</span>, title: <span class="str">'Flash Flood Alert'</span> },</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  ...initialFeed,</span></div>
+<div class="row even"><span class="num">8</span><span class="src">];</span></div></div></div></div>
+<p>If you do not provide keys, or if you use array indices, React defaults to <strong>positional diffing</strong>. It compares index 0 to index 0, index 1 to index 1, and so on. When an urgent story is prepended at index 0, the story that was previously at index 0 moves to index 1. Because React compares by position, it looks at index 0, sees that the title changed, and updates the text of the existing DOM node in place. However, the browser's internal input buffer is not touched; whatever the user typed into the input at index 0 stays in that physical DOM node. To the user, their typed note suddenly jumps to the new urgent story!</p>
+<p>When you provide stable keys (<code>key={story.id}</code>), React matches the previous <code>story-1</code> element with the new <code>story-1</code> element. It sees that <code>story-1</code> moved from index 0 to index 1, and it physically moves the existing DOM node in the page. The input text, focus, and cursor position move along with their story.</p>
+<aside class="callout callout-principle" data-principle="5">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 5</span></div>
+    <h4 class="principle-title">Key Items by a Stable ID from the Data, Never by Array Index or Random Values</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">stable identifier</span>
+          <span class="gloss-def">a permanent ID tied to a data entity that never changes throughout the application lifetime</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">random key churn</span>
+          <span class="gloss-def">generating keys on the fly during render, causing React to destroy and recreate the entire DOM tree on every update</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Always use a permanent, stable identifier from your data as the key, such as a database ID or a unique ID created when the item was first generated. Never use the array index for lists that can change, and never generate keys during render using <code>Math.random()</code>. Random keys force React to recreate all DOM nodes on every render, losing focus and destroying performance.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">stories.<span class="fn">map</span>(story =&gt; (</div><div class="case-code-line">  &lt;StoryRow key={story.id} story={story} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Stable database ID persists across renders</span></div><div class="case-code-line">))</div></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-watermark-bg"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">stories.<span class="fn">map</span>(story =&gt; (</div><div class="case-code-line">  &lt;StoryRow key={Math.<span class="fn">random</span>()} story={story} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Random key forces complete DOM teardown and recreation on every render</span></div><div class="case-code-line">))</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>A key must be stable across renders. There are three common sources of keys: permanent database IDs from server data (<code>story.id</code>), locally generated IDs created once when an item is created (<code>crypto.randomUUID()</code>), and array indices.</p>
+<p>You should only use the array index as a key if your list meets three strict conditions: the list is completely static, it will never be filtered or reordered, and items will never be added or removed.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Stable Data ID vs Random Key Churn</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">stories.<span class="fn">map</span>(story =&gt; (</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">BEST PRACTICE: Permanent entity ID created at data inception</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  &lt;StoryRow key={story.id} story={story} /&gt;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">));</span></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src">stories.<span class="fn">map</span>(story =&gt; (</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">WRONG: Random key on each render destroys and recreates DOM</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  &lt;StoryRow key={Math.<span class="fn">random</span>()} story={story} /&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">));</span></div></div></div></div>
+<p>Generating keys on the fly during render with <code>key={Math.random()}</code> is even worse than using indices. Because <code>Math.random()</code> executes on every single render pass, every element gets a completely new key every time the component updates.</p>
+<p>When React compares the new tree with the old tree, none of the keys match. React assumes that all previous items were deleted and that completely new items were created. It tears down all existing DOM nodes and rebuilds them from scratch. This drops typing focus, wipes input values, and causes noticeable visual lag. Keys must remain constant across renders for the same data entity.</p>
+<aside class="callout callout-principle" data-principle="6">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 6</span></div>
+    <h4 class="principle-title">Pass the ID as Its Own Prop When the Component Needs It</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">reserved prop</span>
+          <span class="gloss-def">a prop like key or ref that React consumes internally and excludes from props</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">explicit data passing</span>
+          <span class="gloss-def">passing an identifier under a distinct prop name so child components can read it</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">React reserves the <code>key</code> prop for its internal reconciliation engine and does not pass it down to your component. If a child component needs the story's ID for links, event handlers, or accessibility labels, you must pass it as a separate, explicitly named prop such as <code>id={story.id}</code> or pass the entire story object.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">&lt;StoryRow key={story.id} id={story.id} story={story} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Explicit id prop accessible inside child component</span></div></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-watermark-bg"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">&lt;StoryRow key={story.id} story={story} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Component attempts to read props.key directly, yielding undefined</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>Developers are often surprised to find that reading <code>props.key</code> inside a child component returns <code>undefined</code>. If an engineer writes <span class="code-line-callout"><code>&lt;button onClick={() =&gt; <span class="fn">deleteStory</span>(props.key)}&gt;Delete&lt;/button&gt;</code></span> the delete function receives <code>undefined</code>, and React prints a warning in the console: <em>"Warning: StoryRow: <code>key</code> is not a prop. Trying to access it will result in <code>undefined</code> being returned. If you need to access the same value within the child component, you should pass it as a different prop."</em></p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Passing Entity IDs as Dedicated Props</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">Feed</span>({ stories }) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Parent passes key for React and storyId for component logic</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> stories.<span class="fn">map</span>(story =&gt; (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;StoryRow key={story.id} storyId={story.id} story={story} /&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  ));</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">function</span> <span class="fn">StoryRow</span>({ storyId, story }) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> &lt;article data-id={storyId}&gt;&lt;h2&gt;{story.title}&lt;/h2&gt;&lt;/article&gt;;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>React consumes <code>key</code> (and <code>ref</code>) internally for its fiber and reconciliation system and intentionally strips it from the component's <code>props</code> object. If your component needs the ID—for example, to build a link URL <code>&lt;a href={</code>/story/${storyId}<code>}&gt;</code>, set an HTML <code>data-id</code> attribute, or trigger a callback—you must pass the ID under an ordinary prop name such as <code>id</code>, <code>storyId</code>, or pass the whole <code>story</code> object and read <code>story.id</code>.</p>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for national-times - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryRow</span><span class="component-explorer-props">story={story1}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-span" data-elem="[span.badge.politics]"><div class="ui-elem-content">Politics</div></div><div class="ui-elem ui-tag-h2" data-elem="[h2.story-title]"><div class="ui-elem-content">City Transit Accord Finalized</div></div><div class="ui-elem ui-tag-input" data-elem="[input.note-box]"><div class="ui-elem-content"><div class="surface-ui-input"><span class="surface-ui-input-placeholder">Add editor note...</span></div></div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryRow</span><span class="component-explorer-props">story={story2}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-span" data-elem="[span.badge.environment]"><div class="ui-elem-content">Environment</div></div><div class="ui-elem ui-tag-h2" data-elem="[h2.story-title]"><div class="ui-elem-content">Clean Energy Project Approved</div></div><div class="ui-elem ui-tag-input" data-elem="[input.note-box]"><div class="ui-elem-content"><div class="surface-ui-input"><span class="surface-ui-input-placeholder">Add editor note...</span></div></div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryRow</span><span class="component-explorer-props">story={story3}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-span" data-elem="[span.badge.culture]"><div class="ui-elem-content">Culture</div></div><div class="ui-elem ui-tag-h2" data-elem="[h2.story-title]"><div class="ui-elem-content">Historic Library Reopens Downtown</div></div><div class="ui-elem ui-tag-input" data-elem="[input.note-box]"><div class="ui-elem-content"><div class="surface-ui-input"><span class="surface-ui-input-placeholder">Add editor note...</span></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="national-times: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">national-times: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Main newsroom feed holding story data and mapping items with stable keys</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryRow.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Renders individual article row with title, category badge, and editorial input</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">CategoryBadge.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-leaf">leaf</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Modular category badge styling categories like Politics, Environment, or Culture</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Warm Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #d98c47; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #f3caa3; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we declare the parent container</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the story row boundary</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/StoryRow.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we extract the category badge</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/CategoryBadge.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 11.1: Figure 11.1: The progressive assembly pipeline of list mapping and key assignment across components</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we declare the parent container';">First, we declare the parent container</div>
+      <div class="card-components"><span class="component-tag">&lt;src/App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>We begin our implementation by constructing <code>src/App.jsx</code>. In our newsroom application, story items are stored as an array of structured objects. Each story has a permanent <code>id</code> string (such as <code>'story-101'</code>), a <code>title</code>, and a <code>category</code>. In <code>App.jsx</code>, we define our initial story collection and render a list of cards by calling <code>stories.map()</code>. Notice how we place the <code>key</code> prop directly on the outermost element returned by the callback: <span class="code-line-callout"><code>&lt;StoryRow key={story.id} story={story} /&gt;</code></span></p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> StoryRow <span class="kw">from</span> <span class="str">'./components/StoryRow.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> stories = [</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    { id: <span class="str">'story-101'</span>, title: <span class="str">'City Transit Accord Finalized'</span>, category: <span class="str">'Politics'</span> },</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    { id: <span class="str">'story-102'</span>, title: <span class="str">'Clean Energy Project Approved'</span>, category: <span class="str">'Environment'</span> }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  ];</span></div>
+<div class="row even"><span class="num">8</span><span class="src"></span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;main className=<span class="str">"feed-container"</span>&gt;</span></div></div></div></div>
+<p>Inside the main container, we render the header and embed our array transformation inside curly braces. Notice that we write <span class="code-line-callout"><code>stories.<span class="fn">map</span>(story =&gt; &lt;StoryRow key={story.id} story={story} /&gt;)</code></span> using an expression body with an implicit return. Because the return is implicit, the callback reliably returns our <code>&lt;StoryRow /&gt;</code> component for every story without returning <code>undefined</code>. Furthermore, each <code>&lt;StoryRow /&gt;</code> receives two props: the reserved <code>key={story.id}</code> prop used exclusively by React for reconciliation, and the <code>story={story}</code> prop containing the data object that the component displays.</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">11</span><span class="src">      &lt;header className=<span class="str">"feed-header"</span>&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">        &lt;h1&gt;The National Times: Today<span class="str">'s Dispatch&lt;/h1&gt;</span></span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      &lt;/header&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      &lt;ul className=<span class="str">"story-list"</span>&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">        {stories.<span class="fn">map</span>(story =&gt; &lt;StoryRow key={story.id} story={story} /&gt;)}</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      &lt;/ul&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the story row boundary';">Next, we build the story row boundary</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/StoryRow.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Next, we construct <code>src/components/StoryRow.jsx</code>. In accordance with component-driven architecture, <code>StoryRow</code> is responsible for presenting a single story. It receives the <code>story</code> object through props. Notice that <code>StoryRow</code> does not attempt to read <code>props.key</code> because React strips the key prop during element creation. Instead, <code>StoryRow</code> reads <code>story.title</code> and <code>story.category</code>. To demonstrate the real-world friction of list reconciliation, <code>StoryRow</code> renders an uncontrolled <span class="code-line-callout"><code>&lt;input type=<span class="str">"text"</span> placeholder=<span class="str">"Add editor note..."</span> /&gt;</code></span> Because the input is uncontrolled, the text typed by a journalist lives directly inside the browser DOM node. When React moves or reorders this component, our stable key ensures that this physical DOM node moves with its corresponding story.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryRow.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> CategoryBadge <span class="kw">from</span> <span class="str">'./CategoryBadge.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryRow</span>({ story }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;li className=<span class="str">"story-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;CategoryBadge category={story.category} /&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;h2 className=<span class="str">"story-title"</span>&gt;{story.title}&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      &lt;input type=<span class="str">"text"</span> placeholder=<span class="str">"Add editor note..."</span> /&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;/li&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we extract the category badge';">Finally, we extract the category badge</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/CategoryBadge.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Finally, we construct <span class="code-line-callout"><code>src/components/CategoryBadge.jsx</code></span> As our design evolves, different newsroom categories require distinctive styling: politics displays a crimson pill, environment uses an emerald tag, and culture receives a slate tone. By extracting this presentation logic into a dedicated leaf component, <code>StoryRow</code> remains focused on structure and layout while <code>CategoryBadge</code> handles visual styling. <code>CategoryBadge</code> receives the category string prop and applies a clean lowercase CSS class. Notice that <code>CategoryBadge</code> is a pure presentation component with zero local state and zero knowledge of list keys; list keys belong strictly at the collection level where mapping occurs.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CategoryBadge.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">CategoryBadge</span>({ category }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> categoryClass = category ? category.<span class="fn">toLowerCase</span>() : <span class="str">'general'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;span className={<span class="str">`badge badge-${categoryClass}`</span>}&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      {category}</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>root application shell</strong> manages the story data collection and maps items into JSX elements. It places the permanent key={story.id} prop on each row component, ensuring React can identify and match items across renders.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>StoryRow</span><span class="component-explorer-props">story={story}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>list item boundary</strong> encapsulates the presentation of a single story. It mounts the category badge, displays the headline, and provides an editor input field whose DOM state is preserved by React&#39;s key matching.</p></div></div></div><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>CategoryBadge</span><span class="component-explorer-props">category={...}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>leaf category badge</strong> formats and styles the category name into a colored pill. It acts as a pure presentation leaf with zero awareness of list mapping or parent keys.</p></div></div></div></div></div></div>
+</div>
+<p>Rendering lists in React is built on standard JavaScript array transformations and explicit element identity. By using <code>map()</code> to project data arrays into JSX descriptors, your application's user interface stays perfectly synchronized with your data. By placing stable, unique keys on the outermost element returned by <code>map()</code>, you give React the identity information it needs to preserve DOM nodes, protect user inputs, and update lists efficiently.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      font-size: 0.81rem;
+      line-height: 1.4;
+      vertical-align: top !important;
+      color: #334155;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .audit-table td.td-layer,
+    main .architecture-audit-figure .audit-table td.td-layer {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .layer-tag {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 1px;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-size: 0.72rem;
+      color: #64748b;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .architecture-audit-figure .audit-table td.td-naive,
+    main .architecture-audit-figure .audit-table td.td-naive {
+      color: #475569;
+    }
+    .architecture-audit-figure .audit-table td.td-reality,
+    main .architecture-audit-figure .audit-table td.td-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+      color: #1e293b;
+    }
+    .architecture-audit-figure .bullet {
+      font-weight: 800;
+      margin-right: 3px;
+    }
+    .architecture-audit-figure .bullet-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .bullet-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .verdict-row td {
+      border-top: 2px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 10px 12px !important;
+      background: #f1f5f9;
+    }
+    .architecture-audit-figure .verdict-row td.td-reality {
+      background: #e2e8f0 !important;
+    }
+    .architecture-audit-figure .verdict-badge {
+      font-weight: 800;
+      font-size: 0.82rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Lists and Keys Architecture Audit</div>
+    <div class="audit-title">Array Mapping, Element Identity &amp; Reconciliation Rules</div>
+    <p class="audit-subtitle">Contrasting fragile repetition, index keys, and random churn with stable declarative collection rendering</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Dimension</span>
+          <span class="th-main">List Mechanism</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">Anti-Pattern</span>
+          <span class="th-main">Fragile / Naive Practice</span>
+          <span class="th-sub sub-danger">Identity Bugs &amp; Teardowns</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">React Reality</span>
+          <span class="th-main">Declarative List Architecture</span>
+          <span class="th-sub sub-teal">Idiomatic Platform Laws</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Array Projection</span>
+          <span class="layer-role">Data to JSX</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Manual Tag Duplication</strong><br>
+          Hardcoding rows by hand or writing imperative DOM loops creates brittle code that drifts when data updates.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Declarative Array Mapping</strong><br>
+          Calling <code>stories.map(...)</code> returns an array of element descriptors that React automatically unpacks and renders in order.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Callback Body</span>
+          <span class="layer-role">Return Syntax</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Missing Return in Block Body</strong><br>
+          Writing <code>story =&gt; { &lt;Row /&gt; }</code> returns <code>undefined</code> for every item, causing the list to silently render empty with zero errors.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Implicit or Explicit Return</strong><br>
+          Writing <code>story =&gt; (&lt;Row /&gt;)</code> implicitly returns the element, or writing an explicit <code>return</code> inside block braces guarantees output.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Key Placement</span>
+          <span class="layer-role">Array Level</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Key Placed Inside Child Tag</strong><br>
+          Moving the key inside <code>StoryRow</code> onto its root <code>&lt;li&gt;</code> leaves the array element unkeyed, triggering console warnings.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Key on Outermost Map Element</strong><br>
+          Placing <code>key={story.id}</code> directly on <code>&lt;StoryRow /&gt;</code> gives React the identity hint it needs at the collection level.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Key Source</span>
+          <span class="layer-role">Identity vs Position</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Array Index (key={index})</strong><br>
+          Forces positional diffing; prepending an item causes typed input text, focus, and audio state to attach to the wrong story.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Stable Entity Identifier</strong><br>
+          Using permanent database IDs (<code>story.id</code>) preserves element identity across reordering, insertions, and deletions.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Dynamic Keys</span>
+          <span class="layer-role">Stability Contract</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Render-Time Random Keys</strong><br>
+          Writing <code>key={Math.random()}</code> generates new keys on every render pass, destroying and rebuilding all DOM nodes continuously.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Persistent Entity Data</strong><br>
+          Keys are tied to the data record itself; they remain stable across render passes so React can reuse existing DOM nodes.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">Entity ID Access</span>
+          <span class="layer-role">Component Props</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Reading props.key in Child</strong><br>
+          React strips <code>key</code> from props; attempting to read <code>props.key</code> returns <code>undefined</code> and logs a warning.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Explicit Dedicated Prop</strong><br>
+          Pass the ID under a dedicated name like <code>id={story.id}</code> or access it through the <code>story.id</code> object prop.
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td class="td-layer">
+          <span class="verdict-badge">Verdict</span>
+        </td>
+        <td class="td-naive">
+          <strong>Positional Scrambling &amp; High DOM Churn</strong><br>
+          Omitting keys or using indices leads to scrambled form inputs and corrupted user state during list updates.
+        </td>
+        <td class="td-reality">
+          <strong>Surgical Reconciliation &amp; State Protection</strong><br>
+          Stable entity keys give React persistent element identity, moving physical DOM nodes cleanly without losing local state.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 11.2: Figure 11.2: Architecture audit of list mapping patterns, key selection rules, and reconciliation behavior</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Dynamic Content Feeds and Catalogs</strong>: In news portals, social media feeds, and product catalogs, you map collections of server data into card components, using permanent entity database IDs as keys to allow smooth filtering and insertion.</li>
+<li><strong>Interactive Form Repeaters</strong>: In invoice generators, survey builders, or recipe ingredient lists where users can add, remove, and reorder input rows, stable keys ensure that typed text and active cursor focus never jump between rows when an item is deleted.</li>
+<li><strong>Tabbed Navigation and Menus</strong>: When rendering navigation bars or tab lists from an array of routes, stable keys allow React to track which tab is active without tearing down DOM nodes during tab switching.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Array Transformation</strong> ◼ Using methods like map to convert an array of raw data objects into a new array of JSX element descriptors.</li>
+<li><strong>Key Prop</strong> ◼ A special string or number attribute passed to list elements that React uses to identify items across renders.</li>
+<li><strong>Positional Diffing</strong> ◼ React's fallback reconciliation behavior when keys are absent or based on array index, comparing elements purely by sequential position.</li>
+<li><strong>Element Identity</strong> ◼ The association between a React virtual element and its persistent browser DOM node established by a stable key.</li>
+<li><strong>Key Churn</strong> ◼ An antipattern where keys change on every render (such as from Math.random), forcing React to destroy and recreate all DOM nodes.</li>
+<li><strong>Reserved Prop</strong> ◼ A prop such as key or ref that React consumes internally for reconciliation and does not pass down to the component.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li>Official guide on rendering data from arrays and keeping list items in order with keys (see <a href="https://react.dev/learn/rendering-lists">react.dev/learn/rendering-lists</a>).</li>
+<li>Official reference documentation explaining why keys are required on list children in createElement (see <a href="https://react.dev/reference/react/createElement">react.dev/reference/react/createElement</a>).</li>
+<li>Official reference documentation on rendering a list of Fragments with keys (see <a href="https://react.dev/reference/react/Fragment">react.dev/reference/react/Fragment</a>).</li>
+<li>Official deep dive on preserving and resetting component state using keys across renders (see <a href="https://react.dev/learn/preserving-and-resetting-state">react.dev/learn/preserving-and-resetting-state</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Array Transformation &amp; Return Syntax</span></div>
+<p class="summary-principle">➔ ALWAYS use <code>array.map()</code> to project data arrays into JSX element arrays inside curly braces.</p>
+<p class="summary-principle">➔ NEVER forget to write an explicit <code>return</code> statement when using a block body (<code>=&gt; { ... }</code>) in a <code>map</code> callback, which causes the list to render blank.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Key Placement &amp; Multi-Node Grouping</span></div>
+<p class="summary-principle">➔ ALWAYS place the <code>key</code> prop on the outermost element directly returned by the <code>map()</code> callback.</p>
+<p class="summary-principle">➔ NEVER use empty shorthand <code>&lt;&gt;...&lt;/&gt;</code> tags inside a mapped list when an item renders multiple siblings; always use <code>&lt;Fragment key={item.id}&gt;</code>.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Key Source &amp; Reconciliation Safety</span></div>
+<p class="summary-principle">➔ ALWAYS use permanent, stable entity IDs from your data (such as database IDs) as list keys.</p>
+<p class="summary-principle">➔ NEVER use array indices for lists that can reorder or insert, and NEVER generate keys on the fly during render with <code>Math.random()</code>.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> use stable entity IDs as keys on the outermost element returned by map</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">{stories.<span class="fn">map</span>(story =&gt; (</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Stable ID preserves element identity across reordering and insertions</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  &lt;StoryRow key={story.id} story={story} /&gt;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">))}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> use array indices as keys for dynamic lists</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">{stories.<span class="fn">map</span>((story, index) =&gt; (</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Positional index keys scramble user inputs when items are prepended</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  &lt;StoryRow key={index} story={story} /&gt;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">))}</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>IDIOMATIC REACT LIST MAPPING</strong><br>(Stable &amp; Resilient)</th><th><strong>FRAGILE / NAIVE PRACTICE</strong><br>(Identity Bugs &amp; Teardown)</th></tr></thead><tbody><tr><td><strong>Array Transformation</strong></td><td><code>data.map(item =&gt;</code><br><code>&lt;Row</code><br><code>key={item.id} /&gt;)</code><br>projects data directly to JSX</td><td>Hardcoded repetitive tags or<br>imperative DOM loop append</td></tr><tr><td><strong>Arrow Callback Body</strong></td><td>Implicit return <code>item =&gt; (&lt;Row /&gt;)</code> or<br>explicit <code>return</code> in <code>{}</code> block</td><td>Block body without <code>return</code><br><em>(silently renders empty list)</em></td></tr><tr><td><strong>Key Placement</strong></td><td>On outermost element returned by <code>map</code><br>(e.g. <code>&lt;Row key={id}&gt;</code>)</td><td>Placed inside <code>&lt;Row&gt;</code> on root <code>&lt;li&gt;</code><br><em>(triggers missing key warning)</em></td></tr><tr><td><strong>Key Source</strong></td><td>Permanent database ID (<code>item.id</code>) or<br>UUID created at item creation</td><td>Array index <code>key={index}</code> or<br><code>key={Math.random()}</code> churn</td></tr><tr><td><strong>Multi-Node Siblings</strong></td><td><code>&lt;Fragment</code><br><code>key={item.id}&gt;</code><br>preserves key without extra DOM node</td><td>Empty shorthand <code>&lt;&gt;</code><br><em>(cannot accept key prop)</em></td></tr><tr><td><strong>Reading ID in Child</strong></td><td>Passed as dedicated prop<br><code>id={item.id}</code> or read from object</td><td>Reading <code>props.key</code><br><em>(returns undefined with warning)</em></td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

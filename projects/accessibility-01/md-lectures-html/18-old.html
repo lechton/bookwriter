@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 18: Form Grouping and Error Association</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 18: Form Grouping and Error Association</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">How do you group related form controls and associate validation errors?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Arthur reaches the checkout screen on the National Times website to renew his annual subscription.</li>
+<li>Because Arthur is completely blind, he relies entirely on his screen reader while pressing Tab through the inputs.</li>
+<li>The checkout rejects his submission, paints three inputs in red borders, and resets his cursor to the top.</li>
+<li>Why does the speech synthesizer announce only bare text fields without mentioning any problem?</li>
+<li>Arthur cannot tell which inputs failed, why the purchase stopped, or how to fix his submission.</li>
+<li>Silent visual error states and orphaned inputs turn an ordinary payment into an impossible guessing game.</li>
+<li>Today we structure grouped inputs with fieldset and legend, wire errors with aria-describedby, and guide assistive tools through recovery.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Breakdown at Checkout: When Red Borders Say Nothing</h3>
+<p>In visual design, indicating a form error is straightforward: designers tint the failing text field with a red border, render a small exclamation mark icon, and display an explanatory message beneath the box. For a sighted user, this visual combination instantly flags what went wrong.</p>
+<p>For assistive technology, visual styling is completely invisible. When Arthur tabs into a credit card field marked in red, his screen reader queries the browser accessibility tree. If that input lacks programmatic error associations, the screen reader announces only the element name and its current value: "Card Number, edit text." The speech synthesizer conveys nothing about the red outline, nothing about the invalid format, and nothing about the error paragraph sitting right below it on the screen.</p>
+<p>Even before errors occur, complex forms frequently confuse screen readers when inputs lack structural grouping. Consider a set of two radio buttons labeled "Yes" and "No." If Arthur tabs onto "Yes," hearing only "Yes, radio button" tells him nothing about what question he is answering. Without a programmatic parent group, the context evaporates.</p>
+<p>To resolve these barriers, web standards provide two foundational mechanisms: semantic grouping through fieldset and legend elements, and programmatic error binding through the aria-invalid and aria-describedby attributes:</p>
+<style>:root {
+    --meta-landmark: #ea580c;
+    --meta-landmark-bg: #fff7ed;
+    --meta-focus: #0284c7;
+    --meta-sr: #7c3aed;
+    --meta-sr-bg: #f5f3ff;
+    --meta-wrong: #e11d48;
+    --meta-right: #059669;
+    
+    --font-ui: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-serif: 'Lora', Georgia, serif;
+    --font-meta: 'JetBrains Mono', Menlo, monospace;
+}
+
+/* Base Canvas Container */
+.a11y-canvas {
+    font-family: var(--font-ui);
+    color: #0f172a;
+    margin: 2rem 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+/* Width Modifiers */
+.a11y-canvas.w-half .browser-window {
+    max-width: 480px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-2-3 .browser-window {
+    max-width: 660px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-full .browser-window {
+    max-width: 100%;
+}
+
+/* The Browser Chrome */
+.browser-window {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+.browser-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #cbd5e1;
+}
+.browser-dots { display: flex; gap: 5px; }
+.browser-dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; }
+.browser-dot.red { background: #fca5a5; }
+.browser-dot.yellow { background: #fde047; }
+.browser-dot.green { background: #86efac; }
+.browser-title {
+    flex: 1;
+    font-family: var(--font-meta);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.browser-url { flex: 1; max-width: 400px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; color: #64748b; }
+
+/* The UI Layer (The actual mocked page) */
+.mock-page {
+    position: relative;
+    padding: 24px 28px;
+    background: #f8fafc;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* Minimal 2-Element Comparison Layout */
+.mock-page.layout-compare {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    padding: 24px 20px;
+    flex-wrap: wrap;
+}
+.mock-page.layout-compare .meta-validity-outline {
+    display: none;
+}
+.mock-page.layout-compare .ui-element {
+    margin-bottom: 0;
+    flex: 1 1 200px;
+    max-width: 270px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 16px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    position: relative;
+}
+.mock-page.layout-compare .meta-validity-tag {
+    top: -11px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 3px 12px;
+    border-radius: 99px;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+/* In compare mode, suppress the numbered tab-stop circle (1) as it makes no sense in a 2-element comparison */
+.mock-page.layout-compare .meta-focus-badge {
+    display: none !important;
+}
+/* In compare mode, suppress outer landmark boxes and tags that clash with top validity tags */
+.mock-page.layout-compare .meta-landmark-box,
+.mock-page.layout-compare .meta-landmark-tag {
+    display: none !important;
+}
+/* In compare mode, let screen reader tooltips flow naturally above note chips to eliminate text overlap */
+.mock-page.layout-compare .meta-sr-tooltip {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin-top: 12px;
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 10;
+}
+.mock-page.layout-compare .meta-sr-tooltip::before {
+    left: 50%;
+    margin-left: -4px;
+}
+.mock-page.layout-compare .ui-element.has-sr {
+    margin-bottom: 0;
+    padding-bottom: 16px;
+}
+.mock-page.layout-compare .has-sr .meta-note-chip {
+    margin-top: 10px;
+}
+
+/* UI Control Wrapper */
+.ui-control-wrapper {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+.ui-control-wrapper.is-input {
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Ghost Outline for Invisible Focus */
+.meta-ghost-outline {
+    position: absolute;
+    inset: -5px;
+    border: 2px dashed #f43f5e;
+    border-radius: 8px;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.15);
+}
+.meta-ghost-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    background: #f43f5e;
+    color: white;
+    font-family: var(--font-meta);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 99px;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    white-space: nowrap;
+    z-index: 60;
+}
+
+/* Status Note Chips */
+.meta-note-chip {
+    margin-top: 14px;
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.02em;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.has-sr .meta-note-chip {
+    margin-top: 48px;
+}
+.meta-note-chip.note-wrong {
+    background: #ffe4e6;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+}
+.meta-note-chip.note-right {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+.meta-note-chip.note-info {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
+.ui-element {
+    position: relative;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+}
+
+/* Selectively add space ONLY for elements that have a Screen Reader tooltip */
+.ui-element.has-sr { margin-bottom: 72px; }
+.ui-form-group.has-sr { margin-bottom: 72px; }
+
+/* Dynamically tint the SR tooltip based on validity */
+.is-right .meta-sr-tooltip, .is-right .meta-sr-tooltip::before {
+    background: var(--meta-right);
+    box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.3);
+}
+.is-wrong .meta-sr-tooltip, .is-wrong .meta-sr-tooltip::before {
+    background: var(--meta-wrong);
+    box-shadow: 0 10px 15px -3px rgba(225, 29, 72, 0.3);
+}
+
+.ui-masthead { font-family: var(--font-serif); font-size: 2rem; font-weight: 700; text-align: center; border-bottom: 4px double #0f172a; padding-bottom: 8px; color: #0f172a; }
+.ui-nav { font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; font-weight: 600; color: #334155; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: center; gap: 24px; }
+.ui-h1 { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 700; color: #0f172a; margin-top: 16px; margin-bottom: 4px;}
+.ui-text { font-size: 0.95rem; color: #475569; margin-bottom: 16px; }
+
+.ui-form-group { margin-bottom: 24px; }
+.ui-label { font-size: 0.85rem; font-weight: 600; color: #334155; display: block; margin-bottom: 6px; }
+.ui-input { width: 100%; max-width: 300px; border: 1px solid #94a3b8; border-radius: 6px; padding: 10px 14px; font-size: 0.95rem; color: #64748b; background: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); outline: none; min-height: 20px; box-sizing: content-box; }
+.ui-input.is-broken { border-color: #cbd5e1; color: #94a3b8; }
+
+.ui-button { display: inline-block; background: #2563eb; color: #fff; font-size: 0.95rem; font-weight: 600; padding: 10px 28px; border-radius: 6px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2); cursor: pointer; border: none; }
+.ac-inline-link { color: #2563eb; text-decoration: underline; font-weight: 600; font-size: 0.95rem; display: inline-block; }
+.ac-card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 18px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.ac-card-headline { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+.ac-card i { display: block; height: 8px; background: #f1f5f9; border-radius: 4px; margin-bottom: 6px; width: 90%; }
+.ac-card i:last-child { width: 65%; margin-bottom: 0; }
+.ui-footer { margin-top: 48px; padding: 24px; background: #1e293b; color: #f8fafc; font-size: 0.85rem; border-radius: 8px; text-align: center; }
+
+/* Meta-Layer Annotations */
+.meta-layer {
+    position: absolute;
+    font-family: var(--font-meta);
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* Landmarks */
+.meta-landmark-box {
+    inset: -8px;
+    border: 2px dashed var(--meta-landmark);
+    border-radius: 8px;
+    background: rgba(255, 247, 237, 0.3);
+}
+.meta-landmark-tag {
+    top: -12px;
+    left: 12px;
+    color: var(--meta-landmark);
+    background: var(--meta-landmark-bg);
+    border: 1px solid var(--meta-landmark);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.1);
+}
+
+/* Screen Reader Tooltips */
+.meta-sr-tooltip {
+    top: 100%;
+    left: 0;
+    margin-top: 12px;
+    background: var(--meta-sr);
+    color: white;
+    font-size: 0.7rem;
+    padding: 5px 8px;
+    border-radius: 6px;
+    white-space: normal;
+    max-width: 210px;
+    box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.meta-sr-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 16px;
+    width: 8px; height: 8px;
+    background: var(--meta-sr);
+    transform: rotate(45deg);
+}
+.meta-sr-badge {
+    background: rgba(255,255,255,0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+/* Focus Order */
+.meta-focus-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--meta-focus);
+    color: white;
+    border: 2px solid white;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    box-shadow: 0 0 0 2px var(--meta-focus), 0 3px 5px rgba(0,0,0,0.2);
+    z-index: 60;
+}
+.meta-focus-outline {
+    position: absolute;
+    inset: -5px;
+    border: 3px solid var(--meta-focus);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+/* Surface Dark mode for dark containers/footers */
+.mock-page.surface-dark {
+    background: #090d16;
+    background-image: radial-gradient(#1e293b 1px, transparent 1px);
+}
+.mock-page.surface-dark.layout-compare .ui-element {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.mock-page.surface-dark .meta-note-chip.note-wrong {
+    background: #450a0a;
+    color: #fca5a5;
+    border-color: #7f1d1d;
+}
+.mock-page.surface-dark .meta-note-chip.note-right {
+    background: #082f49;
+    color: #7dd3fc;
+    border-color: #0369a1;
+}
+
+/* Validity */
+.meta-validity-outline {
+    inset: -6px;
+    border: 2px solid transparent;
+    border-left-width: 6px;
+    border-radius: 8px;
+}
+.meta-validity-tag {
+    top: -12px;
+    left: 10px;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+}
+
+.is-wrong .meta-validity-outline { border-color: var(--meta-wrong); background: linear-gradient(90deg, rgba(225, 29, 72, 0.05) 0%, transparent 100%); }
+.is-right .meta-validity-outline { border-color: var(--meta-right); background: linear-gradient(90deg, rgba(5, 150, 105, 0.05) 0%, transparent 100%); }
+.is-wrong .meta-validity-tag { background: var(--meta-wrong); }
+.is-right .meta-validity-tag { background: var(--meta-right); }
+
+.relative-wrapper { position: relative; display: inline-block; width: 100%; max-width: 300px; }
+.relative-wrapper .ui-button { max-width: none; width: auto; }
+
+/* Image element */
+.ac-image {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 14px 18px;
+    color: #475569;
+    font-size: 0.85rem;
+    font-family: var(--font-meta);
+}
+.ac-picture {
+    width: 24px;
+    height: 24px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+.ac-image-file {
+    font-weight: 600;
+}
+.ac-chip-row {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+.ac-chip {
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.ac-chip.pass { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.ac-chip.fail { background: #ffe4e6; color: #be123c; border: 1px solid #fca5a5; }</style>
+<div class="a11y-canvas w-2-3">
+
+<div class="browser-window">
+	<div class="browser-chrome">
+		<div class="browser-dots">
+			<div class="browser-dot red"></div>
+			<div class="browser-dot yellow"></div>
+			<div class="browser-dot green"></div>
+		</div>
+		<div class="browser-title">
+			<svg class="w-3 h-3" style="width:11px;height:11px;margin-right:6px;color:#059669;display:inline-block;vertical-align:-1px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+			/checkout/digital-subscription — Grouped Controls and Inline Errors
+		</div>
+		<div style="width:40px;"></div>
+	</div>
+	<div class="mock-page show-landmarks show-sr show-focus show-validity  ">
+		<div class="ui-element ac-masthead has-landmark" style="z-index: 100;"><div class="meta-layer meta-landmark-box"></div><div class="meta-layer meta-landmark-tag">&lt;banner&gt;</div><div class="ui-masthead">The National Times</div></div>
+<div class="ui-element ac-h1" style="z-index: 99;"><div class="ui-h1">Complete Your Subscription</div></div>
+<div class="ui-element ac-text" style="z-index: 98;"><p class="ui-text">Select delivery cadence and enter billing information.</p></div>
+<div class="ui-element ac-region has-landmark" style="z-index: 97;"><div class="meta-layer meta-landmark-box"></div><div class="meta-layer meta-landmark-tag">&lt;region&gt;</div><div class="ac-generic">Payment Cadence Options</div></div>
+<div class="ui-element ac-input has-focus ui-form-group" style="z-index: 96;"><label class="ui-label">Monthly Digital ($12/mo)</label><div class="ui-control-wrapper is-input"><div class="meta-layer meta-focus-outline"></div><div class="meta-layer meta-focus-badge">1</div><div class="ui-input "></div></div></div>
+<div class="ui-element ac-input ui-form-group" style="z-index: 95;"><label class="ui-label">Annual All-Access ($120/yr)</label><div class="ui-control-wrapper is-input"><div class="ui-input "></div></div></div>
+<div class="ui-element ac-text has-landmark" style="z-index: 94;"><div class="meta-layer meta-landmark-box"></div><div class="meta-layer meta-landmark-tag">&lt;region&gt;</div><p class="ui-text">Cardholder Details</p></div>
+<div class="ui-element ac-input ui-form-group" style="z-index: 93;"><label class="ui-label">Cardholder Name</label><div class="ui-control-wrapper is-input"><div class="ui-input "></div></div></div>
+<div class="ui-element ac-input is-wrong has-validity has-focus has-sr ui-form-group" style="z-index: 92;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">WRONG: PLACEHOLDER ONLY</div><label class="ui-label">Card Number</label><div class="ui-control-wrapper is-input"><div class="meta-layer meta-focus-outline"></div><div class="meta-layer meta-focus-badge">2</div><div class="ui-input "></div></div><div class="meta-layer meta-sr-tooltip"><span class="meta-sr-badge">Screen Reader</span><span>Card Number, edit text, invalid entry. Error: Enter a valid 16-digit card number.</span></div></div>
+<div class="ui-element ac-text is-wrong has-validity is-sr-only" style="z-index: 91;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">WRONG: PLACEHOLDER ONLY</div><p class="ui-text">Enter a valid 16-digit card number.</p></div>
+<div class="ui-element ac-button has-focus has-sr" style="z-index: 90;"><div class="ui-control-wrapper"><div class="meta-layer meta-focus-outline"></div><div class="meta-layer meta-focus-badge">3</div><div class="ui-button">Authorize Payment ($120)</div></div><div class="meta-layer meta-sr-tooltip"><span class="meta-sr-badge">Screen Reader</span><span>Authorize Payment ($120), button</span></div></div>
+<div class="ui-element ac-footer has-landmark" style="z-index: 89;"><div class="meta-layer meta-landmark-box"></div><div class="meta-layer meta-landmark-tag">&lt;contentinfo&gt;</div><div class="ui-footer">The National Times, 2026</div></div>
+	</div>
+</div>
+</div>
+<p>Here is the fragile form markup that left Arthur stranded at the checkout:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">broken-checkout.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;div <span class="kw">class</span>=<span class="str">"billing-group"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;p <span class="kw">class</span>=<span class="str">"group-title"</span>&gt;Delivery Format&lt;/p&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 27px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-wrong">WRONG:</b> paragraph provides zero programmatic grouping for <b class="tag">CONTROLS</b></span>
+      </div></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;input type=<span class="str">"radio"</span> name=<span class="str">"plan"</span> id=<span class="str">"p1"</span> value=<span class="str">"m"</span>&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;label <span class="kw">for</span>=<span class="str">"p1"</span>&gt;Monthly Digital&lt;/label&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;input type=<span class="str">"radio"</span> name=<span class="str">"plan"</span> id=<span class="str">"p2"</span> value=<span class="str">"a"</span>&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  &lt;label <span class="kw">for</span>=<span class="str">"p2"</span>&gt;Annual All-Access&lt;/label&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;/div&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;div <span class="kw">class</span>=<span class="str">"field-container error"</span>&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">  &lt;label <span class="kw">for</span>=<span class="str">"cc-num"</span>&gt;Card Number&lt;/label&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src">  &lt;input type=<span class="str">"text"</span> id=<span class="str">"cc-num"</span> <span class="kw">class</span>=<span class="str">"input-error"</span>&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 27px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-wrong">WRONG:</b> red class conveys no programmatic error <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row"><span class="num">12</span><span class="src">  &lt;span <span class="kw">class</span>=<span class="str">"error-msg"</span>&gt;Enter a valid <span class="nl">16</span>-digit card number.&lt;/span&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 27px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-wrong">WRONG:</b> orphaned error text is ignored by screen <b class="tag">READERS</b></span>
+      </div></div>
+<div class="row"><span class="num">13</span><span class="src">&lt;/div&gt;</span></div></div></div></div>
+<p>Because the error message was a disconnected span element, Arthur's screen reader had no programmatic path linking the text description to the focused card field.</p>
+</div>
+<div class="keep-together">
+<h3>Semantic Grouping: Why Fieldset and Legend Are Mandatory</h3>
+<p>When individual form controls share an overarching question or category, placing them inside a generic container like a div fails WCAG 1.3.1 Info and Relationships. Screen readers do not announce div titles or preceding paragraph tags when tabbing through child controls.</p>
+<p>The HTML standard solves this with the <code>&lt;fieldset&gt;</code> and <code>&lt;legend&gt;</code> elements. The <code>&lt;fieldset&gt;</code> element establishes a container for related controls, and the <code>&lt;legend&gt;</code> element supplies the accessible group name. When a user tabs into any control inside the fieldset, the screen reader automatically announces the legend text before the control's individual label.</p>
+<p>The W3C Web Accessibility Initiative tutorial explains the cognitive and mechanical role of grouping:</p>
+<blockquote>Grouping related form controls makes forms more understandable for all users, as related controls are easier to identify. It also makes it easier for people to focus on smaller and more manageable groups rather than try to grasp the entire form at once.</blockquote>
+<p><em>W3C WAI, Grouping Controls, <code>resources/accessibility/wai/pages/design-develop/tutorials/forms/grouping.md</code></em></p>
+<p>Grouping is essential in three common scenarios:</p>
+<ol><li><strong>Radio button groups:</strong> where individual choices like "Monthly" and "Annual" only make sense under a shared prompt like "Billing Cadence."</li>
+<li><strong>Related checkbox sets:</strong> such as selecting multiple delivery days or newsletter preferences under a category heading.</li>
+<li><strong>Multi-field composite inputs:</strong> such as three separate inputs for date of birth (Day, Month, Year) or telephone components (Country Code, Area Code, Number).</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Triad of Accessible Error Handling</h3>
+<p>When validation fails, satisfying WCAG 3.3.1 Error Identification and WCAG 4.1.2 Name, Role, Value requires coordinating three synchronized steps:</p>
+<ol><li><strong>State signaling with <code>aria-invalid="true"</code>:</strong> This attribute informs the browser accessibility API that the element's current value fails validation rules. Screen readers immediately announce "invalid entry" or "alert" upon receiving focus.</li>
+<li><strong>Description association with <code>aria-describedby</code>:</strong> This attribute takes the ID of the error message element. The browser appends the error message text to the input's accessible description, speaking the error after the element label.</li>
+<li><strong>An accessible error summary:</strong> When the form submits with errors, a top-level error summary container with <code>role="alert"</code> announces the total error count and provides clickable in-page links directly to each failing control.</li></ol>
+<p>The W3C Understanding documentation defines the baseline mandate of Criterion 3.3.1:</p>
+<blockquote>The intent of this success criterion is to ensure that users are aware that an error has occurred and can determine what is wrong. In the case of an unsuccessful form submission, it is not sufficient to only re-display the form without providing any hint that the submission failed. The error must be indicated in text.</blockquote>
+<p><em>W3C, Understanding WCAG 2.0: Error Identification, <code>resources/accessibility/wcag/understanding/20/error-identification.html</code></em></p>
+</div>
+<div class="keep-together">
+<h3>Production Markup: Grouping and Error Wiring</h3>
+<p>Here is the robust, accessible implementation for the National Times subscription checkout:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">accessible-checkout.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;form novalidate&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;fieldset <span class="kw">class</span>=<span class="str">"plan-fieldset"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">    &lt;legend <span class="kw">class</span>=<span class="str">"plan-legend"</span>&gt;Select Subscription Cadence&lt;/legend&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 46px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> legend provides accessible group <b class="tag">NAME</b></span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;div <span class="kw">class</span>=<span class="str">"radio-option"</span>&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">      &lt;input type=<span class="str">"radio"</span> name=<span class="str">"cadence"</span> id=<span class="str">"cadence-m"</span> value=<span class="str">"monthly"</span>&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">      &lt;label <span class="kw">for</span>=<span class="str">"cadence-m"</span>&gt;Monthly <span class="fn">Digital</span> ($12/mo)&lt;/label&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">    &lt;div <span class="kw">class</span>=<span class="str">"radio-option"</span>&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">      &lt;input type=<span class="str">"radio"</span> name=<span class="str">"cadence"</span> id=<span class="str">"cadence-a"</span> value=<span class="str">"annual"</span> checked&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">      &lt;label <span class="kw">for</span>=<span class="str">"cadence-a"</span>&gt;Annual All-<span class="fn">Access</span> ($120/yr)&lt;/label&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">  &lt;/fieldset&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src"></span></div>
+<div class="row"><span class="num">14</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"field-row"</span>&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src">    &lt;label <span class="kw">for</span>=<span class="str">"card-num"</span> <span class="kw">class</span>=<span class="str">"field-label"</span>&gt;Card Number&lt;/label&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">    &lt;input</span></div>
+<div class="row"><span class="num">17</span><span class="src">      type=<span class="str">"text"</span></span></div>
+<div class="row"><span class="num">18</span><span class="src">      id=<span class="str">"card-num"</span></span></div>
+<div class="row"><span class="num">19</span><span class="src">      name=<span class="str">"cardNumber"</span></span></div>
+<div class="row"><span class="num">20</span><span class="src">      aria-required=<span class="str">"true"</span></span></div>
+<div class="row"><span class="num">21</span><span class="src">      aria-invalid=<span class="str">"true"</span></span></div>
+<div class="row"><span class="num">22</span><span class="src">      aria-describedby=<span class="str">"card-num-error"</span></span></div>
+<div class="row"><span class="num">23</span><span class="src">      <span class="kw">class</span>=<span class="str">"input-invalid"</span></span></div>
+<div class="row"><span class="num">24</span><span class="src">    &gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 46px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> binds error directly into accessible <b class="tag">DESCRIPTION</b></span>
+      </div></div>
+<div class="row"><span class="num">25</span><span class="src">    &lt;p id=<span class="str">"card-num-error"</span> <span class="kw">class</span>=<span class="str">"error-text"</span>&gt;</span></div>
+<div class="row"><span class="num">26</span><span class="src">      Enter a valid <span class="nl">16</span>-digit card number.</span></div>
+<div class="row"><span class="num">27</span><span class="src">    &lt;/p&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 46px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> referenced ID ensures error is announced on <b class="tag">FOCUS</b></span>
+      </div></div>
+<div class="row"><span class="num">28</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">29</span><span class="src">&lt;/form&gt;</span></div></div></div></div>
+<p>When Arthur tabs onto the card number input, his screen reader speaks in one continuous announcement: "Card Number, required, invalid entry, edit text. Enter a valid 16-digit card number." The entire barrier is eliminated.</p>
+</div>
+<div class="keep-together">
+<h3>Modern Svelte 5 Implementation of Form Error Handling</h3>
+<p>In dynamic single-page applications, validation errors appear dynamically after user interaction or API responses. Here is a production Svelte 5 component managing form state and focus shifts on error submission:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">SubscriptionCheckout.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">let</span> errors = <span class="hook">$state</span>({});</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="kw">let</span> cardNumber = <span class="hook">$state</span>(<span class="str">''</span>);</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">let</span> summaryHeading = <span class="hook">$state</span>(<span class="kw">null</span>);</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">validateForm</span>(event) {</span></div>
+<div class="row"><span class="num">7</span><span class="src">    event.<span class="fn">preventDefault</span>();</span></div>
+<div class="row"><span class="num">8</span><span class="src">    <span class="kw">const</span> newErrors = {};</span></div>
+<div class="row"><span class="num">9</span><span class="src"></span></div>
+<div class="row"><span class="num">10</span><span class="src">    <span class="kw">if</span> (!/^\d{<span class="nl">16</span>}$/.<span class="fn">test</span>(cardNumber.<span class="fn">replace</span>(/\s+/g, <span class="str">''</span>))) {</span></div>
+<div class="row"><span class="num">11</span><span class="src">      newErrors.cardNumber = <span class="str">'Enter a valid 16-digit card number without spaces.'</span>;</span></div>
+<div class="row"><span class="num">12</span><span class="src">    }</span></div>
+<div class="row"><span class="num">13</span><span class="src"></span></div>
+<div class="row"><span class="num">14</span><span class="src">    errors = newErrors;</span></div>
+<div class="row"><span class="num">15</span><span class="src"></span></div>
+<div class="row"><span class="num">16</span><span class="src">    <span class="kw">if</span> (Object.<span class="fn">keys</span>(newErrors).length &gt; <span class="nl">0</span>) {</span></div>
+<div class="row"><span class="num">17</span><span class="src">      summaryHeading?.<span class="fn">focus</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 65px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> programmatically shifts focus to error <b class="tag">SUMMARY</b></span>
+      </div></div>
+<div class="row"><span class="num">18</span><span class="src">    }</span></div>
+<div class="row"><span class="num">19</span><span class="src">  }</span></div>
+<div class="row"><span class="num">20</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">21</span><span class="src"></span></div>
+<div class="row"><span class="num">22</span><span class="src">&lt;form onsubmit={validateForm} novalidate&gt;</span></div>
+<div class="row"><span class="num">23</span><span class="src">  {#<span class="kw">if</span> Object.<span class="fn">keys</span>(errors).length &gt; <span class="nl">0</span>}</span></div>
+<div class="row"><span class="num">24</span><span class="src">    &lt;div <span class="kw">class</span>=<span class="str">"error-summary"</span> role=<span class="str">"alert"</span> tabindex=<span class="str">"-1"</span> bind:<span class="kw">this</span>={summaryHeading}&gt;</span></div>
+<div class="row"><span class="num">25</span><span class="src">      &lt;h2&gt;There are problems with your submission&lt;/h2&gt;</span></div>
+<div class="row"><span class="num">26</span><span class="src">      &lt;ul&gt;</span></div>
+<div class="row"><span class="num">27</span><span class="src">        {#each Object.<span class="fn">entries</span>(errors) as [field, msg]}</span></div>
+<div class="row"><span class="num">28</span><span class="src">          &lt;li&gt;&lt;a href=<span class="str">"#{field}-input"</span>&gt;{msg}&lt;/a&gt;&lt;/li&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 103px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> in-page anchor jumps user to failing <b class="tag">CONTROL</b></span>
+      </div></div>
+<div class="row"><span class="num">29</span><span class="src">        {/each}</span></div>
+<div class="row"><span class="num">30</span><span class="src">      &lt;/ul&gt;</span></div>
+<div class="row"><span class="num">31</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row"><span class="num">32</span><span class="src">  {/<span class="kw">if</span>}</span></div>
+<div class="row"><span class="num">33</span><span class="src"></span></div>
+<div class="row"><span class="num">34</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"input-block"</span>&gt;</span></div>
+<div class="row"><span class="num">35</span><span class="src">    &lt;label <span class="kw">for</span>=<span class="str">"cardNumber-input"</span>&gt;Credit Card Number&lt;/label&gt;</span></div>
+<div class="row"><span class="num">36</span><span class="src">    &lt;input</span></div>
+<div class="row"><span class="num">37</span><span class="src">      id=<span class="str">"cardNumber-input"</span></span></div>
+<div class="row"><span class="num">38</span><span class="src">      type=<span class="str">"text"</span></span></div>
+<div class="row"><span class="num">39</span><span class="src">      bind:value={cardNumber}</span></div>
+<div class="row"><span class="num">40</span><span class="src">      aria-invalid={errors.cardNumber ? <span class="str">'true'</span> : <span class="str">'false'</span>}</span></div>
+<div class="row"><span class="num">41</span><span class="src">      aria-describedby={errors.cardNumber ? <span class="str">'cardNumber-err'</span> : <span class="kw">undefined</span>}</span></div>
+<div class="row"><span class="num">42</span><span class="src">    /&gt;</span></div>
+<div class="row"><span class="num">43</span><span class="src">    {#<span class="kw">if</span> errors.cardNumber}</span></div>
+<div class="row"><span class="num">44</span><span class="src">      &lt;span id=<span class="str">"cardNumber-err"</span> <span class="kw">class</span>=<span class="str">"inline-error"</span>&gt;{errors.cardNumber}&lt;/span&gt;</span></div>
+<div class="row"><span class="num">45</span><span class="src">    {/<span class="kw">if</span>}</span></div>
+<div class="row"><span class="num">46</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">47</span><span class="src"></span></div>
+<div class="row"><span class="num">48</span><span class="src">  &lt;button type=<span class="str">"submit"</span>&gt;Complete Subscription&lt;/button&gt;</span></div>
+<div class="row"><span class="num">49</span><span class="src">&lt;/form&gt;</span></div></div></div></div>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Visual error outlines convey nothing to screen readers. You must expose error state through <code>aria-invalid="true"</code> and connect error text through <code>aria-describedby</code>.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> detail the complete lifecycle of accessible form submission failure. First, explain why you should never rely solely on HTML5 browser validation tooltips, which screen readers often fail to announce predictably. Second, describe the two-tier notification pattern: an error summary banner marked with <code>role="alert"</code> and <code>tabindex="-1"</code> that receives programmatic focus upon submit, paired with field-level inline errors wired to inputs using <code>aria-invalid="true"</code> and <code>aria-describedby</code>. Third, explain that <code>aria-describedby</code> supports space-separated lists of IDs, allowing an input to link simultaneously to static formatting hints and dynamic error messages.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Subscription and checkout billing: grouping payment method radio buttons and associating credit card validation errors.</li>
+<li>Account registration forms: validating password strength criteria and linking checklist hints to the password input.</li>
+<li>User profile settings: grouping multi-checkbox notification preferences under a unified communication category.</li>
+<li>Survey questionnaires: grouping Likert-scale radio buttons so screen readers read the survey question on every option.</li>
+<li>Multi-page application wizards: focusing top-level error summaries when users attempt to advance without completing required steps.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Fieldset</strong>: An HTML container element that groups related form controls and establishes a common context for assistive technologies.</li>
+<li><strong>Legend</strong>: The first child element of a fieldset that supplies the accessible name and group title for all enclosed controls.</li>
+<li><strong>aria-invalid</strong>: An ARIA state attribute that programmatically flags whether the current value of a form control passes validation rules.</li>
+<li><strong>aria-describedby</strong>: An ARIA property taking a list of element IDs whose combined text acts as the accessible description for the target element.</li>
+<li><strong>Error Summary</strong>: A prominent list placed at the top of a form after failed submission that outlines all errors and links to failing fields.</li>
+<li><strong>Accessible Description</strong>: Supplementary text provided to assistive technologies after the element's accessible name and role are announced.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Form Grouping and Validation Error Architecture</strong></p>
+<p>Handling forms cleanly requires separating visual decoration from programmatic accessibility semantics. Red border styles and floating error paragraphs convey zero information to non-sighted users unless they are anchored to inputs in the accessibility tree. Grouping controls with fieldset and legend preserves context for radio buttons and multi-part inputs, while aria-invalid and aria-describedby ensure error feedback is vocalized immediately upon focus. Here is your streetwise review.</p>
+<p>❒ Semantic Grouping with Fieldset and Legend</p>
+<ol><li>Never group related controls with bare div and paragraph tags.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Radio buttons and multi-input dates lose their overarching question without semantic grouping.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) The legend element automatically prefixes every child control during screen reader tabbing.</li>
+<li>Group controls when choices cannot stand alone.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Always wrap radio button groups inside a fieldset.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Always place the legend as the very first element inside the fieldset.</li></ol>
+<p>❒ Wiring Inline Validation Errors</p>
+<ol><li>Never rely on CSS classes alone to communicate errors.</li></ol>
+<p><strong>DO NOT DO THIS:</strong> Add a red border class without updating ARIA state attributes.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;input type=<span class="str">"text"</span> id=<span class="str">"email"</span> <span class="kw">class</span>=<span class="str">"input-error"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">&lt;p <span class="kw">class</span>=<span class="str">"error-msg"</span>&gt;Email format is invalid.&lt;/p&gt;</span></div></div></div></div>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Signal the error state and bind the error description ID to the input.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;input type=<span class="str">"text"</span> id=<span class="str">"email"</span> aria-invalid=<span class="str">"true"</span> aria-describedby=<span class="str">"email-error"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">&lt;p id=<span class="str">"email-error"</span> <span class="kw">class</span>=<span class="str">"error-msg"</span>&gt;Email format is invalid.&lt;/p&gt;</span></div></div></div></div>
+<ol><li>Never hide error descriptions behind unassociated floating icons.</li></ol>
+<p><strong>DO NOT DO THIS:</strong> Display an error tooltip that is not connected to the input element.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;input type=<span class="str">"text"</span> id=<span class="str">"postal"</span> <span class="kw">class</span>=<span class="str">"border-red"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">&lt;span <span class="kw">class</span>=<span class="str">"tooltip"</span>&gt;Invalid zip code&lt;/span&gt;</span></div></div></div></div>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Use aria-describedby so screen readers speak the error on focus.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;input type=<span class="str">"text"</span> id=<span class="str">"postal"</span> aria-invalid=<span class="str">"true"</span> aria-describedby=<span class="str">"postal-desc"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">&lt;span id=<span class="str">"postal-desc"</span> <span class="kw">class</span>=<span class="str">"tooltip"</span>&gt;Invalid zip code&lt;/span&gt;</span></div></div></div></div>
+<p>➔ NEVER rely solely on color or CSS border styling to signal input error states.</p>
+<p>➔ ALWAYS wrap radio button clusters inside a fieldset with a clear legend title.</p>
+<p>➔ IF form submission fails THEN move focus to a top-level error summary and wire fields with aria-invalid.</p>
+<table><thead><tr><th></th><th><strong>GROUPING SEMANTICS</strong><br>(fieldset and legend)</th><th><strong>ERROR WIRING</strong><br>(aria-describedby and invalid)</th></tr></thead><tbody><tr><td><strong>Primary purpose</strong></td><td>Preserves context across<br>clusters of controls</td><td>Binds validation failures<br>to specific inputs</td></tr><tr><td><strong>Assistive announcement</strong></td><td>Speaks group legend before<br>individual control label</td><td>Speaks error text after<br>control accessible name</td></tr><tr><td><strong>Core attributes</strong></td><td><code>&lt;fieldset&gt;</code> container with<br><code>&lt;legend&gt;</code> first child</td><td><code>aria-invalid="true"</code> and<br><code>aria-describedby</code><br><code>="id"</code></td></tr><tr><td><strong>Primary targets</strong></td><td>Radio sets, checkboxes,<br>multi-part date fields</td><td>Text inputs, select boxes,<br>formatted textareas</td></tr><tr><td><strong>WCAG criteria</strong></td><td>1.3.1 Info and Relationships<br>(Level A standard)</td><td>3.3.1 Error Identification<br>(Level A standard)</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

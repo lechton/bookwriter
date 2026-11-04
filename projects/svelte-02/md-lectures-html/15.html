@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 15: Side Effects</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 15: Side Effects</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you run a side effect when something reactive changes, and how do you clean it up?</p>
+  <div class="iq-hook">You need to save a value to localStorage every time it changes, and remove an event listener when the effect re-runs or the component dies. Where does that logic live?</div>
+</aside>
+
+<p>While <code>$derived</code> is used to calculate new data for your UI, sometimes you need to step outside of the UI and interact with the external world. These external interactions are called side effects.</p>
+<div class="keep-together">
+<h3>The Problem with Unmanaged Effects</h3>
+<p>Imagine you are building a document editor that automatically saves the user's progress to the browser's <code>localStorage</code> every time they type. If you just put <code>localStorage.setItem('doc', text)</code> floating loose in your <code>&lt;script&gt;</code> block, it will only run exactly once when the component is first created. When the user types, the <code>text</code> variable updates, but the loose code never runs again. </p>
+<p>Conversely, if you manually add a <code>window.addEventListener('resize', updateLayout)</code> inside a component but forget to remove it when the user navigates away, you have created a memory leak. Every time the user visits that page, another permanent event listener is added, eventually grinding the browser to a halt. You need a safe, reactive wrapper for external code.</p>
+</div>
+<div class="keep-together">
+<h3>The <code>$effect</code> Rune</h3>
+<p>To solve this, Svelte 5 provides the <code>$effect</code> rune. It runs a block of code after the component has mounted to the DOM, and automatically re-runs that code whenever any reactive state inside it changes.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Editor.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">let</span> text = <span class="rune">$state</span>(<span class="str">"Initial content"</span>);</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="rune">$effect</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">5</span><span class="src">    localStorage.<span class="fn">setItem</span>(<span class="str">"autosave"</span>, text); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Runs once on mount, and re-runs whenever 'text' changes</span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">  });</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;textarea bind:value={text}&gt;&lt;/textarea&gt;</span></div></div></div>
+<p>When you use the <code>$effect</code> rune, you do not need to explicitly declare your dependencies. Svelte's compiler automatically tracks that <code>text</code> was read inside the function, and wires up the reactivity under the hood.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Never use <code>$effect</code> to synchronize internal state (e.g., updating variable <code>B</code> when variable <code>A</code> changes). That is what <code>$derived</code> is for. Only use <code>$effect</code> when you are explicitly stepping outside the Svelte reactivity system, like writing to the DOM, calling an API, or using <code>localStorage</code>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Cleanup Functions</h3>
+<p>Many side effects create ongoing processes that need to be dismantled, such as setting intervals or attaching event listeners to the <code>window</code>. </p>
+<p>To clean these up, your <code>$effect</code> function simply returns another function. This returned function is the <strong>cleanup phase</strong>. Svelte will automatically execute this cleanup function right before the effect runs again, and right before the component is destroyed.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Timer.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">let</span> count = <span class="rune">$state</span>(<span class="nl">0</span>);</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="rune">$effect</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">5</span><span class="src">    <span class="kw">const</span> interval = <span class="fn">setInterval</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">6</span><span class="src">      count++;</span></div>
+<div class="row"><span class="num">7</span><span class="src">    }, <span class="nl">1000</span>);</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src">    <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row"><span class="num">10</span><span class="src">      <span class="fn">clearInterval</span>(interval); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Cleans up the previous interval to prevent memory leaks </span>
+      </div></div>
+<div class="row"><span class="num">11</span><span class="src">    };</span></div>
+<div class="row"><span class="num">12</span><span class="src">  });</span></div>
+<div class="row"><span class="num">13</span><span class="src">&lt;/script&gt;</span></div></div></div>
+<p>Without the cleanup function, the component would spawn a brand new permanent interval timer every time the effect re-ran, immediately crashing the app.</p>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p>When you need to interact with external systems outside of Svelte's reactivity model, you use the <code>$effect</code> rune. It runs its code block automatically on mount and whenever its internal reactive dependencies change. To prevent memory leaks when managing ongoing processes like timers or event listeners, the effect should return a cleanup function, which Svelte automatically executes before the next run and upon component destruction.</p>
+<table><thead><tr><th></th><th><strong><code>$derived</code></strong></th><th><strong><code>$effect</code></strong></th></tr></thead><tbody><tr><td><strong>Purpose</strong></td><td>Calculating data for the UI</td><td>Interacting with the external world</td></tr><tr><td><strong>Timing</strong></td><td>Runs before the DOM updates</td><td>Runs after the DOM updates</td></tr><tr><td><strong>Cleanup</strong></td><td>Not applicable</td><td>Returns a cleanup function</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 16: State as a Snapshot: Render Cycles and Frozen Closures</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 16: State as a Snapshot: Render Cycles and Frozen Closures</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">Why does state appear frozen inside a render, even right after you set it?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Maya builds an urgent dispatch submitter for The National Times.</li>
+<li>Clicking the urgent button should immediately boost priority by three levels in one click.</li>
+<li>Maya calls setPriority(priority + 1) three times in a row inside the click handler.</li>
+<li>Why did the priority level increase by only one instead of three after saving?</li>
+<li>Stale state calculations drop user input, corrupt invoice balances, and produce subtle calculation bugs.</li>
+<li>State behaves like a fixed snapshot within a render, holding its starting value throughout the handler.</li>
+<li>Today you learn why state behaves like a snapshot and how React queues updates.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Rendering Takes a Snapshot in Time</h3>
+<p>When developers inspect state updates in React, they often expect state variables to behave like mutable object properties. If you call <code>setCount(count + 1)</code>, the intuitive expectation is that on the very next line of code, <code>count</code> will evaluate to its new incremented value. Yet when you inspect <code>count</code> immediately, it obstinately displays its old value.</p>
+<p>To understand why this happens, you must embrace React's core mental model: <strong>state behaves like a snapshot</strong> (known classically as <strong>State Immutability</strong> and in modern engineering as <strong>State as a Snapshot / Frozen Render Frames</strong>).</p>
+<p>In physical browser execution, "rendering" means React calls your component function. The JSX returned from that function is a discrete snapshot of the user interface at that exact moment in time. Crucially, its props, event handlers, and state variables were all calculated using the state values at the time of that specific render. They are not live, mutable pointers to changing memory; they are fixed, immutable constants scoped to that single function execution frame.</p>
+<p>When you call a state setter like <code>setCount(count + 1)</code>, you do NOT mutate the variable in the currently running code. Instead, you inform React: <em>"Please schedule a brand new render, and during that future render pass, provide count with the value of 1"</em>. Until React actually re-invokes your component function for that future render, the current execution frame remains completely frozen.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why is state frozen like a snapshot?</strong> When you take a photo of a speeding runner with a camera, that picture captures the runner frozen at the ten-meter mark. If the runner keeps running forward to the twenty-meter mark, your printed photograph does not magically redraw itself. It remains frozen at ten meters. React renders components the exact same way. Each render produces an interactive snapshot. The variables inside that render frame are fixed constants. Calling a state setter does not change the printed photo; it asks React to take a brand new photo for the next render. It is just an immutable snapshot in time, time and time again. Understanding <strong>state as a snapshot</strong> clarifies why variables remain <strong>frozen constants</strong> inside your <strong>event handlers</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Closures and the Time Travel Effect</h3>
+<p>Because JavaScript functions form closures over variables in their outer scope, event handlers declared during a render "close over" the state values from that specific snapshot.</p>
+<p>Consider what happens if Mateo attaches a timer inside a button handler:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Closure Snapshot Trap</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleClick</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setCount</span>(count + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Requests next render with incremented <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setTimeout</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">alert</span>(<span class="str">`Count after delay: ${count}`</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Captures snapshot value via lexical <b class="tag">CLOSURE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }, <span class="nl">3000</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>If <code>count</code> was <code>0</code> when the user clicked the button, and the user rapidly clicks the button three more times before the 3-second timer finishes, what will the alert display?</p>
+<p>The alert will display <code>0</code>! Even though React completed three subsequent renders and the screen now shows <code>3</code>, the timer callback was created inside the render where <code>count</code> was <code>0</code>. The closure captured the immutable snapshot of <code>count = 0</code>. It does not matter how much time passes or how many future renders occur: that callback remains permanently bound to the snapshot in which it was born.</p>
+<p>To see how state snapshots function in production, inspect the comment submission section of The National Times. The layout container <code>CommentSection.jsx</code> renders the interactive <code>CommentBox.jsx</code>:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>CommentBox.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>CommentSection.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>CommentSection</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>CommentBox</span><span class="component-explorer-props">currentCount=0</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Comments: 0</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above illustrates this layout. On the left, <code>CommentSection.jsx</code> renders the discussion view. On the right, the rendered view displays the comment counter at 0 with an interactive submission form.</p>
+<p>Here is the implementation of our comment box, <code>CommentBox.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CommentBox.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">CommentBox</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [count, setCount] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="kw">const</span> nextCount = count + <span class="nl">1</span>;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="fn">setCount</span>(nextCount); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Schedules next render with incremented <b class="tag">VALUE</b></span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">    console.<span class="fn">log</span>(<span class="str">`Current snapshot: ${count}`</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Logs old snapshot value</span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">    console.<span class="fn">log</span>(<span class="str">`Next value: ${nextCount}`</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Reads local constant for immediate logic</span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">13</span><span class="src"></span></div>
+<div class="row even"><span class="num">14</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    &lt;form onSubmit={handleSubmit} className=<span class="str">"comment-box"</span>&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      &lt;p className=<span class="str">"counter-label"</span>&gt;Comments Submitted: {count}&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      &lt;button type=<span class="str">"submit"</span>&gt;Post Comment&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Submits comment and triggers snapshot <b class="tag">UPDATE</b></span>
+      </div></div>
+<div class="row even"><span class="num">18</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">20</span><span class="src">}</span></div></div></div></div>
+<p>Inside <code>CommentBox.jsx</code>, <code>handleSubmit</code> calculates <code>nextCount = count + 1</code> before scheduling the update. When the user submits, <code>count</code> remains <code>0</code> in the current snapshot, while <code>setCount(nextCount)</code> queues a future render with <code>1</code>. Logging <code>count</code> outputs <code>0</code> because variables in this execution frame are immutable constants. Reading <code>nextCount</code> provides the freshly computed value immediately without waiting for React to re-render.</p>
+<p>Now examine the parent container, <code>CommentSection.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CommentSection.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> CommentBox <span class="kw">from</span> <span class="str">'./CommentBox.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">CommentSection</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;section className=<span class="str">"comment-section"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h3&gt;Article Discussion&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;CommentBox /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Mounts comment box <b class="tag">COMPONENT</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>In <code>CommentSection.jsx</code>, mounting <code>CommentBox</code> initializes its snapshot cycle. When <code>CommentBox</code> submits a comment, React executes a fresh render cycle, handing <code>CommentBox</code> a new snapshot with <code>count = 1</code> and updating the screen text node.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .box-preview {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.73rem;
+    }
+    .rce-theme .code-pill {
+      display: inline-block;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-weight: 700;
+    }
+    .rce-theme .pill-good { background: #d1fae5; color: #065f46; }
+    .rce-theme .pill-bad { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — State as a Snapshot & Frozen Closures</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Discussion Section</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            CommentSection.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            CommentBox.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            const nextCount = count + 1
+            <span class="rce-node-props">✓ SNAPSHOT AWARE</span>
+          </div>
+          <div class="box-preview">
+            <div><span class="code-pill pill-good">setCount(nextCount)</span> ➔ Queues Render #2 with count = 1</div>
+            <div style="margin-top:0.35rem;"><span class="code-pill pill-good">sendAnalytics(nextCount)</span> ➔ Passes fresh value (1)</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            Setting state schedules a future render; current execution frame remains frozen.<br>
+            Calculate next values into local variables when needed immediately in the same handler.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            setCount(count + 1); console.log(count)
+            <span class="rce-node-props">✕ FROZEN SNAPSHOT BUG</span>
+          </div>
+          <div class="box-preview">
+            <div>Executed: setCount(0 + 1)</div>
+            <div style="margin-top:0.35rem;"><span class="code-pill pill-bad">console.log(count)</span> ➔ Prints 0! (Old snapshot)</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            <code>count</code> is a constant value captured inside the render snapshot.<br>
+            Variables inside an active function execution frame never mutate synchronously in place.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 16.1: Fig 16.1: State as a snapshot: frozen execution frame constants versus scheduled future renders</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Working with Fresh Values Immediately</h3>
+<p>In real-world engineering, you frequently need to use the updated state value immediately inside the very same event handler. For example, you may need to send the incremented count to a metrics service, dispatch an HTTP POST request, or pass the new value to a router function.</p>
+<p>Because the state variable in the active execution frame remains frozen, you must never read the state variable after calling the setter. Instead, apply the standard <strong>local constant calculation pattern</strong>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Immediate Calculation Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleCommentPost</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> nextCount = count + <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Computes next value into local <b class="tag">CONSTANT</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setCount</span>(nextCount); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Schedules render with fresh value</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">sendAnalyticsEvent</span>({ commentsCount: nextCount }); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Delivers fresh constant to external API</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<p>By computing <code>nextCount</code> in a local variable, you decouple your immediate business logic from React's asynchronous render scheduling.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does React keep snapshots frozen?</strong> Imagine reading an article where the headline text changes halfway through while your eyes are still scanning the paragraph. If variables could mutate synchronously inside a running render, child components rendered later in the tree would receive different values than siblings rendered earlier, causing UI tearing and desynchronization. React freezes snapshots so that every component in a render pass sees an identical, coherent view of application state from start to finish.</div>
+</aside>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">State variables are frozen constants within a render; never read a state variable expecting fresh values immediately after calling its setter.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked why state appears frozen or asynchronous, emphasize that state variables are not mutable properties on an object; they are constants captured by closures for that specific render pass. Setting state does not alter the current frame's variables; it requests a future render with fresh constants. Explain that if an event handler needs the new value right away, senior engineers calculate it in a local constant (<code>const nextVal = currentVal + 1</code>) before setting state, rather than expecting synchronous variable mutation.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Form submission handlers: saving user edits to local state while simultaneously dispatching payload objects to backend APIs.</li>
+<li>Analytics and telemetry events: reporting user actions immediately upon click with the newly computed metrics.</li>
+<li>Asynchronous timers and alerts: understanding why delayed callbacks capture historical state values rather than current screen numbers.</li>
+<li>Undo/redo history buffers: capturing complete snapshots of form states to enable step-by-step history rollbacks.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>State Snapshot</strong>: The architectural guarantee that props, state, and event handlers are fixed constants scoped to a specific render pass.</li>
+<li><strong>Render Cycle</strong>: A complete execution pass of a component function where React obtains a new JSX snapshot and commits DOM updates.</li>
+<li><strong>Lexical Closure</strong>: A JavaScript language feature where an inner function retains access to variables from its enclosing scope at creation time.</li>
+<li><strong>Stale State</strong>: A condition where asynchronous code or closures reference older snapshot values rather than the latest application state.</li>
+<li><strong>Scheduled Render</strong>: A queued request to React's reconciler to re-invoke the component function with updated state values.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>State as a Snapshot: Render Cycles and Frozen Closures</strong></p>
+<p>In daily production, mastering the <strong>state snapshot mental model</strong> eliminates confusion when inspecting state values inside event handlers and asynchronous callbacks. By recognizing that each render is an immutable photograph of your UI with frozen variables, you can write reliable data flows that never suffer from stale values. Here is your streetwise review.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Render Snapshots, Frozen Closures, and Immediate Calculations</span></div>
+<ol><li>Recognize that <strong>rendering produces an immutable snapshot</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Props, state, and local variables are fixed constants within any single render pass.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Calling a state setter does NOT mutate the current variable; it schedules a future render.</li>
+<li>Understand that <strong>closures preserve the snapshot in which they were created</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Event handlers, timers, and async callbacks remember the state values from the render that spawned them.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Even if code runs seconds later, it reads the original snapshot values captured at render time.</li>
+<li>Calculate <strong>future values into local constants</strong> when needed immediately.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Never expect a state variable to reflect its new value on the line directly following <code>setState</code>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Store the calculation in a local variable (<span class="code-line-callout"><code><span class="kw">const</span> next = val + <span class="nl">1</span></code></span>), set state with it, and pass it to APIs.</li></ol>
+<p class="summary-principle">➔ NEVER assume calling a state setter updates the variable synchronously on the next line of code.</p>
+<p class="summary-principle">➔ ALWAYS calculate next values in local variables if they must be used immediately in the same handler.</p>
+<p class="summary-principle">➔ IF an asynchronous callback reads old state THEN <strong>remember that closures freeze snapshot values from their original render</strong>.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Compute next state into a local constant and use it for immediate operations.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CommentBox.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleSubmit</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> nextCount = count + <span class="nl">1</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setCount</span>(nextCount);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">sendAnalytics</span>(nextCount);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Never read state variables immediately after setting them expecting fresh values.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CommentBox.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleSubmit</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setCount</span>(count + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">sendAnalytics</span>(count);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>SNAPSHOT VARIABLE</strong><br>(Frozen Constant)</th><th><strong>LOCAL CONSTANT</strong><br>(Immediate Value)</th><th><strong>FUTURE SNAPSHOT</strong><br>(Next Render)</th></tr></thead><tbody><tr><td><strong>Value timing</strong></td><td>Scoped strictly to current<br>render execution frame</td><td>Computed immediately in<br>the active event handler</td><td>Available only when React<br>calls component again</td></tr><tr><td><strong>Mutability status</strong></td><td>Read-only; constant across<br>entire handler execution</td><td>Immutable constant holding<br>the newly computed value</td><td>Fresh constant passed to<br>next render execution</td></tr><tr><td><strong>API payload role</strong></td><td>Stale; will send old data<br>if read after setter</td><td>Perfect; delivers the new<br>value immediately to APIs</td><td>Valid; reflected in the<br>subsequent UI redraw</td></tr><tr><td><strong>Closure behavior</strong></td><td>Captured permanently by<br>timers and inner functions</td><td>Discarded when handler<br>function finishes</td><td>Captured by new closures<br>in the next render pass</td></tr><tr><td><strong>Best use case</strong></td><td>Driving current JSX markup<br>and initial UI display</td><td>Dispatching network calls<br>and analytics events</td><td>Displaying updated count<br>on the user's screen</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

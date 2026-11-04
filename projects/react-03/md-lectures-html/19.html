@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 19: Immutable Arrays in State: Non-Mutating Recipes and Array Transforms</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 19: Immutable Arrays in State: Non-Mutating Recipes and Array Transforms</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you add, remove, insert, and reorder items in a state array?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Leo manages the breaking news ticker for The National Times.</li>
+<li>When a new story arrives, Leo pushes it into an array using stories.push(newStory).</li>
+<li>Leo calls setStories(stories), but the breaking news ticker on screen remains completely unchanged.</li>
+<li>Why does the news ticker ignore the new item even though the array contains it?</li>
+<li>Unresponsive news tickers fail to show breaking headlines and leave subscribers reading outdated information.</li>
+<li>Arrays are stored by reference, and calling push modifies the existing instance without changing identity.</li>
+<li>Today you learn how to update state arrays cleanly using non-mutating JavaScript recipes.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Mutation versus Non-Mutating Transforms: Why Push Fails</h3>
+<p>In JavaScript, arrays are specialized objects stored in heap memory and accessed through reference pointers. When you declare an array in React state (<span class="code-line-callout"><code><span class="kw">const</span> [stories, setStories] = <span class="hook">useState</span>([])</code></span>), the state variable holds a pointer to that array in memory. JavaScript permits you to call array methods such as <code>push()</code>, <code>pop()</code>, <code>shift()</code>, <code>unshift()</code>, <code>splice()</code>, <code>sort()</code>, and <code>reverse()</code>. All of these operations are <strong>mutating methods</strong>: they alter the contents of the array directly in place.</p>
+<p>While mutating an array in place is valid standard JavaScript, it violates React's fundamental change-detection contract (known classically as <strong>Array Mutation</strong> and in modern engineering as <strong>Immutable Array Replacement / Non-Mutating Transforms</strong>). When you call <code>setStories(stories)</code> after executing <code>stories.push(newStory)</code>, React runs its internal reconciliation check using <span class="code-line-callout"><code>Object.<span class="fn">is</span>(previousState, nextState)</code></span></p>
+<p>Because both <code>previousState</code> and <code>nextState</code> point to the exact same array memory address (<code>0x01 === 0x01</code>), <code>Object.is</code> evaluates to <code>true</code>. React deduces that nothing in state has changed, and <strong>bails out of the re-render completely</strong>. The browser screen remains completely frozen on the old headline list, leaving the breaking news feed stale and broken.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does array push break the live ticker?</strong> Imagine you hand a newspaper editor a printed clipboard holding the morning wire headlines. Later, you scribble a new headline at the bottom of the exact same physical sheet and hand the clipboard back. The editor glances at the clipboard bar code and says: "This is the exact same clipboard you gave me ten minutes ago, so I will not reprint the front page." That is what happens when you push to an array in React state. The array memory pointer has not changed. React checks references using Object.is. If the pointer matches, React skips rendering. To get a reprint, you must photocopy the existing dispatches onto a brand new sheet of paper with the new headline attached. It is just creating a fresh array instance, time and time again. Understanding <strong>immutable arrays</strong> as <strong>reference allocation</strong> clarifies why <strong>array spread</strong> is required to trigger <strong>re-renders</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Immutable Array Playbook: Adding, Removing, and Replacing</h3>
+<p>To ensure React detects every list modification, you must treat state arrays as strictly read-only. Every update must construct a brand new array instance containing the desired modifications and pass that fresh reference to the state setter.</p>
+<p>JavaScript provides several built-in non-mutating methods and syntax operators that make array transformations straightforward:</p>
+<p>To add an item without mutation, use the <strong>array spread operator (<code>...</code>)</strong>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Array Spread Addition Patterns</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">setStories</span>([...stories, newStory]); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Appends item to array end via <b class="tag">SPREAD</b></span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="fn">setStories</span>([newStory, ...stories]); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Prepends urgent dispatch to <b class="tag">BEGINNING</b></span>
+      </div></div></div></div></div>
+<p>The spread operator shallow-copies all elements of <code>stories</code> into a newly allocated array literal and appends or prepends <code>newStory</code>. This yields a brand new memory reference (<code>0x02</code>). When <code>setStories</code> executes, <code>Object.is(0x01, 0x02)</code> evaluates to <code>false</code>, and React immediately schedules a re-render.</p>
+<p>To remove an item, use <strong>Array.prototype.filter()</strong>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Array Filter Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">setStories</span>(stories.<span class="fn">filter</span>(story =&gt; story.id !== targetId)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Produces filtered array excluding dismissed <b class="tag">STORY</b></span>
+      </div></div></div></div></div>
+<p>The <code>filter()</code> method iterates over the array and constructs a completely new array containing only the elements that satisfy the predicate. The target story is excluded, while the original array remains untouched.</p>
+<p>To replace or update an existing item, use <strong>Array.prototype.map()</strong>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Array Map Update Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">setStories</span>(stories.<span class="fn">map</span>(story =&gt; {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">if</span> (story.id === targetId) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="kw">return</span> { ...story, headline: newHeadline }; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Fresh object reference for target <b class="tag">ID</b></span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> story; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Preserves unmodified element <b class="tag">REFERENCE</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">}));</span></div></div></div></div>
+<p>The <code>map()</code> method creates a new array where matching elements are substituted with fresh object copies, while non-matching items retain their original references.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does slice work while splice breaks state?</strong> Remember this rule: splice has a p for permanent destruction. When you call splice, it mutates the existing array in place, deleting items and changing indices on the original memory reference. In contrast, slice makes a clean, surgical cut: it leaves the original array untouched and returns a brand new array copy. In React state, you never want the p of permanent mutation. You always want the non-destructive copy returned by slice. Understanding <strong>splice mutation</strong> versus <strong>slice copying</strong> protects your <strong>state integrity</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Inserting and Reordering: Slicing and toSorted</h3>
+<p>Inserting an item into the middle of an array requires slicing the collection into two halves, placing the new element between them, and spreading both segments into a fresh array:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Array Slice Insertion Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">insertStoryAt</span>(index, newStory) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setStories</span>([</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    ...stories.<span class="fn">slice</span>(<span class="nl">0</span>, index), </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Shallow copy of elements before <b class="tag">INDEX</b></span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">    newStory, </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Injected new story <b class="tag">ELEMENT</b></span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">    ...stories.<span class="fn">slice</span>(index), </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Shallow copy of remaining trailing <b class="tag">ELEMENTS</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  ]);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>The <code>slice()</code> method copies a portion of an array without altering the original. By slicing from index <code>0</code> up to <code>index</code>, inserting <code>newStory</code>, and slicing from <code>index</code> onward, you produce an inserted array immutably.</p>
+<p>When sorting or reversing a state array, calling <code>stories.sort()</code> or <code>stories.reverse()</code> directly will mutate the array in place, bailing out of re-renders. To sort safely, either shallow-copy the array before sorting, or use the modern ECMAScript non-mutating method <strong>toSorted()</strong>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Immutable Sorting Patterns</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> sortedStories = [...stories].<span class="fn">sort</span>((a, b) =&gt; a.id - b.id); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Sorts shallow array copy</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="fn">setStories</span>(sortedStories); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Queues render with sorted <b class="tag">ARRAY</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="fn">setStories</span>(stories.<span class="fn">toSorted</span>((a, b) =&gt; a.id - b.id)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Produces sorted copy via <b class="tag">TOSORTED</b></span>
+      </div></div></div></div></div>
+</div>
+<div class="keep-together">
+<h3>The National Times Breaking News Architecture</h3>
+<p>To observe immutable array operations in production, inspect the breaking news dispatch system of The National Times. The parent component <code>StoryFeed.jsx</code> renders individual dispatches through <code>StoryItem.jsx</code>:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>StoryFeed.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>StoryItem.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-table"><div class="component-explorer-label"><span>StoryFeed</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn">Publish Story</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryItem</span><span class="component-explorer-props">category=&quot;Metro&quot; headline=&quot;Port authority opens inquiry&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">[tag: Metro] <strong>Port authority opens inquiry</strong></span><span class="surface-ui-btn">Dismiss</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above illustrates the architecture. <code>StoryFeed.jsx</code> acts as the parent container with publication controls, while <code>StoryItem.jsx</code> renders the active dispatch item with its category tag, headline, and dismissal button.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure">
+  <style>
+    .pipeline-card-figure {
+      margin: 1.5rem auto;
+      max-width: 590px;
+      background: #f4f6f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pipeline-card-figure .pipeline-header {
+      background: #344154;
+      padding: 10px 18px;
+    }
+    .pipeline-card-figure .pipeline-header span {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .pipeline-card-figure .pipeline-body {
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pipeline-card-figure .step-node {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #fcfcfb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 20px 14px 26px;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .pipeline-card-figure .step-node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #0e7490;
+    }
+    .pipeline-card-figure .step-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      line-height: 1.35;
+    }
+    .pipeline-card-figure .step-num {
+      color: #0e7490;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-label {
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: #475569;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+    .pipeline-card-figure .step-desc {
+      margin-top: 11px;
+      text-align: center;
+      font-size: 0.77rem;
+      line-height: 1.45;
+      font-style: italic;
+      color: #334155;
+      max-width: 470px;
+    }
+    .pipeline-card-figure .step-desc strong {
+      font-weight: 700;
+      color: #0f172a;
+      font-style: normal;
+    }
+    .pipeline-card-figure .step-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+    }
+    .pipeline-card-figure .step-connector svg {
+      display: block;
+    }
+  </style>
+
+  <div class="pipeline-header">
+    <span>IMMUTABLE ARRAY PIPELINE CONSTRUCTION</span>
+  </div>
+
+  <div class="pipeline-body">
+    <!-- Step 1 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 1:</span>
+        <span class="step-label">Presentation Dispatch Item</span>
+      </div>
+      <div class="step-code">StoryItem({ story, onDismiss })</div>
+      <div class="step-desc">
+        Author the <strong>pure presentation row</strong> to display category tags, headline text, and wire the <strong>dismiss callback</strong>.
+      </div>
+    </div>
+
+    <!-- Connector 1 -> 2 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 2:</span>
+        <span class="step-label">Setting Up Feed State and Adding Stories</span>
+      </div>
+      <div class="step-code">setStories([...stories, newStory]) // Spread into fresh array</div>
+      <div class="step-desc">
+        Initialize collection state and author <strong>immutable appending</strong> using the <strong>spread operator</strong> to guarantee reference inequality.
+      </div>
+    </div>
+
+    <!-- Connector 2 -> 3 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 3:</span>
+        <span class="step-label">Removing Stories with Array Filter</span>
+      </div>
+      <div class="step-code">stories.filter(item =&gt; item.id !== storyId)</div>
+      <div class="step-desc">
+        Author the <strong>dismissal handler</strong> to return a <strong>new filtered array instance</strong> without mutating the original collection.
+      </div>
+    </div>
+
+    <!-- Connector 3 -> 4 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 4:</span>
+        <span class="step-label">Rendering the Story Feed and Controls</span>
+      </div>
+      <div class="step-code">&lt;section&gt; {stories.map(...)} &lt;button&gt;Publish Story&lt;/button&gt; &lt;/section&gt;</div>
+      <div class="step-desc">
+        Assemble the <strong>feed container</strong>, mapping active dispatches to <strong>keyed list items</strong> and mounting publication controls.
+      </div>
+    </div>
+  </div>
+</div>
+<figcaption>Fig 19.1: Step-by-step code assembly pipeline for immutable array dispatch architecture</figcaption>
+</figure>
+<p>To construct this breaking news workflow cleanly, we decompose <code>StoryItem.jsx</code> and <code>StoryFeed.jsx</code> across four sequential implementation steps:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: Presentation Dispatch Item';">Presentation Dispatch Item</div>
+      
+    </div>
+  </div>
+</div>
+<p>First, inspect the presentation item component, <code>StoryItem.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryItem.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryItem</span>({ story, onDismiss }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;li className=<span class="str">"story-item"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;span className=<span class="str">"story-category"</span>&gt;{story.category}&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;span className=<span class="str">"story-headline"</span>&gt;{story.headline}&lt;/span&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">onDismiss</span>(story.id)}&gt;Dismiss&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Triggers parent removal <b class="tag">CALLBACK</b></span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/li&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>In <code>StoryItem.jsx</code>, the component receives <code>story</code> and an <code>onDismiss</code> callback as props. It renders the category tag, headline text, and a dismiss button that passes <code>story.id</code> back to the parent.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Setting Up Feed State and Adding Stories';">Setting Up Feed State and Adding Stories</div>
+      
+    </div>
+  </div>
+</div>
+<p>We open the parent component <code>StoryFeed.jsx</code>, initialize the array state, and declare the story addition handler:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryFeed.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> StoryItem <span class="kw">from</span> <span class="str">'./StoryItem.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryFeed</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [stories, setStories] = <span class="hook">useState</span>([</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    { id: <span class="nl">1</span>, category: <span class="str">'Metro'</span>, headline: <span class="str">'Port authority opens inquiry'</span> }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  ]);</span></div>
+<div class="row even"><span class="num">8</span><span class="src"></span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">function</span> <span class="fn">handleAddStory</span>(newStory) {</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">setStories</span>([...stories, newStory]); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Creates fresh array reference with <b class="tag">SPREAD</b></span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">  }</span></div></div></div></div>
+<p>Inside <code>handleAddStory</code>, calling <span class="code-line-callout"><code><span class="fn">setStories</span>([...stories, newStory])</code></span> allocates a new array in memory rather than mutating the existing one via <code>push()</code>. React's reconciler detects the fresh reference during <code>Object.is</code> comparison and schedules a re-render. Continuing down the component, we implement item removal:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Removing Stories with Array Filter';">Removing Stories with Array Filter</div>
+      
+    </div>
+  </div>
+</div>
+<p>Inside the parent component, we implement the dismissal routine using non-destructive filtering:</p>
+<div class="editor continues-both has-sticky-note"><div class="sticky-note"><span class="note-filename">StoryFeed.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">13</span><span class="src">  <span class="kw">function</span> <span class="fn">handleDismiss</span>(storyId) {</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    <span class="fn">setStories</span>(stories.<span class="fn">filter</span>(s =&gt; s.id !== storyId)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Creates fresh filtered <b class="tag">ARRAY</b></span>
+      </div></div>
+<div class="row odd"><span class="num">15</span><span class="src">  }</span></div></div></div></div>
+<p>The <code>filter()</code> method traverses the collection and returns a brand-new array containing only elements that satisfy the condition. The item with matching <code>storyId</code> is omitted, leaving the previous state array completely untouched in memory. With both update pathways established, we return the visual feed layout:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Rendering the Story Feed and Controls';">Rendering the Story Feed and Controls</div>
+      
+    </div>
+  </div>
+</div>
+<p>Finally, we map the collection to interactive list items and complete the parent container:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">StoryFeed.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">17</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">18</span><span class="src">    &lt;section className=<span class="str">"feed-container"</span>&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">      &lt;ul&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">        {stories.<span class="fn">map</span>(story =&gt; (</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">          &lt;StoryItem key={story.id} story={story} onDismiss={handleDismiss} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px;">
+        <span class="text">Renders keyed item with dismissal <b class="tag">HANDLER</b></span>
+      </div></div>
+<div class="row even"><span class="num">22</span><span class="src">        ))}</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">      &lt;/ul&gt;</span></div>
+<div class="row even"><span class="num">24</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">handleAddStory</span>({ id: <span class="nl">2</span>, category: <span class="str">'Economy'</span>, headline: <span class="str">'Treasury notes surge'</span> })}&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Appends new story via spread <b class="tag">OPERATOR</b></span>
+      </div></div>
+<div class="row odd"><span class="num">25</span><span class="src">        Publish Story</span></div>
+<div class="row even"><span class="num">26</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">28</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">29</span><span class="src">}</span></div></div></div></div>
+<p>The feed container maps over <code>stories</code>, instantiating a <code>&lt;StoryItem&gt;</code> for each record and forwarding <code>handleDismiss</code> downward. When the trigger button fires, <code>handleAddStory</code> appends the new story report smoothly.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — Immutable Arrays vs In-Place Push</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">News Feed Desk</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            StoryFeed.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            StoryItem.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            setStories([...stories, newStory])
+            <span class="rce-node-props">✓ FRESH ARRAY INSTANCE</span>
+          </div>
+          <div class="preview-panel">
+            <div>Prev Ref: <span class="ref-tag ref-green">0x01</span> ➔ [ { id: 1, headline: 'Port inquiry' } ]</div>
+            <div style="margin-top:0.3rem;">Next Ref: <span class="ref-tag ref-green">0x02</span> ➔ [ { id: 1, ... }, { id: 2, headline: 'Treasury notes' } ]</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Object.is(0x01, 0x02) === false ➔ Re-render Triggered!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            Array spread creates a brand new heap array literal with copied references.<br>
+            Reference difference informs React's reconciler that state changed, refreshing the UI.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            stories.push(newStory); setStories(stories)
+            <span class="rce-node-props">✕ IN-PLACE MUTATION BAILOUT</span>
+          </div>
+          <div class="preview-panel">
+            <div>Prev Ref: <span class="ref-tag ref-red">0x01</span> ➔ mutated in place via push()</div>
+            <div style="margin-top:0.3rem;">Next Ref: <span class="ref-tag ref-red">0x01</span> ➔ passed identical array reference</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">Object.is(0x01, 0x01) === true ➔ Render Bailed Out!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Push alters the array items directly inside the original heap memory address.<br>
+            React compares state by reference: identical memory addresses cause React to skip rendering.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 19.2: Fig 19.1: State arrays: fresh array instances via spread versus in-place push bailout</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>The Immutability Matrix: Mutation Methods versus Pure Alternatives</h3>
+<p>Every JavaScript developer should memorize which array methods mutate in place and which return fresh array copies:</p>
+<ul>
+<li>Mutating methods (Avoid on state): <code>push()</code>, <code>unshift()</code>, <code>pop()</code>, <code>shift()</code>, <code>splice()</code>, <code>reverse()</code>, <code>sort()</code>, <code>copyWithin()</code>, <code>fill()</code>.</li>
+<li>Non-mutating methods (Prefer for state): <code>[...arr]</code>, <code>concat()</code>, <code>filter()</code>, <code>map()</code>, <code>slice()</code>, <code>toSorted()</code>, <code>toReversed()</code>, <code>toSpliced()</code>.</li>
+</ul>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Treat state arrays as read-only streams of data; always return new array references using spread, filter, map, slice, or toSorted to ensure React triggers re-renders.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how to manipulate state arrays in React, articulate the exact methods: emphasize that <code>push</code>, <code>pop</code>, <code>shift</code>, <code>unshift</code>, <code>splice</code>, <code>sort</code>, and <code>reverse</code> mutate arrays in place, violating the reference equality contract of <code>Object.is</code>. Provide the immutable counterparts: array spread for additions, <code>filter</code> for deletions, <code>map</code> for element replacements, and <code>toSorted</code> or slice-and-sort for reordering. Note that keeping array updates immutable guarantees deterministic rendering, prevents race conditions during concurrent transitions, and enables rapid shallow checks in memoized components.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Real-time notification centers: prepending incoming alerts to a list while dismissing read items by ID.</li>
+<li>Shopping cart line items: increasing quantities, removing items, or clearing the entire purchase array.</li>
+<li>Kanban task boards: reordering cards across columns and updating status tags on individual tasks.</li>
+<li>Tabular data grids: sorting rows by column header clicks and paginating records via slice operations.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Array Mutation</strong>: Directly altering the items or length of an existing array in memory using methods like <code>push</code> or <code>splice</code>.</li>
+<li><strong>Array Spread</strong>: The <code>[...items]</code> syntax that shallow-copies elements from an existing array into a newly allocated array literal.</li>
+<li><strong>Filter Transform</strong>: Calling <code>array.filter()</code> to produce a brand new array containing only elements that pass a conditional test.</li>
+<li><strong>Map Transform</strong>: Calling <code>array.map()</code> to generate a new array with transformed elements while preserving the original array.</li>
+<li><strong>Non-Mutating Sort</strong>: Sorting an array by copying it first (<code>[...arr].sort()</code>) or using <code>toSorted()</code> to avoid modifying the original array.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Immutable Arrays in State: Non-Mutating Recipes and Array Transforms</strong></p>
+<p>In daily production, managing <strong>state arrays immutably</strong> guarantees that list modifications trigger accurate UI re-renders and preserve data predictability. By avoiding in-place mutation methods like <code>push</code> and <code>splice</code>, and adopting non-mutating recipes with spread, <code>filter</code>, and <code>map</code>, you uphold React's core reference-equality contract. Here is your streetwise review.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Reference Equality, Spread Addition, and Non-Mutating Transforms</span></div>
+<ol><li>Treat all state arrays as <strong>strictly read-only</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Never call mutating methods like <code>push()</code>, <code>pop()</code>, <code>shift()</code>, <code>unshift()</code>, <code>splice()</code>, or <code>sort()</code> directly on state.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Mutating an array in place retains its memory reference, causing React to bail out of rendering.</li>
+<li>Use <strong>array spread</strong> to add items.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Append items with <code>[...arr, newItem]</code> or prepend items with <code>[newItem, ...arr]</code>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Inserting at an arbitrary index is achieved safely with <span class="code-line-callout"><code>[...arr.<span class="fn">slice</span>(<span class="nl">0</span>, i), newItem, ...arr.<span class="fn">slice</span>(i)]</code></span></li>
+<li>Use <strong>filter</strong> to remove and <strong>map</strong> to update.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Remove items cleanly by id: <span class="code-line-callout"><code>arr.<span class="fn">filter</span>(item =&gt; item.id !== targetId)</code></span><br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Update items cleanly by id: <span class="code-line-callout"><code>arr.<span class="fn">map</span>(item =&gt; item.id === targetId ? { ...item, done: <span class="kw">true</span> } : item)</code></span></li></ol>
+<p class="summary-principle">➔ NEVER call <code>push()</code>, <code>splice()</code>, or <code>sort()</code> on an array stored in React state.</p>
+<p class="summary-principle">➔ ALWAYS return a new array reference using spread, <code>filter()</code>, <code>map()</code>, or <code>toSorted()</code>.</p>
+<p class="summary-principle">➔ IF updating an object inside an array THEN <strong>use map to return a new array and spread to return a new object</strong>.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Return a new array instance using array spread syntax.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryFeed.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">addDispatch</span>(newStory) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setStories</span>([...stories, newStory]);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Never mutate the existing state array in place with push.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryFeed.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">addDispatch</span>(newStory) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  stories.<span class="fn">push</span>(newStory);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setStories</span>(stories);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>ADDING &amp; INSERTING</strong><br>(Spread Syntax)</th><th><strong>REMOVING &amp; FILTERING</strong><br>(Filter Method)</th><th><strong>UPDATING &amp; MAPPING</strong><br>(Map Method)</th></tr></thead><tbody><tr><td><strong>Operation pattern</strong></td><td><code>[...arr, item]</code><br>creates new array</td><td><code>arr.filter(...)</code><br>returns match subset</td><td><code>arr.map(...)</code><br>returns transformed copy</td></tr><tr><td><strong>Mutating trap</strong></td><td><code>arr.push(item)</code><br>mutates in place</td><td><code>arr.splice(i, 1)</code><br>destroys elements</td><td><code>arr[i] = item</code><br>overwrites pointer</td></tr><tr><td><strong>Reference result</strong></td><td>Fresh array instance<br>allocated in memory</td><td>Brand new filtered<br>array instance</td><td>Brand new mapped<br>array instance</td></tr><tr><td><strong>React detection</strong></td><td><code>Object.is</code> returns<br>false; re-renders</td><td><code>Object.is</code> returns<br>false; re-renders</td><td><code>Object.is</code> returns<br>false; re-renders</td></tr><tr><td><strong>Primary purpose</strong></td><td>Appending, prepending,<br>or slotting items</td><td>Dismissing, deleting,<br>or excluding items</td><td>Editing single items<br>or toggling fields</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

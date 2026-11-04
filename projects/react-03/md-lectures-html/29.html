@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 29: Context Optimization: Eliminating Re-render Cascades</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 29: Context Optimization: Eliminating Re-render Cascades</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How does context propagation cause re-renders, and how do you keep it fast?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A performance engineer named Julian audits rendering speed on The National Times website.</li>
+<li>Julian passes a theme object literal directly into the root context provider value.</li>
+<li>Clicking the theme toggle re-renders two hundred child components across the entire screen.</li>
+<li>Why does every consumer component re-render when its displayed data never changed?</li>
+<li>Unnecessary re-render cascades freeze the interface, drop frame rates, and drain mobile device batteries.</li>
+<li>Inline object literals create fresh memory addresses on every render, triggering consumer updates.</li>
+<li>Today you learn how to optimize context providers and eliminate redundant re-render cascades.</li></ol>
+</div>
+<div class="keep-together">
+<h3>How Context Propagates: The Fiber Subscriptions and Object.is</h3>
+<p>To understand why context re-renders occur, you must inspect how React's reconciliation engine tracks context subscriptions internally.</p>
+<p>When a component calls <code>use(Context)</code> or <code>useContext(Context)</code>, React registers a dependency on that fiber node linking it directly to the context object. During a re-render, when React encounters a context provider, it evaluates the provider's <code>value</code> prop against its previous value using JavaScript's native <code>Object.is()</code> comparison algorithm:</p>
+<ul>
+<li>If <span class="code-line-callout"><code>Object.<span class="fn">is</span>(previousValue, nextValue)</code></span> evaluates to <code>true</code>, React concludes that the context payload has not changed. It skips propagating updates down the context subscription list.</li>
+<li>If <span class="code-line-callout"><code>Object.<span class="fn">is</span>(previousValue, nextValue)</code></span> evaluates to <code>false</code>, React immediately scans the descendant fiber tree. Every fiber registered as a consumer of this context is tagged with update flags, scheduling an unavoidable re-render for that component.</li>
+</ul>
+<p>Crucially, wrapping consumer components in <code>React.memo</code> provides <strong>zero protection</strong> against context updates. <code>React.memo</code> only prevents re-renders triggered by parent updates when <em>props</em> remain shallowly equal. Context subscriptions bypass props entirely, communicating directly with the internal fiber. When the context value changes, React forces the consumer to re-render regardless of <code>React.memo</code>.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does React.memo fail to block context updates?</strong> Picture a high-security office building with an armored vault door at the entrance. The guard at the door checks everyone's external pass. If an external visitor arrives with the same pass as before, the guard turns them away: "No entry, nothing has changed." That is React.memo checking props at the front door. Now imagine the building has an underground private emergency radio cable running directly through the floor into the center of the room. When the central station broadcasts an alert over the radio cable, the radio blares alarms inside the room immediately! The guard at the front door cannot stop the radio, because the signal bypassed the front door entirely. That is context. Context bypasses component props and speaks directly to the hook inside the component function. Wrapping a component in React.memo protects the front door from parent prop changes, but it does nothing to stop an incoming context broadcast. Understanding <strong>React.memo</strong> as a <strong>front door guard</strong> and <strong>context</strong> as an <strong>underground radio cable</strong> clarifies why <strong>memoization cannot block context updates</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Anatomy of Context Re-Render Thrashing</h3>
+<p>Context performance defects stem from two primary root causes:</p>
+<ol><li><strong>Unmemoized value objects</strong>: Passing a freshly constructed object literal directly into the <code>value</code> prop (<span class="code-line-callout"><code>&lt;Context value={{ user, setUser }}&gt;</code></span>). Because object literals create a new reference in JavaScript memory on every render pass, <code>Object.is</code> returns <code>false</code> on every single cycle, forcing every subscribed consumer to re-render.</li>
+<li><strong>Monolithic god contexts</strong>: Storing high-frequency, volatile state (such as mouse coordinates, live network latency ticks, or scroll offsets) inside the same context object as slow-moving ambient state (such as authentication profiles or theme settings). Every millisecond coordinate tick forces theme tags, headers, and navigation menus to execute.</li></ol>
+<p>To build performant applications, we must isolate contexts by update cadence and preserve object references using <code>useMemo</code>.</p>
+</div>
+<div class="keep-together">
+<h3>The National Times Newsroom Operations Dashboard</h3>
+<p>To observe context optimization in production, inspect the live newsroom operations dashboard for The National Times. The system broadcasts both emergency status alerts and high-frequency feed ingestion updates down to monitoring panels:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>BreakingAlertBanner.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>DashboardContext.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>FeedCounter.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>NewsroomMetricCard.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>OperationsDashboardApp.jsx</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>state</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9.5 13c-.8 1-1.5 1.7-1.5 2.5s.7 1.5 1.5 2.5"/><path d="M14.5 13c.8 1 1.5 1.7 1.5 2.5s-.7 1.5-1.5 2.5"/></svg><span>useDashboard.js</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>OperationsDashboardApp</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>DashboardContext</span></div><div class="component-explorer-surface surface-generic">DashboardContext</div></div><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>BreakingAlertBanner</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Operations Status: <strong>NORMAL</strong></span></div></div><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>FeedCounter</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Live Feed Updates: <strong>0</strong></span></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>NewsroomMetricCard</span><span class="component-explorer-props">title=&quot;...&quot; metric=&quot;...&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Active Newsroom Terminals: 148</span><span class="surface-render-line">Feed Ingestion Latency: 18ms</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above illustrates the architecture. On the left, <code>OperationsDashboardApp.jsx</code> mounts <code>DashboardContext.jsx</code> and uses <code>useDashboard.js</code>. On the right, the rendered view shows the emergency alert banner, the high-frequency feed counter, and two metric cards.</p>
+<p>First, examine the optimized provider in <code>DashboardContext.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">DashboardContext.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { createContext, <span class="hook">useMemo</span>, <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">const</span> AlertContext = <span class="fn">createContext</span>(<span class="kw">null</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">const</span> FeedContext = <span class="fn">createContext</span>(<span class="kw">null</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">DashboardProvider</span>({ children }) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> [alert, setAlert] = <span class="hook">useState</span>(<span class="str">'NORMAL'</span>);</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">const</span> [ticks, setTicks] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src"></span></div>
+<div class="row even"><span class="num">10</span><span class="src">  <span class="kw">const</span> alertValue = <span class="hook">useMemo</span>(() =&gt; ({ alert, setAlert }), [alert]); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Preserves compound object reference across <b class="tag">RENDERS</b></span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">  <span class="kw">const</span> feedValue = <span class="hook">useMemo</span>(() =&gt; ({ ticks, setTicks }), [ticks]); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Isolates high-frequency feed in dedicated <b class="tag">CHANNEL</b></span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src"></span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    &lt;AlertContext value={alertValue}&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      &lt;FeedContext value={feedValue}&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">        {children}</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      &lt;/FeedContext&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">    &lt;/AlertContext&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">20</span><span class="src">}</span></div></div></div></div>
+<p>The provider separates low-frequency alert state from high-frequency feed updates into two independent context trees. Each compound value object is wrapped in <code>useMemo</code>. When <code>ticks</code> updates rapidly, <code>alertValue</code> maintains reference equality, completely shielding alert subscribers.</p>
+<p>Next, examine the consumer hooks module <code>useDashboard.js</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">useDashboard.js</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { use } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> { AlertContext, FeedContext } <span class="kw">from</span> <span class="str">'./DashboardContext.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="hook">useAlert</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> context = <span class="fn">use</span>(AlertContext);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">if</span> (!context) <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'useAlert must be used within DashboardProvider'</span>);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> context;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div>
+<div class="row odd"><span class="num">9</span><span class="src"></span></div>
+<div class="row even"><span class="num">10</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="hook">useFeed</span>() {</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">  <span class="kw">const</span> context = <span class="fn">use</span>(FeedContext);</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  <span class="kw">if</span> (!context) <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'useFeed must be used within DashboardProvider'</span>);</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  <span class="kw">return</span> context;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">}</span></div></div></div></div>
+<p>By wrapping <code>use()</code> in custom helper functions with fail-fast guards, consumers enjoy clean, error-safe access to ambient state without repetitive null checking.</p>
+<p>Next, inspect the alert notification banner <code>BreakingAlertBanner.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BreakingAlertBanner.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useAlert</span> } <span class="kw">from</span> <span class="str">'./useDashboard.js'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">BreakingAlertBanner</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> { alert, setAlert } = <span class="hook">useAlert</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;section className={<span class="str">`alert-banner alert-${alert.toLowerCase()}`</span>}&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      &lt;p&gt;Operations Status: &lt;strong&gt;{alert}&lt;/strong&gt;&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">setAlert</span>(a =&gt; (a === <span class="str">'NORMAL'</span> ? <span class="str">'CRITICAL'</span> : <span class="str">'NORMAL'</span>))}&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">        Toggle Emergency Alert</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Subscribes only to AlertContext, isolating high-frequency feed <b class="tag">UPDATES</b></span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">}</span></div></div></div></div>
+<p><code>BreakingAlertBanner</code> subscribes only to <code>AlertContext</code>. Because <code>FeedContext</code> is isolated and <code>alertValue</code> is memoized, this banner remains completely idle while thousands of feed update events occur.</p>
+<p>Next, examine the presentation metric card <code>NewsroomMetricCard.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">NewsroomMetricCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { memo } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">function</span> <span class="fn">NewsroomMetricCard</span>({ title, metric }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;div className=<span class="str">"metric-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h4&gt;{title}&lt;/h4&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;span className=<span class="str">"metric-value"</span>&gt;{metric}&lt;/span&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div>
+<div class="row odd"><span class="num">11</span><span class="src"></span></div>
+<div class="row even"><span class="num">12</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="fn">memo</span>(NewsroomMetricCard); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Props-only component shielded from provider <b class="tag">RE-RENDERS</b></span>
+      </div></div></div></div></div>
+<p><code>NewsroomMetricCard</code> receives its data via explicit props and does not subscribe to any context. Because it is wrapped in <code>React.memo</code> and passed into the provider via <code>children</code>, it never re-renders when either context updates.</p>
+<p>Now examine the high-frequency feed subscriber <code>FeedCounter.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FeedCounter.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useFeed</span> } <span class="kw">from</span> <span class="str">'./useDashboard.js'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">FeedCounter</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> { ticks, setTicks } = <span class="hook">useFeed</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;aside className=<span class="str">"feed-counter"</span>&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      &lt;span&gt;Live Feed Updates: &lt;strong&gt;{ticks}&lt;/strong&gt;&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">setTicks</span>(t =&gt; t + <span class="nl">1</span>)}&gt;Simulate Feed Dispatch&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;/aside&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">High-frequency consumer updates without affecting sibling <b class="tag">BRANCHES</b></span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+<p><code>FeedCounter</code> consumes <code>FeedContext</code>. When the button simulates an incoming feed transmission, only this component re-renders. The blast radius of the high-frequency feed updates is strictly contained within its own DOM box.</p>
+<p>Finally, examine the parent component <code>OperationsDashboardApp.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">OperationsDashboardApp.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { DashboardProvider } <span class="kw">from</span> <span class="str">'./DashboardContext.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> BreakingAlertBanner <span class="kw">from</span> <span class="str">'./BreakingAlertBanner.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">import</span> FeedCounter <span class="kw">from</span> <span class="str">'./FeedCounter.jsx'</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">import</span> NewsroomMetricCard <span class="kw">from</span> <span class="str">'./NewsroomMetricCard.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">OperationsDashboardApp</span>() {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;DashboardProvider&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;header className=<span class="str">"ops-header"</span>&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">        &lt;h2&gt;The National Times Live Newsroom Operations&lt;/h2&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">        &lt;FeedCounter /&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;/header&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      &lt;main className=<span class="str">"ops-body"</span>&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">        &lt;BreakingAlertBanner /&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">        &lt;section className=<span class="str">"metric-grid"</span>&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">          &lt;NewsroomMetricCard title=<span class="str">"Active Newsroom Terminals"</span> metric=<span class="str">"148"</span> /&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">          &lt;NewsroomMetricCard title=<span class="str">"Feed Ingestion Latency"</span> metric=<span class="str">"18ms"</span> /&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">        &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">      &lt;/main&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">    &lt;/DashboardProvider&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Children composition ensures static subtree is preserved across provider <b class="tag">RENDERS</b></span>
+      </div></div>
+<div class="row even"><span class="num">22</span><span class="src">}</span></div></div></div></div>
+<p>Notice the power of component composition here. Because <code>DashboardProvider</code> accepts and renders <code>{children}</code>, the JSX elements created inside <code>OperationsDashboardApp</code> are passed as pre-instantiated React elements. When <code>DashboardProvider</code> re-renders due to its internal <code>setAlert</code> or <code>setTicks</code>, React compares the <code>children</code> prop reference. Since the children elements have not changed, React skips re-rendering the surrounding layout containers!</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — Context Re-Render Blast Radius</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Operations Desk</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            OperationsDashboardApp.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            DashboardContext.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            BreakingAlertBanner.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            FeedCounter.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            NewsroomMetricCard.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            useMemo() + Split Cadence Contexts
+            <span class="rce-node-props">✓ ZERO REDUNDANCY</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Reference Stability: <span class="ref-tag ref-green">useMemo</span> preserves compound object equality</div>
+            <div style="margin-top:0.3rem;">2. Split Channels: High-frequency Feed isolated from AlertContext</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Zero Blast Radius: Only FeedCounter re-renders on ticks!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            Object.is(prev, next) returns true for AlertContext, skipping all alert subscribers.<br>
+            Separating update cadences permanently shields unrelated components from high-frequency ticks.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            value={{ alert, setAlert, ticks, setTicks }}
+            <span class="rce-node-props">✕ MONOLITHIC LITERAL</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Fresh Allocation: <span class="ref-tag ref-red">unmemoized object literal</span> created every render</div>
+            <div style="margin-top:0.3rem;">2. Memo Penetration: React.memo on children cannot stop context updates</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">Full Tree Thrash: 200 components re-render on every feed tick!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Unmemoized compound objects force Object.is to fail every time.<br>
+            Context updates bypass React.memo completely, triggering full-tree cascade re-renders.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 29.1: The National Times — Context Re-Render Blast Radius</figcaption>
+</figure>
+<p>The figure above demonstrates the dramatic performance contrast. Unmemoized compound contexts force an expansive blast radius down 200 components, whereas context splitting and <code>useMemo</code> confine re-renders strictly to the single component whose subscribed state actually changed.</p>
+</div>
+<div class="keep-together">
+<h3>The Three Golden Rules of Context Performance</h3>
+<p>When architecting context in high-performance applications, follow these three non-negotiable rules:</p>
+<ol><li><strong>Rule 1: Memoize compound context values</strong>: Whenever a provider supplies an object or array containing multiple values or updater functions, wrap the value in <code>useMemo</code>. If you pass callback functions created with <code>useState</code> setters (or <code>dispatch</code> from <code>useReducer</code>), those functions are already stable.</li>
+<li><strong>Rule 2: Split contexts by update cadence</strong>: Never combine rapidly changing state with static state. Separate high-frequency streams (scroll positions, timers, keystrokes) from low-frequency configurations (theme, user identity, permissions).</li>
+<li><strong>Rule 3: Lift content or use children composition</strong>: Keep provider components thin. Accept <code>{children}</code> rather than rendering heavy UI subtrees directly inside the provider's body. Passing pre-instantiated JSX children prevents provider state changes from dragging the entire subtree into a re-render.</li></ol>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked why an application experiences frame drops after introducing React Context, provide this architectural explanation: "1. The Object.is gate: React determines context updates by running Object.is on the provider's value. Unmemoized object literals generate new references on every render, permanently failing Object.is. 2. The React.memo bypass: React.memo only protects against prop changes; context updates bypass props entirely and force consumer fibers to re-render. 3. The 3-tier remediation: To fix this, memoize compound values with useMemo, split contexts according to update frequency so high-cadence state doesn't pollute slow-moving consumers, and use children composition to isolate the provider's render boundary."</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Financial trading dashboards: Streaming real-time stock quotes while maintaining static user preference controls.</li>
+<li>Live sports scoreboards: Handling rapid second-by-second clock and score updates without re-rendering player rosters.</li>
+<li>Text editors and code IDEs: Managing high-frequency cursor coordinates and keystroke events independently from editor theme and file tree state.</li>
+<li>Audio and video production suites: Streaming playback timestamps at 60fps without re-rendering track headers and mixer controls.</li>
+<li>Gaming canvas overlays: Broadcasting game loop frame counts while keeping inventory dialogs and chat windows completely stationary.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Context Blast Radius</strong>: The unintended cascade of re-renders across unaffected components caused by a single context update.</li>
+<li><strong>Fiber Context Subscription</strong>: The internal React data structure linking a component fiber directly to a Context object.</li>
+<li><strong>Object.is Evaluation</strong>: The reference equality algorithm used by React to determine whether a context provider's value prop has changed.</li>
+<li><strong>Monolithic God Context</strong>: An architectural anti-pattern where multiple unrelated pieces of state with different update frequencies are forced into a single context.</li>
+<li><strong>Context Splitting</strong>: The practice of dividing state into separate, fine-grained contexts based on update frequency and domain responsibility.</li>
+<li><strong>Reference Stabilization</strong>: Using useMemo or useCallback to ensure object and function references remain identical across re-renders until their inputs change.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Context Optimization: Eliminating Re-render Cascades</strong></p>
+<p>Context updates trigger via <code>Object.is</code> reference comparison and bypass <code>React.memo</code> entirely. Preventing performance degradation requires reference stabilization via <code>useMemo</code>, fine-grained context splitting by update cadence, and children composition to isolate render boundaries.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Takeaways of Context Optimization</span></div>
+<ol><li>Understand the Object.is comparison gate.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Context re-renders are triggered whenever <code>Object.is(prev, next)</code> is false.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Passing unmemoized object literals triggers continuous consumer re-renders.</li>
+<li>Acknowledge that React.memo cannot block context.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) <code>React.memo</code> shields components only from parent prop updates.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Any component calling <code>use(Context)</code> will forcefully re-render when that context changes.</li>
+<li>Apply the 3 golden optimization rules.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Wrap compound context values in <code>useMemo</code>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Split contexts so fast-moving state does not trigger slow-moving consumers.<br>&nbsp;&nbsp;&nbsp;&nbsp;(c) Use <code>{children}</code> composition to shield static UI trees from provider updates.
+➔ ALWAYS wrap compound context value objects in useMemo to maintain reference equality.<br>
+➔ NEVER combine high-frequency state like counters or timers with static app configuration in the same context.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Create unmemoized compound object literals in a monolithic context.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">MonolithicDashboardProvider</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">BadDashboardProvider</span>({ children }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [alert, setAlert] = <span class="hook">useState</span>(<span class="str">'NORMAL'</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [ticks, setTicks] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;MonolithicContext value={{ alert, setAlert, ticks, setTicks }}&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      {children}</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/MonolithicContext&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Split contexts by update cadence and stabilize compound values with useMemo.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">OptimizedDashboardProvider</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">GoodDashboardProvider</span>({ children }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [alert, setAlert] = <span class="hook">useState</span>(<span class="str">'NORMAL'</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [ticks, setTicks] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> alertValue = <span class="hook">useMemo</span>(() =&gt; ({ alert, setAlert }), [alert]);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">const</span> feedValue = <span class="hook">useMemo</span>(() =&gt; ({ ticks, setTicks }), [ticks]);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src"></span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;AlertContext value={alertValue}&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      &lt;FeedContext value={feedValue}&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">        {children}</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;/FeedContext&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    &lt;/AlertContext&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>MONOLITHIC UNMEMOIZED</strong><br>(anti-pattern)</th><th><strong>OPTIMIZED SPLIT CONTEXT</strong><br>(production standard)</th></tr></thead><tbody><tr><td><strong>Object Equality</strong></td><td>Fresh <code>{}</code> recreated every render;<br><code>Object.is</code> permanently fails</td><td>Stable reference preserved by<br><code>useMemo</code> across parent renders</td></tr><tr><td><strong>Cadence Isolation</strong></td><td>Rapid updates force slow consumers<br>to re-render on every tick</td><td>Fast updates quarantined to<br>their dedicated sub-context</td></tr><tr><td><strong>React.memo Efficacy</strong></td><td>Completely bypassed by context;<br>components re-render anyway</td><td>Preserved; unaffected components<br>remain completely idle</td></tr><tr><td><strong>Tree Structure</strong></td><td>Inline nested markup re-evaluates<br>on provider state changes</td><td>Clean <code>{children}</code> composition<br>shields static parent subtrees</td></tr><tr><td><strong>Frame Rate Impact</strong></td><td>Severe; dropped frames and input lag<br>during high-frequency events</td><td>Optimal; 60fps responsiveness<br>with zero redundant work</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

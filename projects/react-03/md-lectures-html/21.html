@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 21: Declarative State Machines: Reacting to Input without DOM Manipulation</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 21: Declarative State Machines: Reacting to Input without DOM Manipulation</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you design a component that reacts to input with state instead of touching the DOM?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Marcus builds a reader survey poll for The National Times.</li>
+<li>Marcus toggles button visibility manually by setting style.display = 'none' in response to clicks.</li>
+<li>When network errors occur, both the loading spinner and the error message appear together.</li>
+<li>Why do conflicting visual states appear on the screen at the exact same time?</li>
+<li>Impossible UI states create visual confusion, cause double submissions, and damage reader trust.</li>
+<li>Imperative commands manipulate elements in isolation without a single source of truth for the screen.</li>
+<li>Today you learn how to design declarative components using visual state machines.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Imperative versus Declarative: The Passenger versus the Destination</h3>
+<p>In traditional web development without React, you implement user interactions imperatively. When an event occurs, your JavaScript code inspects the DOM and issues explicit, turn-by-turn commands to individual nodes: disable this button, hide that paragraph, toggle a CSS class on that container, and insert text into a spinner. In this classic paradigm (known classically as <strong>Imperative DOM Scripting</strong>), the programmer is responsible for orchestrating every DOM mutation manually.</p>
+<p>As applications expand, imperative manipulation collapses under exponential complexity. A simple form with five visual states and three interactive elements requires dozens of conditional branches to ensure elements do not get stranded in contradictory states. If a single event handler forgets to hide a progress indicator or reset a disabled flag, the interface becomes corrupted.</p>
+<p>React fundamentally departs from this approach through <strong>Declarative UI / Finite State Machine</strong> programming. In React, you never manipulate DOM nodes directly. You do not tell the browser <em>how</em> to change each element; you declare <em>what</em> the component should look like for each distinct state. The user interface is treated as a pure mathematical projection of state: $UI = f(state)$. React's reconciliation engine calculates the differences between the current and previous virtual representations, updating the real DOM with minimal operations.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does manual DOM scripting cause state drift?</strong> Imagine sitting in a taxi and giving the driver rapid turn-by-turn commands: "Turn left here, accelerate, avoid that pothole, turn right at the red mailbox." If you forget one turn or issue commands out of order, you end up stranded in an alley. That is imperative DOM programming: you command every element individually, and if you forget to hide a spinner, it remains stuck on screen forever. Declarative programming is giving the driver your final destination: "Take me to Central Station." The driver navigates the roads while you relax. In React, your component states the final destination: "When status is submitting, show a spinner; when status is success, show a checkmark." React takes care of the driving. Understanding <strong>declarative programming</strong> as <strong>destination declaration</strong> clarifies why <strong>state machines</strong> prevent <strong>visual desynchronization</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Five-Step State Design Framework</h3>
+<p>To design components declaratively, React developers follow a structured five-step engineering framework:</p>
+<ol><li><strong>Identify visual states</strong>: Before touching keyboard handlers or network APIs, enumerate every possible visual state the user can encounter. For a quiz poll, these states are: <code>'empty'</code> (input blank, submit disabled), <code>'typing'</code> (input has text, submit enabled), <code>'submitting'</code> (spinner shown, inputs disabled), <code>'success'</code> (thank-you message displayed), and <code>'error'</code> (error banner visible, input editable).</li>
+<li><strong>Determine state triggers</strong>: Map out what triggers transitions between these visual states. Triggers fall into two categories: human inputs (typing into a field, clicking submit) and computer events (network request resolving, response timing out).</li>
+<li><strong>Represent state with useState</strong>: Structure the component's state in memory. Always favor a single <strong>status enum</strong> (<span class="code-line-callout"><code><span class="kw">const</span> [status, setStatus] = <span class="hook">useState</span>(<span class="str">'empty'</span>)</code></span>) over multiple disconnected booleans.</li>
+<li><strong>Eliminate impossible states</strong>: By representing mutual exclusions with a single status string, you make invalid states unrepresentable. You cannot accidentally have <code>isLoading === true</code> and <code>isSuccess === true</code> simultaneously when status can only be <code>'submitting'</code> or <code>'success'</code>.</li>
+<li><strong>Connect event handlers</strong>: Attach event listeners to update state variables, allowing React to trigger state transitions and re-render the view automatically.</li></ol>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why are impossible states so dangerous in production?</strong> Imagine an intersection where the traffic light has three separate switches: green, yellow, and red. If a faulty connection shorts out, the light can shine green and red simultaneously, causing a catastrophe. That is what happens when you use three independent booleans: isLoading, isSuccess, and isError. If a network retry fails to clear isLoading before setting isError, both evaluate to true, rendering a loading spinner inside a red error alert! By replacing three booleans with a single status enum that holds only 'submitting', 'success', or 'error', impossible states become physically impossible. The light can only shine one color at a time. Understanding <strong>impossible states</strong> versus a <strong>status enum</strong> prevents <strong>boolean explosion</strong> through a clean <strong>state machine</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Reader Poll Architecture</h3>
+<p>To examine declarative state machines in production, inspect the reader poll form of The National Times. The parent component <code>QuizPoll.jsx</code> manages the active state enum and renders <code>PollStatusCard.jsx</code>:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>PollStatusCard.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>QuizPoll.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>QuizPoll</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-input"><span class="surface-ui-input-placeholder">What is your editorial stance?</span></div><span class="surface-ui-btn">Submit Vote</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>PollStatusCard</span><span class="component-explorer-props">status=&quot;submitting&quot;</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-input"><span class="surface-ui-input-placeholder">status: Submitting your response...</span></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above illustrates the architecture. The parent component <code>QuizPoll.jsx</code> provides the interactive input field and submission button, while <code>PollStatusCard.jsx</code> projects the active submission status.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure">
+  <style>
+    .pipeline-card-figure {
+      margin: 1.5rem auto;
+      max-width: 590px;
+      background: #f4f6f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pipeline-card-figure .pipeline-header {
+      background: #344154;
+      padding: 10px 18px;
+    }
+    .pipeline-card-figure .pipeline-header span {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .pipeline-card-figure .pipeline-body {
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pipeline-card-figure .step-node {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #fcfcfb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 20px 14px 26px;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .pipeline-card-figure .step-node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #0e7490;
+    }
+    .pipeline-card-figure .step-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      line-height: 1.35;
+    }
+    .pipeline-card-figure .step-num {
+      color: #0e7490;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-label {
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: #475569;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+    .pipeline-card-figure .step-desc {
+      margin-top: 11px;
+      text-align: center;
+      font-size: 0.77rem;
+      line-height: 1.45;
+      font-style: italic;
+      color: #334155;
+      max-width: 470px;
+    }
+    .pipeline-card-figure .step-desc strong {
+      font-weight: 700;
+      color: #0f172a;
+      font-style: normal;
+    }
+    .pipeline-card-figure .step-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+    }
+    .pipeline-card-figure .step-connector svg {
+      display: block;
+    }
+  </style>
+
+  <div class="pipeline-header">
+    <span>DECLARATIVE STATE MACHINE CONSTRUCTION PIPELINE</span>
+  </div>
+
+  <div class="pipeline-body">
+    <!-- Step 1 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 1:</span>
+        <span class="step-label">Status Card Presentation Layer</span>
+      </div>
+      <div class="step-code">PollStatusCard({ status, errorMessage })</div>
+      <div class="step-desc">
+        First, author the <strong>pure presentation card</strong> to project <strong>submitting, error, and success states</strong> without direct DOM manipulation.
+      </div>
+    </div>
+
+    <!-- Connector 1 -> 2 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 2:</span>
+        <span class="step-label">Setting Up the Form and Status State</span>
+      </div>
+      <div class="step-code">useState('empty') // Explicit status string union</div>
+      <div class="step-desc">
+        Next, initialize the <strong>discrete status union</strong> to <strong>eliminate impossible intermediate states</strong> such as concurrent loading and error.
+      </div>
+    </div>
+
+    <!-- Connector 2 -> 3 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 3:</span>
+        <span class="step-label">Declarative Keystroke Handling</span>
+      </div>
+      <div class="step-code">handleChange(e) // Flip between 'empty' and 'typing'</div>
+      <div class="step-desc">
+        Author the <strong>input transition handler</strong> to <strong>derive active typing state</strong> immediately from trimmed text length.
+      </div>
+    </div>
+
+    <!-- Connector 3 -> 4 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 4:</span>
+        <span class="step-label">Asynchronous Submission and Transitions</span>
+      </div>
+      <div class="step-code">handleSubmit(e) // Transition through submitting, success, error</div>
+      <div class="step-desc">
+        Coordinate the <strong>asynchronous dispatch routine</strong> to <strong>lock user inputs</strong> and transition safely across network boundaries.
+      </div>
+    </div>
+
+    <!-- Connector 4 -> 5 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 5:</span>
+        <span class="step-label">Rendering the Form and Submit Button</span>
+      </div>
+      <div class="step-code">&lt;form onSubmit={handleSubmit}&gt; ... &lt;PollStatusCard /&gt;</div>
+      <div class="step-desc">
+        Finally, project <strong>interactive controls and status cards</strong> declaratively, binding disabled properties straight to state.
+      </div>
+    </div>
+  </div>
+</div>
+<figcaption>Fig 21.1: Step-by-step code assembly pipeline for declarative state machine architecture</figcaption>
+</figure>
+<p>To construct this declarative voting workflow cleanly, we decompose <code>PollStatusCard.jsx</code> and <code>QuizPoll.jsx</code> across five sequential implementation steps:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: Status Card Presentation Layer';">Status Card Presentation Layer</div>
+      
+    </div>
+  </div>
+</div>
+<p>First, inspect the presentation card component, <code>PollStatusCard.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">PollStatusCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">PollStatusCard</span>({ status, errorMessage }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">if</span> (status === <span class="str">'submitting'</span>) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="kw">return</span> &lt;p className=<span class="str">"status-submitting"</span>&gt;Submitting your response...&lt;/p&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">if</span> (status === <span class="str">'error'</span>) {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="kw">return</span> &lt;p className=<span class="str">"status-error"</span>&gt;Error: {errorMessage}&lt;/p&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">if</span> (status === <span class="str">'success'</span>) {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="kw">return</span> &lt;p className=<span class="str">"status-success"</span>&gt;Thank you <span class="kw">for</span> voting!&lt;/p&gt;;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">  <span class="kw">return</span> <span class="kw">null</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Renders nothing when in empty or typing <b class="tag">STATES</b></span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+<p>In <code>PollStatusCard.jsx</code>, the presentation layer is purely declarative. It receives <code>status</code> and <code>errorMessage</code> as props, rendering the appropriate visual branch without touching DOM styles.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Setting Up the Form and Status State';">Setting Up the Form and Status State</div>
+      
+    </div>
+  </div>
+</div>
+<p>We open the parent component <code>QuizPoll.jsx</code> and define the minimal state using an explicit status enum:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">QuizPoll.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> PollStatusCard <span class="kw">from</span> <span class="str">'./PollStatusCard.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">QuizPoll</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [answer, setAnswer] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">const</span> [status, setStatus] = <span class="hook">useState</span>(<span class="str">'empty'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">'empty' | 'typing' | 'submitting' | 'success' | 'error'</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> [error, setError] = <span class="hook">useState</span>(<span class="kw">null</span>);</span></div></div></div></div>
+<p>Using a single <code>status</code> string union eliminates impossible intermediate states like <code>isLoading &amp;&amp; isError</code> being simultaneously true. State represents what the user can do next. Continuing inside the component, we handle typing changes:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Declarative Keystroke Handling';">Declarative Keystroke Handling</div>
+      
+    </div>
+  </div>
+</div>
+<p>Next, we handle keystroke changes by transitioning between input states:</p>
+<div class="editor continues-both has-sticky-note"><div class="sticky-note"><span class="note-filename">QuizPoll.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row even"><span class="num">10</span><span class="src">  <span class="kw">function</span> <span class="fn">handleChange</span>(e) {</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="kw">const</span> nextText = e.target.value;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    <span class="fn">setAnswer</span>(nextText);</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    <span class="fn">setStatus</span>(nextText.<span class="fn">trim</span>().length === <span class="nl">0</span> ? <span class="str">'empty'</span> : <span class="str">'typing'</span>);</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  }</span></div></div></div></div>
+<p>When the user types, <code>handleChange</code> evaluates whether the trimmed text is empty. If characters exist, it flips to <code>'typing'</code>; if deleted, it returns to <code>'empty'</code>. With client input captured, we author the network submission routine:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Asynchronous Submission and State Transitions';">Asynchronous Submission and State Transitions</div>
+      
+    </div>
+  </div>
+</div>
+<p>Now we implement the submission routine that navigates network resolution:</p>
+<div class="editor continues-both has-sticky-note"><div class="sticky-note"><span class="note-filename">QuizPoll.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">17</span><span class="src">  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row even"><span class="num">18</span><span class="src">    e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">    <span class="fn">setStatus</span>(<span class="str">'submitting'</span>);</span></div>
+<div class="row even"><span class="num">20</span><span class="src">    <span class="kw">try</span> {</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">      <span class="kw">await</span> <span class="kw">new</span> <span class="fn">Promise</span>(res =&gt; <span class="fn">setTimeout</span>(res, <span class="nl">800</span>)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Simulated network request</span>
+      </div></div>
+<div class="row even"><span class="num">22</span><span class="src">      <span class="fn">setStatus</span>(<span class="str">'success'</span>);</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">    } <span class="kw">catch</span> (err) {</span></div>
+<div class="row even"><span class="num">24</span><span class="src">      <span class="fn">setError</span>(err.message);</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">      <span class="fn">setStatus</span>(<span class="str">'error'</span>);</span></div>
+<div class="row even"><span class="num">26</span><span class="src">    }</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">  }</span></div></div></div></div>
+<p>Calling <code>setStatus('submitting')</code> triggers a re-render where the UI disables inputs immediately. Once the promise settles, state transitions definitively to either <code>'success'</code> or <code>'error'</code>. Moving to the visual output, we render the template:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-5">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">5</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 5: Rendering the Form and Submit Button';">Rendering the Form and Submit Button</div>
+      
+    </div>
+  </div>
+</div>
+<p>Finally, we project the state machine into the JSX form markup and complete the parent form container:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">QuizPoll.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">29</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">30</span><span class="src">    &lt;form onSubmit={handleSubmit} className=<span class="str">"poll-container"</span>&gt;</span></div>
+<div class="row odd"><span class="num">31</span><span class="src">      &lt;PollStatusCard status={status} errorMessage={error} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Renders feedback card matching active <b class="tag">STATUS</b></span>
+      </div></div>
+<div class="row even"><span class="num">32</span><span class="src">      {status !== <span class="str">'success'</span> &amp;&amp; (</span></div>
+<div class="row odd"><span class="num">33</span><span class="src">        &lt;&gt;</span></div>
+<div class="row even"><span class="num">34</span><span class="src">          &lt;input value={answer} onChange={handleChange} disabled={status === <span class="str">'submitting'</span>} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px;">
+        <span class="text">Controlled input disabled during <b class="tag">TRANSITION</b></span>
+      </div></div>
+<div class="row odd"><span class="num">35</span><span class="src">          &lt;button type=<span class="str">"submit"</span> disabled={status === <span class="str">'empty'</span> || status === <span class="str">'submitting'</span>}&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px;">
+        <span class="text">Submit button disabled until valid <b class="tag">ENTRY</b></span>
+      </div></div>
+<div class="row even"><span class="num">36</span><span class="src">            Submit Vote</span></div>
+<div class="row odd"><span class="num">37</span><span class="src">          &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">38</span><span class="src">        &lt;/&gt;</span></div>
+<div class="row odd"><span class="num">39</span><span class="src">      )}</span></div>
+<div class="row even"><span class="num">40</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">41</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">42</span><span class="src">}</span></div></div></div></div>
+<p>Inside <code>QuizPoll.jsx</code>, the form projects its interactive controls based purely on <code>status</code>. Buttons and inputs disable themselves automatically without imperative DOM queries.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — Declarative State Machine vs DOM Poking</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Reader Poll</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            QuizPoll.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            PollStatusCard.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            status: 'submitting' ➔ UI = f(state)
+            <span class="rce-node-props">✓ STATE MACHINE</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. State Enum: <span class="ref-tag ref-green">'submitting'</span> ➔ exactly one active mode</div>
+            <div style="margin-top:0.3rem;">2. Declarative JSX: renders spinner; disables submit button</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Deterministic Projection: impossible states prevented by design!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            React models UI as a direct mathematical projection of state.<br>
+            A single status enum guarantees mutually exclusive visual states without desync bugs.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            spinner.style.display = 'block'; submitBtn.disabled = true
+            <span class="rce-node-props">✕ IMPERATIVE DOM POKING</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Event Handler ➔ <span class="ref-tag ref-red">manually toggles DOM node styles</span></div>
+            <div style="margin-top:0.3rem;">2. Rapid Retry / Timeout ➔ <span class="ref-tag ref-red">misses error banner reset</span></div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">State Desync: Spinner and error banner overlap on screen!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Imperative DOM scripting scatters UI state across individual elements.<br>
+            A single missed instruction causes contradictory, broken visual displays.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 21.2: Fig 21.1: Declarative state machine versus imperative DOM manipulation</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Deriving State: Why Fewer State Variables Mean Fewer Bugs</h3>
+<p>A common pitfall when transitioning to declarative programming is creating state variables for values that can easily be calculated. If a piece of data can be derived from existing props or state during rendering, never store it in state.</p>
+<p>For instance, in <code>QuizPoll.jsx</code>, instead of creating a separate boolean <span class="code-line-callout"><code><span class="kw">const</span> [isEmpty, setIsEmpty] = <span class="hook">useState</span>(<span class="kw">true</span>)</code></span> we derive it directly inline:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Derived State Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> isEmpty = answer.<span class="fn">trim</span>().length === <span class="nl">0</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Pure calculation during <b class="tag">RENDER</b></span>
+      </div></div></div></div></div>
+<p>Every redundant state variable increases the risk of state drift, where two variables tell conflicting stories about the current UI. Strive for the minimal amount of state necessary to represent what the user sees.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Model UI as a finite state machine using explicit status enums, and derive everything else during render.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how to design components that react to user input, explain the five-step declarative methodology: identify visual states, determine triggers, represent state with minimal useState calls, eliminate impossible states using status enums rather than conflicting booleans, and attach event handlers. Contrast this with imperative DOM programming: instead of commanding individual DOM nodes to hide or show, React models UI as a deterministic projection of state ($UI = f(state)$), preventing state drift and eliminating impossible intermediate states.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Multi-step checkout flows: managing transitions between cart review, shipping entry, payment authorization, and order confirmation.</li>
+<li>Interactive authentication dialogs: toggling between idle credentials input, sending OTP code, verifying token, and session establishment.</li>
+<li>File upload dropzones: handling idle, dragging, uploading progress, success preview, and invalid format error views.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Declarative UI</strong>: Programming model where you describe what the UI should look like for each state, leaving DOM updates to React.</li>
+<li><strong>Imperative UI</strong>: Programming model where you manually command the computer with step-by-step instructions to alter individual DOM elements.</li>
+<li><strong>Finite State Machine</strong>: A computational model that can exist in exactly one of a finite number of discrete states at any given moment.</li>
+<li><strong>Status Enum</strong>: A string union representing mutually exclusive visual states (<span class="code-line-callout"><code><span class="str">'empty'</span> | <span class="str">'loading'</span> | <span class="str">'success'</span> | <span class="str">'error'</span></code></span>).</li>
+<li><strong>Derived State</strong>: Values calculated directly from existing state or props during rendering without requiring their own <code>useState</code> storage.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Declarative State Machines: Reacting to Input without DOM Manipulation</strong></p>
+<p>In daily production, designing components <strong>declaratively with state machines</strong> eliminates elusive UI desynchronization bugs and makes complex user interactions predictable. By modeling component behavior as discrete states and letting React project the visual output, you write robust, bug-free interfaces. Here is your streetwise review.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Declarative State, Status Enums, and Eliminating Impossible States</span></div>
+<ol><li>Treat the UI as a <strong>pure projection of state</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Never query or mutate the DOM directly with <code>document.getElementById</code> or class manipulations.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Identify all visual states before writing logic: empty, typing, submitting, success, and error.</li>
+<li>Consolidate modes with a <strong>status enum</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Replace multiple independent booleans (<code>isLoading</code>, <code>isSuccess</code>) with a single string union (<code>'submitting' | 'success'</code>).<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Using a single status variable completely prevents impossible states where both a spinner and error banner display together.</li>
+<li>Prune state by <strong>deriving values during render</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) If a value can be computed from existing props or state, never store it in a separate <code>useState</code> call.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Fewer state variables mean fewer synchronization bugs and faster, more reliable component updates.</li></ol>
+<p class="summary-principle">➔ NEVER manipulate DOM styles or attributes directly inside event handlers.</p>
+<p class="summary-principle">➔ ALWAYS model complex multi-step UI with an explicit status enum instead of multiple booleans.</p>
+<p class="summary-principle">➔ IF a value can be computed from existing state THEN <strong>derive it inline during rendering</strong>.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Model mutually exclusive states with a single status enum.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">QuizPoll.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> [status, setStatus] = <span class="hook">useState</span>(<span class="str">'empty'</span>);</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">if</span> (status === <span class="str">'submitting'</span>) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> &lt;Spinner /&gt;;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Never toggle DOM node styles or classes imperatively.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">QuizPoll.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleSubmit</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  document.<span class="fn">getElementById</span>(<span class="str">'spinner'</span>).style.display = <span class="str">'block'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  submitBtn.disabled = <span class="kw">true</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>DECLARATIVE STATE</strong><br>(State Machine)</th><th><strong>IMPERATIVE DOM</strong><br>(Direct Mutation)</th><th><strong>DERIVED VALUES</strong><br>(Computed In-Render)</th></tr></thead><tbody><tr><td><strong>Control strategy</strong></td><td>State drives UI;<br>React updates DOM</td><td>Code queries and<br>mutates DOM directly</td><td>Values calculated<br>fresh on every render</td></tr><tr><td><strong>State representation</strong></td><td>Single status enum<br>or minimal state</td><td>Implicit state scattered<br>across DOM nodes</td><td>Pure expressions using<br>existing state/props</td></tr><tr><td><strong>Impossible states</strong></td><td>Eliminated entirely<br>by design</td><td>Frequent: spinners and<br>errors can overlap</td><td>Impossible: always in<br>sync with input data</td></tr><tr><td><strong>Code predictability</strong></td><td>High: deterministic<br>UI projection</td><td>Low: depends on order<br>of historical events</td><td>Highest: zero state<br>drift or desync risk</td></tr><tr><td><strong>Primary purpose</strong></td><td>Managing complex forms<br>and interactive UI</td><td>Legacy scripts and<br>third-party integration</td><td>Pruning redundant<br>state variables</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

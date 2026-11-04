@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 26: Consolidating State Logic: The useReducer Hook and Dispatch Actions</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 26: Consolidating State Logic: The useReducer Hook and Dispatch Actions</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">When does state logic outgrow useState, and how does a reducer consolidate it?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Chloe manages the publishing console for The National Times website.</li>
+<li>The console tracks article status, revisions, and approval flags across eight separate state variables.</li>
+<li>When publishing a story, Chloe updates four different state variables across five event handlers.</li>
+<li>Why does coordinating multiple state updates scatter transition logic all over the component?</li>
+<li>Scattered state setters create conflicting data states and make complex workflows nearly impossible to debug.</li>
+<li>Splitting dependent values into separate state cells prevents centralized validation before updates apply.</li>
+<li>Today you learn how useReducer consolidates complex state transitions into one testable function.</li></ol>
+</div>
+<div class="keep-together">
+<h3>From useState to useReducer: The State Complexity Tipping Point</h3>
+<p>As user interfaces expand in complexity, components naturally accumulate more state variables. A feature that began with a single <code>useState</code> call soon adds loading flags, error strings, revision counters, and user feedback buffers. This accumulation leads to <strong>state fragmentation</strong>, where related pieces of data are scattered across multiple independent state hooks.</p>
+<p>When an event occurs, such as a user submitting a form or rejecting an editorial article, the event handler must call three or four different state setters in sequence:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Scattered Setters Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleReject</span>(reason) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setStatus</span>(<span class="str">'draft'</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setRevision</span>(r =&gt; r + <span class="nl">1</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">setNotes</span>(reason);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="fn">setIsLocked</span>(<span class="kw">false</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>This pattern exposes the application to severe architectural risks. Because the logic dictating <em>how</em> state changes is embedded directly inside UI event handlers, identical update logic gets duplicated across buttons, keyboard shortcuts, and network callbacks. If one handler forgets to call <code>setRevision</code>, or calls setters in a slightly different order, the UI enters contradictory, broken states.</p>
+<p>React provides <strong>useReducer</strong> to solve state fragmentation. Instead of telling React <em>how</em> to update state directly inside event handlers, event handlers simply dispatch an <strong>action object</strong> describing <em>what the user just did</em>. All update logic is consolidated into a single, centralized <strong>pure reducer function</strong>.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why do multiple useState setters cause bugs?</strong> Imagine a busy restaurant kitchen during the dinner rush. A waiter runs into the kitchen shouting six separate commands at once: "Add extra pepper, cancel table two's fish, double the soup order, hold the onions, fire the steaks, refire table four!" In the noise and chaos, the cooks miss two commands, drop an order slip, and serve raw steak. That is what happens when you call multiple useState setters inside an event handler. You shout multiple low-level instructions, and if one setter fails to run or triggers an out-of-order re-render, your UI falls into contradictory states. Now imagine the waiter places a single printed ticket on the wheel: "Order 42: Table 3 Revision." The head chef reads the ticket and updates the kitchen board in one clean pass. That is useReducer. Instead of shouting setters, you dispatch a single descriptive action. Understanding <strong>state fragmentation</strong> as <strong>kitchen chaos</strong> clarifies why <strong>dispatching actions</strong> to a <strong>pure reducer</strong> guarantees <strong>consolidated state</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Anatomy of an Action and a Pure Reducer Function</h3>
+<p>Migrating from <code>useState</code> to <code>useReducer</code> requires establishing two standard structures: action objects and the reducer function.</p>
+<p>An <strong>action object</strong> is a plain JavaScript object that represents a user event or intent. By universal convention, an action must have a <code>type</code> property (a string naming the event in uppercase) and an optional <code>payload</code> containing any supplementary data:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Action Dispatch Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">dispatch</span>({ type: <span class="str">'APPROVE'</span>, payload: <span class="str">'Editorial sign-off by chief editor'</span> });</span></div></div></div></div>
+<p>The action object says: "The user approved the story, and here is the note they entered." It contains zero logic and dictates no mutations.</p>
+<p>A <strong>reducer function</strong> is a pure JavaScript function that accepts two arguments (the current <code>state</code> and the incoming <code>action</code>) and returns the next state:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Reducer Signature Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">workflowReducer</span>(state, action) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> state; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Evaluates action and returns brand-new state object <b class="tag">IMMUTABLY</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+<p>Because a reducer is pure, it must obey mathematical purity: it must never mutate the existing <code>state</code> object directly, never execute asynchronous API calls, and never touch the DOM. It produces the next state using immutable object spread operations.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>What is the benefit of a pure reducer?</strong> Remember a bank ledger book maintained by an accountant in a quiet room. A customer hands a deposit slip to the teller: "Deposit five hundred dollars." The teller does not touch the vault or calculate interest. The teller slips the paper under the door to the accountant. The accountant reads the current balance, reads the slip, and writes the new total in the ledger. The accountant never leaves the desk, never touches cash, and never talks to customers. The calculation is pure mathematics. In React, your reducer is that accountant. It takes the current state and an action ticket, and calculates the next state immutably. Because it has no side effects, you can test every complex business rule in your application simply by passing an action into a function and checking the result. Understanding the <strong>pure reducer</strong> as a <strong>bank accountant</strong> clarifies why <strong>deterministic transitions</strong> make <strong>state logic testable and bulletproof</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Article Workflow Architecture</h3>
+<p>To observe <code>useReducer</code> in production, inspect the editorial article publication desk for The National Times. The parent component <code>ArticleWorkflowDesk.jsx</code> consolidates all publication states, parenting <code>WorkflowStatus.jsx</code> and <code>WorkflowActionToolbar.jsx</code>:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>ArticleWorkflowDesk.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>WorkflowActionToolbar.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>WorkflowStatus.jsx</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>state</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9.5 13c-.8 1-1.5 1.7-1.5 2.5s.7 1.5 1.5 2.5"/><path d="M14.5 13c.8 1 1.5 1.7 1.5 2.5s-.7 1.5-1.5 2.5"/></svg><span>workflowReducer.js</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ArticleWorkflowDesk</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-badge"><div class="component-explorer-label"><span>WorkflowStatus</span><span class="component-explorer-props">workflow</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn">badge: Draft</span><span class="surface-render-line">Version: 1</span><span class="surface-render-line">Revisions: 0</span></div></div><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>WorkflowActionToolbar</span><span class="component-explorer-props">status dispatch</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn">Send to Review</span><span class="surface-ui-btn">Increment Revision</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above illustrates the component tree. On the left, <code>ArticleWorkflowDesk.jsx</code> coordinates the workflow and imports <code>workflowReducer.js</code>. On the right, the rendered view displays the current status and the available action buttons: "Status: draft", "Revision: 1", followed by "Submit for Review".</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure">
+  <style>
+    .pipeline-card-figure {
+      margin: 1.5rem auto;
+      max-width: 590px;
+      background: #f4f6f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pipeline-card-figure .pipeline-header {
+      background: #344154;
+      padding: 10px 18px;
+    }
+    .pipeline-card-figure .pipeline-header span {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .pipeline-card-figure .pipeline-body {
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pipeline-card-figure .step-node {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #fcfcfb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 20px 14px 26px;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .pipeline-card-figure .step-node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #0e7490;
+    }
+    .pipeline-card-figure .step-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      line-height: 1.35;
+    }
+    .pipeline-card-figure .step-num {
+      color: #0e7490;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-label {
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: #475569;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+    .pipeline-card-figure .step-desc {
+      margin-top: 11px;
+      text-align: center;
+      font-size: 0.77rem;
+      line-height: 1.45;
+      font-style: italic;
+      color: #334155;
+      max-width: 470px;
+    }
+    .pipeline-card-figure .step-desc strong {
+      font-weight: 700;
+      color: #0f172a;
+      font-style: normal;
+    }
+    .pipeline-card-figure .step-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+    }
+    .pipeline-card-figure .step-connector svg {
+      display: block;
+    }
+  </style>
+
+  <div class="pipeline-header">
+    <span>USEREDUCER ARCHITECTURE — 4-STAGE PIPELINE</span>
+  </div>
+
+  <div class="pipeline-body">
+    <!-- Step 1 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 1:</span>
+        <span class="step-label">Authoring the Pure Status Display</span>
+      </div>
+      <div class="step-code">WorkflowStatus({ workflow })</div>
+      <div class="step-desc">
+        First, author the <strong>stateless presentation panel</strong> to project <strong>article status, revision, and notes</strong> from incoming props.
+      </div>
+    </div>
+
+    <!-- Connector 1 -> 2 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 2:</span>
+        <span class="step-label">Declaring Action Dispatch Buttons</span>
+      </div>
+      <div class="step-code">WorkflowActionToolbar({ status, dispatch })</div>
+      <div class="step-desc">
+        Next, author the <strong>intent-driven action toolbar</strong> to dispatch <strong>semantic action tickets</strong> without knowing mutation logic.
+      </div>
+    </div>
+
+    <!-- Connector 2 -> 3 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 3:</span>
+        <span class="step-label">Centralizing State Transitions in a Reducer</span>
+      </div>
+      <div class="step-code">workflowReducer(state, action) // Pure state machine</div>
+      <div class="step-desc">
+        Then, isolate <strong>all transition rules</strong> into a <strong>pure reducer module</strong> for testable, deterministic state calculations.
+      </div>
+    </div>
+
+    <!-- Connector 3 -> 4 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 4:</span>
+        <span class="step-label">Connecting useReducer in the Workflow Desk</span>
+      </div>
+      <div class="step-code">ArticleWorkflowDesk.jsx // const [workflow, dispatch] = useReducer(...)</div>
+      <div class="step-desc">
+        Finally, mount <strong>useReducer</strong> inside the <strong>parent component</strong> to hold the consolidated state and distribute dispatch.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 26.1: Step-by-step code assembly pipeline for the useReducer workflow architecture</figcaption>
+</figure>
+<p>To construct this editorial publication workflow cleanly, we decompose <code>WorkflowStatus.jsx</code>, <code>WorkflowActionToolbar.jsx</code>, <code>workflowReducer.js</code>, and <code>ArticleWorkflowDesk.jsx</code> across four sequential implementation steps:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: Authoring the Pure Status Display';">Authoring the Pure Status Display</div>
+      
+    </div>
+  </div>
+</div>
+<p>First, we author the presentation component <code>WorkflowStatus.jsx</code> to render current editorial metadata:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">WorkflowStatus.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">WorkflowStatus</span>({ workflow }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;section className=<span class="str">"workflow-status"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;p&gt;Status: &lt;strong&gt;{workflow.status}&lt;/strong&gt;&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;p&gt;Revision: &lt;strong&gt;{workflow.revision}&lt;/strong&gt;&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;p&gt;Notes: {workflow.notes}&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Pure display of consolidated reducer <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>The <code>WorkflowStatus</code> component is a pure display unit. It receives the consolidated <code>workflow</code> object as a prop and formats the metadata into semantic markup without maintaining internal state.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Declaring Action Dispatch Buttons';">Declaring Action Dispatch Buttons</div>
+      
+    </div>
+  </div>
+</div>
+<p>Next, we construct the action toolbar <code>WorkflowActionToolbar.jsx</code> to dispatch semantic events based on current status:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">WorkflowActionToolbar.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">WorkflowActionToolbar</span>({ status, dispatch }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;nav className=<span class="str">"action-toolbar"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      {status === <span class="str">'draft'</span> &amp;&amp; (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">        &lt;button onClick={() =&gt; <span class="fn">dispatch</span>({ type: <span class="str">'SUBMIT_DRAFT'</span> })}&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">          Submit <span class="kw">for</span> Review</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">        &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      )}</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      {status === <span class="str">'review'</span> &amp;&amp; (</span></div>
+<div class="row even"><span class="num">10</span><span class="src">        &lt;&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">          &lt;button onClick={() =&gt; <span class="fn">dispatch</span>({ type: <span class="str">'APPROVE'</span>, payload: <span class="str">'Editorial sign-off'</span> })}&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">            Approve Story</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">          &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">          &lt;button onClick={() =&gt; <span class="fn">dispatch</span>({ type: <span class="str">'REJECT'</span>, payload: <span class="str">'Needs source verification'</span> })}&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">            Request Revisions</span></div>
+<div class="row even"><span class="num">16</span><span class="src">          &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">        &lt;/&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      )}</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">      {status === <span class="str">'approved'</span> &amp;&amp; (</span></div>
+<div class="row even"><span class="num">20</span><span class="src">        &lt;button onClick={() =&gt; <span class="fn">dispatch</span>({ type: <span class="str">'PUBLISH'</span> })}&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">          Publish Story</span></div>
+<div class="row even"><span class="num">22</span><span class="src">        &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">      )}</span></div>
+<div class="row even"><span class="num">24</span><span class="src">    &lt;/nav&gt;</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Dispatches intent without knowing state mutation <b class="tag">DETAILS</b></span>
+      </div></div>
+<div class="row even"><span class="num">26</span><span class="src">}</span></div></div></div></div>
+<p>Notice how declarative <code>WorkflowActionToolbar</code> is. It receives <code>dispatch</code> as a callback prop. When a button is clicked, it calls <code>dispatch({ type: ... })</code>. The button does not need to know what properties exist on the workflow state object or how the revision number increments; it only announces user intent.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Centralizing State Transitions in a Reducer';">Centralizing State Transitions in a Reducer</div>
+      
+    </div>
+  </div>
+</div>
+<p>Third, we isolate the initial state definition and all state transition logic into a pure reducer module <code>workflowReducer.js</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">workflowReducer.js</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">const</span> initialWorkflow = {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  status: <span class="str">'draft'</span>,</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  revision: <span class="nl">1</span>,</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  notes: <span class="str">'First draft by staff reporter'</span></span></div>
+<div class="row odd"><span class="num">5</span><span class="src">};</span></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">workflowReducer</span>(state, action) {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">switch</span> (action.type) {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="kw">case</span> <span class="str">'SUBMIT_DRAFT'</span>:</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      <span class="kw">return</span> { ...state, status: <span class="str">'review'</span>, revision: state.revision + <span class="nl">1</span> };</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="kw">case</span> <span class="str">'APPROVE'</span>:</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      <span class="kw">return</span> { ...state, status: <span class="str">'approved'</span>, notes: action.payload };</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    <span class="kw">case</span> <span class="str">'REJECT'</span>:</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      <span class="kw">return</span> { ...state, status: <span class="str">'draft'</span>, notes: action.payload };</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    <span class="kw">case</span> <span class="str">'PUBLISH'</span>:</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      <span class="kw">return</span> { ...state, status: <span class="str">'published'</span> };</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    <span class="kw">default</span>:</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">`Unhandled workflow action: ${action.type}`</span>);</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">20</span><span class="src">}</span></div></div></div></div>
+<p>Because <code>workflowReducer</code> is a pure JavaScript function, it operates independently of the React rendering engine. It takes the current <code>state</code> and incoming <code>action</code>, and returns the next state immutably. Centralizing transitions in this module makes business rules easy to verify in automated unit tests.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Connecting useReducer in the Workflow Desk';">Connecting useReducer in the Workflow Desk</div>
+      
+    </div>
+  </div>
+</div>
+<p>Finally, we assemble the parent component <code>ArticleWorkflowDesk.jsx</code>, initializing <code>useReducer</code> and distributing state and dispatch to child components:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleWorkflowDesk.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useReducer</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> WorkflowActionToolbar <span class="kw">from</span> <span class="str">'./WorkflowActionToolbar.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">import</span> WorkflowStatus <span class="kw">from</span> <span class="str">'./WorkflowStatus.jsx'</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">import</span> { initialWorkflow, workflowReducer } <span class="kw">from</span> <span class="str">'./workflowReducer.js'</span>;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleWorkflowDesk</span>() {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> [workflow, dispatch] = <span class="hook">useReducer</span>(workflowReducer, initialWorkflow);</span></div>
+<div class="row even"><span class="num">8</span><span class="src"></span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;main className=<span class="str">"workflow-container"</span>&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;h2&gt;National Times Editorial Workflow&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;WorkflowStatus workflow={workflow} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Passes consolidated workflow state down as <b class="tag">PROPS</b></span>
+      </div></div>
+<div class="row odd"><span class="num">13</span><span class="src">      &lt;WorkflowActionToolbar status={workflow.status} dispatch={dispatch} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Forwards dispatch function to emit action <b class="tag">OBJECTS</b></span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">16</span><span class="src">}</span></div></div></div></div>
+<p>In <code>ArticleWorkflowDesk</code>, the <code>useReducer</code> hook initializes <code>workflow</code> with <code>initialWorkflow</code> and provides the stable <code>dispatch</code> function. All transition logic for the entire workflow is governed by the pure reducer function.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — useReducer vs Scattered useState</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Article Workflow</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            ArticleWorkflowDesk.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            WorkflowStatus.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            WorkflowActionToolbar.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            dispatch({ type: 'APPROVE' })
+            <span class="rce-node-props">✓ PURE REDUCER</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Action Dispatch: <span class="ref-tag ref-green">describes user intent</span>, not mutation details</div>
+            <div style="margin-top:0.3rem;">2. Pure Reducer: (state, action) =&gt; newState evaluates deterministically</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Atomic Transition: status, revision, notes update in one pass!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            useReducer centralizes all transition rules in a pure function outside the component.<br>
+            Handlers stay clean, impossible states are prevented, and logic is 100% unit-testable.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            setStatus(); setRevision(); setNotes()
+            <span class="rce-node-props">✕ SCATTERED SETTERS</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Scattered Mutations: <span class="ref-tag ref-red">update rules copied across 8 handlers</span></div>
+            <div style="margin-top:0.3rem;">2. Missed Setter Sync: handler updates status but forgets revision</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">State Desync: revision stays at 1 while status displays "approved"!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Scattering multiple useState setters across handlers causes state fragmentation.<br>
+            A single missed setter or out-of-order update leads to contradictory UI states.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 26.2: The National Times — useReducer vs Scattered useState</figcaption>
+</figure>
+<p>The figure above illustrates the architectural cycle. User interactions dispatch lightweight action tickets. The pure reducer calculates the next state snapshot immutably, and React updates the component view in a single atomic pass.</p>
+</div>
+<div class="keep-together">
+<h3>Testing and Portability: Why Reducers Outperform Scattered Setters</h3>
+<p>The most profound advantage of <code>useReducer</code> is testability. In components with multiple <code>useState</code> setters, verifying that a complex multi-step workflow functions correctly requires mounting the component into a virtual browser environment like jsdom, finding DOM buttons, simulating clicks, and asserting on rendered text.</p>
+<p>Because a reducer function is a plain JavaScript function declared outside React, you can export it and test it in pure Node.js:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Pure Reducer Unit Test</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">test</span>(<span class="str">'submitting a draft increments revision and sets status to review'</span>, () =&gt; {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> startState = { status: <span class="str">'draft'</span>, revision: <span class="nl">1</span>, notes: <span class="str">''</span> };</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> nextState = <span class="fn">workflowReducer</span>(startState, { type: <span class="str">'SUBMIT_DRAFT'</span> });</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">expect</span>(nextState.status).<span class="fn">toBe</span>(<span class="str">'review'</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="fn">expect</span>(nextState.revision).<span class="fn">toBe</span>(<span class="nl">2</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">});</span></div></div></div></div>
+<p>These unit tests execute in milliseconds, testing every edge case and invalid transition with zero React rendering overhead.</p>
+<p>When deciding between <code>useState</code> and <code>useReducer</code>, apply this rule: use <code>useState</code> when you have simple, independent primitives like a single text input or boolean toggle. Choose <code>useReducer</code> when state variables change together, when state transitions depend on previous state values, or when you want to unit test complex business logic independently from UI rendering.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked to compare <code>useState</code> and <code>useReducer</code>, explain that under the hood in React's Fiber engine, <code>useState</code> is actually implemented using <code>useReducer</code>. When you call <code>useState(initialValue)</code>, React internally invokes a built-in reducer that simply returns the next value passed to the setter. Framing <code>useState</code> as a convenience specialization of <code>useReducer</code> demonstrates deep mastery of React internal architecture.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Editorial publishing pipelines: Coordinating article draft, peer review, legal approval, and publication states with audit logs.</li>
+<li>Complex checkout funnels: Managing shipping address fields, payment methods, discount code validation, and order submission states.</li>
+<li>Interactive digital audio workstations: Managing track playlist queues, active playback modes, gain controls, and timeline scrubbers.</li>
+<li>Canvas drawing software: Tracking current drawing tools, active color palettes, brush sizes, and undo/redo history stacks.</li>
+<li>Real-time multiplayer game lobbies: Managing player readiness, room configuration, seat assignments, and match countdown timers.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>useReducer</strong>: A React hook for managing complex state through a reducer function, returning the current state and a dispatch function.</li>
+<li><strong>Reducer Function</strong>: A pure function accepting current state and an action object, returning the next state immutably without side effects.</li>
+<li><strong>Dispatch Function</strong>: A stable function returned by useReducer used to send action objects to the reducer to trigger state transitions.</li>
+<li><strong>Action Object</strong>: A plain JavaScript object representing a user event or intent, typically containing a descriptive type property and optional payload.</li>
+<li><strong>State Machine</strong>: A computational model consisting of a finite number of discrete states and explicit transition rules between them, preventing impossible states.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>State Consolidation Architecture: The useReducer Hook and Action Dispatch</strong></p>
+<p>When state logic outgrows simple independent variables, <code>useReducer</code> consolidates all transitions into a pure, testable function. By separating user actions from state mutation rules, your component markup remains clean and focused solely on rendering.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Principles of Reducer Architecture</span></div>
+<ol><li>Separate action dispatch from state updates.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Event handlers dispatch action objects describing what the user did.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) The reducer function decides how the state transforms in response to that action.</li>
+<li>Keep reducers pure and deterministic.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Never mutate the incoming state; always return a fresh state object using spread syntax.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Avoid side effects, random numbers, or network requests inside the reducer body.</li>
+<li>Consolidate related state variables.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Group variables that change in tandem into a single reducer state object.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Prevent impossible states by encoding business rules into explicit switch cases.
+➔ ALWAYS export pure reducer functions to unit test complex business logic without rendering components.<br>
+➔ NEVER perform asynchronous operations, API calls, or DOM mutations inside a reducer function.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Scatter multiple interrelated state setters across event handlers.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BrokenWorkflow</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">BrokenWorkflow</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [status, setStatus] = <span class="hook">useState</span>(<span class="str">'draft'</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [revision, setRevision] = <span class="hook">useState</span>(<span class="nl">1</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [notes, setNotes] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">handleApprove</span>(note) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="fn">setStatus</span>(<span class="str">'approved'</span>);</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="fn">setNotes</span>(note);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Dispatch a single descriptive action to a pure, consolidated reducer function.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CleanWorkflow</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">CleanWorkflow</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [workflow, dispatch] = <span class="hook">useReducer</span>(workflowReducer, initial);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">function</span> <span class="fn">handleApprove</span>(note) {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">dispatch</span>({ type: <span class="str">'APPROVE'</span>, payload: note });</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>USESTATE HOOK</strong><br>(primitives)</th><th><strong>USEREDUCER HOOK</strong><br>(consolidated)</th></tr></thead><tbody><tr><td><strong>Logic Placement</strong></td><td>Embedded directly inside<br>individual event handlers</td><td>Centralized in a single pure<br>function outside component</td></tr><tr><td><strong>Action Abstraction</strong></td><td>Handlers dictate exact<br>state mutations imperatively</td><td>Handlers dispatch declarative<br>action objects describing intent</td></tr><tr><td><strong>State Complexity</strong></td><td>Best for simple, independent<br>numbers, strings, booleans</td><td>Ideal for multi-field objects<br>and finite state machines</td></tr><tr><td><strong>Unit Testability</strong></td><td>Requires rendering component<br>and simulating DOM events</td><td>Reducer can be exported and<br>tested in pure JavaScript</td></tr><tr><td><strong>Fiber Architecture</strong></td><td>Lightweight specialization<br>of the reducer engine</td><td>Foundational state primitive<br>in React's reconciliation core</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

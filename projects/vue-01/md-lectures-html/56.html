@@ -1,0 +1,1114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 56: Hydration Mechanics and Node Mismatch Recovery</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 56: Hydration Mechanics and Node Mismatch Recovery</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">What exactly is 'Hydration' in Vue, and what causes a Hydration Node Mismatch error?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A news desk developer at <em>The National Times</em> deploys a live breaking news banner.</li>
+<li>The server renders the emergency red alert, article headline, and interactive dismiss button.</li>
+<li>When the JavaScript file runs in the browser, the banner suddenly blinks and input focus vanishes.</li>
+<li>The browser console prints a red error: <code>[Vue warn] Hydration node mismatch</code>.</li>
+<li>Why does the browser destroy and recreate elements that the server already rendered?</li>
+<li>Discarding rendered elements causes visual jumps, wastes device battery, and breaks user trust.</li>
+<li>Today you learn how Vue connects to server HTML, why mismatches happen, and how to prevent them.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Handshake: Bringing Static HTML to Life</h3>
+<p>When you open a server-rendered website, the server does not send an empty page. Instead, a Node.js server executes your Vue components and builds a complete HTML file first.</p>
+<p>The browser downloads this HTML document and displays the text and buttons right away. Your reader can see the news headline immediately, but if they tap a button, nothing happens. The HTML is completely static, like ink printed on paper. No JavaScript event listeners are attached yet.</p>
+<p>To bring this static HTML to life, Vue runs a process called <strong>hydration</strong>.</p>
+<p>Many developers believe hydration deletes the server HTML and renders the entire page again. That would be a serious defect. It would make the screen flicker, erase text selected by the user, and drain device battery.</p>
+<p>Instead, hydration is a gentle handshake. Vue looks at the real HTML elements already on the screen and pairs them with its own <strong>Virtual DOM</strong> in memory.</p>
+<p>Vue steps through the existing elements and attaches live click listeners and form bindings directly to them. No new DOM elements are created during a successful hydration pass.</p>
+<p>To see how client hydration begins, examine the browser entry configuration:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">entry-client.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { createApp, createSSRApp } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> BreakingBanner <span class="kw">from</span> <span class="str">'./BreakingBanner.vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">const</span> standardApp = <span class="fn">createApp</span>(BreakingBanner); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Clears container and creates new DOM elements</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">export</span> <span class="kw">const</span> hydratedApp = <span class="fn">createSSRApp</span>(BreakingBanner); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Reuses existing server HTML and attaches listeners</span></div></div></div></div></div></div>
+<p>In <code>entry-client.js</code>, notice the contrast between the two initialization functions:</p>
+<ol><li><code>createApp(BreakingBanner)</code>: Assumes the target container is empty. If HTML already exists inside <code>#app</code>, calling <code>mount()</code> clears the container by setting <code>innerHTML = ''</code> and creates new DOM nodes from scratch.</li>
+<li><code>createSSRApp(BreakingBanner)</code>: Activates Vue's hydration mode. When <code>mount()</code> runs, Vue inspects the existing server HTML inside <code>#app</code> and preserves every element, attaching event listeners in place.</li></ol>
+<p>Now examine the interactive emergency banner component that mounts through this entry point:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BreakingBanner.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> isAlertOpen = <span class="hook">ref</span>(<span class="kw">true</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Controls alert visibility</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="kw">function</span> <span class="fn">dismissAlert</span>() {</span></div>
+<div class="row"><span class="num">7</span><span class="src">  isAlertOpen.value = <span class="kw">false</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Closes alert when clicked</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">  &lt;div v-<span class="kw">if</span>=<span class="str">"isAlertOpen"</span> <span class="kw">class</span>=<span class="str">"breaking-banner"</span>&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">    &lt;span <span class="kw">class</span>=<span class="str">"badge"</span>&gt;URGENT&lt;/span&gt;</span></div>
+<div class="row"><span class="num">14</span><span class="src">    &lt;span <span class="kw">class</span>=<span class="str">"message"</span>&gt;Transit workers announce citywide strike&lt;/span&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src">    &lt;button <span class="kw">class</span>=<span class="str">"dismiss-btn"</span> type=<span class="str">"button"</span> @click=<span class="str">"dismissAlert"</span>&gt;Dismiss&lt;/button&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">17</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>In <code>BreakingBanner.vue</code>, every declaration connects server markup to client interactivity:</p>
+<ol><li><code>const isAlertOpen = ref(true)</code>: On the server, this boolean evaluates to <code>true</code>, rendering the entire banner into the initial HTML string.</li>
+<li><code>function dismissAlert()</code>: Defines the user interaction handler that toggles <code>isAlertOpen.value</code> to <code>false</code>.</li>
+<li><code>@click="dismissAlert"</code>: Binds the click handler to the dismiss button. During hydration, Vue attaches this handler directly to the physical <code>&lt;button&gt;</code> element already painted on screen.</li></ol>
+<p>The architectural workflow below traces the sequential stages of this reconciliation handshake as Vue pairs physical server DOM elements with client Virtual DOM nodes:</p>
+<figure class="vue-figure css-figure">
+<div class="fig-hydration-walker">
+  <style>
+    .fig-hydration-walker {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .fig-hydration-walker * {
+      box-sizing: border-box;
+    }
+    .fig-hydration-walker .walker-shell {
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .fig-hydration-walker .chrome-bar {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 2px solid #0f172a;
+    }
+    .fig-hydration-walker .chrome-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .fig-hydration-walker .chrome-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .fig-hydration-walker .chrome-dots i:nth-child(1) { background: #ef4444; border: 1px solid #dc2626; }
+    .fig-hydration-walker .chrome-dots i:nth-child(2) { background: #f59e0b; border: 1px solid #d97706; }
+    .fig-hydration-walker .chrome-dots i:nth-child(3) { background: #10b981; border: 1px solid #059669; }
+    .fig-hydration-walker .chrome-title {
+      flex: 1;
+      text-align: center;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding-right: 42px;
+    }
+    .fig-hydration-walker .pipeline-body {
+      display: flex;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #f8fafc;
+      align-items: stretch;
+    }
+    .fig-hydration-walker .stage-col {
+      flex: 1;
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .fig-hydration-walker .stage-masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      background: #0f172a;
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .fig-hydration-walker .stage-tag {
+      font-family: "JetBrains Mono", Menlo, monospace;
+      font-size: 10.5px;
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .fig-hydration-walker .stage-content {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      background: #ffffff;
+      justify-content: center;
+    }
+    .fig-hydration-walker .banner-card {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .fig-hydration-walker .banner-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fig-hydration-walker .banner-badge {
+      background: #e11d48;
+      color: #ffffff;
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 2px 5px;
+      border-radius: 3px;
+      letter-spacing: 0.04em;
+    }
+    .fig-hydration-walker .banner-msg {
+      font-size: 11.5px;
+      color: #881337;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .fig-hydration-walker .banner-btn {
+      align-self: flex-start;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+    }
+    .fig-hydration-walker .banner-btn.live {
+      border-color: #059669;
+      color: #065f46;
+      background: #ecfdf5;
+    }
+    .fig-hydration-walker .pointer-trace {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      padding: 6px 8px;
+      font-family: "JetBrains Mono", Menlo, monospace;
+      font-size: 11px;
+      color: #0f172a;
+      line-height: 1.4;
+    }
+    .fig-hydration-walker .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      font-weight: 700;
+      margin-top: auto;
+    }
+    .fig-hydration-walker .status-inert {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+    .fig-hydration-walker .status-active {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+    .fig-hydration-walker .status-live {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .fig-hydration-walker .arrow-col {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      color: #64748b;
+    }
+    .fig-hydration-walker .arrow-col svg {
+      width: 18px;
+      height: 18px;
+    }
+    .fig-hydration-walker .card-footer-strip {
+      padding: 8px 14px;
+      background: #f8fafc;
+      border-top: 2px solid #0f172a;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #334155;
+    }
+    .fig-hydration-walker .card-footer-strip strong {
+      color: #0f172a;
+    }
+  </style>
+
+  <div class="walker-shell">
+    <div class="chrome-bar">
+      <div class="chrome-dots"><i></i><i></i><i></i></div>
+      <div class="chrome-title">The Hydration Handshake: In-Place Reconciliation Traversal</div>
+    </div>
+
+    <div class="pipeline-body">
+      <!-- Step 1: Pre-Rendered Server DOM -->
+      <div class="stage-col">
+        <div class="stage-masthead">
+          <span>1. Server HTML in DOM</span>
+          <span class="stage-tag">Static</span>
+        </div>
+        <div class="stage-content">
+          <div class="banner-card">
+            <div class="banner-head">
+              <span class="banner-badge">URGENT</span>
+              <span class="banner-msg">Transit strike</span>
+            </div>
+            <button class="banner-btn" type="button">Dismiss</button>
+          </div>
+          <div class="status-pill status-inert">
+            <span>Inert Physical Nodes</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-col">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </div>
+
+      <!-- Step 2: Hydration Walker -->
+      <div class="stage-col">
+        <div class="stage-masthead" style="background: #0e7490;">
+          <span>2. hydrateNode Walker</span>
+          <span class="stage-tag">runtime-core</span>
+        </div>
+        <div class="stage-content">
+          <div class="pointer-trace">
+            vnode.el = domNode;<br>patchProp(el, 'onClick');<br>hydrateChildren(el);
+          </div>
+          <div class="status-pill status-active">
+            <span>Depth-First Pointer Walk</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow-col">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </div>
+
+      <!-- Step 3: Reconciled Live DOM -->
+      <div class="stage-col">
+        <div class="stage-masthead" style="background: #059669;">
+          <span>3. Interactive Component</span>
+          <span class="stage-tag">Hydrated</span>
+        </div>
+        <div class="stage-content">
+          <div class="banner-card" style="border-color: #86efac; background: #f0fdf4;">
+            <div class="banner-head">
+              <span class="banner-badge" style="background: #059669;">URGENT</span>
+              <span class="banner-msg" style="color: #065f46;">Transit strike</span>
+            </div>
+            <button class="banner-btn live" type="button">Dismiss</button>
+          </div>
+          <div class="status-pill status-live">
+            <span>Zero DOM Allocations</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer-strip">
+      <strong>hydrateNode traverses existing server-rendered elements in-place;</strong> pairs each physical node to a client virtual node and attaches event listeners without allocating a single replacement DOM element.
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 56.1: The Hydration Handshake: in-place reconciliation traversal pairing physical server DOM elements with client Virtual DOM nodes.</figcaption>
+</figure>
+<p>When you initialize Vue using <code>createSSRApp</code>, Vue starts an internal walker pointing at <code>container.firstChild</code>. It steps through your elements one by one, comparing tag names and attaching event listeners.</p>
+<p>Here is how the official Vue documentation describes this handshake:</p>
+<blockquote>If you inspect a server-rendered app, you will notice that the client-side app doesn't create new DOM nodes. Instead, it "hydrates" the existing HTML. During hydration, Vue creates an in-memory Virtual DOM tree, matches each virtual node to its corresponding real DOM element, and attaches event listeners to make the page interactive.</blockquote>
+<p><em>Vue 3 Official Documentation (Server-Side Rendering), <code>documentation official/vue/resources/core/docs/src/guide/scaling-up/ssr.md</code></em></p>
+<p>This process relies on a strict golden rule: <strong>Hydration requires an exact structural match between the server HTML and the client Virtual DOM.</strong></p>
+<p>Vue does not search across the page looking for elements. It advances in a single line from node to node. It expects the physical HTML elements in the browser to appear in the exact same sequence as the Virtual DOM nodes in memory.</p>
+<p>If they match, hydration finishes in a few milliseconds. If they do not match, the handshake breaks down.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">
+  <p>Hydration attaches event listeners to existing HTML elements without creating new DOM nodes, but only if the server and client trees match exactly.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Inside the Hydration Engine: Reconciliation Under the Hood</h3>
+<p>To understand how Vue performs this handshake, let us examine the internal mechanics of Vue's hydration walker.</p>
+<p>Inside Vue core (<code>runtime-core/src/hydration.ts</code>), hydration is driven by four core functions:</p>
+<ol><li><strong><code>hydrateNode</code></strong>: The primary coordinator. It inspects a physical DOM node, identifies its type (element, text, or comment), and calls the appropriate helper.</li>
+<li><strong><code>hydrateElement</code></strong>: The element specialist. It verifies that the physical HTML tag matches the virtual node tag. It assigns the real element reference (<code>vnode.el = node</code>), attaches event listeners, and walks through child nodes.</li>
+<li><strong><code>hydrateChildren</code></strong>: The child walker. It advances through sibling nodes using <code>node.nextSibling</code>, matching each physical child with its corresponding virtual node.</li>
+<li><strong><code>handleMismatch</code></strong>: The recovery handler. When the physical DOM fails to match the Virtual DOM, this function logs a warning, deletes the mismatched server element, and renders a fresh element in its place.</li></ol>
+<p>Vue also relies on <strong>Comment Anchors</strong> (<code>&lt;!--[--&gt;</code> and <code>&lt;!--]--&gt;</code>). In Vue 3, components can have multiple root elements. Because there is no single container element wrapping them, Vue places HTML comment markers in the server markup so the hydration walker knows where a component begins and ends.</p>
+<p>Think of server-side rendering like buying a house with all the electrical conduit channels and junction boxes cast into solid concrete walls.</p>
+<p>The pre-cast concrete walls represent the server HTML. The boxes and channels are already solid, dry, and fixed in place.</p>
+<p>When the client JavaScript bundle arrives, it acts like an electrician carrying a spool of copper wire and light switches.</p>
+<p>The electrician does not demolish the concrete walls. They feed wire through the existing channels and screw the light switches directly into the pre-cast boxes.</p>
+<p>Now imagine the concrete company made a mistake: where the living room switch should be, there is no junction box, only solid concrete.</p>
+<p>The electrician cannot screw the faceplate into solid concrete. They must stop the job, chisel away the bad section, and cement a new junction box into the wall.</p>
+<p>That emergency chiseling and patching represents a <strong>hydration mismatch</strong>. It repairs the problem, but it creates dust, noise, and visual stutter.</p>
+<p>Historically, early universal frameworks handled mismatches poorly. If an element was missing, the walker lost its position in the tree. Because the pointer shifted by one element, the framework attached click handlers to the wrong controls: clicking "Save Draft" would trigger the "Delete Article" function next to it.</p>
+<p>Vue 3 prevents this chaos through isolated recovery. When Vue 3 detects a mismatch, it isolates that specific component. In development mode, it logs a console warning explaining the difference. In production mode, it discards the mismatched server node and mounts a clean client element in its place.</p>
+<p>The code below shows the exact tag comparison logic inside Vue core:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">hydrate-element.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">hydrateElement</span>(node: Element, vnode: VNode): Node | <span class="kw">null</span> {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">const</span> isMatch = vnode.type.<span class="fn">toLowerCase</span>() === node.tagName.<span class="fn">toLowerCase</span>(); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Compares tags</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">if</span> (!isMatch) {</span></div>
+<div class="row"><span class="num">5</span><span class="src">    <span class="kw">return</span> <span class="fn">handleMismatch</span>(node, vnode); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Tag clash triggers discard and rebuild</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src">  vnode.el = node; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Adopts existing physical DOM element</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="kw">return</span> node.nextSibling; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Advances walker to next sibling node</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>In <code>hydrateElement.ts</code>, the comparison is straightforward:</p>
+<ol><li><code>const isMatch = ...</code>: Compares the lowercase tag name of the virtual node with the lowercase tag name of the physical DOM node.</li>
+<li><code>if (!isMatch)</code>: If the tags clash (for example, server rendered <code>&lt;p&gt;</code> but client Virtual DOM expected <code>&lt;div&gt;</code>), Vue calls <code>handleMismatch</code>.</li>
+<li><code>vnode.el = node</code>: If the tags match, Vue adopts the physical DOM node and connects its reactivity system.</li>
+<li><code>return node.nextSibling</code>: Moves the pointer to the next physical DOM sibling to continue the walk.</li></ol>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p>Hydration is an optimistic engine. It assumes the server HTML is already perfect. When it finds a difference, it stops reusing that element and falls back to a costly client rebuild.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>What Exactly Is a Hydration Node Mismatch?</h3>
+<p>Not every hydration difference results in an element being deleted. To diagnose errors quickly, you must distinguish between minor value updates and true <strong>node mismatches</strong>.</p>
+<ol><li><strong>Text Content Discrepancy</strong>: The tag matches, but the text string inside differs (for example, server rendered <code>&lt;span&gt;10 items&lt;/span&gt;</code> and client expected <code>&lt;span&gt;12 items&lt;/span&gt;</code>). Vue does not destroy the <code>&lt;span&gt;</code>; it updates the text in place with <code>node.data = newText</code>.</li>
+<li><strong>Attribute Discrepancy</strong>: The tag matches, but an attribute value differs (for example, <code>class="btn-dark"</code> on the server and <code>class="btn-light"</code> on the client). Vue keeps the physical button and updates the class using standard DOM attribute methods.</li>
+<li><strong>Hydration Node Mismatch</strong>: The tag type or DOM structure completely disagrees (for example, server rendered <code>&lt;p&gt;</code> but client expected <code>&lt;div&gt;</code>, or child element counts do not match).</li></ol>
+<p>When a true node mismatch occurs, Vue cannot update the element in place because the physical element on screen is the wrong type.</p>
+<p>The component below demonstrates how invalid HTML nesting causes a severe node mismatch:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BreakingAlert.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;p <span class="kw">class</span>=<span class="str">"alert-card"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">    &lt;span <span class="kw">class</span>=<span class="str">"label"</span>&gt;Flash News&lt;/span&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;div <span class="kw">class</span>=<span class="str">"details"</span>&gt;Transit strike confirmed&lt;/div&gt; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Block div inside paragraph triggers parser split</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;/p&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>In <code>BreakingAlert.vue</code>, notice the nesting structure:</p>
+<ol><li><code>&lt;p class="alert-card"&gt;</code>: Opens a standard paragraph element.</li>
+<li><code>&lt;span class="label"&gt;</code>: An inline element, which is completely valid inside a paragraph.</li>
+<li><code>&lt;div class="details"&gt;</code>: A block container nested inside <code>&lt;p&gt;</code>, which violates the HTML5 specification.</li></ol>
+<p>The visual comparison below illustrates why invalid nesting forces the browser parser to fracture the DOM tree, causing an immediate node mismatch:</p>
+<figure class="vue-figure css-figure">
+<div class="fig-node-mismatch-duel">
+  <style>
+    .fig-node-mismatch-duel {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .fig-node-mismatch-duel * {
+      box-sizing: border-box;
+    }
+    .fig-node-mismatch-duel .duel-shell {
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .fig-node-mismatch-duel .chrome-bar {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 2px solid #0f172a;
+    }
+    .fig-node-mismatch-duel .chrome-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .fig-node-mismatch-duel .chrome-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .fig-node-mismatch-duel .chrome-dots i:nth-child(1) { background: #ef4444; border: 1px solid #dc2626; }
+    .fig-node-mismatch-duel .chrome-dots i:nth-child(2) { background: #f59e0b; border: 1px solid #d97706; }
+    .fig-node-mismatch-duel .chrome-dots i:nth-child(3) { background: #10b981; border: 1px solid #059669; }
+    .fig-node-mismatch-duel .chrome-title {
+      flex: 1;
+      text-align: center;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding-right: 42px;
+    }
+    .fig-node-mismatch-duel .duel-container {
+      display: flex;
+      gap: 14px;
+      padding: 14px 16px;
+      background: #f8fafc;
+    }
+    .fig-node-mismatch-duel .duel-card {
+      flex: 1;
+      background: #ffffff;
+      border: 2px solid;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .fig-node-mismatch-duel .card-broken {
+      border-color: #9f1239;
+    }
+    .fig-node-mismatch-duel .card-clean {
+      border-color: #059669;
+    }
+    .fig-node-mismatch-duel .card-masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 12px;
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    .fig-node-mismatch-duel .card-broken .card-masthead {
+      background: #9f1239;
+    }
+    .fig-node-mismatch-duel .card-clean .card-masthead {
+      background: #059669;
+    }
+    .fig-node-mismatch-duel .card-body {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #ffffff;
+      flex: 1;
+      justify-content: center;
+    }
+    .fig-node-mismatch-duel .alert-box {
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .fig-node-mismatch-duel .alert-box.clean {
+      background: #f0fdf4;
+      border: 1.5px solid #86efac;
+    }
+    .fig-node-mismatch-duel .alert-box.fractured {
+      background: #fff1f2;
+      border: 1.5px dashed #f43f5e;
+    }
+    .fig-node-mismatch-duel .alert-label {
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      align-self: flex-start;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .fig-node-mismatch-duel .alert-label.pass {
+      background: #059669;
+      color: #ffffff;
+    }
+    .fig-node-mismatch-duel .alert-label.fail {
+      background: #e11d48;
+      color: #ffffff;
+    }
+    .fig-node-mismatch-duel .alert-text {
+      font-size: 11.5px;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    .fig-node-mismatch-duel .orphan-box {
+      margin-top: 4px;
+      padding: 6px 8px;
+      background: #fee2e2;
+      border: 1.5px dashed #ef4444;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #991b1b;
+      font-weight: 700;
+    }
+    .fig-node-mismatch-duel .conflict-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: "JetBrains Mono", Menlo, monospace;
+      margin-top: auto;
+    }
+    .fig-node-mismatch-duel .conflict-badge.danger {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .fig-node-mismatch-duel .conflict-badge.pass {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .fig-node-mismatch-duel .card-footer-strip {
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #334155;
+      min-height: 52px;
+    }
+    .fig-node-mismatch-duel .card-footer-strip strong {
+      color: #0f172a;
+    }
+  </style>
+
+  <div class="duel-shell">
+    <div class="chrome-bar">
+      <div class="chrome-dots"><i></i><i></i><i></i></div>
+      <div class="chrome-title">Anatomy of a Node Mismatch: HTML Parsing Divergence</div>
+    </div>
+
+    <div class="duel-container">
+      <!-- Left Card: Invalid HTML Auto-Correction -->
+      <div class="duel-card card-broken">
+        <div class="card-masthead">
+          <span>Browser Parser Split</span>
+          <span style="font-family: monospace; font-size: 11px;">✕ NODE MISMATCH</span>
+        </div>
+        <div class="card-body">
+          <div class="alert-box fractured">
+            <span class="alert-label fail">Flash News</span>
+            <span class="alert-text" style="color: #9f1239;">&lt;p&gt; closed early by browser parser</span>
+          </div>
+          <div class="orphan-box">
+            <span>✕ Detached sibling &lt;div&gt; triggers handleMismatch</span>
+          </div>
+          <div class="conflict-badge danger">
+            <span>✕ remove(node) &amp; full client remount</span>
+          </div>
+        </div>
+        <div class="card-footer-strip">
+          <strong>Browser parser auto-closes &lt;p&gt; before block &lt;div&gt;;</strong> physical DOM splits into sibling fragments, forcing Vue to discard server elements and rebuild from scratch.
+        </div>
+      </div>
+
+      <!-- Right Card: Semantic Structure Preserved -->
+      <div class="duel-card card-clean">
+        <div class="card-masthead">
+          <span>Semantic Block Nesting</span>
+          <span style="font-family: monospace; font-size: 11px;">✓ RECONCILED</span>
+        </div>
+        <div class="card-body">
+          <div class="alert-box clean">
+            <span class="alert-label pass">Flash News</span>
+            <span class="alert-text" style="color: #065f46;">Transit strike confirmed across all lines</span>
+          </div>
+          <div class="conflict-badge pass">
+            <span>✓ hydrateElement: 1:1 node parity &amp; attach</span>
+          </div>
+        </div>
+        <div class="card-footer-strip">
+          <strong>Semantic container preserves identical nesting;</strong> client Virtual DOM pairs 1:1 with physical DOM nodes, completing hydration with zero element destruction.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 56.2: Anatomy of a Hydration Node Mismatch: invalid HTML nesting forces browser auto-correction, causing DOM structure to diverge from client Virtual DOM.</figcaption>
+</figure>
+<p>Why does the template above fail so catastrophically?</p>
+<p>According to HTML specifications, a paragraph element (<code>&lt;p&gt;</code>) can only contain phrasing content (inline elements like <code>&lt;span&gt;</code> or text). It can never contain a block element like <code>&lt;div&gt;</code>.</p>
+<p>On the server, Node.js does not enforce HTML layout rules. It simply joins strings together and outputs <code>&lt;p class="alert-card"&gt;...&lt;div class="details"&gt;...&lt;/div&gt;&lt;/p&gt;</code>.</p>
+<p>When that raw text reaches the browser, the browser's native C++ HTML parser takes over before JavaScript runs.</p>
+<p>The instant the parser encounters the opening <code>&lt;div&gt;</code>, it automatically terminates the <code>&lt;p&gt;</code> tag early. It rewrites your markup into three separate sibling elements:</p>
+<ol><li><code>&lt;p class="alert-card"&gt;&lt;span class="label"&gt;Flash News&lt;/span&gt;&lt;/p&gt;</code></li>
+<li><code>&lt;div class="details"&gt;Transit strike confirmed&lt;/div&gt;</code></li>
+<li><code>&lt;p class="alert-card"&gt;&lt;/p&gt;</code> (an empty paragraph created to close the trailing tag)</li></ol>
+<p>When the client JavaScript bundle executes, Vue's Virtual DOM expects a single <code>&lt;p&gt;</code> element containing both the <code>&lt;span&gt;</code> and the <code>&lt;div&gt;</code>.</p>
+<p>Vue inspects <code>&lt;p class="alert-card"&gt;</code>. It expects to find <code>&lt;div&gt;</code> inside it as a child. But the physical <code>&lt;p&gt;</code> is already closed, and the <code>&lt;div&gt;</code> is sitting outside as an orphaned sibling.</p>
+<p>Because the physical tags disagree with the Virtual DOM, Vue triggers <code>handleMismatch</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">handle-mismatch.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleMismatch</span>(node: Node, vnode: VNode): Node | <span class="kw">null</span> {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="fn">warn</span>(<span class="str">`Hydration node mismatch:`</span>, node, vnode.type); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Logs diagnostic warning</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  vnode.el = <span class="kw">null</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Clears invalid node reference</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="kw">const</span> container = node.parentNode!; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Locates parent container</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="kw">const</span> next = node.nextSibling; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Records next sibling boundary</span></div></div></div>
+<div class="row"><span class="num">7</span><span class="src">  container.<span class="fn">removeChild</span>(node); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Deletes mismatched server DOM node</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="fn">patch</span>(<span class="kw">null</span>, vnode, container, next); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Allocates fresh client DOM node</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src">  <span class="kw">return</span> next;</span></div>
+<div class="row"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+<p>In <code>handleMismatch.ts</code>, notice the recovery procedure:</p>
+<ol><li><code>warn(...)</code>: Logs the mismatch details to help developers locate the invalid component.</li>
+<li><code>vnode.el = null</code>: Discards the reference to the server-rendered node.</li>
+<li><code>container.removeChild(node)</code>: Removes the server-rendered DOM node from the physical page.</li>
+<li><code>patch(...)</code>: Uses <code>document.createElement()</code> to construct a brand-new DOM element from scratch.</li></ol>
+<aside class="callout callout-warning">
+  <p class="callout-eyebrow">Warning</p>
+  <div class="callout-body">
+  <p>A hydration node mismatch forces Vue to destroy server HTML and create new DOM elements, causing layout shifts and wiping out input focus.</p>
+  </div>
+</aside>
+<p>This recovery loop carries three severe performance penalties:</p>
+<ol><li><strong>Cumulative Layout Shift (CLS)</strong>: The browser paints the server HTML, deletes it, and paints it again. The user sees a jarring visual jump.</li>
+<li><strong>Lost Input Focus</strong>: If the user tapped into an input field while the page was loading, deleting the element destroys their cursor and discards their keystrokes.</li>
+<li><strong>Wasted Server Resources</strong>: Your server spent CPU cycles generating HTML that the client threw away milliseconds later.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Four Common Triggers of Node Mismatches</h3>
+<p>Senior engineers design components so mismatches never occur. In production, node mismatches almost always stem from four root causes:</p>
+<ol><li><strong>HTML Parser Auto-Correction</strong>: Placing invalid tags inside parent elements, such as <code>&lt;tr&gt;</code> directly inside <code>&lt;table&gt;</code> without an explicit <code>&lt;tbody&gt;</code>, or <code>&lt;button&gt;</code> inside an <code>&lt;a&gt;</code> link.</li>
+<li><strong>Dynamic Values in Component Setup</strong>: Generating non-deterministic data during setup, such as <code>Math.random()</code>, <code>Date.now()</code>, or evaluating <code>window.innerWidth</code>.</li>
+<li><strong>Unpopulated Client Store State</strong>: Mounting the client application before restoring server Pinia state into browser memory.</li>
+<li><strong>Third-Party Browser Extensions</strong>: Password managers or translation tools injecting DOM nodes into form containers before hydration completes.</li></ol>
+<p>The component below shows how modern Vue 3.5 patterns eliminate these mismatch triggers:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">SubscriberFeedback.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { useId, <span class="hook">ref</span>, <span class="hook">onMounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> inputId = <span class="fn">useId</span>(); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Generates matching unique ID across server and client</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">const</span> isHydrated = <span class="hook">ref</span>(<span class="kw">false</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Deterministic initial state for both environments</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">8</span><span class="src">  isHydrated.value = <span class="kw">true</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Activates browser-only capabilities after hydration</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">});</span></div>
+<div class="row"><span class="num">10</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src"></span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">  &lt;form <span class="kw">class</span>=<span class="str">"feedback-form"</span>&gt;</span></div>
+<div class="row"><span class="num">14</span><span class="src">    &lt;label :<span class="kw">for</span>=<span class="str">"inputId"</span> <span class="kw">class</span>=<span class="str">"form-label"</span>&gt;Feedback&lt;/label&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src">    &lt;input :id=<span class="str">"inputId"</span> type=<span class="str">"text"</span> <span class="kw">class</span>=<span class="str">"form-input"</span> /&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">    &lt;span v-<span class="kw">if</span>=<span class="str">"isHydrated"</span> <span class="kw">class</span>=<span class="str">"status-badge"</span>&gt;Connected&lt;/span&gt;</span></div>
+<div class="row"><span class="num">17</span><span class="src">  &lt;/form&gt;</span></div>
+<div class="row"><span class="num">18</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>In <code>SubscriberFeedback.vue</code>, each declaration guarantees parity:</p>
+<ol><li><code>const inputId = useId()</code>: Vue 3.5's built-in composable generates identical, deterministic ID strings (such as <code>v-0</code>) on both the server and the client, ensuring <code>&lt;label :for&gt;</code> and <code>&lt;input :id&gt;</code> match exactly.</li>
+<li><code>const isHydrated = ref(false)</code>: Initializes a boolean to <code>false</code> in both environments, ensuring initial render output is identical.</li>
+<li><code>onMounted(...)</code>: Updates <code>isHydrated.value = true</code> only after hydration finishes, rendering the status badge without clashing with server markup.</li></ol>
+<p>The architectural flowchart below illustrates how Vue detects mismatch triggers and navigates between clean reconciliation and emergency node recovery:</p>
+<figure class="vue-figure css-figure">
+<div class="fig-hydration-triggers">
+  <style>
+    .fig-hydration-triggers {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .fig-hydration-triggers * {
+      box-sizing: border-box;
+    }
+    .fig-hydration-triggers .triggers-shell {
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .fig-hydration-triggers .chrome-bar {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 2px solid #0f172a;
+    }
+    .fig-hydration-triggers .chrome-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .fig-hydration-triggers .chrome-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .fig-hydration-triggers .chrome-dots i:nth-child(1) { background: #ef4444; border: 1px solid #dc2626; }
+    .fig-hydration-triggers .chrome-dots i:nth-child(2) { background: #f59e0b; border: 1px solid #d97706; }
+    .fig-hydration-triggers .chrome-dots i:nth-child(3) { background: #10b981; border: 1px solid #059669; }
+    .fig-hydration-triggers .chrome-title {
+      flex: 1;
+      text-align: center;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding-right: 42px;
+    }
+    .fig-hydration-triggers .content-body {
+      padding: 12px 14px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .fig-hydration-triggers .triggers-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .fig-hydration-triggers .trigger-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .fig-hydration-triggers .trigger-tag {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #b91c1c;
+    }
+    .fig-hydration-triggers .trigger-desc {
+      font-size: 11px;
+      line-height: 1.35;
+      color: #334155;
+    }
+    .fig-hydration-triggers .paths-duel {
+      display: flex;
+      gap: 10px;
+    }
+    .fig-hydration-triggers .path-card {
+      flex: 1;
+      background: #ffffff;
+      border: 2px solid;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .fig-hydration-triggers .path-card.fail {
+      border-color: #9f1239;
+    }
+    .fig-hydration-triggers .path-card.pass {
+      border-color: #059669;
+    }
+    .fig-hydration-triggers .path-masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .fig-hydration-triggers .path-card.fail .path-masthead {
+      background: #9f1239;
+    }
+    .fig-hydration-triggers .path-card.pass .path-masthead {
+      background: #059669;
+    }
+    .fig-hydration-triggers .path-body {
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      justify-content: center;
+    }
+    .fig-hydration-triggers .action-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+    .fig-hydration-triggers .action-danger {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+    .fig-hydration-triggers .action-clean {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    .fig-hydration-triggers .defense-pill {
+      font-family: monospace;
+      font-size: 11px;
+      color: #0e7490;
+      background: #f0fdfa;
+      border: 1px solid #ccfbf1;
+      padding: 4px 6px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .fig-hydration-triggers .card-footer-strip {
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-top: 2px solid #0f172a;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #334155;
+      min-height: 52px;
+    }
+    .fig-hydration-triggers .card-footer-strip strong {
+      color: #0f172a;
+    }
+  </style>
+
+  <div class="triggers-shell">
+    <div class="chrome-bar">
+      <div class="chrome-dots"><i></i><i></i><i></i></div>
+      <div class="chrome-title">Hydration Reconciliation Architecture: Triggers, Recovery, and Defenses</div>
+    </div>
+
+    <div class="content-body">
+      <!-- 4 Triggers Grid -->
+      <div class="triggers-grid">
+        <div class="trigger-card">
+          <span class="trigger-tag">1. Parser Rule</span>
+          <span class="trigger-desc">Browser terminates &lt;p&gt; before block &lt;div&gt;</span>
+        </div>
+        <div class="trigger-card">
+          <span class="trigger-tag">2. Dynamic ID</span>
+          <span class="trigger-desc">Math.random() generates divergent field IDs</span>
+        </div>
+        <div class="trigger-card">
+          <span class="trigger-tag">3. Store Gap</span>
+          <span class="trigger-desc">Unpopulated client store removes DOM items</span>
+        </div>
+        <div class="trigger-card">
+          <span class="trigger-tag">4. Extensions</span>
+          <span class="trigger-desc">Password managers inject elements into inputs</span>
+        </div>
+      </div>
+
+      <!-- Duel Paths: Fallback vs Reconciled -->
+      <div class="paths-duel">
+        <div class="path-card fail">
+          <div class="path-masthead">
+            <span>Discrepancy Detected</span>
+            <span style="font-family: monospace; font-size: 10.5px;">✕ RECOVERY LOOP</span>
+          </div>
+          <div class="path-body">
+            <div class="action-row action-danger">
+              <span>✕ remove(node): discard server DOM element</span>
+            </div>
+            <div class="action-row action-danger">
+              <span>✕ patch(null, vnode): allocate fresh client DOM</span>
+            </div>
+            <div class="action-row action-danger">
+              <span>✕ Stutter: visual blink, lost focus &amp; scroll</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="path-card pass">
+          <div class="path-masthead">
+            <span>Deterministic Parity</span>
+            <span style="font-family: monospace; font-size: 10.5px;">✓ CLEAN HYDRATION</span>
+          </div>
+          <div class="path-body">
+            <div class="defense-pill">
+              <span>✓ useId(): deterministic universal element ID</span>
+            </div>
+            <div class="defense-pill">
+              <span>✓ onMounted(): client-only dynamic state guard</span>
+            </div>
+            <div class="defense-pill">
+              <span>✓ data-allow-mismatch="text": surgical suppression</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer-strip">
+      <strong>Structural discrepancies trigger handleMismatch DOM discard;</strong> adhering to HTML specs, using Vue 3.5 useId(), and deferring client-only logic guarantees seamless 1:1 hydration.
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 56.3: Hydration Reconciliation Architecture: tracing mismatch triggers, the emergency recovery loop, and modern Vue 3.5 defensive patterns.</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Five Battle-Tested Rules for Clean Hydration</h3>
+<p>Follow these five engineering rules to guarantee zero hydration mismatches in production.</p>
+</div>
+<h4>Rule 1: Use <code>useId()</code> for Universal Form Identifiers</h4>
+<p>Never use <code>Math.random()</code> or manual counters to create element IDs. Always use Vue 3.5's built-in <code>useId()</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">AccessibleInput.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { useId } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> fieldId = <span class="fn">useId</span>(); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Generates matching ID on server and client</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"field-group"</span>&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">    &lt;label :<span class="kw">for</span>=<span class="str">"fieldId"</span>&gt;Email Address&lt;/label&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">    &lt;input :id=<span class="str">"fieldId"</span> type=<span class="str">"email"</span> /&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<h4>Rule 2: Defer Dynamic and Browser Values to <code>onMounted</code></h4>
+<p>If a value depends on the user's timezone, screen width, or local storage, provide a static default during setup and update it inside <code>onMounted</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LocalTimestamp.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span>, <span class="hook">onMounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> displayDate = <span class="hook">ref</span>(<span class="str">'September 15, 2026'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Matches server output</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">7</span><span class="src">  displayDate.value = <span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toLocaleDateString</span>(); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Local client format</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">});</span></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+<h4>Rule 3: Wrap Third-Party Widgets in <code>&lt;ClientOnly&gt;</code></h4>
+<p>Third-party libraries like charting engines or interactive maps access <code>window</code> immediately. Wrap them in a <code>&lt;ClientOnly&gt;</code> component so the server renders a lightweight placeholder while the client mounts the interactive widget.</p>
+<h4>Rule 4: Write Valid Semantic HTML</h4>
+<p>Follow standard HTML nesting rules strictly:</p>
+<ul><li>Never place a <code>&lt;div&gt;</code> inside a <code>&lt;p&gt;</code>.</li>
+<li>Always wrap table rows in an explicit <code>&lt;tbody&gt;</code>.</li>
+<li>Never put a <code>&lt;button&gt;</code> inside an <code>&lt;a&gt;</code> link.</li></ul>
+<h4>Rule 5: Restore Store State Before Mounting</h4>
+<p>Always populate Pinia with server data before calling <code>app.mount('#app')</code>.</p>
+<p>In your server template, serialize your store into a script tag:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;div id=<span class="str">"app"</span>&gt;&lt;!--[ssr-html]--&gt;&lt;/div&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  window.__INITIAL_STATE__ = { articles: [] };</span></div>
+<div class="row"><span class="num">4</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;script type=<span class="str">"module"</span> src=<span class="str">"/src/entry-client.js"</span>&gt;&lt;/script&gt;</span></div></div></div></div>
+<p>In <code>entry-client.js</code>, restore that state before mounting:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">entry-client.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { createSSRApp } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { createPinia } <span class="kw">from</span> <span class="str">'pinia'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App.vue'</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">const</span> app = <span class="fn">createSSRApp</span>(App);</span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="kw">const</span> pinia = <span class="fn">createPinia</span>();</span></div>
+<div class="row"><span class="num">7</span><span class="src">app.<span class="fn">use</span>(pinia);</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="kw">if</span> (window.__INITIAL_STATE__) {</span></div>
+<div class="row"><span class="num">10</span><span class="src">  pinia.state.value = window.__INITIAL_STATE__; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Restores state before hydration</span></div></div></div>
+<div class="row"><span class="num">11</span><span class="src">}</span></div>
+<div class="row"><span class="num">12</span><span class="src"></span></div>
+<div class="row"><span class="num">13</span><span class="src">app.<span class="fn">mount</span>(<span class="str">'#app'</span>);</span></div></div></div></div>
+<p>Restoring store state ensures that client Virtual DOM nodes match the pre-rendered server HTML from the very first frame.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>To impress the interviewer:</strong> Clearly explain the difference between client Virtual DOM diffing and SSR hydration. During normal client updates, Vue compares two JavaScript objects in memory (the old VNode and the new VNode), both completely controlled by Vue. But during hydration, Vue compares an in-memory VNode with a real physical DOM element created by the browser's native C++ HTML parser. The browser parser automatically repairs invalid tags (like inserting tbody or closing p early). Therefore, a senior engineer knows that a hydration node mismatch is almost never a bug in Vue; it is almost always caused by the browser's native parser correcting invalid HTML markup before Vue even executes.</p>
+  </div>
+</aside>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Building international newsrooms where published dates must adjust to reader timezones without screen flicker.</li>
+<li>Creating accessible form libraries that need deterministic matching IDs using Vue 3.5 <code>useId()</code>.</li>
+<li>Protecting e-commerce checkout forms from third-party password managers that inject extra buttons into input fields.</li>
+<li>Fixing Cumulative Layout Shift (CLS) performance penalties caused by discarded server elements during page load.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Hydration</strong>: The browser process where Vue inspects server HTML elements, matches them with virtual nodes, and attaches event listeners without recreating DOM nodes.</li>
+<li><strong>Hydration Node Mismatch</strong>: A runtime error that occurs when the physical DOM tag or structure disagrees with the Virtual DOM, forcing Vue to delete and recreate the element.</li>
+<li><strong>HTML Parser Auto-Correction</strong>: The browser's automatic repair behavior where invalid markup, like placing a div inside a paragraph, is rewritten into valid HTML before JavaScript runs.</li>
+<li><strong><code>useId()</code></strong>: A built-in Vue 3.5 composable that generates matching unique IDs on both server and client using a synchronized counter.</li>
+<li><strong><code>data-allow-mismatch</code></strong>: A Vue 3.5 attribute that tells Vue to ignore harmless differences, such as local date formatting, without logging warnings or destroying nodes.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>The Mechanics and Defenses of Vue Hydration</strong></p>
+<p>Server-side hydration transforms static server markup into a living, reactive application through in-place reconciliation. By maintaining strict structural parity between server output and client expectations, applications achieve instant initial paint without sacrificing client interactivity.</p>
+<p>❒ The Hydration Handshake &amp; Reconciliation Walk</p>
+<ol><li>Hydration reuses real HTML elements instead of creating new ones.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Vue steps through the existing DOM tree and attaches click and input event listeners.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Zero new DOM elements are created when server HTML and client code match.</li>
+<li>Disagreements trigger an expensive emergency recovery.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Small text differences are updated in-place without deleting the element.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Tag and structure mismatches force Vue to delete the server element and build a new one from scratch.</li></ol>
+<p>❒ Core Triggers &amp; Clean Engineering Habits</p>
+<ol><li>Invalid HTML nesting is the leading cause of node mismatches.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Putting block elements inside paragraphs forces the browser to split the tags before Vue loads.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Writing valid semantic HTML ensures the browser DOM matches Vue Virtual DOM.</li>
+<li>Keep initial render state deterministic across server and client.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Never generate random numbers or read window dimensions during initial setup.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Use Vue 3.5 useId for matching IDs, and move browser-only state into onMounted.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use Vue 3.5 useId to generate deterministic universal form identifiers across environments.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { useId, <span class="hook">ref</span>, <span class="hook">onMounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">const</span> inputId = <span class="fn">useId</span>();</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> isReady = <span class="hook">ref</span>(<span class="kw">false</span>);</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  isReady.value = <span class="kw">true</span>;</span></div>
+<div class="row"><span class="num">7</span><span class="src">});</span></div>
+<div class="row"><span class="num">8</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Generate random IDs or evaluate browser dimensions directly in component setup scope.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">const</span> inputId = <span class="str">'field-'</span> + Math.<span class="fn">random</span>();</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> screenWidth = window.innerWidth;</span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+</div>
+<p>➔ NEVER access browser globals like window or evaluate random values during component setup in SSR. ➔ ALWAYS follow HTML5 nesting rules so the browser parser does not alter your element structure. ➔ IF client text must differ from server markup, THEN update it inside onMounted or use data-allow-mismatch.</p>
+<table><thead><tr><th></th><th><strong>TEXT CONTENT MISMATCH</strong><br>(data string divergence)</th><th><strong>NODE TYPE MISMATCH</strong><br>(structural tag collision)</th></tr></thead><tbody><tr><td><strong>Detection Condition</strong></td><td><code>node.data</code><br><code>!== vnode.children</code></td><td><code>domType</code> or tag<br>clashes with vnode</td></tr><tr><td><strong>Engine Recovery</strong></td><td>Overwrites text data<br>in-place on existing node</td><td>Invokes <code>handleMismatch</code><br>to discard and rebuild</td></tr><tr><td><strong>DOM Preservation</strong></td><td>Preserves existing element<br>with zero node allocation</td><td>Destroys server element<br>via <code>remove(node)</code></td></tr><tr><td><strong>Performance Impact</strong></td><td>Negligible CPU cost<br>with zero visual flicker</td><td>Layout reflow, visual stutter,<br>and garbage collection churn</td></tr><tr><td><strong>Primary Cause</strong></td><td>Clock shifts, timezones,<br>or currency formatting</td><td>Invalid HTML nesting,<br>or <code>v-if</code> on browser globals</td></tr><tr><td><strong>Mitigation Strategy</strong></td><td><code>data-allow-mismatch</code><br>or <code>onMounted</code> update</td><td>Semantic HTML nesting,<br><code>useId()</code>, or <code>&lt;ClientOnly&gt;</code></td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

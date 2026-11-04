@@ -1,0 +1,1259 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 6: Passing Data with Props and the Read-Only Contract — Edition v6.7-7</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v6.7-7";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 6: Passing Data with Props and the Read-Only Contract</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you pass data into a component, and why can a component never change its own props?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Marcus and Clara Foster sit together at the front-page desk for The National Times to assemble the morning news feed.</li>
+<li>The layout requires three article cards displaying different headlines, authors, and reading times for latest news dispatches.</li>
+<li>Marcus copies and pastes the same card component three times, but every card displays the exact same hardcoded text, and when attempting to customize one card, Marcus writes props.title = 'Breaking News', crashing the application.</li>
+<li>Why does assigning a new value to props throw a fatal TypeError in development, and how does React pass data downward while keeping components pure?</li>
+<li>Copying components creates unmaintainable duplication, while mutating input objects corrupts parent data and causes unpredictable rendering errors across sibling elements.</li>
+<li>In React, attributes written at a JSX call site bundle into a single frozen props object that a child receives as its sole argument, creating a one-way pipeline where data flows strictly downward.</li>
+<li>Today, we master passing props, unpack incoming data with parameter destructuring, configure fallback defaults, handle null values, and prove why props must remain strictly read-only.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Duplicate Card Dilemma and the Parameter Mutation Trap</h3>
+<p>In our previous lessons, we learned that a React component is a JavaScript function that returns markup describing a piece of the user interface. We also discovered in Lecture 5 how components fit together into a top-down render tree, where parent components render children and data flows strictly along parent-child branches. When first building feeds with multiple cards, it is possible that a student of React may fall into the hardcoded copy trap. A junior developer may naturally assume that because three story cards share the same visual structure, the quickest path is to duplicate the component function or copy-paste identical HTML markup three times.</p>
+<p>Marcus sits at the newsroom desk to render three morning news stories: a transit agreement, a clean energy project, and a city park renovation. Because Marcus has not yet parameterized the card, Marcus copies the component function three times as <code>ArticleCardOne</code>, <code>ArticleCardTwo</code>, and <code>ArticleCardThree</code>. When the editor asks to change the card layout from rounded corners to square borders, Marcus must manually update all three files. Even worse, before copying the functions, rendering <code>&lt;ArticleCard /&gt;</code> three times displayed the exact same headline on every single card.</p>
+<p>To see this naive approach in runnable code, examine how Marcus initially duplicates identical markup inside three separate card declarations:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Naive Duplicate Cards</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCardOne</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;h2 className=<span class="str">"card-title"</span>&gt;Transit Accord Reached&lt;/h2&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Hardcoded headline in first card</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;p&gt;By Clara Foster&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>When Marcus realizes that copying functions creates unmaintainable sprawl, Marcus tries to pass an input argument and reassign it inside the component. Marcus writes <span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">ArticleCard</span>(props)</code></span> and adds <span class="code-line-callout"><code>props.title = <span class="str">'Breaking News'</span></code></span> at the top of the function body. The development server immediately halts execution with a fatal runtime error: <span class="code-line-callout"><code>TypeError: Cannot assign to read only property <span class="str">'title'</span> <span class="kw">of</span> object <span class="str">'#&lt;Object&gt;'</span></code></span> A developer may fall into this trap, expecting props to behave like regular mutable JavaScript function arguments. React explicitly freezes incoming props in development mode to enforce the read-only contract.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Naive Prop Mutation</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCard</span>(props) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  props.title = <span class="str">'Breaking News'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> throws TypeError on frozen props</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2&gt;{props.title}&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does React freeze props in development?</strong>
+React freezes props in development to enforce component purity and unidirectional data flow. When a newsroom engineer tries to reassign <code>props.title</code>, JavaScript throws a fatal <strong>TypeError</strong> because React runs <code>Object.freeze()</code> on the incoming object. In React, a component must be a <strong>pure function</strong> that never modifies its inputs. If components could mutate their own <strong>props</strong>, changes made by one child would silently corrupt data in the parent and cause <strong>state drift</strong> across sibling cards. To update what appears on screen, a parent must pass new props, or the component must hold local state.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>What Are Props and How Does React Pass Data Downward?</h3>
+<p>In standard JavaScript, functions accept arguments so that a single calculation can run on different inputs. For example, a function <code>double(x)</code> returns <code>x * 2</code> for any number you provide. React components are JavaScript functions that return user interface markup. If a component could only return hardcoded text, you would need a new component for every sentence on your website. React solves this through <strong>props</strong>, which is short for properties. Props allow a parent component to pass custom data down to child components, letting one single component layout render hundreds of different stories.</p>
+<p>When you render a component tag in JSX, any attributes you write become properties on a single JavaScript object. For instance, writing <span class="code-line-callout"><code>&lt;ArticleCard title=<span class="str">"Clean Energy Accord"</span> readTime={<span class="nl">5</span>} /&gt;</code></span> tells React to create an object: <span class="code-line-callout"><code>{ title: <span class="str">"Clean Energy Accord"</span>, readTime: <span class="nl">5</span> }</code></span> React passes this object as the first and only argument to your <code>ArticleCard</code> component function. In React terminology, the location where you render the tag is called the <strong>call site</strong>, the attributes are called <strong>props</strong>, and the component receiving the data is the <strong>child component</strong>.</p>
+<p>When working with props, modern JavaScript provides a concise syntax called <strong>destructuring</strong>. Instead of writing <span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">ArticleCard</span>(props)</code></span> and repeating <code>props.title</code> and <code>props.readTime</code> throughout your markup, you can write <span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">ArticleCard</span>({ title, readTime })</code></span> In JavaScript, placing curly braces <code>{ }</code> inside the parameter list tells the runtime to automatically unpack specific keys from the incoming object into local variables. This syntax is standard ECMAScript, but it is the universal convention in React because it makes a component's required inputs immediately visible at the top of the function.</p>
+<p>Under the hood, the JSX compiler converts every component tag into a function call. As we learned in Lecture 4, writing <span class="code-line-callout"><code>&lt;ArticleCard title=<span class="str">"Transit Accord"</span> readTime={<span class="nl">5</span>} /&gt;</code></span> transforms into <span class="code-line-callout"><code><span class="fn">_jsx</span>(ArticleCard, { title: <span class="str">"Transit Accord"</span>, readTime: <span class="nl">5</span> })</code></span> Notice that the second argument to <code>_jsx</code> is a standard JavaScript object literal. React instantiates this object, freezes it shallowly in development mode using <code>Object.freeze()</code>, and provides it to your component when invoking the function. This mechanical reality proves why components receive exactly one object argument.</p>
+<p>Recall from Lecture 2 that components must always be pure functions that return UI descriptors. Recall also from Lecture 4 that quoted attributes pass string literals while curly braces evaluate live JavaScript expressions. In future lessons, we will explore passing components as the <code>children</code> prop (see Lecture 7), passing interactive callback functions (see Lecture 13 and Lecture 15), managing dynamic state that changes over time (see Lecture 16), protecting required props with TypeScript interfaces (see Lecture 89), and understanding why React 19 dropped legacy <code>defaultProps</code> (see Lecture 100).</p>
+</div>
+<div class="keep-together">
+<h3>Principles of React: Passing Data with Props</h3>
+<p>In technical interviews, engineering candidates are closely evaluated on their understanding of data flow, component parameterization, fallback defaults, and the immutability guarantees of React. To master these concepts, we formalize the six governing principles of props:</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Read Props as One Object Created by the Parent</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">props</span>
+          <span class="gloss-def">a single JavaScript object containing all attributes passed from parent to child</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">call site</span>
+          <span class="gloss-def">the place in JSX markup where a component tag is rendered with attributes</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Every attribute you write on a JSX tag becomes a property in a single <strong>props</strong> object created by the parent. React passes this object to your component function as its only argument, giving the child access to incoming data. Because the parent creates the object, the parent chooses the values and the child only reads them.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>An interviewer expects the candidate to state clearly that props are the single input argument of a component function. A parent component builds this object at the JSX call site by specifying attributes. When a parent renders <span class="code-line-callout"><code>&lt;ArticleCard title=<span class="str">"City Transit Expands"</span> readTime={<span class="nl">5</span>} /&gt;</code></span> React collects those attributes into one object and passes it to <code>ArticleCard</code>. If you render <code>ArticleCard</code> three times with different attributes, React invokes the function three times, passing a distinct object on each call. The child never decides its own prop values; it receives what the parent provides.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Logging Received Props Object</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCard</span>(props) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  console.<span class="fn">log</span>(<span class="str">'Received props:'</span>, props); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Logs parent attributes as single object</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2&gt;{props.title}&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>When this component renders from three call sites, the browser console prints three distinct objects: <span class="code-line-callout"><code>{ title: <span class="str">'City Transit Expands'</span>, readTime: <span class="nl">5</span> }</code></span> <span class="code-line-callout"><code>{ title: <span class="str">'Clean Energy Accord'</span>, readTime: <span class="nl">3</span> }</code></span> and <span class="code-line-callout"><code>{ title: <span class="str">'Public Park Renovations'</span>, readTime: <span class="nl">4</span> }</code></span> This proves that props are simply JavaScript objects passed from parent to child.</p>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Turn Differing Values into Props and Derive Redundant Data</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">derived value</span>
+          <span class="gloss-def">data calculated directly from existing props during render without adding extra props</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">redundant props</span>
+          <span class="gloss-def">passing separate values that can already be computed from other incoming data</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">When several parts of your interface share the same layout but display different text, keep one component and pass the changing values as <strong>props</strong>. Never pass extra props for numbers or labels that the child can calculate on its own, such as passing a topic count alongside a topics array. Calculating values inside the child keeps your code clean and prevents conflicting data on screen.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">Feed</span>() {</div><div class="case-code-line">  <span class="kw">return</span> (</div><div class="case-code-line">    &lt;ArticleCard</div><div class="case-code-line">      title=<span class="str">"Transit Accord"</span></div><div class="case-code-line">      topics={[<span class="str">'Bus'</span>, <span class="str">'Train'</span>]}</div><div class="cmt-bubble" style="--indent-offset: 49px;"><span class="text">Child computes length from array</span></div><div class="case-code-line">    /&gt;</div><div class="case-code-line">  );</div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-watermark-bg"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">Feed</span>() {</div><div class="case-code-line">  <span class="kw">return</span> (</div><div class="case-code-line">    &lt;ArticleCard</div><div class="case-code-line">      title=<span class="str">"Transit Accord"</span></div><div class="case-code-line">      topics={[<span class="str">'Bus'</span>, <span class="str">'Train'</span>]}</div><div class="case-code-line">      topicCount={<span class="nl">5</span>}</div><div class="cmt-bubble" style="--indent-offset: 49px;"><span class="text">Redundant count can disagree with array</span></div><div class="case-code-line">    /&gt;</div><div class="case-code-line">  );</div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>When reviewing pull requests, senior engineers check whether new props carry genuinely independent information. It is possible that a developer may pass both a list of items and a separate counter, such as <code>topics={['Bus', 'Train']}</code> alongside <code>topicCount={2}</code>. This creates a severe risk of data desynchronization: if the parent updates the array to three items but forgets to update the counter, the child displays conflicting information. Instead, pass only the array and calculate <span class="code-line-callout"><code><span class="kw">const</span> count = topics.length</code></span> directly inside the child during render. Derive everything you can from existing props.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Deriving Values During Render</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ title, topics }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> topicCount = topics.length; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Calculates count directly from array prop</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2&gt;{title}&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;p&gt;Covering {topicCount} related topics&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>By computing <code>topics.length</code> inside <code>ArticleCard</code>, the count and the list can never disagree. If the parent adds a third topic to the array, the rendered count updates automatically on the next render pass without any extra props.</p>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Destructure Props Inside Braces in the Parameter List</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">destructuring</span>
+          <span class="gloss-def">extracting specific properties from an object into local variables using curly braces</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">object child crash</span>
+          <span class="gloss-def">a runtime error thrown when trying to render a raw JavaScript object directly inside JSX</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Always unpack incoming properties by wrapping parameter names in curly braces: <code>function ArticleCard({ title, readTime })</code>. This syntax is called <strong>destructuring</strong>, and it extracts properties directly into local variables. If you omit the curly braces, React binds the entire props object to your first parameter name, crashing the application when you try to render the object in JSX.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ title }) {</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Destructuring extracts title property</span></div><div class="case-code-line">  <span class="kw">return</span> &lt;h2&gt;{title}&lt;/h2&gt;;</div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">ArticleCard</span>(title) {</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Binds entire props object to title variable</span></div><div class="case-code-line">  <span class="kw">return</span> &lt;h2&gt;{title}&lt;/h2&gt;;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Crash: Objects are not valid as a React child</span></div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>The official React documentation highlights forgetting destructuring curly braces as a major pitfall. If you declare <span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">ArticleCard</span>(title)</code></span> without braces, the variable <code>title</code> does not hold a headline string. It holds the entire props object: <span class="code-line-callout"><code>{ title: <span class="str">"Transit Accord"</span>, readTime: <span class="nl">5</span> }</code></span> When you write <span class="code-line-callout"><code>&lt;h2&gt;{title}&lt;/h2&gt;</code></span> React tries to render a raw JavaScript object into the DOM and throws an immediate exception: <span class="code-line-callout"><code>Error: Objects are not valid as a React <span class="fn">child</span> (found: object with keys {title, readTime})</code></span> Wrapping the parameters in braces <code>({ title })</code> tells JavaScript to extract the <code>title</code> property, ensuring <code>title</code> holds the actual string value.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Destructuring vs Props Object</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ title, readTime }) { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Unpacks properties into named variables</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> &lt;h2&gt;{title} ({readTime} min)&lt;/h2&gt;;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCardAlternate</span>(props) {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> &lt;h2&gt;{props.title} ({props.readTime} min)&lt;/h2&gt;; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Reads directly from props object</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>Notice that writing <span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">ArticleCard</span>({ title, readTime })</code></span> produces the exact same result as accepting <code>props</code> and writing <code>props.title</code> and <code>props.readTime</code>. Destructuring is preferred across the community because it avoids repetitive typing and serves as self-documenting code.</p>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">Provide Parameter Defaults for Optional Props in Destructuring</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">parameter default</span>
+          <span class="gloss-def">a fallback value assigned with = that applies when a prop is missing or undefined</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">silent omission</span>
+          <span class="gloss-def">React rendering an empty blank space without warning when an optional prop is missing</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Assign fallback values to optional props directly in your function signature using an equals sign, like <code>{ readTime = 3 }</code>. If a parent omits an optional prop or passes <code>undefined</code>, React uses your fallback so the screen never displays an empty gap. Never rely on legacy <code>defaultProps</code> or <code>propTypes</code>, because modern React 19 silently ignores both on function components.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">ArticleCard</span>({</div><div class="case-code-line">  title,</div><div class="case-code-line">  readTime = <span class="nl">3</span></div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Default provides fallback when prop is omitted</span></div><div class="case-code-line">}) {</div><div class="case-code-line">  <span class="kw">return</span> &lt;span&gt;{readTime} min read&lt;/span&gt;;</div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-watermark-bg"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ title, readTime }) {</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Missing prop leaves empty space</span></div><div class="case-code-line">  <span class="kw">return</span> &lt;span&gt;{readTime} min read&lt;/span&gt;;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Renders blank space before min read</span></div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>In real-world applications, some props are mandatory (like a story headline) while others are optional (like reading time or an author tag). If a parent renders <span class="code-line-callout"><code>&lt;ArticleCard title=<span class="str">"Transit Accord"</span> /&gt;</code></span> without <code>readTime</code>, <code>readTime</code> evaluates to <code>undefined</code>. Because React renders nothing for <code>undefined</code>, writing <span class="code-line-callout"><code>&lt;span&gt;{readTime} min read&lt;/span&gt;</code></span> renders <code>" min read"</code> on screen with an awkward blank space. Adding <code>readTime = 3</code> in the destructuring provides a reliable fallback. In React 19, legacy <code>ArticleCard.defaultProps</code> and <code>ArticleCard.propTypes</code> are completely ignored on function components, so parameter defaults are the sole native mechanism for default values.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Parameter Defaults in Action</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ title, readTime = <span class="nl">3</span> }) { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Fallback default applied if undefined</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;h3&gt;{title}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;p&gt;{readTime} min read&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>If a parent provides <span class="code-line-callout"><code>&lt;ArticleCard title=<span class="str">"Transit Accord"</span> readTime={<span class="nl">7</span>} /&gt;</code></span> the component displays <code>7 min read</code>. But if the parent omits <code>readTime</code>, the parameter default cleanly substitutes <code>3</code>, ensuring the UI always renders complete, professional copy.</p>
+<aside class="callout callout-principle" data-principle="5">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 5</span></div>
+    <h4 class="principle-title">Handle Null and Zero Explicitly Because Defaults Only Catch Undefined</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">nullish coalescing</span>
+          <span class="gloss-def">the ?? operator that returns the right-hand value only if the left is null or undefined</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">deliberate value</span>
+          <span class="gloss-def">a value like 0 or null that JavaScript treats as real data, bypassing parameter defaults</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Parameter defaults trigger only when a prop is missing or explicitly passed as <code>undefined</code>. If a parent passes <code>null</code> or <code>0</code>, JavaScript treats those as deliberate values, so the fallback default never runs. When dealing with database records where missing authors arrive as <code>null</code>, use the nullish coalescing operator <code>author ?? 'Staff Reporter'</code> to display a safe fallback.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ author = <span class="str">'Staff Reporter'</span> }) {</div><div class="case-code-line">  <span class="kw">const</span> reporter = author ?? <span class="str">'Staff Reporter'</span>;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Catches both null and undefined</span></div><div class="case-code-line">  <span class="kw">return</span> &lt;span&gt;By {reporter}&lt;/span&gt;;</div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-watermark-bg"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ author = <span class="str">'Staff Reporter'</span> }) {</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">Default triggers only for undefined</span></div><div class="case-code-line">  <span class="kw">return</span> &lt;span&gt;By {author}&lt;/span&gt;;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Renders empty name when parent passes null</span></div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>A frequent source of bugs in production applications is assuming that parameter defaults catch <code>null</code>. When an API backend returns article records from a database, an article without an author often arrives as <span class="code-line-callout"><code>{ title: <span class="str">"Stock Market Rally"</span>, author: <span class="kw">null</span> }</code></span> If a parent writes <span class="code-line-callout"><code>&lt;ArticleCard author={data.author} /&gt;</code></span> JavaScript sees that <code>author</code> is present and holds the value <code>null</code>. Because <code>null</code> is not <code>undefined</code>, the parameter default <code>author = 'Staff Reporter'</code> does not fire. React renders nothing for <code>null</code>, leaving the screen showing <code>"By "</code>.</p>
+<p>To catch <code>null</code>, use the JavaScript <strong>nullish coalescing operator</strong> (<code>??</code>). In JavaScript, <code>a ?? b</code> evaluates to <code>b</code> only if <code>a</code> is strictly <code>null</code> or <code>undefined</code>. Writing <span class="code-line-callout"><code><span class="kw">const</span> reporter = author ?? <span class="str">'Staff Reporter'</span></code></span> safely catches both cases. Notice also how JavaScript handles <code>0</code>: if a parent passes <code>readTime={0}</code>, <code>0</code> is a deliberate number. The default does not override <code>0</code>, which is crucial when displaying numeric statistics like zero comments or zero likes.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Null and Zero Default Bypass</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ValueDisplay</span>({ value = <span class="nl">100</span> }) { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Default triggers only for undefined</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> &lt;span&gt;{value === <span class="kw">null</span> ? <span class="str">'null'</span> : value}&lt;/span&gt;;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">Preview</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> &lt;ValueDisplay value={<span class="kw">null</span>} /&gt;; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Passes null directly bypassing default 100</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>This mechanical behavior demonstrates why parameter defaults alone are not enough when consuming raw JSON data from backends where missing values arrive as <code>null</code>.</p>
+<aside class="callout callout-principle" data-principle="6">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 6</span></div>
+    <h4 class="principle-title">Treat Props as Read-Only and Derive Display Values During Render</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">read-only contract</span>
+          <span class="gloss-def">the platform rule stating components cannot alter incoming props</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">shallow freeze</span>
+          <span class="gloss-def">React freezing top-level props in development while nested objects remain mutable in memory</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Components must never reassign props or modify objects passed into them, because props are strictly <strong>read-only</strong>. React freezes the props object in development, causing direct assignments like <code>props.title = 'Breaking News'</code> to throw a TypeError. Calculate formatted values as fresh local constants during render, and if a value must change over time in response to user actions, ask the parent or use component state.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ title }) {</div><div class="case-code-line">  <span class="kw">const</span> headline = title.<span class="fn">toUpperCase</span>();</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Pure derived calculation preserves props</span></div><div class="case-code-line">  <span class="kw">return</span> &lt;h2&gt;{headline}&lt;/h2&gt;;</div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">ArticleCard</span>(props) {</div><div class="case-code-line">  props.title = props.title.<span class="fn">toUpperCase</span>();</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">Crash: Cannot assign to read only property</span></div><div class="case-code-line">  <span class="kw">return</span> &lt;h2&gt;{props.title}&lt;/h2&gt;;</div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>Why can a component never change its own props? In React, data flows in one direction from parent to child. The props object belongs to the parent that created it. If a child component could mutate its props, it would destroy the pure function contract where the same inputs always produce the same UI output. Even worse, React's development freeze is shallow: if a parent passes a nested object (like <span class="code-line-callout"><code>story={{ title: <span class="str">'Transit Accord'</span> }}</code></span>), mutating <code>story.title</code> directly will silently modify the parent's object in memory! If another sibling component also receives that <code>story</code> object, the mutation unexpectedly corrupts the sibling's display.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Safe Derivation vs Object Mutation</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ title, story }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> headline = title.<span class="fn">toUpperCase</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Pure local derivation preserves input props</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2&gt;{headline}&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;p&gt;{story.summary}&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Never mutate props. Instead, derive whatever formatted text you need by creating a new constant during render (<span class="code-line-callout"><code><span class="kw">const</span> headline = title.<span class="fn">toUpperCase</span>()</code></span>). If data must change in response to a user clicking a button or typing in an input, the component must ask the parent to pass new props or store the changing data in component state.</p>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for national-times - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-branch"><div class="component-explorer-label"><span>ArticleFeed</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h2" data-elem="[h2.feed-title]"><div class="ui-elem-content">Latest Editorial Dispatches</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">title=&quot;City Transit Accord Reached&quot; author=&quot;Clara Foster&quot; topic=&quot;Transit&quot; readTime={5}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-span" data-elem="[span.card-topic]"><div class="ui-elem-content">[Transit]</div></div><div class="ui-elem ui-tag-h3" data-elem="[h3.card-headline]"><div class="ui-elem-content">CITY TRANSIT ACCORD REACHED</div></div><div class="ui-elem ui-tag-p" data-elem="[p.card-meta]"><div class="ui-elem-content">By Clara Foster, 5 min read</div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">title=&quot;Clean Energy Power Grid Expands&quot; author={null} topic=&quot;Energy&quot;</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-span" data-elem="[span.card-topic]"><div class="ui-elem-content">[Energy]</div></div><div class="ui-elem ui-tag-h3" data-elem="[h3.card-headline]"><div class="ui-elem-content">CLEAN ENERGY POWER GRID EXPANDS</div></div><div class="ui-elem ui-tag-p" data-elem="[p.card-meta]"><div class="ui-elem-content">By Staff Reporter, 3 min read</div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">title=&quot;Downtown Public Park Renovations&quot; author=&quot;Marcus Vance&quot; topic=&quot;Civic&quot; readTime={4}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-span" data-elem="[span.card-topic]"><div class="ui-elem-content">[Civic]</div></div><div class="ui-elem ui-tag-h3" data-elem="[h3.card-headline]"><div class="ui-elem-content">DOWNTOWN PUBLIC PARK RENOVATIONS</div></div><div class="ui-elem ui-tag-p" data-elem="[p.card-meta]"><div class="ui-elem-content">By Marcus Vance, 4 min read</div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="national-times: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">national-times: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Top-level application shell mounting header and feed branches</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ArticleFeed.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">News feed branch container configuring three article cards</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ArticleCard.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">nested child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Reusable presentation card receiving and rendering props</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Warm Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #d98c47; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #f3caa3; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the news feed container</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;ArticleFeed.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the parameterized article card</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;ArticleCard.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we assemble the application root</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 06.1: Figure 6.1: Step-by-step code assembly pipeline for parameterized news feed</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the news feed container';">First, we construct the news feed container</div>
+      <div class="card-components"><span class="component-tag">&lt;ArticleFeed.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Step 1 constructs the parent feed container that coordinates our collection of news dispatches. We create <code>ArticleFeed.jsx</code> as an orchestrating branch component. Notice how <code>ArticleFeed</code> renders three distinct <code>&lt;ArticleCard /&gt;</code> call sites. Rather than duplicating markup, <code>ArticleFeed</code> passes custom attributes to each card: a headline <code>title</code>, an <code>author</code> name, a category <code>topic</code>, and a numeric <code>readTime</code>.</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleFeed.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> ArticleCard <span class="kw">from</span> <span class="str">'./ArticleCard.jsx'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Imports parameterized card component</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleFeed</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;section className=<span class="str">"article-feed"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2 className=<span class="str">"feed-title"</span>&gt;Latest Editorial Dispatches&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;ArticleCard</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">        title=<span class="str">"City Transit Accord Reached"</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">First call site configures full props</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">        author=<span class="str">"Clara Foster"</span></span></div>
+<div class="row odd"><span class="num">9</span><span class="src">        topic=<span class="str">"Transit"</span></span></div>
+<div class="row even"><span class="num">10</span><span class="src">        readTime={<span class="nl">5</span>}</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      /&gt;</span></div></div></div></div>
+<p>Next, examine the second half of <code>ArticleFeed.jsx</code>, configuring stories with missing reading time and null authors:</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">11</span><span class="src">      &lt;ArticleCard</span></div>
+<div class="row even"><span class="num">12</span><span class="src">        title=<span class="str">"Clean Energy Power Grid Expands"</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Second call site tests null author</span>
+      </div></div>
+<div class="row odd"><span class="num">13</span><span class="src">        author={<span class="kw">null</span>}</span></div>
+<div class="row even"><span class="num">14</span><span class="src">        topic=<span class="str">"Energy"</span></span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      /&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      &lt;ArticleCard title=<span class="str">"Public Park Renovations"</span> author=<span class="str">"Marcus Vance"</span> topic=<span class="str">"Civic"</span> readTime={<span class="nl">4</span>} /&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">}</span></div></div></div></div>
+<p>Notice the deliberate design of the second card: it omits <code>readTime</code> and passes <code>author={null}</code>. This mirrors real-world production feeds where certain metadata may be missing or delayed from an editorial database. <code>ArticleFeed</code> acts as the single source of truth, assembling props for each card and passing them downward.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the parameterized article card';">Next, we build the parameterized article card</div>
+      <div class="card-components"><span class="component-tag">&lt;ArticleCard.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Step 2 constructs the reusable card presentation component. We create <code>ArticleCard.jsx</code> to receive the data configured by <code>ArticleFeed</code>. We unpack the incoming props object using parameter destructuring: <span class="code-line-callout"><code>{ title, author = <span class="str">'Staff Reporter'</span>, topic, readTime = <span class="nl">3</span> }</code></span> Notice how <code>readTime = 3</code> provides a reliable default when the reading time is omitted.</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleCard</span>({</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  title,</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  author = <span class="str">'Staff Reporter'</span>,</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  topic,</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  readTime = <span class="nl">3</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Fallback default applies if prop is omitted</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">}) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> reporter = author ?? <span class="str">'Staff Reporter'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Nullish coalescing catches null values</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">const</span> headline = title.<span class="fn">toUpperCase</span>();</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;article className=<span class="str">"article-card"</span>&gt;</span></div></div></div></div>
+<p>Next, examine the returned JSX markup of <code>ArticleCard.jsx</code>, rendering the calculated values:</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">11</span><span class="src">      &lt;span className=<span class="str">"card-topic"</span>&gt;[{topic}]&lt;/span&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Displays category badge</span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;h3 className=<span class="str">"card-headline"</span>&gt;{headline}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      &lt;p className=<span class="str">"card-meta"</span>&gt;By {reporter} | {readTime} min read&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">16</span><span class="src">}</span></div></div></div></div>
+<p>Notice two critical lines inside <code>ArticleCard</code>. First, <span class="code-line-callout"><code><span class="kw">const</span> reporter = author ?? <span class="str">'Staff Reporter'</span></code></span> uses nullish coalescing to guarantee that our second story displays a valid author even though the parent passed <code>author={null}</code>. Second, <span class="code-line-callout"><code><span class="kw">const</span> headline = title.<span class="fn">toUpperCase</span>()</code></span> calculates a bold uppercase headline as a fresh local constant during render. <code>ArticleCard</code> never modifies <code>props.title</code>, preserving component purity and adhering strictly to the read-only contract.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we assemble the application root';">Finally, we assemble the application root</div>
+      <div class="card-components"><span class="component-tag">&lt;App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Step 3 seals our application by mounting the news feed inside the top-level root component. We create <code>App.jsx</code> as the master layout coordinator. <code>App</code> renders the newspaper header banner and mounts <code>&lt;ArticleFeed /&gt;</code> inside a semantic <code>&lt;main&gt;</code> landmark.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> ArticleFeed <span class="kw">from</span> <span class="str">'./components/ArticleFeed.jsx'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Imports feed container</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;main className=<span class="str">"national-times-app"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;header className=<span class="str">"site-header"</span>&gt;&lt;h1&gt;The National Times&lt;/h1&gt;&lt;/header&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;ArticleFeed /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Mounts news feed branch in application root</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice how data flows across our entire application: <code>App</code> mounts <code>ArticleFeed</code>, <code>ArticleFeed</code> supplies distinct props to three <code>ArticleCard</code> components, and each <code>ArticleCard</code> pure renders its returned JSX descriptors. Each card remains completely decoupled and reusable, demonstrating clean unidirectional data flow.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>root application component</strong> coordinates top-level newsroom branding and mounts the central story feed. What is its structural role? It acts as the root of the render tree, establishing the page layout and mounting the feed branch.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-branch"><div class="component-explorer-label"><span>ArticleFeed</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This <strong>branch container</strong> coordinates the morning dispatches. It acts as the single source of truth for article data, declaring three distinct ArticleCard call sites with customized title, author, topic, and reading time props.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ArticleCard</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This <strong>leaf presentation component</strong> receives props from ArticleFeed. It unpacks properties using destructuring, applies fallback defaults for optional values, normalizes null authors, and derives uppercase headlines pure in render.</p></div></div></div></div></div></div></div></div>
+</div>
+<p>In legacy web development, sharing data across widgets often involved polluting global window variables or directly modifying DOM nodes with JavaScript selectors. In modern React, data travels strictly downward through read-only props. <code>ArticleFeed</code> decides the content of each story and passes it down at the JSX call site. <code>ArticleCard</code> receives this data, treats it as immutable, unpacks it with destructuring, and calculates display text pure in render. This architecture guarantees predictable, bug-free rendering.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      vertical-align: top !important;
+      font-size: 0.82rem;
+      line-height: 1.35;
+      color: #334155;
+    }
+    .architecture-audit-figure .td-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .layer-title {
+      font-size: 0.90rem;
+      font-weight: 800;
+      color: #0f172a;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .layer-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #0e7490;
+      background: #e0f2fe;
+      padding: 1px 4px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+    .architecture-audit-figure .row-verdict td {
+      border-top: 2px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 9px 12px !important;
+    }
+    .architecture-audit-figure .verdict-danger {
+      color: #991b1b;
+      background: #fef2f2 !important;
+    }
+    .architecture-audit-figure .verdict-teal {
+      color: #155e75;
+      background: #f0fdfa !important;
+      border-left: 1px solid #ccfbf1 !important;
+    }
+    .architecture-audit-figure .verdict-title {
+      font-size: 0.84rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 2px;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">LESSONS FROM THE CODE</div>
+    <div class="audit-title">Architecture Audit: Hardcoded Duplication vs Pure Read-Only Props</div>
+    <p class="audit-subtitle">Deconstructing parameter passing, fallback defaults, and the immutability guarantee across component layers</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">TIER &amp; SCOPE</span>
+          <span class="th-main">Component Layer</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">NAIVE APPROACH</span>
+          <span class="th-main">Duplication &amp; Mutation</span>
+          <span class="th-sub sub-danger">Hardcoded cards &amp; direct assignment</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">REACT 19 ARCHITECTURE</span>
+          <span class="th-main">Read-Only Prop Flow</span>
+          <span class="th-sub sub-teal">Destructuring, defaults &amp; derivations</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <span class="layer-title">Feed Container</span>
+          <span class="layer-tag">&lt;ArticleFeed.jsx&gt;</span>
+        </td>
+        <td>
+          Copies and pastes three identical cards with hardcoded text, or passes redundant props like count alongside an array that easily drift out of sync.
+        </td>
+        <td class="td-reality">
+          Reuses a single component by passing differing values as attributes; React bundles them into one props object at each call site.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-title">Card Presentation</span>
+          <span class="layer-tag">&lt;ArticleCard.jsx&gt;</span>
+        </td>
+        <td>
+          Omits destructuring braces so the whole object binds to one name, crashing when rendered; mutates props directly with uppercase assignments.
+        </td>
+        <td class="td-reality">
+          Unpacks properties using parameter destructuring, provides fallback defaults for optional values, and calculates uppercase text pure in render.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-title">Root Coordinator</span>
+          <span class="layer-tag">&lt;App.jsx&gt;</span>
+        </td>
+        <td>
+          Passes shared objects across siblings and relies on legacy propTypes or defaultProps that React 19 silently ignores on function components.
+        </td>
+        <td class="td-reality">
+          Acts as the single source of truth; distributes data top-down and ensures child components never corrupt shared objects.
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-title">Runtime Engine</span>
+          <span class="layer-tag">Immutability Contract</span>
+        </td>
+        <td>
+          Assumes props can be modified in place or relies on shallow development freezing to prevent silent data corruption in production.
+        </td>
+        <td class="td-reality">
+          Props are strictly read-only; React freezes props shallowly in development to enforce pure function contracts, while the child derives new values.
+        </td>
+      </tr>
+      <tr class="row-verdict">
+        <td>
+          <span class="layer-title">Verdict</span>
+          <span class="layer-tag">Contract Integrity</span>
+        </td>
+        <td class="verdict-danger">
+          <span class="verdict-title">Fragile Mutation &amp; Drift</span>
+          Hardcoded card clones, fatal object-as-child crashes, silent nested object corruption, and desynchronized state drift.
+        </td>
+        <td class="td-reality verdict-teal">
+          <span class="verdict-title">Pure Read-Only Flow</span>
+          Clean component reuse, predictable unidirectional data flow, resilient fallback defaults, and protected pure rendering.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 06.2: Figure 6.2: Architecture audit of hardcoded duplication vs pure read-only props</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>E-Commerce Product Catalogs</strong>: Product grids pass product objects down to reusable product cards, allowing a single card component to render prices, images, ratings, and discounts for thousands of inventory items.</li>
+<li><strong>User Profiles and Social Feeds</strong>: Activity feeds pass user names, avatars, timestamps, and message strings down to post cards, using fallback defaults for users who have not uploaded a custom profile picture.</li>
+<li><strong>News Publishing Dashboards</strong>: Editorial platforms pass article titles, author names, category tags, and reading times to article cards, normalizing null authors from API payloads using nullish coalescing.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Props</strong>: The single, read-only JavaScript object passed into a component function containing all attributes specified at its JSX call site.</li>
+<li><strong>Destructuring</strong>: A JavaScript syntax that extracts individual properties from an object directly into named local variables inside parameter parentheses.</li>
+<li><strong>Parameter Default</strong>: A fallback value assigned with an equals sign in destructuring that takes effect only when a prop is omitted or passed as undefined.</li>
+<li><strong>Nullish Coalescing Operator</strong>: The JavaScript ?? operator that returns its right-hand operand when the left-hand operand is strictly null or undefined.</li>
+<li><strong>Read-Only Contract</strong>: The fundamental architectural rule requiring React components to treat incoming props as immutable and never modify them.</li>
+<li><strong>Derived Value</strong>: A new constant or formatted string calculated locally during render from existing props without mutating the original input data.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Passing props to a component</strong>: the official react.dev tutorial covering familiar props, step-by-step prop passing, and destructuring syntax (see <a href="https://react.dev/learn/passing-props-to-a-component">react.dev/learn/passing-props-to-a-component</a>).</li>
+<li><strong>Specifying a default value for a prop</strong>: documentation explaining how parameter defaults work and why null and 0 pass through (see <a href="https://react.dev/learn/passing-props-to-a-component#specifying-a-default-value-for-a-prop">react.dev/learn/passing-props-to-a-component#specifying-a-default-value-for-a-prop</a>).</li>
+<li><strong>How props change over time</strong>: explaining why props are read-only and how components request new props from parents (see <a href="https://react.dev/learn/passing-props-to-a-component#how-props-change-over-time">react.dev/learn/passing-props-to-a-component#how-props-change-over-time</a>).</li>
+<li><strong>Components and hooks must be pure</strong>: official reference on why props and state are immutable and must never be mutated (see <a href="https://react.dev/reference/rules/components-and-hooks-must-be-pure#props-and-state-are-immutable">react.dev/reference/rules/components-and-hooks-must-be-pure#props-and-state-are-immutable</a>).</li>
+<li><strong>React 19 Upgrade Guide: Removed propTypes and defaultProps</strong>: explanation of why function components now rely exclusively on ES6 default parameters (see <a href="https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-proptypes-and-defaultprops">react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-proptypes-and-defaultprops</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Passing Props and Read-Only Contract Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Call Sites and Parameterization</span></div>
+<p class="summary-principle">➔ ALWAYS pass data downward by declaring attributes at the JSX call site, allowing React to bundle them into one props object.</p>
+<p class="summary-principle">➔ ALWAYS turn values that differ between component instances into props rather than duplicating component functions.</p>
+<p class="summary-principle">➔ NEVER pass redundant props for values that the child can calculate on its own, such as passing an item count next to an array.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Destructuring and Default Values</span></div>
+<p class="summary-principle">➔ ALWAYS destructure props using curly braces in the parameter list to unpack properties directly into named local variables.</p>
+<p class="summary-principle">➔ ALWAYS provide parameter defaults for optional props using an equals sign inside destructuring to prevent empty holes on screen.</p>
+<p class="summary-principle">➔ ALWAYS use the nullish coalescing operator ?? when data from an API may arrive as null, because parameter defaults catch only undefined.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Component Purity and Immutability</span></div>
+<p class="summary-principle">➔ ALWAYS treat incoming props as strictly read-only and calculate formatted text as fresh local constants during render.</p>
+<p class="summary-principle">➔ NEVER assign new values to props or mutate objects received as props, which causes fatal errors in development and state drift in production.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Destructure props with fallback defaults and derive values pure in render</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCard</span>({ title, readTime = <span class="nl">3</span> }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> headline = title.<span class="fn">toUpperCase</span>();</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2&gt;{headline}&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;p&gt;{readTime} min read&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Reassign incoming props directly or mutate input objects during render</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ArticleCard</span>(props) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  props.title = props.title.<span class="fn">toUpperCase</span>();</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2&gt;{props.title}&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;p&gt;{props.readTime} min read&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>HARDCODED REPETITION &amp; MUTATION</strong><br>(Fragile Anti-Pattern)</th><th><strong>PARAMETERIZED READ-ONLY PROPS</strong><br>(Pure React 19 Architecture)</th></tr></thead><tbody><tr><td><strong>Data Mechanism</strong></td><td>Duplicated component functions or hardcoded text in JSX</td><td>Attributes declared at call site bundled into single object</td></tr><tr><td><strong>Component Inputs</strong></td><td>None; functions hardcode copy or read external scope</td><td>Parameter list receives single props object from parent</td></tr><tr><td><strong>Unpacking Syntax</strong></td><td>Bare parameter binds whole object; crashes on render</td><td>Parameter destructuring unpacks properties into variables</td></tr><tr><td><strong>Optional Fallbacks</strong></td><td>Missing props leave blank holes or throw null errors</td><td>Parameter defaults provide fallbacks for missing values</td></tr><tr><td><strong>Null API Handling</strong></td><td>Unhandled null values pass through and render blank</td><td>Nullish coalescing (<code>??</code>) provides explicit safe fallback</td></tr><tr><td><strong>Immutability Contract</strong></td><td>Mutating props throws TypeError or corrupts siblings</td><td>Props are strictly read-only; child derives new values</td></tr><tr><td><strong>State Drift Risk</strong></td><td>High; duplicated cards or mutated objects drift out of sync</td><td>Zero; parent acts as single source of truth for instances</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

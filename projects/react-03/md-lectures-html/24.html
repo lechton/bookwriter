@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 24: Component Identity in the UI Tree: Preserving and Resetting State</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 24: Component Identity in the UI Tree: Preserving and Resetting State</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">Why does state sometimes vanish, or survive, when you did not expect it?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Caleb builds a subscriber feedback viewer for The National Times.</li>
+<li>Caleb switches between two reader accounts, rendering a comment box at the same position.</li>
+<li>When Caleb selects the second reader, the unsaved draft from the first reader remains stuck.</li>
+<li>Why does the comment box keep text from another account after switching profiles?</li>
+<li>Leaking text between profiles exposes private reader drafts and creates severe security and privacy bugs.</li>
+<li>React ties state to position in the UI tree, preserving data when component types match.</li>
+<li>Today you learn how React tracks component identity and how keys force state resets.</li></ol>
+</div>
+<div class="keep-together">
+<h3>State Is Tied to Position in the Render Tree</h3>
+<p>When developers write <code>useState</code>, they naturally visualize the state living inside the component function itself. This mental model is an illusion. A React component is a plain JavaScript function that executes and exits in milliseconds. Its local scope is garbage collected after each call.</p>
+<p>In reality, React stores all state variables in internal data structures called <strong>Fiber memory nodes</strong>. React associates each piece of state with a component by its specific coordinate in the <strong>UI render tree</strong>.</p>
+<p>When a component renders at the exact same tree position across multiple render passes, React recognizes that the component has not moved. React preserves the existing state in that slot, matching the state hooks in the exact order they were called. State is preserved across re-renders not because the function stayed in memory, but because its address in the render tree remained constant.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Where does React actually store component state?</strong> Imagine a grand historic hotel where mail is sorted into numbered pigeonhole slots behind the front desk. Slot 402 holds letters for Room 402. When guest Alice checks out on Friday and guest Bob checks into Room 402 on Saturday, the physical pigeonhole slot on the wall remains unchanged. If the concierge fails to clear the slot, Bob receives Alice's confidential letters! That is how React stores component state. State does not live inside your component function. It lives in React's internal slots tied directly to that component's position in the render tree. When a re-render occurs, React looks at the slot. If the component at that exact tree coordinate has the same type, React reuses the existing state in that slot. Understanding <strong>component position</strong> as a <strong>pigeonhole slot</strong> in the <strong>render tree</strong> clarifies why <strong>state preservation</strong> occurs automatically unless reset by a <strong>key attribute</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Preserving State across Re-Renders</h3>
+<p>React's reconciliation engine uses a straightforward heuristic to determine whether to preserve or reset state:</p>
+<ul>
+<li><strong>Same component type at the same tree position</strong>: React keeps the existing Fiber node and preserves its internal state. Even if props change dramatically, the component retains its local memory cells.</li>
+<li><strong>Different component type at the same tree position</strong>: React tears down the existing Fiber node and completely unmounts its corresponding DOM elements. All state in that subtree is immediately destroyed. When the new component mounts, it starts with fresh initial state.</li>
+</ul>
+<p>Consider this conditional render:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Matching Tree Position Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">{isVIP ? (</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  &lt;SubscriberCommentBox label=<span class="str">"VIP Notes"</span> /&gt;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">) : (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  &lt;SubscriberCommentBox label=<span class="str">"Standard Notes"</span> /&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">)}</span></div></div></div></div>
+<p>To an engineer reading the JSX, these appear to be two separate component branches. But to React's reconciliation engine, both branches produce the exact same component type (<code>SubscriberCommentBox</code>) as the first child of the parent container. Because the component type and tree position are identical, React reuses the existing state. Any text typed into the VIP box will remain on the screen when toggling to the standard box.</p>
+</div>
+<div class="keep-together">
+<h3>Resetting State with the Key Attribute</h3>
+<p>To tell React that two components at the same tree position represent completely distinct conceptual entities, provide an explicit <strong>key attribute</strong>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Key Reset Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">&lt;SubscriberCommentBox</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  key={subscriberId}</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  label={isVIP ? <span class="str">"VIP Notes"</span> : <span class="str">"Standard Notes"</span>}</span></div>
+<div class="row even"><span class="num">4</span><span class="src">/&gt;</span></div></div></div></div>
+<p>By default, React uses an element's position within its parent to determine identity. By passing a <code>key</code>, you instruct React to use the <code>key</code> as the primary identifier instead of tree order.</p>
+<p>When <code>subscriberId</code> changes from <code>"alice"</code> to <code>"bob"</code>, React sees that the key at that tree position has altered. React immediately destroys the old Fiber node for Alice, wiping all her draft text from memory, and mounts a fresh Fiber node for Bob with empty initial state. The key acts as an explicit identity token that resets state on demand.</p>
+</div>
+<div class="keep-together">
+<h3>The National Times Feedback Viewer Architecture</h3>
+<p>To observe component identity and state resets in action, inspect the subscriber feedback viewer desk for The National Times. The parent component <code>FeedbackViewer.jsx</code> renders <code>SubscriberTag.jsx</code> and <code>SubscriberCommentBox.jsx</code>:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>FeedbackViewer.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>SubscriberCommentBox.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>SubscriberTag.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>FeedbackViewer</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn">Switch to Bob Vance</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>SubscriberTag</span><span class="component-explorer-props">name=&quot;Elena Rostova&quot; tier=&quot;Standard&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">[Standard Member] <strong>Elena Rostova</strong></span></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>SubscriberCommentBox</span><span class="component-explorer-props">label=&quot;General Feedback&quot;</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-input"><span class="surface-ui-input-placeholder">Type subscriber notes...</span></div><span class="surface-ui-btn">Save Feedback</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above demonstrates the hierarchy. The parent component <code>FeedbackViewer.jsx</code> manages the active subscriber toggle button, while <code>SubscriberTag.jsx</code> and <code>SubscriberCommentBox.jsx</code> project the subscriber status and input draft.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure">
+  <style>
+    .pipeline-card-figure {
+      margin: 1.5rem auto;
+      max-width: 590px;
+      background: #f4f6f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pipeline-card-figure .pipeline-header {
+      background: #344154;
+      padding: 10px 18px;
+    }
+    .pipeline-card-figure .pipeline-header span {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .pipeline-card-figure .pipeline-body {
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pipeline-card-figure .step-node {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #fcfcfb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 20px 14px 26px;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .pipeline-card-figure .step-node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #0e7490;
+    }
+    .pipeline-card-figure .step-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      line-height: 1.35;
+    }
+    .pipeline-card-figure .step-num {
+      color: #0e7490;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-label {
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: #475569;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+    .pipeline-card-figure .step-desc {
+      margin-top: 11px;
+      text-align: center;
+      font-size: 0.77rem;
+      line-height: 1.45;
+      font-style: italic;
+      color: #334155;
+      max-width: 470px;
+    }
+    .pipeline-card-figure .step-desc strong {
+      font-weight: 700;
+      color: #0f172a;
+      font-style: normal;
+    }
+    .pipeline-card-figure .step-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+    }
+    .pipeline-card-figure .step-connector svg {
+      display: block;
+    }
+  </style>
+
+  <div class="pipeline-header">
+    <span>COMPONENT IDENTITY RESET CONSTRUCTION PIPELINE</span>
+  </div>
+
+  <div class="pipeline-body">
+    <!-- Step 1 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 1:</span>
+        <span class="step-label">Subscriber Profile Tag</span>
+      </div>
+      <div class="step-code">SubscriberTag({ name, tier })</div>
+      <div class="step-desc">
+        Author the <strong>pure presentation tag</strong> to render account names and membership status tags cleanly from props.
+      </div>
+    </div>
+
+    <!-- Connector 1 -> 2 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 2:</span>
+        <span class="step-label">Stateful Comment Box with Local Draft Memory</span>
+      </div>
+      <div class="step-code">const [draft, setDraft] = useState('')</div>
+      <div class="step-desc">
+        Author the <strong>isolated comment textarea</strong> that retains local keystroke state inside its own component boundary.
+      </div>
+    </div>
+
+    <!-- Connector 2 -> 3 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 3:</span>
+        <span class="step-label">Managing the Active Subscriber in the Parent</span>
+      </div>
+      <div class="step-code">const [activeId, setActiveId] = useState('alice')</div>
+      <div class="step-desc">
+        Initialize the <strong>parent component</strong> to alternate active account profiles and derive subscriber data.
+      </div>
+    </div>
+
+    <!-- Connector 3 -> 4 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 4:</span>
+        <span class="step-label">Resetting Form State with Key Prop</span>
+      </div>
+      <div class="step-code">&lt;SubscriberCommentBox key={activeId} /&gt;</div>
+      <div class="step-desc">
+        Attach <strong>key={activeId}</strong> so React destroys the old Fiber node and <strong>resets draft memory instantly</strong> on toggle.
+      </div>
+    </div>
+  </div>
+</div>
+<figcaption>Fig 24.1: Step-by-step code assembly pipeline for component identity and state reset architecture</figcaption>
+</figure>
+<p>To construct this feedback viewer cleanly, we decompose <code>SubscriberTag.jsx</code>, <code>SubscriberCommentBox.jsx</code>, and <code>FeedbackViewer.jsx</code> across four sequential implementation steps:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: Subscriber Profile Tag';">Subscriber Profile Tag</div>
+      
+    </div>
+  </div>
+</div>
+<p>First, examine the presentation tag <code>SubscriberTag.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">SubscriberTag.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SubscriberTag</span>({ name, tier }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"sub-tag"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;strong&gt;{name}&lt;/strong&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;span className=<span class="str">"tag-tier"</span>&gt;{tier} Member&lt;/span&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Pure display tag receiving subscriber <b class="tag">METADATA</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>The <code>SubscriberTag</code> component receives <code>name</code> and <code>tier</code> as props, formatting them into accessible markup. It maintains zero state.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Stateful Comment Box with Local Draft Memory';">Stateful Comment Box with Local Draft Memory</div>
+      
+    </div>
+  </div>
+</div>
+<p>Next, examine the comment box child <code>SubscriberCommentBox.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">SubscriberCommentBox.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SubscriberCommentBox</span>({ label }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [comment, setComment] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;div className=<span class="str">"comment-box"</span>&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      &lt;label htmlFor=<span class="str">"feedback-input"</span>&gt;{label}&lt;/label&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;textarea</span></div>
+<div class="row even"><span class="num">10</span><span class="src">        id=<span class="str">"feedback-input"</span></span></div>
+<div class="row odd"><span class="num">11</span><span class="src">        placeholder=<span class="str">"Type subscriber notes..."</span></span></div>
+<div class="row even"><span class="num">12</span><span class="src">        value={comment}</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">        onChange={e =&gt; <span class="fn">setComment</span>(e.target.value)}</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      /&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Maintains internal draft text tied to tree position and <b class="tag">KEY</b></span>
+      </div></div>
+<div class="row odd"><span class="num">17</span><span class="src">}</span></div></div></div></div>
+<p>The <code>SubscriberCommentBox</code> maintains an internal <code>comment</code> state variable. When an editor types a note, the text is held in React memory cells associated with this component's position and key.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Managing the Active Subscriber in the Parent';">Managing the Active Subscriber in the Parent</div>
+      
+    </div>
+  </div>
+</div>
+<p>We open <code>FeedbackViewer.jsx</code>, declare the active account state, and derive the subscriber metadata:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FeedbackViewer.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> SubscriberTag <span class="kw">from</span> <span class="str">'./SubscriberTag.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">import</span> SubscriberCommentBox <span class="kw">from</span> <span class="str">'./SubscriberCommentBox.jsx'</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">FeedbackViewer</span>() {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">const</span> [isVIP, setIsVIP] = <span class="hook">useState</span>(<span class="kw">false</span>);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src"></span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">const</span> activeSubscriber = isVIP</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    ? { name: <span class="str">'Senator Vance'</span>, tier: <span class="str">'VIP'</span>, deskKey: <span class="str">'vip-desk'</span>, label: <span class="str">'VIP Priority Desk'</span> }</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    : { name: <span class="str">'Elena Rostova'</span>, tier: <span class="str">'Standard'</span>, deskKey: <span class="str">'standard-desk'</span>, label: <span class="str">'General Feedback'</span> };</span></div></div></div></div>
+<p>Isolating the subscriber configuration outside the template cleanly defines the account parameters and the unique <code>deskKey</code>. This eliminates inline ternary nesting in the template and provides a clean identity token. Continuing down the component, we render the interface:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Resetting Form State with Key Prop';">Resetting Form State with Key Prop</div>
+      
+    </div>
+  </div>
+</div>
+<p>Finally, we connect the layout using the dynamic <code>deskKey</code> prop and complete the parent container:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">FeedbackViewer.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">13</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    &lt;section className=<span class="str">"feedback-container"</span>&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">setIsVIP</span>(!isVIP)}&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Toggles active subscriber account <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row even"><span class="num">16</span><span class="src">        Toggle Subscriber: {activeSubscriber.tier}</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      &lt;SubscriberTag name={activeSubscriber.name} tier={activeSubscriber.tier} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Projects subscriber identity via <b class="tag">PROPS</b></span>
+      </div></div>
+<div class="row odd"><span class="num">19</span><span class="src">      &lt;SubscriberCommentBox key={activeSubscriber.deskKey} label={activeSubscriber.label} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Resets draft input state via dynamic <b class="tag">KEY</b></span>
+      </div></div>
+<div class="row even"><span class="num">20</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">22</span><span class="src">}</span></div></div></div></div>
+<p>Notice the <code>key</code> prop passed to <span class="code-line-callout"><code>&lt;SubscriberCommentBox key={activeSubscriber.deskKey} /&gt;</code></span> When <code>isVIP</code> flips, the key transitions between <code>"standard-desk"</code> and <code>"vip-desk"</code>. React recognizes this key transition as an identity reset: it unmounts the previous comment box instance, discarding its internal <code>comment</code> state, and mounts a brand-new instance with an empty text area. Confidential notes typed for Elena Rostova never leak into Senator Vance's session.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — Component Identity & State Preservation</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Feedback Viewer</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            FeedbackViewer.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            SubscriberTag.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            SubscriberCommentBox.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            &lt;SubscriberCommentBox key={subscriberId} /&gt;
+            <span class="rce-node-props">✓ KEY-FORCED RESET</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Identity Token: <span class="ref-tag ref-green">key alters from "vip-desk" to "standard-desk"</span></div>
+            <div style="margin-top:0.3rem;">2. Fiber Lifecycle: old Fiber unmounted; new instance mounted</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Clean Isolation: new subscriber receives pristine empty draft!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            Providing an explicit key tells React that elements represent distinct entities.<br>
+            Changing the key destroys old state memory and starts fresh.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            &lt;SubscriberCommentBox /&gt; (no key)
+            <span class="rce-node-props">✕ LEAKED DRAFT STATE</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Tree Coordinate: <span class="ref-tag ref-red">same slot inside section container</span></div>
+            <div style="margin-top:0.3rem;">2. Type Matching: component type remains SubscriberCommentBox</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">Privacy Breach: notes typed for VIP leak into standard reader view!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            React pairs state with tree position. When position and type match,<br>
+            React reuses existing state cells, leaking confidential text across users.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 24.2: The National Times — Component Identity &amp; State Preservation</figcaption>
+</figure>
+<p>The figure above illustrates the mechanical difference. Without a key, React reuses the same Fiber slot, leaking drafts across users. With a key, React tears down the old memory cell and initializes a clean, isolated draft.</p>
+</div>
+<div class="keep-together">
+<h3>The Nested Component Function Definition Trap</h3>
+<p>A disastrous junior anti-pattern occurs when an engineer defines a component function inside another component function:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Nested Component Definition Trap</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">OuterComponent</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">InnerComponent</span>() { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> re-instantiated on every <b class="tag">RENDER</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="kw">return</span> &lt;input type=<span class="str">"text"</span> /&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;InnerComponent /&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>This code compiles without warnings, but creates a fatal runtime defect. Every time <code>OuterComponent</code> renders, JavaScript re-executes the outer function body and creates a brand-new function object in memory for <code>InnerComponent</code>.</p>
+<p>When React reconciles the tree, it compares the element type from the previous render with the element type from the current render:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Element Type Comparison</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">prevElement.type === nextElement.type</span></div></div></div></div>
+<p>Because <code>InnerComponent</code> was re-instantiated, its function reference in memory is different (<code>false</code>). React concludes that the component type has changed. On every single keystroke, React completely destroys the old DOM node, wipes out its state, and mounts a new DOM node from scratch. The user's typing cursor vanishes, and only a single character can ever be entered before focus drops.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does defining a component inside another wipe focus?</strong> Imagine visiting a bank teller window to deposit a check. Every single time you speak a word, the bank demolishes the entire brick building, fires the teller, hires a complete stranger with a different name tag, and builds a brand-new window. Your clipboard drops to the floor, your pen rolls away, and you lose your place in line! That is what happens when you define a component function inside another component function. On every render, JavaScript creates a brand-new function object in memory. When React inspects the tree, it sees a new component type, destroys the old DOM node, and mounts a fresh one from scratch. Your typing focus is lost, and all state disappears into thin air. Understanding the <strong>nested component trap</strong> through <strong>function identity</strong> clarifies why components must always be declared at the <strong>module top level</strong> to preserve <strong>component identity</strong> and <strong>DOM focus</strong>.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how to force a component to reset without unmounting its parent, cite the <code>key</code> trick: "Passing a changing key to a component instructs React's reconciler that the component represents a different entity, causing React to unmount the old Fiber instance, discard its state, and mount a pristine replacement." This pattern is far cleaner than writing <code>useEffect</code> hooks that manually reset each individual state setter.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Multi-step application wizards: Forcing step forms to reset their local validation states and dirty flags when moving between applicants.</li>
+<li>Tabbed text editors: Isolating undo and redo history buffers when switching between active file tabs in an IDE.</li>
+<li>Messaging chat windows: Wiping draft message text when switching from one conversation thread to another by keying on <code>conversationId</code>.</li>
+<li>Media and video players: Resetting playback progress, volume overrides, and buffering indicators when a reader selects a new video.</li>
+<li>Account administration portals: Clearing unsaved permission changes when an administrator switches between user accounts.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Component Identity</strong>: How React recognizes whether a component across two renders is the exact same instance or a completely new one, based on tree position and key.</li>
+<li><strong>Render Tree Position</strong>: The specific coordinate of a component in React's virtual element tree, which React uses as the primary lookup key for state storage.</li>
+<li><strong>Key Attribute</strong>: A special React prop that provides a unique identity token, forcing React to distinguish between elements at the same position and reset state when changed.</li>
+<li><strong>State Preservation</strong>: The default React reconciliation behavior of keeping state alive across renders as long as the component type and tree position remain identical.</li>
+<li><strong>Nested Component Trap</strong>: The critical bug where declaring a component function inside another component causes it to be re-created on every render, destroying state and focus.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Component Identity Architecture: Tree Position, State Preservation, and Key Resets</strong></p>
+<p>React ties component state to positions in the UI render tree rather than the function definitions themselves. By mastering position matching and keys, you control exactly when state is preserved and when it is cleanly destroyed.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Principles of Tree Position and State Lifetimes</span></div>
+<ol><li>State is tied to render tree coordinates.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) As long as a component renders at the same position with the same type, React preserves its state.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Changing props on a component does not reset its internal state if its tree position remains unchanged.</li>
+<li>Changing component types destroys state.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) If a different component type renders at the same slot, React unmounts the old subtree and discards all state.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) The incoming component mounts with fresh initial state.</li>
+<li>Resetting state with keys.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Passing a changing <code>key</code> prop forces React to treat the element as a distinct entity, unmounting and remounting it.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Use keys to prevent state leaks across different user profiles, editor tabs, and form steps.
+➔ ALWAYS declare component functions at the module top level, never nested inside other functions.<br>
+➔ NEVER rely on tree position alone when switching between distinct data entities; provide an explicit key.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Declare a component inside another component, wiping state on every keystroke.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">NestedComponentAntiPattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ParentEditor</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">ChildInput</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="kw">const</span> [val, setVal] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="kw">return</span> &lt;input value={val} onChange={e =&gt; <span class="fn">setVal</span>(e.target.value)} /&gt;;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> &lt;ChildInput /&gt;;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Declare components at the top level and use keys to force state resets when needed.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ModuleScopeComponentPattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">ChildInput</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [val, setVal] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> &lt;input value={val} onChange={e =&gt; <span class="fn">setVal</span>(e.target.value)} /&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">function</span> <span class="fn">ParentEditor</span>({ activeId }) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> &lt;ChildInput key={activeId} /&gt;;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>SAME POSITION (NO KEY)</strong><br>(default)</th><th><strong>DIFFERENT KEY / TYPE</strong><br>(reset)</th></tr></thead><tbody><tr><td><strong>Reconciliation Action</strong></td><td>Reuses existing Fiber node<br>and preserves memory cells</td><td>Destroys old Fiber node<br>and creates fresh instance</td></tr><tr><td><strong>DOM Element</strong></td><td>Kept alive in browser DOM;<br>attributes updated in place</td><td>Old DOM node removed;<br>new DOM node mounted</td></tr><tr><td><strong>State Lifecycle</strong></td><td>State survives re-renders<br>across prop updates</td><td>All state is discarded;<br>resets to initial values</td></tr><tr><td><strong>Cursor / Focus</strong></td><td>Focus and text selection<br>remain intact</td><td>Focus is dropped unless<br>restored by an auto-focus</td></tr><tr><td><strong>Typical Use Case</strong></td><td>Continuous editing where<br>user stays on same item</td><td>Switching between distinct<br>profiles, tabs, or items</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

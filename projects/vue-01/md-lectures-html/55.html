@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 55: The Hydration Gap and Server Rendering</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 55: The Hydration Gap and Server Rendering</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">Why would you choose Server-Side Rendering (SSR) over a standard SPA, and what are the performance trade-offs?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A frontend engineer at <em>The National Times</em> deploys a server-rendered breaking news portal for readers.</li>
+<li>On a mobile connection, the bold headline, article paragraphs, and red emergency banner paint almost immediately.</li>
+<li>The reader hurriedly taps the interactive Breaking Alert toggle button in the header.</li>
+<li>Nothing happens on screen, and the button remains completely dead to user touch.</li>
+<li>Why does a fully rendered webpage completely ignore user input during the initial page visit?</li>
+<li>Frustrated subscribers assume the application is broken, repeatedly tap frozen controls, and abandon the website.</li>
+<li>Today you learn how server string generation, client hydration, and architectural trade-offs govern the boundary between speed and responsiveness.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Tale of Two Browsers: The Blank Screen Versus the Frozen Button</h3>
+<p>When you visit a modern website, your browser can deliver two completely different experiences depending on how the application builds its HTML.</p>
+<p>In a standard <strong>Single-Page Application (SPA)</strong>, the browser downloads an almost empty HTML file. Inside that file, there is only an empty container tag (<code>&lt;div id="app"&gt;&lt;/div&gt;</code>) and a script tag. The browser cannot display headlines or articles until it finishes downloading, parsing, and running your entire JavaScript bundle. On a slow mobile connection, your reader stares at a blank white screen for several seconds.</p>
+<p><strong>Server-Side Rendering (SSR)</strong> solves this waiting problem by doing the construction work ahead of time. Instead of sending an empty page, a Node.js server executes your Vue components and creates complete HTML text before sending the network response. The browser receives real text immediately, painting headlines and articles on the screen without waiting for JavaScript.</p>
+<p>To see how these two architectures differ in code, examine the client entry file:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">entry-comparison.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { createApp, createSSRApp } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App.vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">const</span> clientApp = <span class="fn">createApp</span>(App); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Wipes existing markup and rebuilds DOM</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">export</span> <span class="kw">const</span> ssrApp = <span class="fn">createSSRApp</span>(App); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Reuses existing server HTML nodes</span></div></div></div></div></div></div>
+<p>In the snippet above, notice the two different initialization methods exported from Vue:</p>
+<p>First, <code>createApp(App)</code> creates a standard client-side application instance. If HTML already exists inside <code>#app</code>, calling <code>clientApp.mount('#app')</code> clears that container by setting <code>innerHTML = ''</code>, forcing the browser to create brand new DOM elements from scratch.</p>
+<p>Second, <code>createSSRApp(App)</code> creates an application configured for server rendering. When you call <code>ssrApp.mount('#app')</code>, Vue checks the container for existing server-rendered HTML. Instead of wiping the screen, it preserves the existing DOM nodes and attaches click listeners and reactive bindings directly to them.</p>
+<p>The chronological timeline below illustrates how these two architectures differ from the initial HTTP request to full interactivity:</p>
+<figure class="vue-figure css-figure">
+<div class="fig-ssr-timeline">
+  <style>
+    .fig-ssr-timeline {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .fig-ssr-timeline * {
+      box-sizing: border-box;
+    }
+    .fig-ssr-timeline .timeline-shell {
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .fig-ssr-timeline .chrome-bar {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 2px solid #0f172a;
+    }
+    .fig-ssr-timeline .chrome-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .fig-ssr-timeline .chrome-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .fig-ssr-timeline .chrome-dots i:nth-child(1) { background: #ef4444; border: 1px solid #dc2626; }
+    .fig-ssr-timeline .chrome-dots i:nth-child(2) { background: #f59e0b; border: 1px solid #d97706; }
+    .fig-ssr-timeline .chrome-dots i:nth-child(3) { background: #10b981; border: 1px solid #059669; }
+    .fig-ssr-timeline .chrome-title {
+      flex: 1;
+      text-align: center;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding-right: 42px;
+    }
+    .fig-ssr-timeline .timeline-content {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #f8fafc;
+    }
+    .fig-ssr-timeline .track-card {
+      background: #ffffff;
+      border: 2px solid;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .fig-ssr-timeline .track-spa {
+      border-color: #0e7490;
+    }
+    .fig-ssr-timeline .track-ssr {
+      border-color: #059669;
+    }
+    .fig-ssr-timeline .card-masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .fig-ssr-timeline .track-spa .card-masthead {
+      background: #0e7490;
+    }
+    .fig-ssr-timeline .track-ssr .card-masthead {
+      background: #059669;
+    }
+    .fig-ssr-timeline .badge-pill {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: "JetBrains Mono", Menlo, monospace;
+    }
+    .fig-ssr-timeline .card-stage {
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #ffffff;
+    }
+    .fig-ssr-timeline .progress-bar-row {
+      display: flex;
+      height: 28px;
+      border-radius: 5px;
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+      background: #f1f5f9;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .fig-ssr-timeline .segment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #ffffff;
+      font-size: 11px;
+    }
+    .fig-ssr-timeline .seg-html-shell {
+      width: 12%;
+      background: #94a3b8;
+    }
+    .fig-ssr-timeline .seg-js-download {
+      width: 60%;
+      background: #64748b;
+    }
+    .fig-ssr-timeline .seg-mount {
+      width: 28%;
+      background: #0e7490;
+    }
+    .fig-ssr-timeline .seg-server-render {
+      width: 15%;
+      background: #334155;
+    }
+    .fig-ssr-timeline .seg-html-paint {
+      width: 15%;
+      background: #059669;
+    }
+    .fig-ssr-timeline .seg-hydration-gap {
+      width: 48%;
+      background: #9f1239;
+      position: relative;
+    }
+    .fig-ssr-timeline .seg-hydrate {
+      width: 22%;
+      background: #0d9488;
+    }
+    .fig-ssr-timeline .metric-milestones {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      padding: 0 2px;
+      font-family: "JetBrains Mono", Menlo, monospace;
+    }
+    .fig-ssr-timeline .tag-milestone {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .fig-ssr-timeline .milestone-neutral {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+    .fig-ssr-timeline .milestone-warning {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .fig-ssr-timeline .milestone-success {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .fig-ssr-timeline .card-footer-strip {
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #334155;
+      min-height: 48px;
+    }
+    .fig-ssr-timeline .card-footer-strip strong {
+      color: #0f172a;
+    }
+  </style>
+
+  <div class="timeline-shell">
+    <div class="chrome-bar">
+      <div class="chrome-dots"><i></i><i></i><i></i></div>
+      <div class="chrome-title">Runtime Lifecycle Comparison: Single-Page Application vs Server-Side Rendering</div>
+    </div>
+
+    <div class="timeline-content">
+      <!-- SPA Track -->
+      <div class="track-card track-spa">
+        <div class="card-masthead">
+          <span>Client-Side Single-Page Application (Standard SPA)</span>
+          <span class="badge-pill">mount('#app')</span>
+        </div>
+        <div class="card-stage">
+          <div class="progress-bar-row">
+            <div class="segment seg-html-shell">HTML Shell</div>
+            <div class="segment seg-js-download">Download &amp; Parse JavaScript Bundle (820 KB)</div>
+            <div class="segment seg-mount">Virtual DOM &amp; Mount</div>
+          </div>
+          <div class="metric-milestones">
+            <span class="tag-milestone milestone-neutral">0.0s Request</span>
+            <span class="tag-milestone milestone-neutral">0.3s Empty Shell</span>
+            <span class="tag-milestone milestone-warning">First Paint: 2.8s</span>
+            <span class="tag-milestone milestone-success">Interactive: 2.8s</span>
+          </div>
+        </div>
+        <div class="card-footer-strip">
+          <strong>FCP: 2.8s (Delayed) | TTI: 2.8s;</strong> The browser renders a blank screen while transferring the entire bundle; visual paint and full user interactivity arrive simultaneously.
+        </div>
+      </div>
+
+      <!-- SSR Track -->
+      <div class="track-card track-ssr">
+        <div class="card-masthead">
+          <span>Server-Side Rendering with Client Hydration (Vue SSR)</span>
+          <span class="badge-pill">createSSRApp()</span>
+        </div>
+        <div class="card-stage">
+          <div class="progress-bar-row">
+            <div class="segment seg-server-render">Server Render</div>
+            <div class="segment seg-html-paint">HTML Paint</div>
+            <div class="segment seg-hydration-gap">Hydration Gap: Bundle Download &amp; Parse</div>
+            <div class="segment seg-hydrate">Hydration Walk</div>
+          </div>
+          <div class="metric-milestones">
+            <span class="tag-milestone milestone-neutral">0.0s Request</span>
+            <span class="tag-milestone milestone-success">FCP: 0.8s (Instant)</span>
+            <span class="tag-milestone milestone-warning">Gap: 0.8s–2.2s (Inert)</span>
+            <span class="tag-milestone milestone-success">Interactive: 2.5s</span>
+          </div>
+        </div>
+        <div class="card-footer-strip">
+          <strong>FCP: 0.8s (Instant) | TTI: 2.5s;</strong> Text and layout paint 2.0s earlier for immediate reading; interactive buttons remain inert until the client executes hydration.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 55.1: Lifecycle timeline comparing client-side SPA rendering with server-side rendering across First Contentful Paint, JavaScript hydration, and Time to Interactive.</figcaption>
+</figure>
+<p>The timeline reveals two critical performance milestones that every engineer must measure:</p>
+<ol><li><strong>First Contentful Paint (FCP)</strong>: The precise moment when the browser paints the first piece of text, headline, or image on the screen.</li>
+<li><strong>Time to Interactive (TTI)</strong>: The moment when buttons, inputs, and links reliably respond to user taps and keyboard events without delay.</li></ol>
+<p>In a client-side SPA, First Contentful Paint and Time to Interactive arrive at the exact same time. The user waits through a long blank screen, but the moment the buttons appear, they work immediately.</p>
+<p>In a server-rendered application, First Contentful Paint occurs almost instantly because the browser receives pre-built HTML text. However, this early paint creates a deceptive phase known as <strong>The Hydration Gap</strong>.</p>
+<p>During the hydration gap, the webpage looks complete, but buttons remain completely unresponsive. The browser is still busy downloading and executing the client JavaScript bundle. If a reader taps an interactive toggle during this window, nothing happens because no JavaScript click listener is attached to the physical button yet.</p>
+<p>Here is how the official Vue documentation describes this exact advantage:</p>
+<blockquote>Compared to a client-side Single-Page Application (SPA), the advantage of SSR primarily lies in: - Faster time-to-content: this is more prominent on slow internet or slow devices. Server-rendered markup doesn't need to wait until all JavaScript has been downloaded and executed to be displayed, so your user will see a fully-rendered page sooner. In addition, data fetching is done on the server-side for the initial visit, which likely has a faster connection to your database than the client.</blockquote>
+<p><em>Vue 3 Official Documentation (Server-Side Rendering), <code>documentation official/vue/resources/core/docs/src/guide/scaling-up/ssr.md</code></em></p>
+<p>Faster time-to-content is the main reason high-traffic media sites adopt server rendering. When readers see an immediate headline, they stay on the page. Furthermore, your server communicates with databases over high-speed datacenter connections, fetching articles faster than any mobile device.</p>
+<p>However, server rendering does not reduce the total size of the JavaScript bundle that the device must download. It rearranges the delivery schedule: the user gets readable text instantly, but full interactivity must still wait for JavaScript to execute.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">
+  <p>Server rendering delivers an immediate visual paint, but creates a temporary hydration gap where visible buttons cannot respond to clicks.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>How Server Rendering and Hydration Divide the Work</h3>
+<p>To write reliable server-rendered applications, you must understand how Vue and Node.js share the work between the server and the browser.</p>
+<p>Server-Side Rendering happens in two distinct physical phases: first, the <strong>static markup</strong> loads, and second, the <strong>interactivity activates</strong>. This second phase, where client JavaScript brings static HTML to life, is called <strong>hydration</strong>.</p>
+<p>In the first phase, Node.js uses <code>renderToString</code> from <code>vue/server-renderer</code> to convert your Vue components into a plain text string of HTML. Delivering this finished text provides an ultra-fast initial paint. However, the markup is completely static, like words printed in ink on a physical morning newspaper.</p>
+<p>Think of a client SPA like an unassembled electronic display shipped inside a wooden crate. You cannot read a single headline until technicians assemble the frame, plug in the power cables, and boot the operating system. Server rendering is like a physical newspaper delivered to your doorstep. You can read the printed text right away, but you cannot tap the paper to play a video. You must wait for the digital device to boot up.</p>
+<p>Historically, teams built heavy client SPAs and ran into two major walls:</p>
+<ol><li><strong>Search Engine Crawler Timeouts</strong>: Web crawlers like Googlebot received an empty <code>&lt;div id="app"&gt;&lt;/div&gt;</code>. If the crawler timed out before the client JavaScript fetched article data, the search engine indexed a blank page, destroying organic search traffic.</li>
+<li><strong>Budget Mobile Processor Choke</strong>: Budget smartphones have weak processors that struggle to compile large JavaScript bundles. Users experienced battery drain and sluggish scrolling while waiting for the page to initialize.</li></ol>
+<p>Server rendering solves both problems by delivering real, semantic HTML text in the very first network packet.</p>
+<p>What actually happens inside Node.js when a request arrives?</p>
+<p>In the browser, Vue creates an in-memory tree of JavaScript objects called the <strong>Virtual DOM</strong>. It needs this tree to track user clicks, calculate differences, and patch the screen.</p>
+<p>On the server, there is no screen, no mouse, and no DOM. Building an in-memory Virtual DOM tree for every visitor would waste server memory and slow down response times.</p>
+<p>Instead, Vue's server compiler uses <strong>direct string concatenation</strong>. In plain JavaScript, concatenation means joining strings together, like <code>'Hello ' + name</code>. Vue's server compiler transforms your component templates into code that directly joins strings: <code>'&lt;h1 class="headline"&gt;' + headline.value + '&lt;/h1&gt;'</code>.</p>
+<p>By using direct string concatenation, Node.js bypasses the Virtual DOM entirely. It assembles HTML strings and streams them down the network wire at maximum CPU speed.</p>
+<p>Vue also disables its reactivity system on the server. There are no reactive Proxies, no dependency tracking calls, and no scheduled re-renders. The server renders the HTML string once and immediately frees that memory.</p>
+<blockquote>During SSR, each request URL maps to a desired state of our application. There is no user interaction and no DOM updates, so reactivity is unnecessary on the server. By default, reactivity is disabled during SSR for better performance.</blockquote>
+<p><em>Vue 3 Official Documentation (Server-Side Rendering), <code>documentation official/vue/resources/core/docs/src/guide/scaling-up/ssr.md</code></em></p>
+<p>Disabling reactivity allows Node.js to generate HTML strings at top speed. As soon as <code>renderToString</code> finishes, Node sends the response and prepares for the next incoming request.</p>
+</div>
+<div class="keep-together">
+<h3>Inside the Hydration Engine: Walking the DOM Tree</h3>
+<p>Now let us step inside the user's browser. What happens the moment the client JavaScript bundle finishes downloading?</p>
+<p>The browser has already painted the server HTML on the screen. The visitor can see the headline, text, and buttons. Now, the client entry file calls <code>createSSRApp(App).mount('#app')</code>.</p>
+<p>Vue does not rebuild the page from scratch. Rebuilding the page would cause an ugly screen flicker and wipe out any text the user had already selected.</p>
+<p>Instead, Vue performs an in-place <strong>reconciliation walk</strong> across the existing DOM elements.</p>
+<p>During a reconciliation walk, Vue walks down the existing HTML elements in order, inspecting each node. It matches the physical DOM tag with its own Virtual DOM in memory. If they match, Vue stores a reference to that real DOM element (<code>vnode.el = domNode</code>) and attaches your live <code>@click</code> and <code>@input</code> event listeners. The static server HTML is now hydrated into a living application.</p>
+<p>The component below displays a live publishing timestamp using this pattern:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BreakingNewsHeader.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span>, <span class="hook">onMounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> formattedTime = <span class="hook">ref</span>(<span class="str">'14:00 UTC'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Matches static server markup</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">7</span><span class="src">  formattedTime.value = <span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toLocaleTimeString</span>(); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Client-only conversion</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">});</span></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">  &lt;header <span class="kw">class</span>=<span class="str">"news-header"</span>&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">    &lt;span <span class="kw">class</span>=<span class="str">"live-badge"</span>&gt;LIVE&lt;/span&gt;</span></div>
+<div class="row"><span class="num">14</span><span class="src">    &lt;time <span class="kw">class</span>=<span class="str">"timestamp"</span>&gt;{{ formattedTime }}&lt;/time&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src">  &lt;/header&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>In <code>BreakingNewsHeader.vue</code>, notice how each variable and hook functions:</p>
+<ol><li><code>formattedTime = ref('14:00 UTC')</code>: Initializes a reactive string with a static fallback value. On the server, <code>renderToString</code> outputs <code>&lt;time class="timestamp"&gt;14:00 UTC&lt;/time&gt;</code>.</li>
+<li><code>&lt;template&gt;</code>: Binds <code>formattedTime</code> inside an HTML5 semantic <code>&lt;time&gt;</code> tag.</li>
+<li><code>onMounted(...)</code>: Executes exclusively in the browser after initial hydration completes. It reads the user's local device clock and updates <code>formattedTime.value</code> to local time without breaking the initial server match.</li></ol>
+<p>The diagram below illustrates what happens when server markup and client Virtual DOM match, compared to what happens when they collide:</p>
+<figure class="vue-figure css-figure">
+<div class="fig-hydration-mismatch">
+  <style>
+    .fig-hydration-mismatch {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .fig-hydration-mismatch * {
+      box-sizing: border-box;
+    }
+    .fig-hydration-mismatch .mismatch-shell {
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .fig-hydration-mismatch .chrome-bar {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 2px solid #0f172a;
+    }
+    .fig-hydration-mismatch .chrome-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .fig-hydration-mismatch .chrome-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .fig-hydration-mismatch .chrome-dots i:nth-child(1) { background: #ef4444; border: 1px solid #dc2626; }
+    .fig-hydration-mismatch .chrome-dots i:nth-child(2) { background: #f59e0b; border: 1px solid #d97706; }
+    .fig-hydration-mismatch .chrome-dots i:nth-child(3) { background: #10b981; border: 1px solid #059669; }
+    .fig-hydration-mismatch .chrome-title {
+      flex: 1;
+      text-align: center;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding-right: 42px;
+    }
+    .fig-hydration-mismatch .duel-container {
+      display: flex;
+      gap: 14px;
+      padding: 14px 16px;
+      background: #f8fafc;
+    }
+    .fig-hydration-mismatch .duel-card {
+      flex: 1;
+      background: #ffffff;
+      border: 2px solid;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .fig-hydration-mismatch .card-broken {
+      border-color: #9f1239;
+    }
+    .fig-hydration-mismatch .card-clean {
+      border-color: #059669;
+    }
+    .fig-hydration-mismatch .card-masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 12px;
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    .fig-hydration-mismatch .card-broken .card-masthead {
+      background: #9f1239;
+    }
+    .fig-hydration-mismatch .card-clean .card-masthead {
+      background: #059669;
+    }
+    .fig-hydration-mismatch .card-body {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #ffffff;
+      flex: 1;
+    }
+    .fig-hydration-mismatch .node-box {
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      padding: 8px 10px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .fig-hydration-mismatch .node-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+    }
+    .fig-hydration-mismatch .code-pill {
+      font-family: "JetBrains Mono", Menlo, monospace;
+      font-size: 11.5px;
+      color: #0f172a;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      padding: 3px 6px;
+      border-radius: 4px;
+    }
+    .fig-hydration-mismatch .conflict-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: "JetBrains Mono", Menlo, monospace;
+      white-space: nowrap;
+    }
+    .fig-hydration-mismatch .conflict-danger {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .fig-hydration-mismatch .conflict-pass {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .fig-hydration-mismatch .card-footer-strip {
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #334155;
+      min-height: 52px;
+    }
+    .fig-hydration-mismatch .card-footer-strip strong {
+      color: #0f172a;
+    }
+  </style>
+
+  <div class="mismatch-shell">
+    <div class="chrome-bar">
+      <div class="chrome-dots"><i></i><i></i><i></i></div>
+      <div class="chrome-title">Hydration Reconciliation: Server Output vs Client Mount</div>
+    </div>
+
+    <div class="duel-container">
+      <!-- Left Card: Hydration Mismatch -->
+      <div class="duel-card card-broken">
+        <div class="card-masthead">
+          <span>Direct Local Evaluation</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px;">✕ MISMATCH</span>
+        </div>
+        <div class="card-body">
+          <div class="node-box">
+            <span class="node-label">Server-Rendered HTML Markup</span>
+            <div class="code-pill">&lt;time&gt;14:00 UTC&lt;/time&gt;</div>
+          </div>
+          <div class="node-box">
+            <span class="node-label">Client Virtual DOM at Hydration</span>
+            <div class="code-pill">&lt;time&gt;09:00 EST&lt;/time&gt;</div>
+          </div>
+          <div class="conflict-indicator conflict-danger">
+            <span>✕ Discard server DOM &amp; re-mount</span>
+          </div>
+        </div>
+        <div class="card-footer-strip">
+          <strong>Server output and client initial tree diverge;</strong> Vue logs hydration mismatch warnings, discards the existing element, and incurs DOM re-creation penalties.
+        </div>
+      </div>
+
+      <!-- Right Card: Client-Only Guard -->
+      <div class="duel-card card-clean">
+        <div class="card-masthead">
+          <span>Guarded onMounted Hook</span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px;">✓ RECONCILED</span>
+        </div>
+        <div class="card-body">
+          <div class="node-box">
+            <span class="node-label">Server-Rendered HTML Markup</span>
+            <div class="code-pill">&lt;time&gt;14:00 UTC&lt;/time&gt;</div>
+          </div>
+          <div class="node-box">
+            <span class="node-label">Client Virtual DOM at Hydration</span>
+            <div class="code-pill">&lt;time&gt;14:00 UTC&lt;/time&gt;</div>
+          </div>
+          <div class="conflict-indicator conflict-pass">
+            <span>✓ Match 1:1 &amp; update in onMounted</span>
+          </div>
+        </div>
+        <div class="card-footer-strip">
+          <strong>Initial mount matches server HTML perfectly;</strong> Vue preserves server DOM nodes without discard, updating to local time cleanly once client hydration finishes.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 55.2: Anatomy of a hydration mismatch where server-rendered timestamp markup diverges from client execution, triggering DOM discard and reconstruction.</figcaption>
+</figure>
+<p>When the server HTML and the client Virtual DOM do not agree, Vue encounters a <strong>hydration mismatch</strong>.</p>
+<p>Suppose a developer writes <code>const formattedTime = ref(new Date().toLocaleTimeString())</code> directly inside <code>&lt;script setup&gt;</code>.</p>
+<p>When the Node.js server runs in London at UTC, it evaluates the date and produces <code>&lt;time&gt;14:00 UTC&lt;/time&gt;</code>. When a reader in New York opens the page, their browser evaluates the date in Eastern Standard Time as <code>09:00 EST</code>.</p>
+<p>The hydration walker inspects the real DOM element and finds <code>14:00 UTC</code>. But its client Virtual DOM expects <code>09:00 EST</code>. The text strings clash directly.</p>
+<p>When this collision occurs, Vue logs a warning in your browser console: <code>[Vue warn] Hydration text content mismatch</code>.</p>
+<p>To recover from a structural mismatch, Vue gives up on reusing that element. It deletes the server-rendered DOM node from the page and builds a brand new element from scratch using JavaScript.</p>
+<aside class="callout callout-warning">
+  <p class="callout-eyebrow">Warning</p>
+  <div class="callout-body">
+  <p>Hydration mismatches force Vue to discard server DOM nodes and insert new elements, destroying initial performance gains.</p>
+  </div>
+</aside>
+<p>Discarding and recreating elements triggers layout reflows and visual page jumps. On budget phones, this churn wastes battery and causes visible stutter.</p>
+<p>Another common cause of this failure is invalid HTML markup, such as placing a block <code>&lt;div&gt;</code> inside a paragraph <code>&lt;p&gt;</code>.</p>
+<p>The HTML standard forbids block elements inside paragraphs. When that invalid markup reaches the browser, the browser's native C++ HTML parser automatically repairs the code by closing the <code>&lt;p&gt;</code> tag early.</p>
+<p>Because the browser restructured the tags before JavaScript ran, the physical DOM no longer matches Vue's Virtual DOM. Vue detects the mismatch, deletes the broken branch, and rebuilds it.</p>
+<p>To keep hydration smooth, always delay client-specific calculations until after the initial render. Because <code>onMounted</code> never runs on the server, updating dynamic dates inside <code>onMounted</code> guarantees a 100% clean initial match.</p>
+</div>
+<div class="keep-together">
+<h3>Universal State Serialization and Cross-Request State Pollution</h3>
+<p>Now let us trace how application data travels from your database into the server HTML, and then into the client browser.</p>
+<p>In a client SPA, state management is private. Each visitor runs inside their own browser tab. A global store declared at the top of a file belongs strictly to that single user.</p>
+<p>On a Node.js server, the environment is fundamentally different. A Node.js process does not reboot for every visitor. A single server process stays alive for days, serving thousands of concurrent requests.</p>
+<p>This shared environment introduces a severe security flaw called <strong>Cross-Request State Pollution</strong>.</p>
+<p>When Node.js starts, it loads JavaScript module files once. If you declare a reactive store at the top level of a module, Node keeps only a single shared copy alive in memory for all visitors (a pattern known as a <strong>singleton</strong>). That shared object stays in server RAM across every incoming connection.</p>
+<p>Imagine Alice logs into her private account. Request A arrives at the server. The server fetches Alice's private billing tier and writes it to the module-level singleton store.</p>
+<p>While Node.js is still preparing Alice's HTML, Bob requests the public homepage. Request B hits the exact same Node.js process.</p>
+<p>If Request B reads from that shared store, the server bakes Alice's name, email, and billing tier directly into Bob's public HTML page. Bob opens his browser and reads Alice's private data. This is a catastrophic data breach.</p>
+<p>The server request handler below demonstrates how to prevent this vulnerability:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">server.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { renderToString } <span class="kw">from</span> <span class="str">'vue/server-renderer'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { createApp } <span class="kw">from</span> <span class="str">'./app.js'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleRequest</span>(req, res) {</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="kw">const</span> { app, store } = <span class="fn">createApp</span>(); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Unique instance per request</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="kw">await</span> store.<span class="fn">fetchArticle</span>(req.params.id); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Isolated server pre-fetch</span></div></div></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="kw">const</span> html = <span class="kw">await</span> <span class="fn">renderToString</span>(app); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Pre-rendered HTML markup</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="kw">const</span> state = JSON.<span class="fn">stringify</span>(store.state); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Serialized store state</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="kw">const</span> payload = <span class="str">`&lt;div id="app"&gt;${html}&lt;/div&gt;&lt;script&gt;window.__STATE__=${state};&lt;/script&gt;`</span>;</span></div>
+<div class="row"><span class="num">10</span><span class="src">  res.<span class="fn">send</span>(payload); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Transmit pre-rendered HTML and state</span></div></div></div>
+<div class="row"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+<p>In <code>server.js</code>, every line protects data isolation:</p>
+<ol><li><code>const { app, store } = createApp()</code>: Calls a factory function to manufacture a fresh application instance and a fresh store instance exclusively for this single incoming HTTP request.</li>
+<li><code>await store.fetchArticle(req.params.id)</code>: Loads article records from the database directly into this request's private store.</li>
+<li><code>const html = await renderToString(app)</code>: Compiles the component tree into static HTML text.</li>
+<li><code>const state = JSON.stringify(store.state)</code>: Converts the in-memory store data into a plain JSON string (a process known as <strong>data serialization</strong>).</li>
+<li><code>const payload = ...</code>: Combines the rendered HTML container with a script tag that sets <code>window.__STATE__ = ${state}</code> so the browser can read the initial data.</li>
+<li><code>res.send(payload)</code>: Transmits the completed response to the visitor's network connection.</li></ol>
+<p>The diagram below traces how this data pipeline keeps requests isolated while transmitting initial state to client hydration:</p>
+<figure class="vue-figure css-figure">
+<div class="fig-state-pipeline">
+  <style>
+    .fig-state-pipeline {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .fig-state-pipeline * {
+      box-sizing: border-box;
+    }
+    .fig-state-pipeline .pipeline-shell {
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .fig-state-pipeline .chrome-bar {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 2px solid #0f172a;
+    }
+    .fig-state-pipeline .chrome-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .fig-state-pipeline .chrome-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .fig-state-pipeline .chrome-dots i:nth-child(1) { background: #ef4444; border: 1px solid #dc2626; }
+    .fig-state-pipeline .chrome-dots i:nth-child(2) { background: #f59e0b; border: 1px solid #d97706; }
+    .fig-state-pipeline .chrome-dots i:nth-child(3) { background: #10b981; border: 1px solid #059669; }
+    .fig-state-pipeline .chrome-title {
+      flex: 1;
+      text-align: center;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding-right: 42px;
+    }
+    .fig-state-pipeline .pipeline-stage {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: #f8fafc;
+    }
+    .fig-state-pipeline .tier-row {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+    }
+    .fig-state-pipeline .tier-card {
+      flex: 1;
+      background: #ffffff;
+      border: 2px solid #0e7490;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .fig-state-pipeline .tier-card.tier-network {
+      border-color: #64748b;
+    }
+    .fig-state-pipeline .tier-card.tier-client {
+      border-color: #059669;
+    }
+    .fig-state-pipeline .tier-masthead {
+      padding: 7px 10px;
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-align: center;
+      background: #0e7490;
+      white-space: nowrap;
+    }
+    .fig-state-pipeline .tier-card.tier-network .tier-masthead {
+      background: #64748b;
+    }
+    .fig-state-pipeline .tier-card.tier-client .tier-masthead {
+      background: #059669;
+    }
+    .fig-state-pipeline .tier-body {
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      flex: 1;
+    }
+    .fig-state-pipeline .step-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 6px;
+      border-radius: 4px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      font-size: 11px;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .fig-state-pipeline .step-pill code {
+      font-family: "JetBrains Mono", Menlo, monospace;
+      font-weight: 700;
+      color: #0369a1;
+      font-size: 10.5px;
+    }
+    .fig-state-pipeline .step-pill.highlight {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+    }
+    .fig-state-pipeline .step-pill.highlight code {
+      color: #047857;
+    }
+    .fig-state-pipeline .pipeline-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 0 1px;
+    }
+    .fig-state-pipeline .pipeline-footer-strip {
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: #334155;
+      min-height: 48px;
+    }
+    .fig-state-pipeline .pipeline-footer-strip strong {
+      color: #0f172a;
+    }
+  </style>
+
+  <div class="pipeline-shell">
+    <div class="chrome-bar">
+      <div class="chrome-dots"><i></i><i></i><i></i></div>
+      <div class="chrome-title">Universal State Serialization &amp; Request Isolation Pipeline</div>
+    </div>
+
+    <div class="pipeline-stage">
+      <div class="tier-row">
+        <!-- Tier 1: Server -->
+        <div class="tier-card">
+          <div class="tier-masthead">1. Server Request Scope</div>
+          <div class="tier-body">
+            <div class="step-pill">
+              <span>●</span>
+              <span><code>createApp()</code> fresh store</span>
+            </div>
+            <div class="step-pill">
+              <span>●</span>
+              <span><code>store.fetchArticle()</code></span>
+            </div>
+            <div class="step-pill">
+              <span>●</span>
+              <span><code>renderToString(app)</code></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-connector">➔</div>
+
+        <!-- Tier 2: Network Transfer -->
+        <div class="tier-card tier-network">
+          <div class="tier-masthead">2. Network Wire Transfer</div>
+          <div class="tier-body">
+            <div class="step-pill">
+              <span>●</span>
+              <span><code>&lt;div id="app"&gt;</code> (HTML)</span>
+            </div>
+            <div class="step-pill">
+              <span>●</span>
+              <span><code>window.__STATE__</code> (JSON)</span>
+            </div>
+            <div class="step-pill">
+              <span>●</span>
+              <span><code>&lt;script src="/client"&gt;</code></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pipeline-connector">➔</div>
+
+        <!-- Tier 3: Client -->
+        <div class="tier-card tier-client">
+          <div class="tier-masthead">3. Client Hydration Scope</div>
+          <div class="tier-body">
+            <div class="step-pill highlight">
+              <span>●</span>
+              <span><code>createSSRApp()</code> boot app</span>
+            </div>
+            <div class="step-pill highlight">
+              <span>●</span>
+              <span><code>store.$state = state</code></span>
+            </div>
+            <div class="step-pill highlight">
+              <span>●</span>
+              <span><code>app.mount('#app')</code> bind</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-footer-strip">
+      <strong>Isolated factory instances prevent cross-request pollution;</strong> serializing state into the HTML payload avoids duplicate client-side network fetches during initial hydration.
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 55.3: Universal data serialization and isolation pipeline preventing cross-request state pollution while transmitting initial store state to client hydration.</figcaption>
+</figure>
+<p>Instead of exporting a single shared store across all requests (a singleton instance), your files must export a function that manufactures a fresh, isolated copy whenever a new request arrives (an <strong>application factory function</strong>).</p>
+<p>For every incoming HTTP request, your server calls <code>createApp()</code>. This builds a brand new Vue application instance, a fresh Pinia store, and an isolated router. Pinia relies on Vue's <code>provide</code> and <code>inject</code> system under the hood, ensuring that each request remains locked inside its own private sandbox.</p>
+<p>The official Vue documentation warns against shared singletons:</p>
+<blockquote>The pattern declares shared state in a JavaScript module's root scope. This makes them singletons - i.e. there is only one instance of the reactive object throughout the entire lifecycle of our application. ... If we mutate the shared singleton state with data specific to one user, it can be accidentally leaked to a request from another user. We call this cross-request state pollution.</blockquote>
+<p><em>Vue 3 Official Documentation (Server-Side Rendering), <code>documentation official/vue/resources/core/docs/src/guide/scaling-up/ssr.md</code></em></p>
+<p>Now consider what happens when that HTML arrives in the browser. The server renders the article text directly into markup. But when the client JavaScript bundle starts up, the client store in browser memory is completely empty.</p>
+<p>If the client store remains empty, the client Virtual DOM attempts to render an empty list or a loading skeleton. When Vue inspects the physical screen, it sees full article paragraphs. The client code and the server markup collide, triggering hydration errors and forcing Vue to discard the rendered text.</p>
+<p>Embedding <code>JSON.stringify(store.state)</code> into <code>window.__STATE__</code> solves this problem. Before calling <code>app.mount('#app')</code>, the client script reads <code>window.__STATE__</code> and restores the store data (<code>store.$state = window.__STATE__</code>).</p>
+<p>Because the client store now holds the exact same article data as the server, the client Virtual DOM matches the server HTML line for line. Hydration completes with zero errors.</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p>Always sanitize serialized JSON text embedded in script tags. Unescaped characters like <code>&lt;</code> can expose your application to cross-site scripting attacks if user input contains closing script tags.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Operational Rules for Universal Code: Guarding Platform Boundaries</h3>
+<p>JavaScript code that executes successfully in both a Node.js server environment and a web browser is known as <strong>universal code</strong> (or <strong>isomorphic code</strong>).</p>
+<p>Because Node.js has no browser window and browsers have no server filesystem, you must guard environment-specific APIs.</p>
+<p>If your component calls <code>localStorage.getItem('theme')</code> directly in <code>&lt;script setup&gt;</code>, Node.js halts execution with a <code>ReferenceError: localStorage is not defined</code>. The server fails to render the page and sends an HTTP 500 error to the visitor.</p>
+<p>The composable below demonstrates how to handle browser storage safely:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">useTheme.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span>, <span class="hook">onMounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">useTheme</span>() {</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">const</span> theme = <span class="hook">ref</span>(<span class="str">'light'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Universal default state</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">7</span><span class="src">    <span class="kw">const</span> saved = localStorage.<span class="fn">getItem</span>(<span class="str">'theme'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Browser storage access</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">    <span class="kw">if</span> (saved) theme.value = saved; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Reactive state update</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">  });</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src">  <span class="kw">return</span> { theme };</span></div>
+<div class="row"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+<p>In <code>useTheme.js</code>, each declaration protects the runtime boundary:</p>
+<ol><li><code>const theme = ref('light')</code>: Establishes a deterministic default value that renders cleanly on both the server and the client.</li>
+<li><code>onMounted(...)</code>: Defers execution until after the component mounts in the browser. Because <code>onMounted</code> never runs during SSR, Node.js never touches <code>localStorage</code>.</li>
+<li><code>if (saved) theme.value = saved</code>: Safely reads the user's stored preference on the client and updates the reactive ref.</li>
+<li><code>return { theme }</code>: Exposes the reactive theme state to the consuming component.</li></ol>
+<p>The exact same rule applies to background timers. In client-only applications, developers often start a recurring timer with <code>setInterval</code> during setup and clean it up inside <code>onUnmounted</code>.</p>
+<p>Because <code>onUnmounted</code> never runs in Node.js, any interval started during server setup stays active in server memory forever. As thousands of visitors arrive, thousands of abandoned timers accumulate in Node.js memory, eventually causing an out-of-memory crash. Moving all timers into <code>onMounted</code> ensures they execute only in the browser.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>To impress the interviewer:</strong> Clearly explain when to choose Server-Side Rendering, Static Site Generation, or a standard client Single-Page Application. Choose Server-Side Rendering (SSR) when fast visual loading, search engine crawlers, and link previews directly drive business revenue, such as online retail stores and news publications. Choose Static Site Generation (SSG) when content changes only during code deployments, such as company blogs or product documentation. Choose a standard client application for private portals, internal administration dashboards, and SaaS tools where users log in once and work for hours. On private dashboards, search engines cannot inspect the pages anyway, so maintaining a Node.js server fleet only adds unnecessary infrastructure complexity.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Migrating high-traffic media publications to improve Google Core Web Vitals scores and search engine indexing.</li>
+<li>Architecting high-conversion e-commerce checkout funnels where every 100ms of initial paint delay degrades sales.</li>
+<li>Designing universal authentication composables that inspect session cookies on the server and local storage on the client.</li>
+<li>Debugging subtle production hydration errors caused by user timezones, device viewport measurements, or randomized IDs.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Server-Side Rendering (SSR)</strong>: Compiling Vue components into plain HTML text strings on a Node.js server before network delivery.</li>
+<li><strong>Client Hydration</strong>: The browser process where client Vue attaches event listeners and reactive state to existing server-rendered HTML markup.</li>
+<li><strong>Hydration Mismatch</strong>: A runtime error that occurs when client Virtual DOM output differs from the pre-rendered server HTML markup.</li>
+<li><strong>Cross-Request State Pollution</strong>: A security failure where state stored in shared Node.js module memory leaks into another user's HTML response.</li>
+<li><strong>Application Factory Function</strong>: A function that creates and returns a brand new Vue app and store instance for each incoming HTTP request.</li>
+<li><strong>Time to Interactive (TTI)</strong>: The performance metric measuring when a webpage has finished loading and can reliably respond to user interactions.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>The Architectural Realities of Vue Server-Side Rendering</strong></p>
+<p>Server-side rendering bridges the gap between static web delivery and rich client interactivity. By evaluating template structures on the server and reconciling them on the client, applications achieve superior initial load performance while preserving component ergonomics.</p>
+<p>❒ Core Lifecycle Distinctions</p>
+<ol><li>Standard SPAs download an empty shell and delay rendering until the full JavaScript bundle executes.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) First Contentful Paint and Time to Interactive arrive together, but both are delayed.</li>
+<li>Server-rendered applications output static HTML strings directly from Node.js.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) First Contentful Paint occurs rapidly, but buttons remain inert during the hydration gap.</li></ol>
+<p>❒ Hydration Resilience &amp; State Isolation</p>
+<ol><li>Hydration reuses physical DOM elements rather than constructing new nodes.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Differences between server HTML and client code force Vue to delete existing elements and redraw the page from scratch.</li>
+<li>Applications must create fresh store and router instances per request.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Storing state in single shared module copies (singletons) leaks sensitive user data across concurrent HTTP connections.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Defer browser-specific APIs and timezone calculations to the onMounted hook.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span>, <span class="hook">onMounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">const</span> userTime = <span class="hook">ref</span>(<span class="str">'12:00 UTC'</span>);</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">5</span><span class="src">  userTime.value = <span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toLocaleTimeString</span>();</span></div>
+<div class="row"><span class="num">6</span><span class="src">});</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Access browser-specific storage or dynamic client time directly in root setup.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">const</span> userTime = <span class="hook">ref</span>(<span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toLocaleTimeString</span>());</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> token = localStorage.<span class="fn">getItem</span>(<span class="str">'auth_token'</span>);</span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+</div>
+<p>➔ NEVER access browser globals like window, document, or localStorage in root setup. ➔ ALWAYS export application factory functions to isolate state per incoming server request. ➔ IF client state diverges from server markup, THEN defer the mutation to onMounted.</p>
+<table><thead><tr><th></th><th><strong>CLIENT-SIDE SPA</strong><br>(browser only)</th><th><strong>SERVER-SIDE RENDERING</strong><br>(universal vue)</th></tr></thead><tbody><tr><td><strong>Initial Paint Speed</strong></td><td>Slow FCP while bundle loads</td><td>Instant FCP from raw HTML</td></tr><tr><td><strong>Initial Interactivity</strong></td><td>Immediate upon first paint</td><td>Delayed by hydration gap</td></tr><tr><td><strong>Search Engine SEO</strong></td><td>Vulnerable to crawler timeout</td><td>Complete rendered text</td></tr><tr><td><strong>Server Infrastructure</strong></td><td>Static CDN hosting</td><td>Node.js compute cluster</td></tr><tr><td><strong>State Memory Scope</strong></td><td>Isolated browser tab</td><td>Shared process memory</td></tr><tr><td><strong>Payload Efficiency</strong></td><td>Single JS bundle download</td><td>Markup plus state JSON</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 13: What Component Purity Means and What Breaks Without It</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 13: What Component Purity Means and What Breaks Without It</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">What does it mean for a component to be pure, and what breaks when it is not?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Elena Vance develops the editorial queue and live dispatch desk for The National Times.</li>
+<li>Each story card displays a headline and an ordering badge tracking its place in the publication queue.</li>
+<li>Elena increments an external counter variable during render; the first render looks right, but saving an edit doubles every badge number to 2, 4, and 6.</li>
+<li>What does it mean for a component to be pure, and what breaks when it is not?</li>
+<li>If components mutate external variables during render, your interface corrupts silently, tests produce random results, and React cannot safely re-render or optimize your application.</li>
+<li>Both plain JavaScript functions and React components execute code; why does React insist that rendering must never change anything that existed before?</li>
+<li>Today you learn the two mathematical rules of pure components, what breaks under re-renders and development auditing, and how to keep rendering completely side-effect free.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Two Rules of Purity: Mind Your Own Business and Same Input, Same Output</h3>
+<p>In earlier lessons, we learned that a React component is a JavaScript function that receives props and returns JSX markup (see Lecture 3 and Lecture 8). In school mathematics, a formula like y = 2x is completely predictable: if x is 3, y is always 6, whether you calculate it today, tomorrow, or a thousand times in a row. In traditional JavaScript scripting, developers frequently write functions that reach outside their own bodies: they read global variables, mutate external objects, or rewrite DOM nodes while computing a value (see Lecture 1). When a function changes variables outside its own scope, executing that function multiple times produces completely different results, making user interfaces unpredictable and fragile.</p>
+<p>What is a <strong>pure component</strong>? In computer science, React draws a strict boundary between a pure calculation and an impure routine. One is the <strong>pure component</strong>, governed by mathematical predictability; the other is the <strong>impure component</strong>, corrupted by side effects. In plain JavaScript, an ordinary function can modify any variable it can reach: it can increment a global counter, push an item into an array declared in another file, or write to the browser window object. When you write a React component that does this during render, React calls it an <strong>impure component</strong>. In a pure component, you give up external mutation entirely: you write a function that receives props, state, and context, and computes JSX without altering anything outside. The law of component purity states: a React component must always be a pure function; given the same inputs, it must always return the exact same JSX, and it must never change any object or variable that existed before rendering.</p>
+<p>Here is the minimal code comparison between an impure component and a pure component:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">PureVsImpureContrast</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">let</span> storyCount = <span class="nl">0</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">WRONG:</b> external variable mutated during <b class="tag">RENDER</b></span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">function</span> <span class="fn">ImpureCard</span>({ title }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  storyCount = storyCount + <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> mutates outside variable; corrupts on re-render</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> &lt;article&gt;{title} (#{storyCount})&lt;/article&gt;;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">function</span> <span class="fn">PureCard</span>({ title, order }) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> &lt;article&gt;{title} (#{order})&lt;/article&gt;; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> derives output strictly from <b class="tag">PROPS</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>In <code>ImpureCard</code>, the variable <code>storyCount</code> lives outside the component function in module scope. When React renders <code>ImpureCard</code> the first time with title "Breaking News", <code>storyCount</code> increments from 0 to 1, and the badge prints "#1". Now imagine the user clicks a tab or an editor updates an unrelated headline, triggering a re-render of the page. React calls <code>ImpureCard</code> a second time with the exact same title "Breaking News". Because <code>storyCount</code> was already 1, the second render increments it to 2! The same component, rendered with the same props, now shows wrong data on screen.</p>
+<p>In contrast, <code>PureCard</code> minds its own business. It receives <code>order</code> as a prop from its parent and calculates its markup without touching any outside variables. If React renders <code>PureCard</code> once, twice, or ten times with <code>order={1}</code>, it prints <code>#1</code> every single time.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>What does component purity really mean?</strong> Imagine ordering a cup of coffee at a newsroom cafe. Every time you ask for a black coffee, you expect a cup of black coffee. If the barista gives you black coffee on your first visit, but handing you the cup also secretly turns off the cafe lights, and on your second visit for the exact same order you get hot water because the beans were moved, the cafe is chaotic and broken. A <strong>pure function</strong> is like a reliable recipe: every single time you provide the exact same ingredients, you get the exact same dish, and preparing it never breaks a chair or rewrites the menu. In React, a <strong>pure component</strong> minds its own business: it uses its <strong>props</strong> to calculate <strong>JSX</strong>, and it never changes any outside <strong>variables</strong> during calculation.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Side Effects in Render: Global State Drift and StrictMode Double-Rendering</h3>
+<p>In earlier lessons, we saw that React applications re-render whenever state updates or parent components re-evaluate (see Lecture 12). In plain JavaScript scripts, running a script from top to bottom happens once when the page loads. In React, rendering is an ongoing rhythm: components execute again and again throughout the lifetime of the application. If a component performs a side effect during its calculation step, such as reading and writing a shared global variable, every re-render causes <strong>state drift</strong>, where values drift further away from reality on every screen refresh.</p>
+<p>What is a <strong>side effect</strong>? A side effect is any observable change outside the current function call: modifying a global variable, rewriting a DOM node, starting a timer, or sending a network request. In React, there is a strict law about when side effects are permitted. The render phase of a component is strictly for calculation: it takes inputs and returns a tree of React elements (see Lecture 12). If you place side effects directly inside the body of your component function, you violate the render contract. React must be free to call your component function at any time, in any order, and as many times as necessary to keep the user interface synchronized. If calling your component changes the world around it, React cannot safely optimize, cache, or interrupt rendering.</p>
+<p>To help developers detect accidental impurities before shipping code to production, React provides a built-in development audit tool called <code>StrictMode</code>. In development mode, whenever a component renders, <code>StrictMode</code> intentionally calls the component function <strong>twice</strong> in rapid succession with the exact same props. If your component is pure, calling it twice produces the exact same JSX, and the duplicate call is completely invisible to the user. But if your component mutates an external variable, like <code>storyCount++</code>, the first call increments the counter to 1 and the second call immediately increments it to 2! The screen shows double numbers instantly, exposing the hidden mutation bug on day one.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does React render components twice?</strong> Imagine a photographer taking a passport photo. To make sure the camera works properly, the photographer snaps two photos back to back. If you sit completely still, both photographs look identical. But imagine if taking the first photo accidentally knocked your glasses off your face! The second photograph now shows you without glasses. The two photos disagree! That disagreement proves that taking the photograph was not a neutral observation: it physically altered the subject. In React, <strong>StrictMode</strong> is that double snapshot: it renders your component twice in development to verify that rendering is a <strong>pure calculation</strong>. If your component has an accidental <strong>side effect</strong>, the two renders produce conflicting data, instantly catching the <strong>mutation bug</strong> before it reaches production.</div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example EditorialDesk StoryBadge';">Let's Design a Practical Example EditorialDesk StoryBadge</div>
+      
+    </div>
+  </div>
+</div>
+<p>To understand how component purity and prop-driven calculation operate in a production application, consider the editorial newsroom of The National Times. The layout <code>EditorialDesk.jsx</code> coordinates a breaking news queue containing three specialized child components: an article card (<code>StoryCard.jsx</code>), a pure queue position presenter (<code>StoryBadge.jsx</code>), and a summary component (<code>DeskSummary.jsx</code>) that demonstrates safe local calculation.</p>
+<p>Before writing any code, examine the final rendered interface we are building. Notice that this visual panel represents the authentic rendered user interface on screen, without code distractions:</p>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for national-times - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>EditorialDesk</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryCard</span><span class="component-explorer-props">story={story} index={1}</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-badge"><div class="component-explorer-label"><span>StoryBadge</span><span class="component-explorer-props">number={1} category=&quot;Metro&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-badge">Queue #1</span><span class="surface-ui-badge">Metro</span></div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryCard</span><span class="component-explorer-props">story={story} index={2}</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-badge"><div class="component-explorer-label"><span>StoryBadge</span><span class="component-explorer-props">number={2} category=&quot;National&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-badge">Queue #2</span><span class="surface-ui-badge">National</span></div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>DeskSummary</span><span class="component-explorer-props">stories={stories}</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-badge">2 Stories Queued</span><span class="surface-ui-btn">Refresh Queue</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The rendered canvas displays the visual destination of our application. The parent container <code>EditorialDesk.jsx</code> hosts the entire queue. It maps over the collection of stories and passes explicit position indices downward, ensuring that each card displays its queue number and category without relying on external shared counters.</p>
+<p>Here is the file layout on disk:</p>
+
+<section class="file-explorer" aria-label="national-times: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">national-times: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">EditorialDesk.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Top-level container managing story queue and passing pure indices</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryCard.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Story item card rendering headline and hosting queue badge</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryBadge.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Pure presenter displaying queue position and editorial category</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">DeskSummary.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Summary presenter demonstrating safe local calculation during render</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<p>To construct this architecture, we follow a top-down assembly pipeline: we start with the parent desk container and then build each nested child inside it:</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Orange / Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #e09f67; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #eac4a1; }
+
+    /* Step 4 Colors (Green) */
+    .assembly-steps-figure .step-4 .card-edge { background: #74ad68; }
+    .assembly-steps-figure .step-4 .card-main { background: #d2ebc9; }
+    .assembly-steps-figure .step-4 .card-divider { background: #b2d5a5; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the parent container EditorialDesk.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;EditorialDesk /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the child component StoryCard.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;StoryCard /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Then, we declare the pure presenter StoryBadge.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;StoryBadge /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card step-4">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">4</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we seal the calculation with DeskSummary.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;DeskSummary /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 13.1: Progressive code assembly pipeline: starting from the parent desk container and assembling pure child presenters.</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the parent container EditorialDesk.jsx';">First, we construct the parent container EditorialDesk.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>We start our implementation at the top: the parent container <code>EditorialDesk.jsx</code>.</p>
+<p>We begin here because the parent defines the layout and dictates the data architecture for the entire view. It maps over the array of stories and establishes the contract for each child:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">EditorialDesk.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">EditorialDesk</span>({ stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;main className=<span class="str">"desk-layout"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      {stories.<span class="fn">map</span>((story, index) =&gt; (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">        &lt;StoryCard key={story.id} story={story} index={index + <span class="nl">1</span>} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 76px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Passes explicit order index downward as pure prop contract</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">      ))}</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;DeskSummary stories={stories} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Passes collection for pure derived calculation</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Look at line 5: <span class="code-line-callout"><code>&lt;StoryCard key={story.id} story={story} index={index + <span class="nl">1</span>} /&gt;</code></span> We have not coded <code>StoryCard</code> yet. But right here in the parent, we establish its contract.</p>
+<p>Notice how we compute the queue position: we calculate <code>index + 1</code> directly inside the JSX mapping loop. The parent owns the collection and derives the position mathematically. It passes that number down as an explicit <code>index</code> prop.</p>
+<p>Mind you, the easiest shortcut in plain JavaScript is declaring <span class="code-line-callout"><code><span class="kw">let</span> count = <span class="nl">0</span></code></span> outside the component and writing <code>count++</code> inside the card. But that shortcut is a trap. The moment an editor toggles a story preview or triggers a re-render, the global counter increments again, turning Queue #1 into Queue #3.</p>
+<p>To recap this first step: the parent calculates sequence numbers mathematically from the collection, establishing explicit prop contracts that keep children pure.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the child component StoryCard.jsx';">Next, we build the child component StoryCard.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 2, we fulfill the contract established by the parent: we build <code>StoryCard.jsx</code>.</p>
+<p>This child component represents an individual story card in the editorial queue:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryCard</span>({ story, index }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;article className=<span class="str">"story-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;StoryBadge number={index} category={story.category} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">DATA FLOW:</b><br>Forwards pure index number and category downward to badge presenter</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2&gt;{story.title}&lt;/h2&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Renders headline text purely from incoming story prop</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;p&gt;{story.excerpt}&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice the function parameters: we destructure <code>{ story, index }</code> directly from props, matching the contract written in step 1. <code>StoryCard</code> owns zero global variables and performs zero external mutations.</p>
+<p>Look at line 4: <span class="code-line-callout"><code>&lt;StoryBadge number={index} category={story.category} /&gt;</code></span> The card forwards the pure <code>index</code> number and the category string downward to <code>StoryBadge</code>. It does not invent or alter the numbering.</p>
+<p>What would happen if <code>StoryCard</code> incremented an external counter to determine its badge?</p>
+<p>If you placed a global counter inside <code>StoryCard</code>, every time the card re-rendered due to a parent update or user hover, the badge number would increase uncontrollably. Worse, if multiple desks or sidebars rendered story cards simultaneously, they would all mutate the same shared counter, scrambling the numbering across unrelated pages.</p>
+<p>By separating them, <code>StoryCard</code> owns zero global variable access. It is a pure presenter: given the same <code>story</code> and <code>index</code>, it will always return the exact same card markup.</p>
+<p>This separation gives you two concrete superpowers:</p>
+<ol><li>If tomorrow you replace the card layout with a compact list view, you touch zero lines of queue ordering code.</li>
+<li>If you change how queue ordering is calculated in the parent, you touch zero lines of card presentation code.</li></ol>
+<p>To recap this step: <code>StoryCard</code> fulfills its contract by deriving all visual elements strictly from incoming props.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Then, we declare the pure presenter StoryBadge.jsx';">Then, we declare the pure presenter StoryBadge.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 3, we build the terminal presenter: <code>StoryBadge.jsx</code>.</p>
+<p>This component displays the numerical queue pill and editorial category tag:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryBadge.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryBadge</span>({ number, category }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"badge-group"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;span className=<span class="str">"badge-pill"</span>&gt;Queue #{number}&lt;/span&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Displays queue position derived purely from passed prop</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;span className=<span class="str">"badge-category"</span>&gt;{category}&lt;/span&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Renders category text without touching outside state</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>Look at <code>StoryBadge</code>. Notice how clean and focused it is: it receives <code>{ number, category }</code> and returns two styled spans. It reads zero global variables and mutates nothing in memory.</p>
+<p>What would happen if <code>StoryBadge</code> wrote to <code>document.title</code> or a global badge registry during render?</p>
+<p>If <code>StoryBadge</code> wrote to <code>document.title</code> during render, it would trigger browser DOM mutations in the middle of React's calculation phase. If React started rendering a list of ten badges and paused or aborted the render halfway through, the document title would be left showing a half-finished, corrupted state.</p>
+<p>By keeping <code>StoryBadge</code> pure, it owns zero DOM mutations and zero external assignments. Given <code>number={1}</code> and <code>category="Metro"</code>, it will paint that exact markup whether called once or ten times.</p>
+<p>To recap this step: terminal presenters stay predictable by limiting their execution strictly to returning JSX derived from their props.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Finally, we seal the calculation with DeskSummary.jsx';">Finally, we seal the calculation with DeskSummary.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 4, we build <code>DeskSummary.jsx</code> to show how components can perform calculations safely during render:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">DeskSummary.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">DeskSummary</span>({ stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> categoryCounts = {}; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Safe local variable created inside render; zero external visibility</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">for</span> (<span class="kw">const</span> story <span class="kw">of</span> stories) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    categoryCounts[story.category] = (categoryCounts[story.category] || <span class="nl">0</span>) + <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">CODE LOGIC:</b><br>Mutating local object during render is completely pure</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;footer className=<span class="str">"desk-summary"</span>&gt;Total: {stories.length}&lt;/footer&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>Look closely at line 2: <span class="code-line-callout"><code><span class="kw">const</span> categoryCounts = {}</code></span> Notice that we declare this dictionary directly inside the component function body.</p>
+<p>Then look at lines 3 to 5: we loop through <code>stories</code> and mutate <code>categoryCounts</code> by incrementing category totals. Is this mutation allowed in a pure component?</p>
+<p>Yes, absolutely! Why? Because <code>categoryCounts</code> was created inside this exact render pass. It did not exist before <code>DeskSummary</code> was called. No other component in the application can see or touch it. When <code>DeskSummary</code> finishes running, <code>categoryCounts</code> is either consumed or cleaned up by JavaScript garbage collection.</p>
+<p>This is the critical distinction between local mutation and external mutation. Mutating variables created inside the current render is completely pure because it causes zero side effects outside the function.</p>
+<p>To recap this step: local mutation of freshly declared variables is 100% pure because it leaves no trace on the outside world.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Lessons from the Experiment: Naive Expectation vs Reality</h3>
+<p>Developers instinctively reach for global counters or shared module variables because they look simple: you declare one variable and increment it wherever you need a sequential number. This naive expectation leads to corrupted badge numbers, duplicate values under re-renders, and tests that fail unpredictably.</p>
+<p>In our experiment, the parent container <code>EditorialDesk</code> proved that passing pre-calculated numbers (<code>index + 1</code>) as explicit props keeps every child component pure. <code>StoryCard</code> and <code>StoryBadge</code> receive their data from above, guaranteeing that their output is always identical for identical inputs. Meanwhile, <code>DeskSummary</code> demonstrated that mutating local variables created inside the render function is completely safe and pure.</p>
+<p>To see the architectural hierarchy and component relationships at a glance, examine how each component functions in direct relation to the others:</p>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>EditorialDesk</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>parent container</strong> orchestrates the editorial queue layout. It maps the array of stories and calculates the pure position index (<code>index + 1</code>) for each item. Notice it passes explicit props to its children rather than relying on a shared global counter. Why? To ensure that re-rendering the desk never mutates or drifts badge numbers.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryCard</span><span class="component-explorer-props">story={story} index={index + 1}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>child container</strong>. It receives the story data and the pre-calculated queue position from the parent. Notice it forwards <code>number</code> and <code>category</code> directly to <strong>StoryBadge</strong> with zero global variable access. Why? To remain completely pure and predictable across independent re-renders.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-badge"><div class="component-explorer-label"><span>StoryBadge</span><span class="component-explorer-props">number={number} category={category}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>terminal UI presenter</strong>. It receives two primitive props: <code>number</code> and <code>category</code>. Notice it contains zero state, zero effects, and zero external assignments. Why? To guarantee that given the same number and category, it will always paint the exact same badge markup.</p></div></div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>DeskSummary</span><span class="component-explorer-props">stories={stories}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>summary presenter</strong>. It receives the raw story collection and demonstrates <strong>safe local mutation</strong>. It creates a private dictionary inside render and aggregates category totals. Why? Because variables created inside the function body are invisible to the outside world, keeping the component 100% pure.</p></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      vertical-align: top !important;
+      background: #ffffff;
+      color: #334155 !important;
+    }
+    .architecture-audit-figure .audit-table td:first-child,
+    main .architecture-audit-figure .audit-table td:first-child {
+      width: 22% !important;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table td:nth-child(2) {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table td:nth-child(3),
+    .architecture-audit-figure .reality-cell {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .layer-num {
+      display: block;
+      font-weight: 800;
+      color: #0f172a;
+      font-size: 0.92rem;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-weight: 600;
+      color: #64748b;
+      font-size: 0.80rem;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .item-title {
+      display: block;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 4px;
+      font-size: 0.92rem;
+    }
+    .architecture-audit-figure .text-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .item-desc {
+      display: block;
+      color: #475569;
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+    .architecture-audit-figure .reality-cell .item-desc {
+      color: #334155;
+    }
+    .architecture-audit-figure code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.80rem;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .reality-cell code {
+      background: #eef7f9;
+      border-color: rgba(14, 116, 144, 0.25);
+      color: #0e7490;
+    }
+    .architecture-audit-figure .verdict-row td,
+    main .architecture-audit-figure .verdict-row td {
+      border-top: 1.5px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 8px 12px !important;
+    }
+    .architecture-audit-figure .verdict-label {
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .verdict-tag {
+      display: block;
+      font-size: 0.80rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .verdict-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .verdict-teal {
+      color: #0e7490;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Lessons from the Code</div>
+    <div class="audit-title">Component Purity & Side Effect Audit</div>
+    <p class="audit-subtitle">Evaluating predictable render calculations versus external variable mutations across the desk architecture.</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Component Layer</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-main">Naive Expectation</span>
+          <span class="th-sub sub-danger">(Impure Mutation)</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-main">What Happened</span>
+          <span class="th-sub sub-teal">(React 19 Reality)</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <span class="layer-num">1. Parent Container</span>
+          <span class="layer-role">(EditorialDesk.jsx)</span>
+        </td>
+        <td>
+          <span class="item-title">Shared Global Counters</span>
+          <span class="item-desc">Developers declare module-level variables like <code>let storyCount = 0</code> outside the component and increment them during render, expecting a simple one-pass sequential counter.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Pure Prop Calculation</span>
+          <span class="item-desc">The parent calculates item positions mathematically during array mapping (<code>index + 1</code>) and passes explicit numbers downward, keeping calculation 100% pure across re-renders.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">2. Child Container</span>
+          <span class="layer-role">(StoryCard.jsx)</span>
+        </td>
+        <td>
+          <span class="item-title">External State Coupling</span>
+          <span class="item-desc">Child components read or modify ambient global registries to format metadata, creating tight temporal coupling and corrupted counts between sibling renders.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Strict Input Dependency</span>
+          <span class="item-desc">The card relies strictly on incoming <code>story</code> and <code>index</code> props, guaranteeing identical JSX output whether rendered once or a thousand times.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">3. Pure Presenter</span>
+          <span class="layer-role">(StoryBadge.jsx)</span>
+        </td>
+        <td>
+          <span class="item-title">Render-Time Side Effects</span>
+          <span class="item-desc">Terminal components attempt to update document titles or alter DOM nodes during render, corrupting state under StrictMode double-rendering.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Zero-Side-Effect UI</span>
+          <span class="item-desc">The badge minds its own business: it receives numbers and category strings, returning pure JSX with zero external reads, writes, or mutations.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">4. Local Calculation</span>
+          <span class="layer-role">(DeskSummary.jsx)</span>
+        </td>
+        <td>
+          <span class="item-title">Fear of All Mutation</span>
+          <span class="item-desc">Developers assume all variable mutation is forbidden in React, writing slow or convoluted immutable acrobatics for local temporary calculations.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Safe Local Mutation</span>
+          <span class="item-desc">Mutating objects created inside the current render is completely pure because no external code can observe it, delivering maximum performance with zero side effects.</span>
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td>
+          <span class="verdict-label">Verdict</span>
+        </td>
+        <td>
+          <span class="verdict-tag verdict-danger">Fragile Coupling</span>
+          <span class="item-desc">External variable mutations corrupt state on re-renders, break StrictMode auditing, and disable concurrent React optimizations.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="verdict-tag verdict-teal">Bulletproof Modularity</span>
+          <span class="item-desc">Pure components guarantee mathematical predictability, safe re-renders, effortless testing, and zero side-effect leaks across the tree.</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 13.2: Architecture audit: evaluating predictable pure calculations versus external variable mutations across component layers.</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Safe Local Mutation vs External Side Effects</h3>
+<p>In plain JavaScript, the word mutation means changing the properties of an object or the elements of an array after it has been created. When beginners hear that React components must be pure, they often believe that mutating any variable anywhere in their code is strictly forbidden. This misunderstanding leads developers to avoid simple local loops or array aggregations, writing overly complex code out of fear of mutation.</p>
+<p>What is <strong>local mutation</strong>? React draws a clear line between two kinds of mutation: <strong>external mutation</strong>, which alters variables that existed before your component was called, and <strong>local mutation</strong>, which modifies variables created inside the same render call. Mutating an external variable is an illegal side effect: it changes the outside world and corrupts other components. In contrast, local mutation is completely safe and pure. When you write <span class="code-line-callout"><code><span class="kw">const</span> items = [];</code></span> inside your component function and then push items into that array using a <code>for</code> loop, no code outside that function can see or touch that array. When the component finishes running, the array is returned as part of JSX or discarded by garbage collection. The law of local mutation states: mutating objects, arrays, or variables created inside the current render is 100% pure; purity only forbids changing objects or variables that existed before the render started.</p>
+<p>Here is the code contrast between dangerous external mutation and safe local mutation:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LocalVsExternalMutation</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> globalQueue = []; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">WRONG:</b> existed before render; shared across all components</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">function</span> <span class="fn">BrokenDesk</span>({ story }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  globalQueue.<span class="fn">push</span>(story); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> external mutation corrupts queue on every re-render</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> &lt;div&gt;Queued: {globalQueue.length}&lt;/div&gt;;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">function</span> <span class="fn">CleanDesk</span>({ stories }) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> localList = []; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> created freshly inside this render pass</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">for</span> (<span class="kw">const</span> s <span class="kw">of</span> stories) localList.<span class="fn">push</span>(s.title); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> local mutation is completely pure</span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">return</span> &lt;div&gt;Queued: {localList.length}&lt;/div&gt;;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Look at <code>BrokenDesk</code>. It pushes <code>story</code> into <code>globalQueue</code>, an array declared outside the component in module scope. Every time <code>BrokenDesk</code> renders, <code>globalQueue</code> grows longer. If the component renders three times, the queue holds three copies of the story! In contrast, <code>CleanDesk</code> creates <code>localList</code> freshly inside its own body. Every render starts with an empty array, populates it locally, and leaves zero side effects behind.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>When is variable mutation completely safe?</strong> Imagine a reporter taking scratch notes on a blank sheet of notepad paper during an interview. The reporter writes notes, scratches out words, and adds bullet points. That notepad was torn fresh from the pad for this specific interview, and when the interview ends, the notes are filed away. Nobody else ever saw or shared that notepad. This is <strong>local mutation</strong>: changing something you created privately for this single task. Now imagine if the reporter walked into the newsroom archives and used a black marker to scratch out words in the official historical archive book that all reporters share! That is <strong>external mutation</strong>: altering a shared resource that existed before you arrived. In React, <strong>local mutation</strong> inside your component body is completely pure, while <strong>external mutation</strong> corrupts shared memory across your entire application.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where Side Effects Belong: Event Handlers and the Render Contract</h3>
+<p>In modern web applications, programs must eventually change things: save articles to a database, update user profiles, trigger animations, or show notifications. If components must be pure during render, where do these side effects actually belong? Beginners often place side effects like API requests, storage updates, or DOM changes directly in the component body because they want them to happen when the component appears on screen.</p>
+<p>Where do side effects belong in React? Side effects belong in <strong>event handlers</strong>. An event handler is a function that runs in response to a user action: clicking a button, submitting a form, or typing into an input field (see Lecture 14 and Lecture 40). Unlike the component render function, event handlers do not run during rendering! They run after the render is finished, when the user physically clicks or types. Because event handlers do not participate in calculating JSX, they do not need to be pure. Inside an event handler, you can safely update state, send HTTP requests, write to local storage, or navigate to another page. The law of side effects states: rendering must remain a pure calculation with zero side effects; all mutations, network requests, and external modifications must be executed inside event handlers or dedicated effect escape hatches.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked why React demands purity, do not just recite "same inputs, same output." Explain the architectural benefits: purity allows React to safely re-render components without side-effect bugs, execute concurrent rendering by pausing and restarting renders without leaving corrupted state behind, skip rendering unchanged subtrees via memoization, and safely execute components on the server where shared globals would leak data between different users.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Newsroom edition counters: Computing story order numbers and section counts purely from props rather than mutating global tally variables.</li>
+<li>Breaking news alert banners: Deriving alert visibility and styling strictly from incoming alert data without modifying external window objects during render.</li>
+<li>Real-time headline filters: Filtering lists using pure array methods like <code>filter()</code> and <code>map()</code> so that search queries produce identical results on repeated renders.</li>
+<li>Editorial analytics cards: Accumulating category totals using safe local array mutations inside the component body with zero external side effects.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Pure Component</strong>: A React component function that always returns the exact same JSX when given the same inputs and causes zero observable changes to the outside world during rendering.</li>
+<li><strong>Side Effect</strong>: Any observable change or mutation performed outside the scope of the current function call, such as modifying global variables, changing the DOM, or firing network requests.</li>
+<li><strong>StrictMode</strong>: A built-in React development tool that intentionally renders components twice to detect accidental impurities and side effects before code ships to production.</li>
+<li><strong>State Drift</strong>: The cumulative corruption of application state caused by components mutating external variables during repeated render passes.</li>
+<li><strong>Local Mutation</strong>: The modification of variables, arrays, or objects that were created inside the current render pass, which is completely pure because no external code can observe it.</li>
+<li><strong>Event Handler</strong>: A callback function executed in response to user interactions, which serves as the primary sanctioned location for performing side effects in React applications.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Component Purity and the Elimination of Side Effects in React</strong></p>
+<p>In production applications, component purity is the foundational contract that enables React's rendering engine, optimization algorithms, and concurrent features to function reliably. Here is your streetwise review.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Principles of Component Purity</span></div>
+<ol><li>Treat component rendering strictly as a <strong>pure calculation</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) A component must always return the exact same JSX when provided with the same props, state, and context.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) A component must never modify any object, array, or variable that existed before rendering started.</li>
+<li>Understand why <strong>StrictMode double-renders</strong> components in development.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Double-rendering exposes side effects by making accidental mutations visible as duplicated values on screen.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) In production, React renders components once, but keeping them pure guarantees safe re-rendering.</li>
+<li>Distinguish between <strong>safe local mutation</strong> and <strong>dangerous external mutation</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Mutating arrays or objects created inside the current render pass is 100% pure because it has zero outside visibility.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Mutating variables in module scope or global scope causes state drift and unpredictable multi-user bugs.</li></ol>
+<p class="summary-principle">➔ NEVER mutate an external variable, prop, or existing object during component render.</p>
+<p class="summary-principle">➔ ALWAYS derive display values strictly from incoming props, state, or freshly created local variables.</p>
+<p class="summary-principle">➔ IF you need to perform a mutation or network request THEN <strong>place that logic inside an event handler</strong>.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Calculate derived values and badge numbers purely from incoming props.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Pure Component Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">PureCard</span>({ title, order }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;article className=<span class="str">"story-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;span className=<span class="str">"badge"</span>&gt;Queue #{order}&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2&gt;{title}&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Never read and mutate external variables during render to track sequential items.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Impure Component Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">let</span> counter = <span class="nl">0</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ImpureCard</span>({ title }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  counter = counter + <span class="nl">1</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;article className=<span class="str">"story-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;span className=<span class="str">"badge"</span>&gt;Queue #{counter}&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;h2&gt;{title}&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>PURE COMPONENT</strong><br>(Predictable Calculation)</th><th><strong>IMPURE COMPONENT</strong><br>(External Mutation)</th></tr></thead><tbody><tr><td><strong>Output Consistency</strong></td><td>Always returns identical JSX for<br>identical input props</td><td>Output drifts or scrambles when<br>components re-render</td></tr><tr><td><strong>StrictMode Behavior</strong></td><td>Double render is invisible; UI<br>displays identical markup</td><td>Double render duplicates counts or<br>exposes broken state</td></tr><tr><td><strong>Concurrent Safety</strong></td><td>React can pause, resume, or abort<br>renders with zero risk</td><td>Aborted renders leave behind mutated<br>external variables</td></tr><tr><td><strong>Permitted Mutations</strong></td><td>Local variables created inside the<br>current render function</td><td>Mutates module variables, props, or<br>global window state</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

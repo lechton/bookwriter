@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="en" data-theme="max-teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 17: Batching and Updater Functions — Edition v7.1-1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v7.1-1";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-max-teal">
+<main>
+
+<div class="page-container">
+    <header class="max-cheatsheet-header">
+        <div class="max-top-stripe"></div>
+        <div class="max-title-row">
+            <div class="max-lecture-badge">
+                <div class="max-badge-bg"></div>
+                <div class="max-badge-label">Lecture</div>
+                <div class="max-badge-num">17</div>
+            </div>
+            <h1 class="max-lecture-title">Batching &amp;<br>Updater Functions</h1>
+        </div>
+        <div class="max-iq-container">
+            <div class="max-iq-tab">
+                <span class="max-iq-tab-text">Interview Question &nbsp;<svg class="iq-chevron-svg" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin: 0 2px 0 2px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+            </div>
+            <div class="max-iq-box">
+                <p class="max-iq-question">How does React queue multiple state updates, and when do you need an updater function?</p>
+            </div>
+        </div>
+    </header>
+    <div class="max-scenario-area">
+        <div class="max-scenario-wrapper">
+            <div class="max-scenario-card">
+                <div class="max-scenario-gradient-bar"></div>
+                <div class="max-scenario-header">
+                    <svg class="max-lightbulb-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                    </svg>
+                    <h2 class="max-scenario-title">Imagine This Scenario</h2>
+                </div>
+                <ul class="max-scenario-list">
+                    
+                    <li class="max-scenario-item">
+                        <span class="max-scenario-badge">1</span>
+                        <span class="max-scenario-text">A concert website sells tickets, and customers add seats with one button.</span>
+                    </li>
+                    <li class="max-scenario-item">
+                        <span class="max-scenario-badge">2</span>
+                        <span class="max-scenario-text">A customer clicks '+3 Tickets' once to add three seats to the order.</span>
+                    </li>
+                    <li class="max-scenario-item">
+                        <span class="max-scenario-badge">3</span>
+                        <span class="max-scenario-text">The click handler asks for one more ticket three times in a row.</span>
+                    </li>
+                    <li class="max-scenario-item">
+                        <span class="max-scenario-badge">4</span>
+                        <span class="max-scenario-text">Why does the ticket counter show 1 instead of 3?</span>
+                    </li>
+                    <li class="max-scenario-item">
+                        <span class="max-scenario-badge">5</span>
+                        <span class="max-scenario-text">The customer reaches checkout with one seat and loses the other two.</span>
+                    </li>
+                    <li class="max-scenario-item">
+                        <span class="max-scenario-badge">6</span>
+                        <span class="max-scenario-text">No error appears, and none of the three requests was ignored.</span>
+                    </li>
+                    <li class="max-scenario-item">
+                        <span class="max-scenario-badge">7</span>
+                        <span class="max-scenario-text">Today we learn exactly how React handles several changes in one click.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <footer class="max-opener-footer">
+        <span></span>
+        <span></span>
+    </footer>
+</div>
+<div class="max-lecture-body">
+<div class="keep-together">
+<h3>One click, several setter calls, and a number that does not add up</h3>
+<p>Until now, one click changed one piece of state. In real apps, a single click does more. One button might update a counter several times in a row. Another might turn on a loading indicator, wait for the server, and turn it back off.</p>
+<p>When a single click triggers multiple state updates, two questions decide what ends up on screen:</p>
+<ol><li><strong>How many times does React update the screen during that click?</strong></li>
+<li><strong>Which starting value does each setter call actually read?</strong></li></ol>
+<p>If you guess wrong, React will not throw an error. Your code will pass a quick glance, and still put the wrong numbers on the screen.</p>
+<p>Before looking at the code, five earlier rules govern what happens during a single click:</p>
+<ul>
+<li><strong>Event Handlers (Lecture 13):</strong> You respond to user actions by attaching a function to an element, such as <span class="code-line-callout"><code>&lt;button onClick={handleClick}&gt;</code></span> You pass the function without calling it. React runs that <strong>event handler</strong> every time the user clicks.</li>
+<li><strong>State and Setters (Lecture 14):</strong> Any value that changes on the screen must live in state. Writing <span class="code-line-callout"><code><span class="kw">const</span> [tickets, setTickets] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> gives you two things. First, <code>tickets</code> is the <strong>state variable</strong> holding the current value, which starts at <code>0</code>. Second, <code>setTickets</code> is the <strong>setter function</strong>, which is the only valid way to request a new value.</li>
+<li><strong>Render Timing (Lecture 15):</strong> Calling <code>setTickets</code> does not update the screen on that line of code. Instead, React waits until the entire event handler has finished running. Only then does React run your component function again to build the updated screen, a step called a <strong>render</strong>.</li>
+<li><strong>Fixed Snapshots (Lecture 16):</strong> During a render and its handlers, the value of <code>tickets</code> never changes in place. It remains locked as a fixed number called a <strong>snapshot</strong>.</li>
+<li><strong>Render Purity (Lecture 12):</strong> Any code that runs during a render must be <strong>pure</strong>. Given the same inputs, it must return the same output. It must never alter external variables or trigger popups.</li>
+</ul>
+<p>Let's trace how these five rules behave when a single click calls multiple state setters.</p>
+</div>
+<div class="keep-together">
+<h3>How React processes multiple requests: batching and the update queue</h3>
+<p>When an event handler runs, it can call several state setters in sequence. How does React handle these requests?</p>
+<p>In browser programming, modifying multiple elements forces repeated layout calculations and repaints. Running multiple screen updates for a single user action wastes computing resources.</p>
+<p>React prevents unnecessary work by grouping state updates together. When a click handler calls several setters, React does not recalculate the screen after each call.</p>
+<p>Instead, React waits until the entire event handler finishes executing. Only then does React recalculate the interface and paint the screen a single time.</p>
+<p>We call this grouping process <strong>batching</strong>. Batching ensures that all state changes from a single event appear on the screen together.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Browser Layout Repaints vs. React Batched Commit</div>
+<pre class="ascii-diagram">WITHOUT BATCHING (Traditional DOM - Costly Layout Repaints):
+  Call setter 1 ──► [Calculate Layout] ──► [Repaint Screen]
+  Call setter 2 ──► [Calculate Layout] ──► [Repaint Screen]
+  Call setter 3 ──► [Calculate Layout] ──► [Repaint Screen] (Wasted passes)
+
+WITH BATCHING (React Engine - Single Unified Paint):
+  Call setter 1 ──┐
+  Call setter 2 ──┼──► [Update Queue] ──► (Handler Done) ──► [Single Paint]
+  Call setter 3 ──┘</pre>
+</div>
+<p>Behind the scenes, React stores update requests in an internal <strong>update queue</strong>. Each setter call adds an instruction to this queue.</p>
+<p>When you pass a raw number like <code>setTickets(1)</code>, you queue a replacement instruction. You instruct React to replace the current state with <code>1</code>.</p>
+<p>When you pass a calculation function like <span class="code-line-callout"><code><span class="fn">setTickets</span>(t =&gt; t + <span class="nl">1</span>)</code></span> you queue a calculation rule. This function is called an <strong>updater function</strong>.</p>
+<p>Instead of storing a fixed number, React records the rule to compute the next value. When React processes the queue during render, it chains these functions in sequence.</p>
+</div>
+<div class="keep-together">
+<h3>Principles of React: Batching and Updater Functions</h3>
+<p>Each question below starts from code you could write today. The answer shows what React does with it. The principle turns that behavior into a rule for production code.</p>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="1">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 1</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 1: State Batching';">State Batching</h3>
+</div>
+<p>Suppose you have two state variables, <code>tickets</code> and <code>status</code>. Inside the component function, above the <code>return</code>, the line <code>console.log('render')</code> prints <code>render</code> every time React runs the component. You run two state updates inside a single click handler:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">setTickets</span>(<span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Updates tickets in memory</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="fn">setStatus</span>(<span class="str">'Confirmed'</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">console.<span class="fn">log</span>(<span class="str">'handler done'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Last line of the handler</span>
+      </div></div></div></div></div>
+<ul>
+<li>First, you call a setter to update one state variable: <code>setTickets(1)</code></li>
+<li>Right below it, you call a second setter to update another state variable: <code>setStatus('Confirmed')</code></li>
+<li>On the last line, you log <code>handler done</code> to the console.</li>
+</ul>
+<p>After one click, the console shows <code>handler done</code> first, and then <code>render</code> only <strong>once</strong>. Why does React update the screen once, instead of once for each setter?</p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code worked properly.</strong> This is an example of proper usage of state batching.</p>
+<p>React groups multiple state updates together into a <strong>single batch</strong>:</p>
+<ul>
+<li><strong>It does not update line by line:</strong> React does not update the screen immediately after each line of code runs.</li>
+<li><strong>It waits for the handler to finish:</strong> React waits until the entire click handler has finished running.</li>
+<li><strong>It updates the screen once:</strong> Finally, React updates the screen a single time and displays all new values at once.</li>
+</ul>
+<p>This grouping is called <strong>batching</strong>. It saves work: React builds the new screen once, with both new values. A second click is a separate event. It gets its own handler run and its own screen update.</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Update related state together in the same handler</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">setTimeout</span>
+          <span class="gloss-def">a browser function that runs code later, after the click handler has finished</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Call all your state setters directly inside the event handler. Trust React to batch them into a single screen update instead of attempting manual delays.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">handleConfirm</span>() {</div><div class="case-code-line">  <span class="fn">setTickets</span>(<span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">updates tickets directly</span></div><div class="case-code-line">  <span class="fn">setStatus</span>(<span class="str">'Confirmed'</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">updates status message</span></div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="2">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 2</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 2: The Frozen State Snapshot';">The Frozen State Snapshot</h3>
+</div>
+<p>Starting with <code>tickets = 0</code>, you want to add three tickets. You call the setter three times in a row inside a single click handler:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">setTickets</span>(tickets + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Queues replace with 0 + 1</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="fn">setTickets</span>(tickets + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="fn">setTickets</span>(tickets + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Replaces with 1 three times</span>
+      </div></div></div></div></div>
+<ul>
+<li>First, you call <code>setTickets(tickets + 1)</code> expecting to add the first ticket.</li>
+<li>Right below it, you call <code>setTickets(tickets + 1)</code> expecting to add a second ticket.</li>
+<li>On the third line, you call <code>setTickets(tickets + 1)</code> expecting to add a third ticket.</li>
+</ul>
+<p>Why does the ticket counter on screen advance to <strong>1</strong> instead of <strong>3</strong>?</p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code did not work as intended.</strong> This is a failure from using plain values with a frozen snapshot.</p>
+<p>React calculates state updates using a <strong>frozen snapshot</strong>:</p>
+<ul>
+<li><strong>The snapshot never changes during a handler:</strong> Throughout the entire click handler, the variable <code>tickets</code> stays frozen at <code>0</code>.</li>
+<li><strong>Every line computes the same number:</strong> Each line calculates <code>0 + 1 = 1</code>. This queues three replacement instructions.</li>
+</ul>
+<p>To fix this, React allows you to pass an <strong>updater function</strong> (<code>t =&gt; t + 1</code>) to the setter. Instead of a fixed number, React records this calculation rule in an internal update queue. During render, it chains them sequentially. It passes each result into the next, advancing the counter to three.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Replacement Values vs. Updater Calculation Pipeline</div>
+<pre class="ascii-diagram">REPLACEMENT INSTRUCTIONS (setTickets(tickets + 1)):
+Snapshot: tickets = 0
+  ├─ Call 1: setTickets(0 + 1) ──► Queue: [ Replace with 1 ]
+  ├─ Call 2: setTickets(0 + 1) ──► Queue: [ Replace with 1 ]
+  └─ Call 3: setTickets(0 + 1) ──► Queue: [ Replace with 1 ] ──► Screen: 1
+
+CALCULATION PIPELINE (setTickets(t =&gt; t + 1)):
+Snapshot: tickets = 0
+  ├─ Call 1: setTickets(t =&gt; t+1) ──► Queue: [ 0 ──► +1 ──► 1 ]
+  ├─ Call 2: setTickets(t =&gt; t+1) ──► Queue: [ 1 ──► +1 ──► 2 ]
+  └─ Call 3: setTickets(t =&gt; t+1) ──► Queue: [ 2 ──► +1 ──► 3 ] ──► Screen: 3</pre>
+</div>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Never rely on state variables updating immediately in a handler</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row no-glossary">
+      <div class="principle-definition-card">
+        <p class="principle-statement">Treat state as a fixed snapshot during the entire event handler. When queuing multiple updates in one handler, pass updater functions instead of plain values.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setTickets</span>(t =&gt; t + <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">receives running total</span></div><div class="case-code-line"><span class="fn">setTickets</span>(t =&gt; t + <span class="nl">1</span>);</div><div class="case-code-line"><span class="fn">setTickets</span>(t =&gt; t + <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">advances total count by three</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setTickets</span>(tickets + <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">reads frozen snapshot 0</span></div><div class="case-code-line"><span class="fn">setTickets</span>(tickets + <span class="nl">1</span>);</div><div class="case-code-line"><span class="fn">setTickets</span>(tickets + <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">replaces total with 1 repeatedly</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="3">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 3</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 3: Updating State After an Asynchronous Pause';">Updating State After an Asynchronous Pause</h3>
+</div>
+<p>Sometimes a click handler needs to pause. For example, you might increment a pending count. Then you wait for a network request, and finally decrement the count. In JavaScript, <code>async</code> marks a function that can pause, and <code>await delay(100)</code> pauses execution for 100 milliseconds.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleReserve</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setPending</span>(pending + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">await</span> <span class="fn">delay</span>(<span class="nl">100</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Pauses execution</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">setPending</span>(pending - <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Reads from old snapshot</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<p>If multiple clicks happen quickly during that pause, why does the pending counter get corrupted and show the wrong number?</p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code did not work as intended.</strong> This is a failure from reading a frozen snapshot across an asynchronous pause.</p>
+<p>When the function resumes after <code>await delay(100)</code>, it does not pull fresh values from React. It continues using the frozen snapshot from the exact moment the click happened:</p>
+<ul>
+<li><strong>The snapshot remains stale:</strong> If <code>pending</code> was <code>0</code> at the start, <code>pending - 1</code> evaluates to <code>-1</code>. It ignores clicks that arrived during the wait.</li>
+<li><strong>The fix requires an updater function:</strong> An updater function always reads the live queued total instead of the snapshot. It never calculates using stale data.</li>
+</ul>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Use updater functions whenever state depends on previous queued calculations</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row no-glossary">
+      <div class="principle-definition-card">
+        <p class="principle-statement">Never read a frozen variable across an asynchronous pause. Pass an updater function when calculating a new state after an <code>await</code>.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleReserve</span>() {</div><div class="case-code-line">  <span class="fn">setPending</span>(p =&gt; p + <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">queues pending increment</span></div><div class="case-code-line">  <span class="kw">await</span> <span class="fn">delay</span>(<span class="nl">100</span>);</div><div class="case-code-line">  <span class="fn">setPending</span>(p =&gt; p - <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">decrements live queued total</span></div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleReserve</span>() {</div><div class="case-code-line">  <span class="fn">setPending</span>(pending + <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">reads frozen snapshot</span></div><div class="case-code-line">  <span class="kw">await</span> <span class="fn">delay</span>(<span class="nl">100</span>);</div><div class="case-code-line">  <span class="fn">setPending</span>(pending - <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">reads stale snapshot again</span></div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="4">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 4</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 4: Updater Purity & StrictMode';">Updater Purity &amp; StrictMode</h3>
+</div>
+<p>Starting with <code>tickets = 0</code>, you want to add a ticket and show a popup inside an updater. The browser function <code>alert(t)</code> shows a popup message and waits until the user clicks OK.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="fn">setTickets</span>(t =&gt; {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">alert</span>(t); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Popup shows 0</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> t + <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Calculates 0 + 1</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">});</span></div></div></div></div>
+<ul>
+<li>Inside the updater function, you trigger a popup dialog: <code>alert(t)</code></li>
+<li>Right below the alert, you return the calculated number: <span class="code-line-callout"><code><span class="kw">return</span> t + <span class="nl">1</span></code></span></li>
+</ul>
+<p>Why does the alert window pop up <strong>two times</strong> in development mode before the screen updates to <strong>1</strong>?</p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code did not work as intended.</strong> This failure comes from placing a side effect inside a calculation function.</p>
+<p>A <strong>side effect</strong> is anything a function does besides returning a value: a popup, a console log, a network request. <code>StrictMode</code> is a development check that wraps your app in <code>main.jsx</code>, and Vite adds it by default. Development mode means running the app on your own machine with <code>npm run dev</code>, not for real users.</p>
+<p>React runs updater functions under <strong>StrictMode</strong> in development to verify that calculations are pure:</p>
+<ul>
+<li><strong>Updaters run during the render:</strong> React runs your updater while calculating the render, not inside the event handler.</li>
+<li><strong>StrictMode calls calculations twice:</strong> In development mode, React deliberately executes each updater function twice to check for side effects.</li>
+<li><strong>Side effects trigger twice on screen:</strong> Because an <code>alert</code> was inside the calculation, the popup appeared twice.</li>
+</ul>
+<p>Lecture 46 explains why <code>StrictMode</code> runs these functions twice.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">StrictMode Double Execution Check</div>
+<pre class="ascii-diagram">PURE UPDATER (Calculation only):
+  Run 1 (StrictMode check): (0) =&gt; 0 + 1 = 1  (Discarded)
+  Run 2 (Commit pass):      (0) =&gt; 0 + 1 = 1  (Committed) ──► Screen shows 1
+
+IMPURE UPDATER (Side effect inside calculation):
+  Run 1 (StrictMode check): alert(0) ──► [Popup 1 appears on screen]
+  Run 2 (Commit pass):      alert(0) ──► [Popup 2 appears on screen] (Bug!)</pre>
+</div>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">Keep updater functions strictly pure and free of side effects</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row no-glossary">
+      <div class="principle-definition-card">
+        <p class="principle-statement">Only calculate and return the next value inside an updater function. Always place side effects like alerts, logs, and network requests inside the event handler.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">handleClick</span>() {</div><div class="case-code-line">  <span class="fn">setTickets</span>(t =&gt; t + <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">pure state calculation</span></div><div class="case-code-line">  <span class="fn">alert</span>(<span class="str">'Ticket added'</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">side effect runs in handler</span></div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setTickets</span>(t =&gt; {</div><div class="case-code-line">  <span class="fn">alert</span>(<span class="str">'Ticket added'</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">runs twice in StrictMode</span></div><div class="case-code-line">  <span class="kw">return</span> t + <span class="nl">1</span>;</div><div class="case-code-line">});</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<p>You will meet this when building shopping carts or ticket orders where a single action adds multiple items.</p>
+<p>You will meet this when managing asynchronous forms that increment a pending counter and decrement it after a network request.</p>
+<p>You will meet this when toggling boolean states rapidly in response to user clicks or keyboard shortcuts.</p>
+<p>You will meet this when splitting state across multiple setter calls inside a single form submission handler.</p>
+<p>You will meet this in technical interviews when asked how React batches updates and how the update queue behaves.</p>
+</div>
+<div class="keep-together interview-section">
+<h3>For the interview</h3>
+<blockquote><strong>The Interview Question:</strong> How does React queue multiple state updates, and when do you need an updater function?</blockquote>
+<p><strong>1. The Hidden Signal</strong></p>
+<p>The interviewer is not testing whether you know arrow function syntax. They are probing whether you understand React's render loop and batching pipeline. A junior developer assumes each setter call causes an immediate render. A senior engineer steps to the whiteboard and draws the update queue. They explain that setters do not compute state inside the click handler. Instead, setters add instructions to a first-in, first-out (FIFO) queue. React waits until the handler finishes, starts the render, and works through that queue from first to last.</p>
+<p><strong>2. The Classic Trap</strong></p>
+<p>The classic trap appears when an interviewer writes three consecutive setter calls on the board. Candidates often guess the count increments by three. When told it only increments by one, they claim React debounced (merged) or ignored two calls. That explanation fails the interview. React never ignores a setter call. All three calls reach the queue, and all three carry the same instruction. A strong candidate says this out loud before the interviewer has to ask.</p>
+<p><strong>3. What is Actually Going On</strong></p>
+<p>React queues state updates during event execution. It does not update state variables immediately on each line of code.</p>
+<p>Calling <code>setCount(count + 1)</code> three times queues three identical replacement instructions based on the frozen snapshot. React executes the queue sequentially, setting state to the same number repeatedly.</p>
+<p>Passing an updater function <code>c =&gt; c + 1</code> queues a calculation rule instead of a fixed value. React passes the result of each calculation directly into the next function in line.</p>
+<p><strong>4. Where It Gets Tricky</strong></p>
+<p><em>What does React render if you call <code>setCount(count + 5)</code>, then <code>setCount(c =&gt; c + 1)</code>, then <code>setCount(42)</code> from zero?</em></p>
+<p>The final rendered count is 42. React evaluates the queue in strict sequential order during the next render pass. First, <code>count + 5</code> queues a replacement with 5. Next, the updater receives 5 and returns 6. Finally, 42 replaces the running calculation completely, discarding earlier results.</p>
+<p><em>What happens if you pass a function you want to store, such as <code>setFormatter(formatPrice)</code>?</em></p>
+<p>React treats every function passed to a setter as an updater. It calls <code>formatPrice</code> with the current state and stores the result, not the function. To store the function itself, wrap it in another one: <span class="code-line-callout"><code><span class="fn">setFormatter</span>(() =&gt; formatPrice)</code></span> The outer arrow is the updater, and it returns <code>formatPrice</code> unchanged.</p>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<p>We assemble the ticket ordering feature: an outer application shell, the stateful ticket boundary, and the action controls. Every component logs its execution to the development console.</p>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for ticket-booking - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">ticket-booking - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>TicketOrder</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h2" data-elem="[h2.title]"><div class="ui-elem-content">Event Ticket Order</div></div><div class="ui-elem ui-tag-p" data-elem="[p.ticket-display]"><div class="ui-elem-content">Reserved Tickets: 3</div></div><div class="ui-elem ui-tag-p" data-elem="[p.status-display]"><div class="ui-elem-content">Pending Reservations: 0</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>OrderControls</span><span class="component-explorer-props">onAddTriple={handleAddTriple} onReserve={handleReserve}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button]"><div class="ui-elem-content"><span class="surface-ui-btn">+3 Tickets</span></div></div><div class="ui-elem ui-tag-button" data-elem="[button]"><div class="ui-elem-content"><span class="surface-ui-btn">Reserve Ticket</span></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="ticket-booking: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">ticket-booking: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Top-level layout container mounting the ticket order feature</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-js" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fef3c7"/><polyline points="14 2 14 8 20 8"/><path d="M10 13v4a1 1 0 0 1-2 0"/><path d="M14 13h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v2"/></svg>
+					</div>
+					<span class="fe-name-text">ticketApi.js</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">helper</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Provides an asynchronous delay helper simulating network latency</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">TicketOrder.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Manages ticket totals, queues batched updates, and tracks pending requests</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">OrderControls.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Renders ticket action buttons and forwards interaction events upward</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+    }
+    .assembly-steps-figure .card-content {
+      padding: 10px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 5px;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      color: #0f172a;
+    }
+
+    /* Step 1: Blue */
+    .assembly-steps-figure .step-1 .card-edge { background: #2563eb; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: rgba(37, 99, 235, 0.3); }
+
+    /* Step 2: Teal */
+    .assembly-steps-figure .step-2 .card-edge { background: #0d9488; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: rgba(13, 148, 136, 0.3); }
+
+    /* Step 3: Warm Amber */
+    .assembly-steps-figure .step-3 .card-edge { background: #d97706; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: rgba(217, 119, 6, 0.3); }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we lay out the ticket booking application</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the ticket order state boundary</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/TicketOrder.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we build the ticket action controls</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/OrderControls.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 17-e.1: Figure 17.1: The progressive assembly pipeline of the ticket order feature</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we lay out the ticket booking application';">First, we lay out the ticket booking application</div>
+      <div class="card-components"><span class="component-tag">&lt;src/App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> TicketOrder <span class="kw">from</span> <span class="str">'./components/TicketOrder.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  console.<span class="fn">log</span>(<span class="str">'App runs'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Logs on initial render</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"booking-layout"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h1&gt;Event Ticket Booking&lt;/h1&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;TicketOrder /&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p><code>App</code> owns zero state, so ticket updates inside the order widget never force <code>App</code> to re-render. It executes once on initial load, keeping top-level layout completely isolated from user clicks.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the ticket order state boundary';">Next, we build the ticket order state boundary</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/TicketOrder.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">TicketOrder.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> OrderControls <span class="kw">from</span> <span class="str">'./OrderControls.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">import</span> { delay } <span class="kw">from</span> <span class="str">'../ticketApi.js'</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">TicketOrder</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [tickets, setTickets] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Ticket total</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">const</span> [pending, setPending] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Reservation tracker</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">  console.<span class="fn">log</span>(<span class="str">'TicketOrder runs, tickets ='</span>, tickets);</span></div></div></div></div>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row even"><span class="num">8</span><span class="src">  <span class="kw">function</span> <span class="fn">handleAddTriple</span>() {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="fn">setTickets</span>(t =&gt; t + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Queues first increment</span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">setTickets</span>(t =&gt; t + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="fn">setTickets</span>(t =&gt; t + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Advances count by three</span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleReserve</span>() {</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    <span class="fn">setPending</span>(p =&gt; p + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Increments pending count</span>
+      </div></div>
+<div class="row odd"><span class="num">15</span><span class="src">    <span class="kw">await</span> <span class="fn">delay</span>(<span class="nl">100</span>);</span></div>
+<div class="row even"><span class="num">16</span><span class="src">    <span class="fn">setPending</span>(p =&gt; p - <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Decrements pending count</span>
+      </div></div>
+<div class="row odd"><span class="num">17</span><span class="src">  }</span></div></div></div></div>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">18</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">    &lt;section className=<span class="str">"order-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">      &lt;p&gt;Reserved Tickets: {tickets}&lt;/p&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Displays ticket total</span>
+      </div></div>
+<div class="row odd"><span class="num">21</span><span class="src">      &lt;OrderControls</span></div>
+<div class="row even"><span class="num">22</span><span class="src">        onAddTriple={handleAddTriple}</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">        onReserve={handleReserve} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Forwards callback props</span>
+      </div></div>
+<div class="row even"><span class="num">24</span><span class="src">      /&gt;</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">26</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">}</span></div></div></div></div>
+<p><code>TicketOrder</code> owns all state. In <code>handleAddTriple</code>, three updater calls queue three increments, updating the total by three. In <code>handleReserve</code>, updaters across <code>await delay(100)</code> guarantee the pending counter decrements accurately back to 0.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we build the ticket action controls';">Finally, we build the ticket action controls</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/OrderControls.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">OrderControls.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">OrderControls</span>({ onAddTriple, onReserve }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"button-group"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;button onClick={onAddTriple}&gt;+<span class="nl">3</span> Tickets&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Reserves 3 tickets</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;button onClick={onReserve}&gt;Reserve Ticket&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p><code>OrderControls</code> owns zero state. It acts as an interactive control bridge, forwarding clicks upward to <code>TicketOrder</code>. The parent boundary executes the batched state transitions.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>parent component</strong> provides the outer application layout. It owns <strong>zero ticket state</strong> and renders once on startup. Notice it mounts <strong>TicketOrder</strong> as an isolated boundary. This architecture ensures state updates inside the order widget never cause unnecessary parent re-renders.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>TicketOrder</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>stateful boundary component</strong>. It owns the <strong>ticket count</strong> and <strong>pending reservations</strong>. Notice it uses <strong>updater functions</strong> for repeated increments and asynchronous reservation completion. Why? To ensure every queued update computes from the latest total without race conditions.</p></div></div></div><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>OrderControls</span><span class="component-explorer-props">onAddTriple={handleAddTriple} onReserve={handleReserve}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">This is the <strong>stateless child control</strong>. It receives two callbacks: <strong>onAddTriple</strong> and <strong>onReserve</strong>. Notice it owns <strong>zero local memory</strong>. When a button is clicked, it forwards the interaction upward to the parent boundary.</p></div></div></div></div></div></div>
+</div>
+<p>A beginner expects variables to update immediately after each setter call. React instead batches updates per handler and walks the update queue during render, providing consistent snapshots and high performance.</p>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Batching</strong>: The React mechanism that groups multiple state setter calls into a single render after an event handler completes.</li>
+<li><strong>Update Queue</strong>: The internal list of instructions that React processes in order during the next render to calculate state.</li>
+<li><strong>Updater Function</strong>: A function passed to a state setter that receives the pending state and returns the next value.</li>
+<li><strong><code>async</code> and <code>await</code></strong>: JavaScript keywords where <code>async</code> marks a pauseable function, and <code>await</code> pauses until a promise finishes.</li>
+<li><strong>Side Effect</strong>: Anything a function does besides returning a value, such as a popup or a network request.</li>
+<li><strong><code>StrictMode</code></strong>: A React development tool that runs updater functions twice to help developers catch impure side effects.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Official guide on queueing state updates</strong>: read the complete react.dev explanation of batching and updater functions (see <a href="https://react.dev/learn/queueing-a-series-of-state-updates">react.dev/learn/queueing-a-series-of-state-updates</a>).</li>
+<li><strong>API reference for useState</strong>: inspect caveats on updater functions and state storage (see <a href="https://react.dev/reference/react/useState">react.dev/reference/react/useState</a>).</li>
+<li><strong>Component purity rules</strong>: learn why code running during render must not produce side effects (see <a href="https://react.dev/learn/keeping-components-pure">react.dev/learn/keeping-components-pure</a>).</li>
+<li><strong>Updaters on objects</strong>: see Lecture 18, where the same updater form copies and changes an object in state.</li>
+<li><strong>Automatic batching in React 18 and 19</strong>: see Lecture 75 for batching inside native timeouts and promises.</li>
+<li><strong>Forcing synchronous updates with flushSync</strong>: see Lecture 65 for the escape hatch that bypasses batching.</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Batching &amp; Render Frequency</span></div>
+<p class="summary-principle">➔ ALWAYS remember that React waits until the entire event handler finishes before re-rendering.</p>
+<p class="summary-principle">➔ NEVER expect calling multiple setters in one click handler to trigger multiple re-renders.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Queued Updates &amp; Functional Setters</span></div>
+<p class="summary-principle">➔ ALWAYS pass an updater like <code>t =&gt; t + 1</code> when the next value depends on the previous total.</p>
+<p class="summary-principle">➔ IF updating state after an <code>await</code> THEN use an updater function to prevent reading a stale snapshot.</p>
+<p class="summary-principle">➔ NEVER place side effects, logs, or popup alerts inside an updater function.</p>
+<table class="comparison-table"><thead><tr><th></th><th><strong>PLAIN VALUE SETTER</strong><br>(Direct Value)</th><th><strong>UPDATER FUNCTION</strong><br>(Functional Form)</th></tr></thead><tbody><tr><td><strong>Instruction added</strong></td><td>Replaces queue total with value</td><td>Queues function to run during render</td></tr><tr><td><strong>Multiple calls</strong></td><td>Evaluates the same snapshot repeatedly</td><td>Chained sequentially: each receives previous total</td></tr><tr><td><strong>After <code>await</code></strong></td><td>Reads snapshot from when click occurred</td><td>Receives the live queued total from React</td></tr><tr><td><strong>Execution timing</strong></td><td>Evaluates immediately in the handler</td><td>Runs during the next render in React</td></tr><tr><td><strong>Purity requirement</strong></td><td>Evaluates expressions in the handler</td><td>Must be strictly pure with zero side effects</td></tr></tbody></table>
+</div>
+
+</div>
+</main>
+</body>
+</html>

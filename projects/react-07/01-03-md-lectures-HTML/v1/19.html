@@ -1,0 +1,1404 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 19: Updating Arrays in State — Edition v7.1-1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v7.1-1";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 19: Updating Arrays in State</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you add, remove, insert, and reorder items in a state array?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer builds an interactive task queue displaying an array of items stored in component state.</li>
+<li>When an item needs to be deleted, the developer calls <code>items.splice(1, 1)</code> and calls the setter.</li>
+<li>The developer expects the deleted item to disappear, but the screen stubbornly stays frozen.</li>
+<li>A later attempt to add an item calls <code>items.push(newItem)</code> inside the setter, and the app crashes.</li>
+<li>A third attempt sorts the array in place, and the screen refuses to update its order.</li>
+<li>Finally, updating an item inside a copied array corrupts initial data and breaks the Reset button.</li>
+<li>Today we learn how React compares state arrays with <code>Object.is</code>, why in-place mutations fail, and the non-mutating recipes for adding, removing, inserting, reordering, and updating array state.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The item list changes in memory, but the screen stays frozen</h3>
+<p>In modern web applications, user interfaces frequently manage collections of data. Applications display lists of tasks, shopping cart items, user messages, and incoming notifications. In plain JavaScript, developers modify arrays directly in memory using mutating methods like <code>push</code>, <code>splice</code>, and <code>sort</code>. When an array is stored in React state, this habit breaks application reactivity. In JavaScript, an array is an object, so React compares state values by memory reference using <code>Object.is</code>. When an event handler mutates an array in place and hands it back to the setter, React sees the exact same memory address and aborts rendering. To update the screen reliably, every array operation must construct a brand-new array and pass that new container to the setter function.</p>
+<p>When engineers transition from plain JavaScript scripting to React, they naturally reach for standard array methods like <code>arr.splice()</code> to delete an element or <code>arr.push()</code> to append a record. In vanilla scripts, these methods modify memory in place, and the next line of code sees the modified array immediately. In React, application memory lives outside the component function, and state updates occur through declarative reconciliation. Calling <code>items.splice(1, 1)</code> deletes the element from computer memory, but calling <code>setItems(items)</code> hands React the exact same array reference it already holds. Because <span class="code-line-callout"><code>Object.<span class="fn">is</span>(previousArray, nextArray)</code></span> evaluates to true, React assumes nothing changed and skips the render phase. Furthermore, developers who copy the array using spread syntax often mistakenly assign directly to properties of items inside the copy, unaware that shallow copying shares nested object references with previous render snapshots.</p>
+<p>This chapter investigates five core questions:</p>
+<ol><li><strong>Why does calling a mutating method like splice or sort followed by the setter fail to update the screen?</strong></li>
+<li><strong>How do you remove an item from a state array cleanly without modifying existing memory?</strong></li>
+<li><strong>How do you add an item at the end, at the beginning, or between two existing items using spread syntax?</strong></li>
+<li><strong>Why must sorting and reversing operate on a copy rather than the state array itself?</strong></li>
+<li><strong>When updating properties on an item inside an array, why is copying the outer array container not enough?</strong></li></ol>
+<p>Later lessons build directly on these array manipulation recipes. Lecture 22 examines state structure, explaining when filtered or sorted lists should be computed on the fly during render rather than duplicated in separate state variables. Lecture 61 investigates list keys and reconciliation, demonstrating how unstable index keys scramble input focus when arrays are reordered or prepended.</p>
+<p>Before looking at the code, here are seven rules from earlier lessons that govern state arrays:</p>
+<ul>
+<li><strong>Lecture 4 (JSX expressions):</strong> Arrays are JavaScript objects projected into JSX, and expressions evaluate within curly braces.</li>
+<li><strong>Lecture 6 (Component props):</strong> Inputs handed to components are strictly read-only, establishing the foundational rule against mutation.</li>
+<li><strong>Lecture 11 (Rendering lists):</strong> The map method transforms array items into element trees, filter removes items, and stable id keys preserve item identities.</li>
+<li><strong>Lecture 12 (Keeping components pure):</strong> Mutating existing variables during rendering causes side effects; local variables created inside the component may be mutated freely before return.</li>
+<li><strong>Lecture 14 (Component memory with useState):</strong> The setter function records the next state value in React and schedules a future re-render.</li>
+<li><strong>Lecture 17 (Queueing state updates):</strong> Passing an updater function like prev =&gt; prev.filter(...) ensures calculations read the pending queue.</li>
+<li><strong>Lecture 18 (Updating objects in state):</strong> React compares state values by reference using Object.is, skipping the render when handed the same object.</li>
+</ul>
+</div>
+<div class="keep-together">
+<h3>How mutating array methods skip React re-renders</h3>
+<p>In Lecture 18, we discovered that JavaScript objects are compared by reference. When an event handler mutates an object's properties directly and calls the setter, <code>Object.is</code> finds identical references and React skips the render. Because JavaScript arrays are standard objects under the hood, array state operates under the exact same reference equality invariant.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Mutating Versus Copying Array Methods</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> items = [{ id: <span class="nl">1</span>, title: <span class="str">'First'</span> }, { id: <span class="nl">2</span>, title: <span class="str">'Second'</span> }];</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">const</span> removed = items.<span class="fn">splice</span>(<span class="nl">1</span>, <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text">Mutating in place: modifies array in memory, returns removed elements<br>Items is still same array in memory</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="kw">const</span> filtered = items.<span class="fn">filter</span>(item =&gt; item.id !== <span class="nl">2</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text">Non-mutating copy: leaves original intact, returns new array<br>Brand-new array</span>
+      </div></div></div></div></div>
+<p>In JavaScript, array methods divide into two distinct categories: mutating methods that alter the array in place, and non-mutating methods that return a fresh array. Mutating methods include <code>push</code>, <code>pop</code>, <code>shift</code>, <code>unshift</code>, <code>splice</code>, <code>sort</code>, and <code>reverse</code>, as well as direct index assignment (<code>arr[0] = value</code>). When you execute any of these methods on a state array, JavaScript alters the existing array in memory. Passing that mutated array to the state setter gives React the same object reference it already holds. React detects zero reference difference and skips rendering. Conversely, copying methods like <code>slice</code>, <code>filter</code>, <code>map</code>, <code>concat</code>, <code>toSorted</code>, <code>toReversed</code>, and <code>toSpliced</code> generate a brand-new array in memory. Passing the new array to the setter allows <code>Object.is</code> to detect a distinct reference, scheduling a clean render pass.</p>
+</div>
+<div class="keep-together">
+<h3>How array spread creates new arrays for additions and insertions</h3>
+<p>In Lecture 18, we used object spread syntax <code>{ ...obj }</code> to create a shallow copy of an object while updating selected properties. JavaScript provides identical spread syntax for arrays: writing <code>[...arr]</code> unpacks the elements of an existing array into a fresh array literal.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Array Spread Addition and Insertion</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> items = [{ id: <span class="nl">1</span>, text: <span class="str">'A'</span> }, { id: <span class="nl">3</span>, text: <span class="str">'C'</span> }];</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">const</span> newItem = { id: <span class="nl">2</span>, text: <span class="str">'B'</span> };</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">const</span> appended = [...items, newItem]; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text">Appending at the end<br>[A, C, B]</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">const</span> inserted = [...items.<span class="fn">slice</span>(<span class="nl">0</span>, <span class="nl">1</span>), newItem, ...items.<span class="fn">slice</span>(<span class="nl">1</span>)];</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Inserting at index 1 between A and C</span>
+      </div></div></div></div></div>
+<p>When adding an item to state, developers often intuitively write <code>setItems(items.push(newItem))</code>. However, native <code>push()</code> mutates the array and returns the array's new length as an integer. Passing this call to the setter stores a number in state, causing the next render pass to crash when it attempts to call <code>items.map()</code>. To add items cleanly, use array spread. To append at the end, write <code>[...items, newItem]</code>. To prepend at the start, write <code>[newItem, ...items]</code>. To insert an item at index <code>i</code>, combine spread syntax with native <code>slice()</code>: write <span class="code-line-callout"><code>[...items.<span class="fn">slice</span>(<span class="nl">0</span>, i), newItem, ...items.<span class="fn">slice</span>(i)]</code></span> The <code>slice()</code> method returns a shallow copy of a portion of an array without modifying the original, creating a seamless insertion bridge.</p>
+</div>
+<div class="keep-together">
+<h3>Why copying an array leaves its nested objects shared</h3>
+<p>In Lecture 18, we learned that copying an object with <code>{ ...user }</code> performs a shallow copy: top-level primitive properties are duplicated, but nested objects continue pointing to their original memory addresses. Mutating a nested property on a copied object damages earlier render snapshots and corrupts reset baselines.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Replacing Items with Map and Object Spread</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> items = [{ id: <span class="nl">1</span>, title: <span class="str">'Draft'</span>, done: <span class="kw">false</span> }];</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">const</span> updated = items.<span class="fn">map</span>(item =&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">SAFE: returns a new array with a new object for item 1</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  item.id === <span class="nl">1</span> ? { ...item, done: <span class="kw">true</span> } : item</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Original item in items remains completely unchanged</span>
+      </div></div></div></div></div>
+<p>When an array contains objects, spreading that array with <code>[...items]</code> produces a new array container, but the elements inside that new container are identical object references. If a developer writes <span class="code-line-callout"><code><span class="kw">const</span> next = [...items]; next[<span class="nl">0</span>].done = <span class="kw">true</span>;</code></span> the assignment mutates the shared object in memory. While <code>next</code> is a new array container that triggers a re-render, the underlying item object was mutated in place. Any earlier render snapshots, cached records, or baseline constants like <code>initialTasks</code> now reflect the mutation, permanently corrupting the Reset button. To update an item safely, use <code>map()</code>: iterate through the array, check if <code>item.id === targetId</code>, and return a new object using object spread <code>{ ...item, done: true }</code> for the target while returning unchanged items as they are.</p>
+</div>
+<div class="keep-together">
+<h3>Principles of React: Updating Arrays in State</h3>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="1">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 1</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 1: Calling splice on a state array leaves the screen unchanged';">Calling splice on a state array leaves the screen unchanged</h3>
+</div>
+<p>A developer builds a task queue manager called <code>TaskManager</code>. Three tasks appear on screen: "Fix navigation header", "Typo in footer link", and "Deploy production build". To delete the typo task, the developer attaches a click handler calling <code>items.splice(1, 1)</code> and immediately calls <code>setItems(items)</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">TaskManager.jsx, first attempt</span></div><div class="code"><div class="row even"><span class="num">8</span><span class="src">  <span class="kw">function</span> <span class="fn">handleDeleteTypo</span>() {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    items.<span class="fn">splice</span>(<span class="nl">1</span>, <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Mutates array in place</span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">setItems</span>(items); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Passes same array reference back to React</span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">  }</span></div></div></div></div>
+<p>The developer clicks the "Delete typo" button. The console logs zero render passes, and the screen continues showing all three tasks. Moments later, the developer clicks an unrelated counter button, and the second task suddenly disappears from the screen.</p>
+<p><strong>I call items.splice(1, 1) and setItems(items). Why does the deleted item stay on screen?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> In plain JavaScript, calling <code>splice</code> alters the array in memory immediately, but React skips the render because the array reference is identical.</p>
+<p>In plain JavaScript, calling <code>items.splice(1, 1)</code> deletes the element from memory in place. In React, <code>items</code> points to the exact array instance currently held in state. Calling <code>items.splice(1, 1)</code> mutates that array in place. When you pass <code>items</code> to <code>setItems(items)</code>, you pass the identical array reference back to React.</p>
+<p>React checks whether state changed using <span class="code-line-callout"><code>Object.<span class="fn">is</span>(previousState, nextState)</code></span> Because both arguments point to the exact same memory address, <code>Object.is</code> returns <code>true</code>. React concludes that state has not changed and aborts the render pass. The screen remains stuck on the three original tasks. When an unrelated counter button triggers a re-render later, React reads the mutated array and finally displays two tasks, proving that the array mutated in memory while reactivity failed.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Array Reference Comparison During Mutation</div>
+<pre class="ascii-diagram">[Click Button] -&gt; items.splice(1, 1) mutates array [0x101] in place
+      |
+      v
+setItems(items) hands [0x101] back to React setter
+      |
+      v
+Object.is(0x101, 0x101) === true: NO REFERENCE CHANGE
+      |
+      v
+[React Skips Render] -&gt; Screen keeps showing 3 items</pre>
+</div>
+<p>To trigger a screen update, your code must provide a newly created array. Calling <span class="code-line-callout"><code><span class="fn">setItems</span>(items.<span class="fn">filter</span>(item =&gt; item.id !== <span class="nl">2</span>))</code></span> generates a fresh array container, allowing <code>Object.is</code> to detect the update.</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">The setter skips the render when it gets the same array</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">Object.is</span>
+          <span class="gloss-def">the JavaScript comparison method React uses to check if state changed</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">React checks whether state changed by comparing references with <code>Object.is</code>. Methods like <code>splice</code>, <code>push</code>, and <code>sort</code> modify an array in place, so passing the same array back to the setter gives React the exact reference it already holds. Because <code>Object.is</code> finds no difference, React skips running the component and the screen keeps showing the old list. To trigger a screen update, your code must provide a newly created array.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> nextItems = items.<span class="fn">filter</span>(item =&gt; item.id !== <span class="nl">2</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">new array</span></div><div class="case-code-line"><span class="fn">setItems</span>(nextItems);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">React renders the new list</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">items.<span class="fn">splice</span>(<span class="nl">1</span>, <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">modifies array in place</span></div><div class="case-code-line"><span class="fn">setItems</span>(items);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">same array, React skips render</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="2">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 2</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 2: Calling slice instead of splice empties the list';">Calling slice instead of splice empties the list</h3>
+</div>
+<p>The developer notices that <code>splice</code> mutated the array in place. Recalling that <code>slice</code> does not mutate arrays, the developer replaces <code>items.splice(1, 1)</code> with <code>items.slice(1, 1)</code> and passes the result to <code>setItems</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">TaskManager.jsx, slice attempt</span></div><div class="code"><div class="row even"><span class="num">8</span><span class="src">  <span class="kw">function</span> <span class="fn">handleDeleteTypo</span>() {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="kw">const</span> nextItems = items.<span class="fn">slice</span>(<span class="nl">1</span>, <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Slices from index 1 to index 1</span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">setItems</span>(nextItems); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Passes slice result to setter</span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">  }</span></div></div></div></div>
+<p>The developer clicks the button. React executes a render pass, but the entire task list disappears from the screen, leaving an empty container.</p>
+<p><strong>How do I delete an item without mutating the array in place?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> Calling <code>slice(1, 1)</code> extracts zero elements from the array, passing an empty array to the setter.</p>
+<p>The developer assumed <code>slice</code> is the non-mutating drop-in replacement for <code>splice</code>. However, the two methods accept completely different parameters. Native <code>splice(start, deleteCount)</code> takes a start index and the number of elements to remove. Native <code>slice(startIndex, endIndex)</code> extracts elements starting at <code>startIndex</code> up to, but not including, <code>endIndex</code>.</p>
+<p>Calling <code>items.slice(1, 1)</code> asks JavaScript for all elements starting at index 1 up to index 1. Because the start and end boundaries are identical, <code>slice</code> extracts zero elements and returns an empty array <code>[]</code>. The setter receives <code>[]</code>, causing React to re-render an empty list on screen.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Removing Elements: Slice Pitfall Versus Filter</div>
+<pre class="ascii-diagram">[slice(1, 1) Pitfall]
+  items = [Task 1, Task 2, Task 3]
+  slice(1, 1) extracts index 1 up to 1 ---&gt; Returns [] (EMPTY)
+  setItems([]) renders ZERO items on screen!
+
+[filter Solution]
+  items.filter(item =&gt; item.id !== 2)
+  Evaluates condition for each task     ---&gt; Returns [Task 1, Task 3]
+  setItems(...) renders TWO items safely</pre>
+</div>
+<p>To remove an item cleanly, use <code>filter</code>. Calling <span class="code-line-callout"><code>items.<span class="fn">filter</span>(item =&gt; item.id !== <span class="nl">2</span>)</code></span> tests each item against the predicate. Every item whose id is not 2 is copied into a brand-new array. The setter receives the new 2-item array and updates the screen properly.</p>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Remove with filter, which returns a new array</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">filter</span>
+          <span class="gloss-def">an array method that returns a new array with all elements that pass a test</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Do not remove items with <code>splice</code>, which mutates the array in place, and do not confuse <code>splice</code> with <code>slice</code>, which extracts a range between two index boundaries. To remove an item from state, call <code>filter</code> on the array. The <code>filter</code> method evaluates a test function for each element and returns a brand-new array holding only the items that pass.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> nextItems = items.<span class="fn">filter</span>(item =&gt; item.id !== <span class="nl">2</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">keeps all except id 2</span></div><div class="case-code-line"><span class="fn">setItems</span>(nextItems);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">screen removes item 2</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> nextItems = items.<span class="fn">slice</span>(<span class="nl">1</span>, <span class="nl">1</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">returns an empty array []</span></div><div class="case-code-line"><span class="fn">setItems</span>(nextItems);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">empties the entire list on screen</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="3">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 3</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 3: Calling push inside the setter crashes the next render';">Calling push inside the setter crashes the next render</h3>
+</div>
+<p>A new urgent task arrives. The developer wants to append it to the task queue. Accustomed to chaining method calls, the developer calls <code>items.push(newTask)</code> directly inside the setter argument:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">TaskManager.jsx, push attempt</span></div><div class="code"><div class="row even"><span class="num">8</span><span class="src">  <span class="kw">function</span> <span class="fn">handleAddTask</span>() {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="kw">const</span> newTask = { id: <span class="nl">4</span>, title: <span class="str">'Emergency patch'</span>, time: <span class="nl">13</span> };</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">setItems</span>(items.<span class="fn">push</span>(newTask)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Passes push result to setter</span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">  }</span></div></div></div></div>
+<p>The developer clicks the "Add Task" button. The screen turns white, and the development console reports an uncaught crash: <span class="code-line-callout"><code>TypeError: items.map is not a <span class="kw">function</span></code></span></p>
+<p><strong>A new item arrives. How do I add it to the end, start, or middle of the list?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> The <code>push</code> method modifies the array in place and returns its new length as an integer, causing the next render to throw a <code>TypeError</code>.</p>
+<p>In JavaScript, <code>push()</code> appends an item to the array in place and returns the new length of the array as a number. In an array of three items, calling <code>items.push(newTask)</code> mutates the array and returns the number <code>4</code>. Calling <code>setItems(items.push(newTask))</code> stores the number <code>4</code> in React state.</p>
+<p>When React initiates the next render pass, the component body attempts to render the task list using <code>items.map(...)</code>. Because the variable <code>items</code> now holds the number <code>4</code> rather than an array, JavaScript throws <span class="code-line-callout"><code>TypeError: items.map is not a <span class="kw">function</span></code></span> crashing the application.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Adding Items: Push Return Value Versus Array Spread</div>
+<pre class="ascii-diagram">[items.push(newTask) Execution]
+  items.push(...) mutates array in place
+  push returns array length integer: 4
+  setItems(4) stores NUMBER in state
+  Next render: (4).map(...) ---&gt; CRASH: TypeError!
+
+[Array Spread Execution]
+  [...items, newTask] creates a fresh array container
+  setItems([...]) stores 4-item ARRAY in state
+  Next render: [Task 1, Task 2, Task 3, Task 4].map(...) ---&gt; SUCCESS!</pre>
+</div>
+<p>To add an item cleanly, use array spread syntax <code>[...items, newTask]</code>. The spread operator unpacks all existing elements into a fresh array literal and places the new item at the end. To prepend an item at the beginning, place the item first: <code>[newTask, ...items]</code>. To insert an item at index <code>i</code>, combine spread syntax with two <code>slice</code> calls: <span class="code-line-callout"><code>[...items.<span class="fn">slice</span>(<span class="nl">0</span>, i), newTask, ...items.<span class="fn">slice</span>(i)]</code></span></p>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Add and insert with spread</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">spread syntax</span>
+          <span class="gloss-def">the ... operator that copies elements from an existing array into a new array</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Calling <code>push</code> on an array modifies it in place and returns its new length as a number. Passing <code>items.push(newItem)</code> to a setter stores a number in state, crashing the next render when the code calls <code>items.map</code>. To add an item, spread the existing array into a new array literal with the new element at the end, at the start, or between two <code>slice</code> calls to insert at an index.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> nextItems = [...items, newItem];</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">copies items and appends new item</span></div><div class="case-code-line"><span class="fn">setItems</span>(nextItems);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">screen shows updated list</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setItems</span>(items.<span class="fn">push</span>(newItem));</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">returns array length number, not array</span></div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">next render crashes: items.map is not a function</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="4">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 4</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 4: Calling sort directly on state keeps the previous order';">Calling sort directly on state keeps the previous order</h3>
+</div>
+<p>The developer wants to sort the task list chronologically by estimated completion time. Noting that <code>sort()</code> returns an array, the developer writes <span class="code-line-callout"><code><span class="fn">setItems</span>(items.<span class="fn">sort</span>(compareFn))</code></span></p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">TaskManager.jsx, sort attempt</span></div><div class="code"><div class="row even"><span class="num">8</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSortByTime</span>() {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="fn">setItems</span>(items.<span class="fn">sort</span>((a, b) =&gt; a.time - b.time)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Passes sorted array</span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">  }</span></div></div></div></div>
+<p>The developer clicks the "Sort Tasks" button. The console logs zero render passes, and the task list remains in its original order on screen. When the developer clicks an unrelated counter, the list suddenly snaps into sorted order. Clicking Reset leaves the list sorted.</p>
+<p><strong>I want to sort the list. Can I write setItems(items.sort(compareFn))?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> The <code>sort</code> method reorders elements in place and returns that same array reference, so React skips the render.</p>
+<p>Unlike <code>map</code> or <code>filter</code>, JavaScript native <code>sort()</code> and <code>reverse()</code> methods reorder the array in place and return the exact same array reference. Calling <code>items.sort(...)</code> mutates the array stored in state and passes that same array reference back to <code>setItems</code>.</p>
+<p>React runs <span class="code-line-callout"><code>Object.<span class="fn">is</span>(previousState, nextState)</code></span> Because both arguments point to the identical array in memory, <code>Object.is</code> returns <code>true</code>. React assumes state did not change and skips the render pass. The screen keeps showing the old order. When an unrelated state setter triggers a render later, React finally renders the mutated array. Even worse, because <code>items</code> was sorted in place, the baseline array constant <code>initialTasks</code> was also sorted in place. Clicking the Reset button passes <code>initialTasks</code>, but <code>initialTasks</code> is already sorted, permanently breaking component reset behavior.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Reordering Items: In-Place Sort Versus ToSorted</div>
+<pre class="ascii-diagram">[items.sort() Mutation]
+  items.sort(...) mutates array [0x202] in place
+  setItems([0x202]) hands same reference to React
+  Object.is(0x202, 0x202) is true ---&gt; React skips render!
+  initialTasks is also mutated ---&gt; Reset button corrupted!
+
+[items.toSorted() Copy]
+  items.toSorted(...) creates brand-new array [0x303]
+  setItems([0x303]) hands new reference to React
+  Object.is(0x202, 0x303) is false ---&gt; React renders new order!
+  initialTasks remains untouched ---&gt; Reset button works!</pre>
+</div>
+<p>To sort correctly without mutating state, sort a fresh copy using spread <code>[...items].sort(compareFn)</code> or use the modern non-mutating method <code>items.toSorted(compareFn)</code>. Both approaches leave the existing state array and initial baseline constants untouched.</p>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">Sort a copy, never the array in state</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">toSorted</span>
+          <span class="gloss-def">a JavaScript method that returns a new array sorted by a comparison function</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">The JavaScript <code>sort</code> and <code>reverse</code> methods reorder elements in place and return the same array reference. Passing <code>items.sort()</code> to a setter hands React the array it already holds, so <code>Object.is</code> skips the render and the screen keeps the old order. To reorder items in state, sort a fresh copy using <code>[...items].sort()</code> or call the non-mutating method <code>items.toSorted()</code>.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> nextItems = items.<span class="fn">toSorted</span>((a, b) =&gt; a.time - b.time);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">new sorted array</span></div><div class="case-code-line"><span class="fn">setItems</span>(nextItems);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">React renders sorted items</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setItems</span>(items.<span class="fn">sort</span>((a, b) =&gt; a.time - b.time));</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">reorders in place</span></div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">same array reference, React skips render</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="5">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 5</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 5: Modifying an item in a copied array corrupts earlier renders';">Modifying an item in a copied array corrupts earlier renders</h3>
+</div>
+<p>The developer wants to correct the title of task 2. Aware that mutating the array breaks re-renders, the developer copies the array first using spread, and then updates the item title directly:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">TaskManager.jsx, item mutation in copy</span></div><div class="code"><div class="row even"><span class="num">8</span><span class="src">  <span class="kw">function</span> <span class="fn">handleCorrectTypo</span>() {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="kw">const</span> nextItems = [...items];</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    nextItems[<span class="nl">1</span>].title = <span class="str">'Fixed footer link'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Mutates shared item in memory</span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="fn">setItems</span>(nextItems);</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  }</span></div></div></div></div>
+<p>The developer clicks the "Correct Typo" button. The screen updates immediately to show "Fixed footer link". Satisfied, the developer clicks the "Reset List" button to restore the original task list. The screen refuses to restore "Typo in footer link", stubbornly keeping the modified title.</p>
+<p><strong>I copied the array first, then updated an item in the copy. Why does Reset fail?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> Array spread creates a shallow copy where nested objects remain shared references, so mutating an item alters initial state constants and earlier snapshots.</p>
+<p>When you copy an array with <code>[...items]</code>, JavaScript creates a brand-new array container. However, spreading an array copies references, not the objects themselves. In memory, <code>nextItems[1]</code> points to the exact same object reference as <code>items[1]</code> and <code>initialTasks[1]</code>.</p>
+<p>Assigning <span class="code-line-callout"><code>nextItems[<span class="nl">1</span>].title = <span class="str">'Fixed footer link'</span></code></span> mutates that shared object directly in memory. Because <code>nextItems</code> is a new array container, <code>Object.is</code> detects a reference difference and triggers a re-render. The screen displays the updated title. But because the underlying object was mutated in place, <code>initialTasks[1].title</code> now holds "Fixed footer link". When the user clicks Reset, <code>setTasks(initialTasks)</code> passes the baseline array, but its second item was already permanently modified.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Nested Object Sharing Across Shallow Array Copies</div>
+<pre class="ascii-diagram">[Shallow Copy Mutation]
+  nextItems = [...items] creates new array container
+  items[1] and nextItems[1] point to SHARED OBJECT { id: 2, title: 'Typo...' }
+  nextItems[1].title = 'Fixed' alters SHARED OBJECT!
+  initialTasks[1] now also holds 'Fixed' ---&gt; RESET BROKEN!
+
+[Map with Object Spread Fix]
+  items.map(t =&gt; t.id === 2 ? { ...t, title: 'Fixed' } : t)
+  Creates NEW OBJECT for task 2 with { ...t, title: 'Fixed' }
+  Unchanged tasks keep original object references
+  initialTasks[1] remains completely untouched ---&gt; RESET WORKS!</pre>
+</div>
+<p>To update an item safely, use <code>map()</code>: iterate over the array, match the target item by <code>id</code>, and return a new object with object spread <span class="code-line-callout"><code>{ ...item, title: <span class="str">'Fixed footer link'</span> }</code></span> Return all non-matching items unchanged.</p>
+<aside class="callout callout-principle" data-principle="5">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 5</span></div>
+    <h4 class="principle-title">To change one item, copy that item too</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">shallow copy</span>
+          <span class="gloss-def">an array copy where nested objects continue sharing the same memory references</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Spreading an array with <code>[...items]</code> creates a new array container, but the objects inside remain shared references in memory. Mutating a property on an item in a copied array changes the object that earlier snapshots and initial state still hold, breaking component resets. To update an item safely, call <code>map</code> to produce a new array, and return a new object using object spread for the item you want to change.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> nextItems = items.<span class="fn">map</span>(item =&gt;</div><div class="case-code-line">  item.id === <span class="nl">2</span> ? { ...item, title: <span class="str">'Fixed'</span> } : item</div><div class="case-code-line">);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">creates a new object for item 2</span></div><div class="case-code-line"><span class="fn">setItems</span>(nextItems);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">screen updates and Reset works</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> nextItems = [...items];</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">new array container</span></div><div class="case-code-line">nextItems[<span class="nl">1</span>].title = <span class="str">'Fixed'</span>;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">mutates shared item object</span></div><div class="case-code-line"><span class="fn">setItems</span>(nextItems);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">corrupts initialTasks and Reset</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for task-manager - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">task-manager - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>TaskManager</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h1" data-elem="[h1.headline]"><div class="ui-elem-content">Project Task Queue</div></div><div class="ui-elem ui-tag-ul" data-elem="[ul.task-list]"><div class="ui-elem-content">Task Items</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>TaskControls</span><span class="component-explorer-props">onRemove={handleDelete} onAdd={handleAdd}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.btn-del]"><div class="ui-elem-content"><span class="surface-ui-btn">Delete Typo</span></div></div><div class="ui-elem ui-tag-button" data-elem="[button.btn-add]"><div class="ui-elem-content"><span class="surface-ui-btn">Add Task</span></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="task-manager: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">task-manager: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Application shell hosting the task manager</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">TaskManager.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">State owner managing the tasks array and non-mutating update handlers</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">TaskControls.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-leaf">leaf</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Action controls rendering buttons and dispatching user operations upward</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+    }
+    .assembly-steps-figure .card-content {
+      padding: 10px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 5px;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      color: #0f172a;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Warm Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #d98c47; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #f3caa3; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we lay out the task manager application</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the stateful task array boundary</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/TaskManager.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we build the task action controls</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/TaskControls.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 19.1: Figure 19.1: Progressive three-step assembly pipeline for the task manager</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we lay out the task manager application';">First, we lay out the task manager application</div>
+      <div class="card-components"><span class="component-tag">&lt;src/App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <code>src/App.jsx</code>, we establish the top-level application container. The root component renders the main title and mounts the <code>TaskManager</code> widget.</p>
+<p>Notice that <code>App</code> owns zero interactive state. Because <code>App</code> does not declare <code>useState</code>, array additions, removals, and reordering operations executed inside <code>TaskManager</code> remain completely encapsulated. React re-renders only <code>TaskManager</code> and its child subtree, keeping the outer layout stable.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> TaskManager <span class="kw">from</span> <span class="str">'./components/TaskManager.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"task-app"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h1&gt;Project Task Queue&lt;/h1&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;TaskManager /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">State owner boundary</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>This structural separation guarantees that collection operations inside the task boundary never trigger unnecessary top-level re-renders.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the stateful task array boundary';">Next, we build the stateful task array boundary</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/TaskManager.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/TaskManager.jsx</code></span> we construct the interactive state boundary. We declare the baseline constant <code>initialTasks</code> outside the component function and initialize state using <code>useState(initialTasks)</code>.</p>
+<p>Keeping <code>initialTasks</code> at module scope guarantees that it acts as an immutable baseline benchmark for resetting state.</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">TaskManager.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> TaskControls <span class="kw">from</span> <span class="str">'./TaskControls.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">const</span> initialTasks = [</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  { id: <span class="nl">1</span>, title: <span class="str">'Fix navigation header'</span>, time: <span class="nl">9</span> }, </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Task 1</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  { id: <span class="nl">2</span>, title: <span class="str">'Typo in footer link'</span>, time: <span class="nl">11</span> }, </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Typo task</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">  { id: <span class="nl">3</span>, title: <span class="str">'Deploy production build'</span>, time: <span class="nl">10</span> }</span></div>
+<div class="row even"><span class="num">8</span><span class="src">];</span></div>
+<div class="row odd"><span class="num">9</span><span class="src"></span></div>
+<div class="row even"><span class="num">10</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">TaskManager</span>() {</span></div></div></div></div>
+<p>Next, we implement the non-mutating handlers for deleting items, adding new tasks, and resetting the array.</p>
+<p>We use <code>filter</code> in <code>handleDelete</code> to create a fresh array excluding the target id. In <code>handleAdd</code>, we use array spread to append a new task record. In <code>handleReset</code>, we pass <code>initialTasks</code> back to <code>setTasks</code>.</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">11</span><span class="src">  <span class="kw">const</span> [tasks, setTasks] = <span class="hook">useState</span>(initialTasks);</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  <span class="kw">function</span> <span class="fn">handleDelete</span>(id) {</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    <span class="fn">setTasks</span>(tasks.<span class="fn">filter</span>(t =&gt; t.id !== id)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Non-mutating remove</span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  <span class="kw">function</span> <span class="fn">handleAdd</span>(title) {</span></div>
+<div class="row even"><span class="num">16</span><span class="src">    <span class="fn">setTasks</span>([...tasks, { id: <span class="nl">4</span>, title, time: <span class="nl">12</span> }]); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Appends new task</span>
+      </div></div>
+<div class="row odd"><span class="num">17</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">18</span><span class="src">  <span class="kw">function</span> <span class="fn">handleReset</span>() {</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">    <span class="fn">setTasks</span>(initialTasks); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Restores initial state</span>
+      </div></div>
+<div class="row even"><span class="num">20</span><span class="src">  }</span></div></div></div></div>
+<p>Next, we implement <code>handleSort</code> using <code>toSorted</code> and <code>handleCorrect</code> using <code>map</code> with object spread.</p>
+<p>Using <code>toSorted</code> creates a new sorted array without mutating <code>tasks</code> or <code>initialTasks</code>. In <code>handleCorrect</code>, using <code>map</code> returns a brand-new object for the matching task while leaving unchanged tasks untouched.</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">21</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSort</span>() {</span></div>
+<div class="row even"><span class="num">22</span><span class="src">    <span class="fn">setTasks</span>(tasks.<span class="fn">toSorted</span>((a, b) =&gt; a.time - b.time)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Sorted copy</span>
+      </div></div>
+<div class="row odd"><span class="num">23</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">24</span><span class="src">  <span class="kw">function</span> <span class="fn">handleCorrect</span>(id, title) {</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">    <span class="fn">setTasks</span>(tasks.<span class="fn">map</span>(t =&gt;</span></div>
+<div class="row even"><span class="num">26</span><span class="src">      t.id === id ? { ...t, title } : t</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">    )); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Object copy in mapped array</span>
+      </div></div>
+<div class="row even"><span class="num">28</span><span class="src">  }</span></div></div></div></div>
+<p>Finally, we render the task list and mount the child controls, passing action handlers downward.</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">29</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">30</span><span class="src">    &lt;section className=<span class="str">"task-card"</span>&gt;</span></div>
+<div class="row odd"><span class="num">31</span><span class="src">      &lt;ul className=<span class="str">"task-list"</span>&gt;</span></div>
+<div class="row even"><span class="num">32</span><span class="src">        {tasks.<span class="fn">map</span>(t =&gt; &lt;li key={t.id}&gt;{t.title}&lt;/li&gt;)}</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Task list</span>
+      </div></div>
+<div class="row odd"><span class="num">33</span><span class="src">      &lt;/ul&gt;</span></div>
+<div class="row even"><span class="num">34</span><span class="src">      &lt;TaskControls onRemove={handleDelete} onAdd={handleAdd} /&gt;</span></div>
+<div class="row odd"><span class="num">35</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">36</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">37</span><span class="src">}</span></div></div></div></div>
+<p>The component passes its state and handler callbacks downward to <code>TaskControls</code>.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we build the task action controls';">Finally, we build the task action controls</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/TaskControls.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/TaskControls.jsx</code></span> we create the action buttons that trigger user operations.</p>
+<p>Notice that <code>TaskControls</code> owns zero local state. It receives callback functions from its parent and wires them directly to button click events. When a user clicks a button, the callback executes in <code>TaskManager</code> memory, demonstrating inverse data flow.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">TaskControls.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">TaskControls</span>({ onRemove, onAdd }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"task-actions"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">onRemove</span>(<span class="nl">2</span>)}&gt;Delete Typo&lt;/button&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Action</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">onAdd</span>(<span class="str">'Write tests'</span>)}&gt;Add Task&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>The control buttons dispatch actions upward without holding local memory.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>application shell</strong> hosts the task manager without owning interactive state, keeping the layout stable.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>TaskManager</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>state boundary</strong> owns the tasks array and coordinates non-mutating array operations.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>TaskControls</span><span class="component-explorer-props">onRemove={handleDelete} onAdd={handleAdd}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>action controls</strong> render interactive buttons and forward user interactions upward through callbacks.</p></div></div></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0d9488;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 7px 12px !important;
+      vertical-align: top !important;
+      line-height: 1.35 !important;
+      background: #ffffff;
+      color: #1e293b;
+    }
+    .architecture-audit-figure .td-col-reality,
+    main .architecture-audit-figure .audit-table td.td-col-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .layer-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #0f172a;
+      display: block;
+    }
+    .architecture-audit-figure .layer-desc {
+      font-size: 0.73rem;
+      color: #64748b;
+      display: block;
+      margin-top: 1px;
+    }
+    .architecture-audit-figure .state-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 1.5px 6px;
+      border-radius: 4px;
+      margin-bottom: 3px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .architecture-audit-figure .badge-danger {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+    .architecture-audit-figure .badge-success {
+      background: #ccfbf1;
+      color: #115e59;
+      border: 1px solid #99f6e4;
+    }
+    .architecture-audit-figure .cell-main {
+      font-size: 0.82rem;
+      color: #1e293b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .cell-code {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.72rem;
+      background: rgba(15, 23, 42, 0.05);
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .cell-sub {
+      font-size: 0.74rem;
+      color: #64748b;
+      margin: 0;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Architectural Contrast Matrix</div>
+    <div class="audit-title">State Arrays: In-Place Mutation vs Immutable Transitions</div>
+    <p class="audit-subtitle">Comparing memory references, setter reconciliation, and nested object safety across array operations.</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Architectural Layer</span>
+          <span class="th-main">Array Operation</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">Anti-Pattern</span>
+          <span class="th-main">In-Place Mutation</span>
+          <span class="th-sub sub-danger">Same Array Reference</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">React Paradigm</span>
+          <span class="th-main">Immutable Transition</span>
+          <span class="th-sub sub-teal">Brand-New Array Container</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <span class="layer-title">Removing Items</span>
+          <span class="layer-desc">Deleting elements by id or index</span>
+        </td>
+        <td>
+          <span class="state-badge badge-danger">Broken</span>
+          <div class="cell-main"><span class="cell-code">items.splice(index, 1)</span></div>
+          <p class="cell-sub">Mutates array in place. Setter receives the same reference and React skips the render.</p>
+        </td>
+        <td class="td-col-reality">
+          <span class="state-badge badge-success">Correct</span>
+          <div class="cell-main"><span class="cell-code">items.filter(item =&gt; item.id !== id)</span></div>
+          <p class="cell-sub">Produces a fresh array excluding the target id. React detects reference change and re-renders.</p>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-title">Adding &amp; Inserting</span>
+          <span class="layer-desc">Appending or placing items at index</span>
+        </td>
+        <td>
+          <span class="state-badge badge-danger">Crashes</span>
+          <div class="cell-main"><span class="cell-code">setItems(items.push(newItem))</span></div>
+          <p class="cell-sub"><span class="cell-code">push()</span> returns length number (4). Next render throws <span class="cell-code">items.map is not a function</span>.</p>
+        </td>
+        <td class="td-col-reality">
+          <span class="state-badge badge-success">Correct</span>
+          <div class="cell-main"><span class="cell-code">[...items, newItem]</span></div>
+          <p class="cell-sub">Spreads into a new array. To insert at index <span class="cell-code">i</span>, slice before and after the new item.</p>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-title">Reordering &amp; Sorting</span>
+          <span class="layer-desc">Changing element order</span>
+        </td>
+        <td>
+          <span class="state-badge badge-danger">Silent Failure</span>
+          <div class="cell-main"><span class="cell-code">setItems(items.sort(compare))</span></div>
+          <p class="cell-sub"><span class="cell-code">sort()</span> returns the same mutated array. Screen stays in old order until unrelated update.</p>
+        </td>
+        <td class="td-col-reality">
+          <span class="state-badge badge-success">Correct</span>
+          <div class="cell-main"><span class="cell-code">items.toSorted(compare)</span></div>
+          <p class="cell-sub">Returns a new sorted array (or <span class="cell-code">[...items].sort()</span>). Triggers immediate visual re-render.</p>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-title">Updating Item Object</span>
+          <span class="layer-desc">Modifying one item's properties</span>
+        </td>
+        <td>
+          <span class="state-badge badge-danger">Corrupts Snapshots</span>
+          <div class="cell-main"><span class="cell-code">next[0].title = 'Updated'</span></div>
+          <p class="cell-sub">Shallow copy shares item objects. Mutating item damages previous renders and breaks Reset.</p>
+        </td>
+        <td class="td-col-reality">
+          <span class="state-badge badge-success">Correct</span>
+          <div class="cell-main"><span class="cell-code">items.map(s =&gt; s.id === id ? {...s, title} : s)</span></div>
+          <p class="cell-sub">Returns a new array with a brand-new object for the edited item. Preserves other item references.</p>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-title">Reconciliation Timing</span>
+          <span class="layer-desc">React setter comparison</span>
+        </td>
+        <td>
+          <span class="state-badge badge-danger">Object.is Match</span>
+          <div class="cell-main">Same reference comparison</div>
+          <p class="cell-sub"><span class="cell-code">Object.is(prev, next)</span> evaluates true. Reconciliation and paint are aborted.</p>
+        </td>
+        <td class="td-col-reality">
+          <span class="state-badge badge-success">Clean Trigger</span>
+          <div class="cell-main">Distinct reference comparison</div>
+          <p class="cell-sub"><span class="cell-code">Object.is(prev, next)</span> evaluates false. Triggers render, virtual DOM diff, and DOM update.</p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 19.2: Figure 19.2: Architectural audit contrasting in-place array mutation with immutable array transitions</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<p>In production frontend applications, updating arrays in state is universal across todo lists, shopping carts, notification feeds, and kanban boards. A frequent production bug arises when an engineer uses <code>splice</code> to delete an item from an active cart, causing the UI to freeze until an unrelated state change triggers a re-render. Adopting <code>filter</code> permanently prevents this defect.</p>
+<p>Another universal scenario involves sorting tabular data or transaction histories. Developers who call <code>.sort()</code> directly on state arrays inadvertently mutate shared memory, scrambling cached datasets and preventing users from restoring original chronological sorting. Using <code>toSorted()</code> or <code>[...items].sort()</code> guarantees clean reordering without data pollution.</p>
+<p>In technical interviews, engineering candidates are routinely asked how to update arrays in state without mutating them. Interviewers specifically probe whether candidates understand why <code>push</code> fails inside setters, why <code>slice</code> is not the copying equivalent of <code>splice</code>, and why copying an array still requires mapping objects inside it with <code>{ ...item }</code>.</p>
+</div>
+<div class="keep-together interview-section">
+<h3>For the interview</h3>
+<blockquote><strong>The Interview Question:</strong> How do you add, remove, insert, and reorder items in a state array?</blockquote>
+<p><strong>1. The Hidden Signal</strong></p>
+<p>The interviewer is evaluating whether you understand JavaScript reference equality and React reconciliation mechanics. Junior developers view arrays as simple lists to be edited with imperative methods like <code>push</code> and <code>splice</code>. Senior engineers recognize that state arrays are immutable objects compared by reference using <code>Object.is</code>, requiring non-mutating operations that generate new array containers.</p>
+<p><strong>2. The Classic Trap</strong></p>
+<p>The most common trap is assuming that copying an array with spread syntax <span class="code-line-callout"><code><span class="kw">const</span> next = [...items]</code></span> makes it completely safe to mutate its elements. Candidates write <code>next[0].title = 'Updated'</code>, unaware that spreading creates a shallow copy where nested objects remain identical references. When asked why their Reset button no longer works, unprepared candidates cannot identify the shared reference leak.</p>
+<p><strong>3. What is Actually Going On</strong></p>
+<p>React checks whether state changed by comparing references with <code>Object.is</code>. Methods like <code>splice</code>, <code>push</code>, <code>sort</code>, and <code>reverse</code> modify the array in place, returning either the same array reference or an unintended value (such as the new length integer returned by <code>push</code>). Because the array reference never changes, React skips the render phase. To trigger a render, you must produce a new array container: <code>filter</code> for removal, array spread <code>[...items, newItem]</code> for additions, <code>slice</code> combined with spread for insertions, and <code>toSorted()</code> or <code>[...items].sort()</code> for reordering.</p>
+<p><strong>4. Where It Gets Tricky</strong></p>
+<p>What about updating one object inside an array? Because array spread is shallow, updating an item requires calling <code>items.map()</code>, checking for the target item identifier, and returning a new object using object spread <code>{ ...item, prop: value }</code> while returning untouched items as they are. When nested updates become complex or deeply nested, teams often introduce Immer to write update logic concisely while preserving structural immutability behind the scenes.</p>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Immutable Array</strong>: An array treated as read-only in state, updated exclusively by creating fresh array containers rather than altering memory in place.</li>
+<li><strong><code>filter</code></strong>: A non-mutating JavaScript array method that returns a new array containing all elements that satisfy a predicate function.</li>
+<li><strong>Array Spread</strong>: The JavaScript <code>...</code> syntax that unpacks elements of an existing array into a fresh array literal, enabling safe additions and shallow copies.</li>
+<li><strong><code>toSorted</code></strong>: A modern non-mutating JavaScript array method that returns a brand-new sorted array without modifying the original array in place.</li>
+<li><strong>Shallow Copy</strong>: A duplicated array container whose internal elements continue pointing to the identical memory references of the original collection.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Official React guide on updating arrays in state</strong>: Comprehensive documentation detailing non-mutating array recipes, updating objects inside arrays, and Immer integration (see <a href="https://react.dev/learn/updating-arrays-in-state">react.dev/learn/updating-arrays-in-state</a>).</li>
+<li><strong>Official reference on useState hook caveats</strong>: Technical documentation on state update batching, reference comparison caveats, and setter behavior (see <a href="https://react.dev/reference/react/useState">react.dev/reference/react/useState</a>).</li>
+<li><strong>Rules of React regarding component purity</strong>: Core architectural invariants requiring props and state to remain strictly immutable during rendering (see <a href="https://react.dev/reference/rules/components-and-hooks-must-be-pure">react.dev/reference/rules/components-and-hooks-must-be-pure</a>).</li>
+<li><strong>MDN reference on toSorted</strong>: Standard documentation for the ECMAScript 2023 copying array sorting method (see <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toSorted">developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toSorted</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Immutable Array Transitions</span></div>
+<p class="summary-principle">➔ ALWAYS treat state arrays as read-only collections by constructing fresh array containers for every state transition.</p>
+<p class="summary-principle">➔ NEVER call mutating array methods like <code>splice</code>, <code>push</code>, <code>sort</code>, or <code>reverse</code> directly on a state array.</p>
+<p class="summary-principle">➔ IF you need to remove an item from an array in state THEN use <code>filter</code> with the item identifier instead of <code>splice</code>.</p>
+<p class="summary-principle">➔ IF you need to add an item to an array in state THEN spread the existing array into a new literal with the new element.</p>
+<p class="summary-principle">➔ IF you need to reorder an array in state THEN sort a shallow copy or call <code>toSorted</code> to avoid in-place mutation.</p>
+<p class="summary-principle">➔ IF you need to update an item inside an array THEN use <code>map</code> and return a new object with object spread for the target item.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong></p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleRemove</span>(id) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setItems</span>(items.<span class="fn">filter</span>(item =&gt; item.id !== id));</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">function</span> <span class="fn">handleAdd</span>(newItem) {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="fn">setItems</span>([...items, newItem]);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong></p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleRemove</span>(index) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  items.<span class="fn">splice</span>(index, <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setItems</span>(items);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="kw">function</span> <span class="fn">handleAdd</span>(newItem) {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="fn">setItems</span>(items.<span class="fn">push</span>(newItem));</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>IN-PLACE ARRAY MUTATION</strong><br>(Plain JavaScript Habit)</th><th><strong>IMMUTABLE STATE ARRAY</strong><br>(React Declarative Architecture)</th></tr></thead><tbody><tr><td><strong>Removal operation</strong></td><td><code>splice</code> modifies array in place</td><td><code>filter</code> returns a fresh array</td></tr><tr><td><strong>Addition operation</strong></td><td><code>push</code> modifies array and returns length</td><td><code>[...items, newItem]</code> unpacks into a brand-new array</td></tr><tr><td><strong>Insertion operation</strong></td><td><code>splice</code> inserts elements in place</td><td><code>slice</code> with spread creates a combined copy</td></tr><tr><td><strong>Reorder operation</strong></td><td><code>sort</code> mutates order of original reference</td><td><code>toSorted</code> or <code>[...items].sort()</code> on a fresh copy</td></tr><tr><td><strong>Item update</strong></td><td>Direct mutation alters shared object</td><td><code>map</code> with <code>{ ...item }</code> copies changed item</td></tr><tr><td><strong>Reconciliation reaction</strong></td><td><code>Object.is</code> finds identical reference; skips render</td><td><code>Object.is</code> detects new array reference; triggers render</td></tr><tr><td><strong>Baseline data &amp; Reset</strong></td><td>Mutates initial objects; corrupts Reset button</td><td>Leaves previous snapshots and initial constants intact</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 42: Modern Sass Modularity: Why @import Is Deprecated and How @use Encapsulates Stylesheets</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 42: Modern Sass Modularity: Why @import Is Deprecated and How @use Encapsulates Stylesheets</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">Why is @import deprecated in Sass, and what architectural problem does @use solve?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Jordan refactors the <strong>modular design system</strong> stylesheet for The National Times.</li>
+<li>Every component partial imports a shared <strong>global variables stylesheet</strong> to access layout tokens.</li>
+<li>Two separate partials define a variable named dollar gutter with different pixel values.</li>
+<li>Whichever partial loads last silently overwrites the variable across the entire production site.</li>
+<li>Why is at-import deprecated in Sass, and what architectural problem does at-use solve?</li>
+<li>Relying on global stylesheet imports creates <strong>naming collisions</strong>, bloated duplicate CSS, and <strong>fragile load-order dependencies</strong>.</li>
+<li>Migrating to namespaced module imports provides isolated scopes, <strong>singleton compilation caching</strong>, and <strong>private member encapsulation</strong>.</li></ol>
+</div>
+<div class="keep-together">
+<h3><strong>Global Scope Pollution</strong> and Load-Order Collisions</h3>
+<p>When writing modular stylesheets in Sass, teams break large projects into small partial files. You create separate files for grid layouts, sidebars, buttons, and typography. In legacy Sass, developers combined these files using the <strong><code>@import</code> directive</strong>. However, using <code>@import</code> creates a dangerous architectural flaw: every variable, mixin, and function is dumped into a single <strong>global namespace</strong>.</p>
+<p>In a global namespace, files have zero privacy or isolation. If <code>_grid.scss</code> defines <code>$gutter: 24px</code> and <code>_sidebar.scss</code> defines <code>$gutter: 12px</code>, both files fight for control of the exact same variable name. Whichever file loads last silently overwrites the value for the entire website. This turns your stylesheet into an order-dependent house of cards. If a developer rearranges two import lines in <code>app.scss</code>, unrelated page layouts across the site shift unexpectedly.</p>
+<p>To fix this structural flaw, the Sass core team deprecated <code>@import</code> in favor of the <strong><code>@use</code> directive</strong>. When you load a stylesheet with <code>@use</code>, Sass creates a distinct <strong>module namespace</strong>. By default, the namespace matches the filename without the leading underscore. To access a variable from <code>grid.scss</code>, you write <code>grid.$gutter</code>. To access a variable from <code>sidebar.scss</code>, you write <code>sidebar.$gutter</code>. Neither file can accidentally overwrite the other, ensuring predictable and deterministic builds.</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p><strong>Industry Naming Conventions: Namespace Aliasing and Custom Prefixes:</strong> In production design systems, default module names can sometimes feel too long or clash with HTML tag names. The <code>@use</code> rule allows developers to define a custom alias using the <code>as</code> keyword, such as <code>@use 'foundation/grid' as g</code>. You can then reference tokens cleanly as <code>g.$gutter</code>. If you are migrating a legacy codebase that heavily relies on global calls, Sass provides <code>@use 'module' as *</code> to pull members into the local file without a prefix. However, architectural teams treat wildcard imports as a temporary migration stepping stone because wildcards reintroduce the risk of naming collisions.</p>
+  </div>
+</aside>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">global-collision-trap.scss</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@import 'grid';</span></div>
+<div class="row"><span class="num">2</span><span class="src">@import 'sidebar';</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="sel">.article-content </span>{</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">margin-left</span>: $gutter;</span></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>In <code>global-collision-trap.scss</code>, the legacy <code>@import</code> directive dumps all variables into a single global namespace. Because <code>sidebar</code> is imported after <code>grid</code>, its 12px gutter silently overwrites the intended 24px grid spacing.</p>
+<p>Modern Sass eliminates global collisions by <strong>isolating imported files</strong> isolating imported files inside dedicated <strong>module namespaces</strong>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">namespaced-modules.scss</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@use 'grid';</span></div>
+<div class="row"><span class="num">2</span><span class="src">@use 'sidebar';</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="sel">.article-content </span>{</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">margin-left</span>: <span class="kw">grid</span>.$gutter;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">padding-right</span>: sidebar.$gutter;</span></div>
+<div class="row"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>In <code>namespaced-modules.scss</code>, the <code>@use</code> rule scopes variables to their file names. Calling <code>grid.$gutter</code> and <code>sidebar.$gutter</code> guarantees deterministic token values regardless of import order.</p>
+<figure class="css-figure">
+<style>
+  .fig-import-collision {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #000;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-import-collision * {
+    box-sizing: border-box;
+  }
+
+  .fig-import-collision .compare-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+
+  .fig-import-collision .pill {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 2px solid;
+    border-radius: 4px;
+  }
+
+  .fig-import-collision .pill-import {
+    background: #9f1239;
+    color: #ffffff;
+    border-color: #9f1239;
+  }
+
+  .fig-import-collision .pill-use {
+    background: #0e7490;
+    color: #ffffff;
+    border-color: #0e7490;
+  }
+
+  .fig-import-collision .compare-grid {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .fig-import-collision .print-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 2px solid;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .fig-import-collision .card-import { border-color: #9f1239; }
+  .fig-import-collision .card-use { border-color: #0e7490; }
+
+  .fig-import-collision .card-title-bar {
+    padding: 10px 16px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid;
+  }
+
+  .fig-import-collision .card-import .card-title-bar {
+    background: #9f1239;
+    color: #ffffff;
+    border-bottom-color: #9f1239;
+  }
+
+  .fig-import-collision .card-use .card-title-bar {
+    background: #0e7490;
+    color: #ffffff;
+    border-bottom-color: #0e7490;
+  }
+
+  .fig-import-collision .card-canvas {
+    padding: 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #ffffff;
+    justify-content: space-between;
+  }
+
+  .fig-import-collision .code-node {
+    border: 1px solid #d1d5db;
+    border-left: 6px solid;
+    background: #f9fafb;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #111827;
+  }
+
+  .fig-import-collision .card-import .code-node { border-left-color: #9f1239; }
+  .fig-import-collision .card-use .code-node { border-left-color: #0e7490; }
+
+  .fig-import-collision .code-node b { font-weight: 700; }
+  .fig-import-collision .code-node span { color: #4b5563; }
+
+  .fig-import-collision .arrow-step {
+    text-align: center;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 2px 0;
+  }
+
+  .fig-import-collision .node-caption {
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+  }
+
+  .fig-import-collision .card-import .node-caption { color: #9f1239; background: #ffe4e6; }
+  .fig-import-collision .card-use .node-caption { color: #0e7490; background: #e0f2fe; }
+
+  .fig-import-collision .card-footer {
+    padding: 14px 16px;
+    background: #f3f4f6;
+    border-top: 2px solid #e5e7eb;
+  }
+
+  .fig-import-collision .footer-code {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .fig-import-collision .card-import .footer-code { color: #9f1239; }
+  .fig-import-collision .card-use .footer-code { color: #0e7490; }
+
+  .fig-import-collision .footer-desc {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.4;
+  }
+</style>
+
+<div class="fig-import-collision">
+  <div class="compare-header">
+    <div class="pill pill-import">✕ Sass @import: Global Hijacking</div>
+    <div class="pill pill-use">✓ Sass @use: Namespaced Isolation</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Panel 1: Global Import Collision -->
+    <div class="print-card card-import">
+      <div class="card-title-bar">
+        <span>GLOBAL SCOPE MUTATION</span>
+        <span>UNPREDICTABLE</span>
+      </div>
+      <div class="card-canvas">
+        <div class="code-node">
+          <b>// grid.scss</b><br>
+          <span>$gutter: 24px;</span>
+        </div>
+        <div class="arrow-step" style="color: #9f1239;">
+          ↓ SIDEBAR.SCSS LOADED LATER (MUTATES GLOBAL SCOPE) ↓
+        </div>
+        <div class="code-node">
+          <b>// sidebar.scss</b><br>
+          <span style="color: #9f1239; font-weight: 700;">$gutter: 12px; // Silently overwrites global $gutter!</span><br><br>
+          <span>.article-content { margin-left: $gutter; } // Resolves to 12px</span>
+        </div>
+        <div class="node-caption">
+          ✕ Order-dependent: last imported partial silently wins everywhere.
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-code">@import flattens all files into one global scope</div>
+        <div class="footer-desc">Variables mutate globally based on load order, causing silent layout bugs.</div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Namespaced Module -->
+    <div class="print-card card-use">
+      <div class="card-title-bar">
+        <span>EXPLICIT NAMESPACES</span>
+        <span>DETERMINISTIC</span>
+      </div>
+      <div class="card-canvas">
+        <div class="code-node">
+          <b>@use 'grid';</b><br>
+          <span>// grid.$gutter is isolated (24px)</span>
+        </div>
+        <div class="arrow-step" style="color: #0e7490;">
+          ↓ INDEPENDENT NAMESPACE ISOLATION ↓
+        </div>
+        <div class="code-node">
+          <b>@use 'sidebar';</b><br>
+          <span>.article-content {<br>&nbsp;&nbsp;<b>margin-left: grid.$gutter;</b> // 24px<br>&nbsp;&nbsp;<b>padding-right: sidebar.$gutter;</b> // 12px<br>}</span>
+        </div>
+        <div class="node-caption">
+          ✓ Total encapsulation: each module maintains its own immutable namespace.
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-code">@use 'module' binds members to explicit namespaces</div>
+        <div class="footer-desc">Prevents variable collisions and makes origin immediately visible in source.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 42.1: Global Namespace Collision Versus Namespaced Isolation: Legacy @import (left) flattens all partials into a shared global scope where later files silently overwrite earlier variables. Modern @use (right) isolates variables inside explicit namespaces, guaranteeing deterministic token resolution regardless of load order.</figcaption>
+</figure>
+<p>Figure 42.1 contrasts how <code>@import</code> and <code>@use</code> handle variable scope. On the left side, both partial files declare <code>$gutter</code>. Because <code>@import</code> dumps all variables into a single global bucket, the second file silently hijacks the value. The article margin shrinks to twelve pixels, breaking the layout grid. On the right side, <code>@use</code> keeps both files in separate namespaces. The developer explicitly calls <code>grid.$gutter</code> and <code>sidebar.$gutter</code>. The compiler resolves both tokens with total clarity, and changes in one file never corrupt another.</p>
+</div>
+<div class="keep-together">
+<h3>Duplicate Execution and the Singleton Compilation Model</h3>
+<p>The second critical defect of the legacy <code>@import</code> rule is <strong>repeated stylesheet execution</strong>. When you write <code>@import 'reset'</code> inside five different component files, the Sass compiler parses, executes, and outputs the CSS from <code>_reset.scss</code> five separate times. If that partial contains concrete CSS rules, such as normalize styles or typography resets, the compiled CSS file ends up with five duplicate copies of those exact same rules.</p>
+<p>This duplication causes severe <strong>runtime performance problems</strong>. It slows down compilation times on your development machine and balloons the file size of your production CSS bundle. While gzip compression shrinks repetitive declaration blocks, browser layout engines still have to parse and store every redundant rule in the CSSOM tree. This wastes browser memory and delays the initial rendering of the page.</p>
+<p>To solve this problem, <code>@use</code> implements a <strong>singleton compilation model</strong>. When the Sass compiler encounters <code>@use 'reset'</code>, it executes the file once and stores the result in an internal cache. If another file later calls <code>@use 'reset'</code>, the compiler recognizes that the module has already been loaded. It makes the variables and mixins available to the new file, but it never re-emits the underlying CSS rules into the final stylesheet.</p>
+<p>To understand why this architectural change was necessary, consider how the compiler processes modular dependencies:</p>
+<ol><li><strong>Origin and Purpose:</strong> The Sass module system was created to treat stylesheets like modern programming modules in JavaScript or Python. Instead of blindly concatenating text files, the compiler builds an explicit <strong>module dependency graph</strong>.</li>
+<li><strong>The Central Library Analogy:</strong> Think of <code>@import</code> like printing a complete copy of an encyclopedia every time a student in a classroom asks to look up a word. By the end of the day, the classroom is buried in redundant paper. By contrast, <code>@use</code> is like placing a single reference encyclopedia on a central table. Every student consults the exact same shared volume without printing extra copies.</li>
+<li><strong>Historical Context (The Problem It Solved):</strong> In large enterprise applications with hundreds of Sass partials, developers had to create complex wrapper partials or rely on third-party plugins like <code>gulp-clean-css</code> just to strip out duplicate rules emitted by nested imports.</li>
+<li><strong>Compiler Calculation Sequence:</strong> When Dart Sass compiles an entry file, it traverses the dependency graph. Each module is evaluated exactly once in topological order. Any concrete CSS generated by that module is emitted a single time at the position of its first occurrence, while its functions and mixins remain globally reusable across all dependent nodes.</li></ol>
+<blockquote>"The @import rule has a number of serious issues: @import makes all variables, mixins, and functions globally accessible. This makes it very difficult for people (or tools) to tell where anything is defined. Because everything's global, libraries must add a prefix to all their members to avoid naming collisions. Each stylesheet is executed and its CSS emitted every time it's @imported, which increases compilation time and produces bloated output. There was no way to define private members or placeholder selectors that were inaccessible to downstream stylesheets."<br><br><em>Sass Documentation, <code>@import</code> (<code>resources/preprocessors/sass-site/source/documentation/at-rules/import.md</code>)</em></blockquote>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">duplicate-import-bloat.scss</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@import 'reset';</span></div>
+<div class="row"><span class="num">2</span><span class="src">@import 'components/card';</span></div>
+<div class="row"><span class="num">3</span><span class="src">@import 'components/modal';</span></div></div></div></div>
+<p>In <code>duplicate-import-bloat.scss</code>, each file that executes <code>@import 'reset'</code> triggers a separate evaluation of the reset partial. The compiler outputs three redundant copies of base resets into production CSS.</p>
+<p>To eliminate duplicate execution, the modern Sass module system treats every stylesheet as a <strong>cached singleton</strong>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">singleton-cache.scss</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@use 'foundation/reset';</span></div>
+<div class="row"><span class="num">2</span><span class="src">@use 'components/card';</span></div>
+<div class="row"><span class="num">3</span><span class="src">@use 'components/modal';</span></div></div></div></div>
+<p>In <code>singleton-cache.scss</code>, calling <code>@use 'foundation/reset'</code> compiles the reset rules exactly once. Downstream modules share the compiled styles from the cache without duplicating CSS output.</p>
+<figure class="css-figure">
+<style>
+  .fig-duplicate-exec {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #000;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-duplicate-exec * {
+    box-sizing: border-box;
+  }
+
+  .fig-duplicate-exec .compare-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+
+  .fig-duplicate-exec .pill {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 2px solid;
+    border-radius: 4px;
+  }
+
+  .fig-duplicate-exec .pill-import {
+    background: #9f1239;
+    color: #ffffff;
+    border-color: #9f1239;
+  }
+
+  .fig-duplicate-exec .pill-use {
+    background: #0e7490;
+    color: #ffffff;
+    border-color: #0e7490;
+  }
+
+  .fig-duplicate-exec .compare-grid {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .fig-duplicate-exec .print-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 2px solid;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .fig-duplicate-exec .card-import { border-color: #9f1239; }
+  .fig-duplicate-exec .card-use { border-color: #0e7490; }
+
+  .fig-duplicate-exec .card-title-bar {
+    padding: 10px 16px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid;
+  }
+
+  .fig-duplicate-exec .card-import .card-title-bar {
+    background: #9f1239;
+    color: #ffffff;
+    border-bottom-color: #9f1239;
+  }
+
+  .fig-duplicate-exec .card-use .card-title-bar {
+    background: #0e7490;
+    color: #ffffff;
+    border-bottom-color: #0e7490;
+  }
+
+  .fig-duplicate-exec .card-canvas {
+    padding: 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #ffffff;
+    justify-content: space-between;
+  }
+
+  .fig-duplicate-exec .code-node {
+    border: 1px solid #d1d5db;
+    border-left: 6px solid;
+    background: #f9fafb;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #111827;
+  }
+
+  .fig-duplicate-exec .card-import .code-node { border-left-color: #9f1239; }
+  .fig-duplicate-exec .card-use .code-node { border-left-color: #0e7490; }
+
+  .fig-duplicate-exec .code-node b { font-weight: 700; }
+  .fig-duplicate-exec .code-node span { color: #4b5563; }
+
+  .fig-duplicate-exec .arrow-step {
+    text-align: center;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 2px 0;
+  }
+
+  .fig-duplicate-exec .node-caption {
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+  }
+
+  .fig-duplicate-exec .card-import .node-caption { color: #9f1239; background: #ffe4e6; }
+  .fig-duplicate-exec .card-use .node-caption { color: #0e7490; background: #e0f2fe; }
+
+  .fig-duplicate-exec .card-footer {
+    padding: 14px 16px;
+    background: #f3f4f6;
+    border-top: 2px solid #e5e7eb;
+  }
+
+  .fig-duplicate-exec .footer-code {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .fig-duplicate-exec .card-import .footer-code { color: #9f1239; }
+  .fig-duplicate-exec .card-use .footer-code { color: #0e7490; }
+
+  .fig-duplicate-exec .footer-desc {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.4;
+  }
+</style>
+
+<div class="fig-duplicate-exec">
+  <div class="compare-header">
+    <div class="pill pill-import">✕ Sass @import: Duplicate Emission</div>
+    <div class="pill pill-use">✓ Sass @use: Singleton Compilation</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Panel 1: Import Duplicate Output -->
+    <div class="print-card card-import">
+      <div class="card-title-bar">
+        <span>REPEATED EXECUTION</span>
+        <span>BLOATED OUTPUT</span>
+      </div>
+      <div class="card-canvas">
+        <div class="code-node">
+          <b>// _reset.scss imported in 4 partials:</b><br>
+          <span>@import 'reset'; // in card.scss<br>@import 'reset'; // in modal.scss<br>@import 'reset'; // in sidebar.scss<br>@import 'reset'; // in feed.scss</span>
+        </div>
+        <div class="arrow-step" style="color: #9f1239;">
+          ↓ COMPILED BY SASS COMPILER ↓
+        </div>
+        <div class="code-node">
+          <b style="color: #9f1239;">Production Output: 4 Identical Reset Blocks!</b><br>
+          <span style="font-size: 11.5px; font-weight: 600;">// Redundant CSS emitted repeatedly; slows parsing & bloats CSSOM</span>
+        </div>
+        <div class="node-caption">
+          ✕ Every @import re-executes file and re-emits CSS rules.
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-code">@import re-executes stylesheet on every call</div>
+        <div class="footer-desc">Emits duplicate CSS rules repeatedly, slowing compilation and bloating bundles.</div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Use Singleton Output -->
+    <div class="print-card card-use">
+      <div class="card-title-bar">
+        <span>SINGLETON CACHE</span>
+        <span>OPTIMAL OUTPUT</span>
+      </div>
+      <div class="card-canvas">
+        <div class="code-node">
+          <b>// _reset.scss used in 4 modules:</b><br>
+          <span>@use 'reset'; // in card.scss<br>@use 'reset'; // in modal.scss<br>@use 'reset'; // in sidebar.scss<br>@use 'reset'; // in feed.scss</span>
+        </div>
+        <div class="arrow-step" style="color: #0e7490;">
+          ↓ EVALUATED ONCE AND CACHED IN MEMORY ↓
+        </div>
+        <div class="code-node">
+          <b style="color: #0e7490;">Production Output: Exactly 1 Reset Block!</b><br>
+          <span style="font-size: 11.5px; font-weight: 600;">// Deduplicated across dependency graph; zero redundant declarations</span>
+        </div>
+        <div class="node-caption">
+          ✓ Styles are included exactly once regardless of module graph depth.
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-code">@use compiles modules exactly once (singleton)</div>
+        <div class="footer-desc">Deduplicates styles across dependency graphs, guaranteeing minimal CSS output.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 42.2: Repeated Execution Bloat Versus Singleton Compilation: Legacy @import (left) re-executes partials on every call, duplicating CSS rules and multiplying compile times. Modern @use (right) caches compiled modules as singletons, ensuring stylesheets emit their CSS exactly once across the entire project.</figcaption>
+</figure>
+<p>Figure 42.2 illustrates the compilation difference. In the left panel, importing <code>_reset.scss</code> across four components produces four identical blocks of reset styles in the compiled CSS bundle. This bloats file weight and slows down the build. In the right panel, using <code>@use</code> loads the reset module through a singleton cache. The compiler evaluates the partial once, shares its tokens across all callers, and outputs a single, clean CSS block.</p>
+</div>
+<div class="keep-together">
+<h3>Encapsulation: Private Members and Public Facades with Forwarding</h3>
+<p>A third major breakthrough in the Sass module system is <strong>encapsulation</strong>. In legacy Sass, every variable was public. If an author created a temporary math helper or a private brand tint inside a partial, any other file could read and mutate that value. This lack of data hiding made it impossible for library authors to update internal implementation details without breaking external user code.</p>
+<p>Modern Sass introduces <strong>private members</strong>. To make a variable, mixin, or function private to its file, you prefix its name with an underscore (<code>$_</code>) or hyphen (<code>-</code>). When another stylesheet loads that file with <code>@use</code>, the private member remains invisible. If a developer attempts to call <code>palette.$_secret-tint</code> from another file, the Dart Sass compiler immediately halts with a fatal build error: <em>Private members cannot be accessed outside the stylesheet where they are declared</em>.</p>
+<p>In large design systems, you often have dozens of small partial files inside a folder, such as <code>colors</code>, <code>typography</code>, <code>spacing</code>, and <code>elevation</code>. Forcing developers to write four separate <code>@use</code> statements in every component file creates tedious import boilerplate. Sass solves this with the <strong><code>@forward</code> directive</strong>.</p>
+<p>The <code>@forward</code> rule loads a module and makes its public members available when another stylesheet uses your file. It acts as an <strong>entry-point facade</strong>. You create a single <code>_index.scss</code> file inside your foundation folder that forwards all child partials. Developers then write a single line, <code>@use 'foundation' as f</code>, and instantly access <code>f.$brand-primary</code> and <code>f.heading-1</code>. You can also configure forwarded modules using <code>@forward 'colors' with ($theme: 'dark' !default)</code>, establishing clean configuration contracts across teams.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">foundation-palette.scss</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">$<span class="prop">brand-primary</span>: <i class="swatch" style="background:#1e40af"></i><span class="clr">#1e40af</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src">$_<span class="prop">secret-tint</span>: <i class="swatch" style="background:#93c5fd"></i><span class="clr">#93c5fd</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="sel">.brand-badge </span>{</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">background-color</span>: $_secret-tint;</span></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>In <code>foundation-palette.scss</code>, the variable <code>$_secret-tint</code> begins with an underscore, marking it as strictly private to this file. External files attempting to read it trigger a fatal build error.</p>
+<p>To expose only the <strong>public design tokens</strong> from a foundation directory, teams aggregate partials using a facade file:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">foundation-index.scss</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@forward 'palette';</span></div>
+<div class="row"><span class="num">2</span><span class="src">@forward 'typography';</span></div></div></div></div>
+<p>In <code>foundation-index.scss</code>, the <code>@forward</code> rule re-exports public tokens from internal partials while keeping private members encapsulated.</p>
+<p><strong>Consumer stylesheets</strong> then import the entire foundation system through a single unified entry point:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">app-consumer.scss</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@use 'foundation' as f;</span></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="sel">.news-banner </span>{</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">color</span>: f.$brand-primary;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">border-color</span>: f.$brand-primary;</span></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>In <code>app-consumer.scss</code>, loading <code>@use 'foundation' as f</code> grants access to all forwarded public tokens through the single namespace <code>f</code>, eliminating multi-line import boilerplate.</p>
+<figure class="css-figure">
+<style>
+  .fig-private-forward {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #000;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-private-forward * {
+    box-sizing: border-box;
+  }
+
+  .fig-private-forward .compare-header {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+
+  .fig-private-forward .pill {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 2px solid;
+    border-radius: 4px;
+  }
+
+  .fig-private-forward .pill-private {
+    background: #9f1239;
+    color: #ffffff;
+    border-color: #9f1239;
+  }
+
+  .fig-private-forward .pill-forward {
+    background: #0e7490;
+    color: #ffffff;
+    border-color: #0e7490;
+  }
+
+  .fig-private-forward .compare-grid {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .fig-private-forward .print-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 2px solid;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .fig-private-forward .card-private { border-color: #9f1239; }
+  .fig-private-forward .card-forward { border-color: #0e7490; }
+
+  .fig-private-forward .card-title-bar {
+    padding: 10px 16px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 2px solid;
+  }
+
+  .fig-private-forward .card-private .card-title-bar {
+    background: #9f1239;
+    color: #ffffff;
+    border-bottom-color: #9f1239;
+  }
+
+  .fig-private-forward .card-forward .card-title-bar {
+    background: #0e7490;
+    color: #ffffff;
+    border-bottom-color: #0e7490;
+  }
+
+  .fig-private-forward .card-canvas {
+    padding: 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #ffffff;
+    justify-content: space-between;
+  }
+
+  .fig-private-forward .code-node {
+    border: 1px solid #d1d5db;
+    border-left: 6px solid;
+    background: #f9fafb;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #111827;
+  }
+
+  .fig-private-forward .card-private .code-node { border-left-color: #9f1239; }
+  .fig-private-forward .card-forward .code-node { border-left-color: #0e7490; }
+
+  .fig-private-forward .code-node b { font-weight: 700; }
+  .fig-private-forward .code-node span { color: #4b5563; }
+
+  .fig-private-forward .arrow-step {
+    text-align: center;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 2px 0;
+  }
+
+  .fig-private-forward .node-caption {
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+  }
+
+  .fig-private-forward .card-private .node-caption { color: #9f1239; background: #ffe4e6; }
+  .fig-private-forward .card-forward .node-caption { color: #0e7490; background: #e0f2fe; }
+
+  .fig-private-forward .card-footer {
+    padding: 14px 16px;
+    background: #f3f4f6;
+    border-top: 2px solid #e5e7eb;
+  }
+
+  .fig-private-forward .footer-code {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .fig-private-forward .card-private .footer-code { color: #9f1239; }
+  .fig-private-forward .card-forward .footer-code { color: #0e7490; }
+
+  .fig-private-forward .footer-desc {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.4;
+  }
+</style>
+
+<div class="fig-private-forward">
+  <div class="compare-header">
+    <div class="pill pill-private">Private Members: Underscore ($_name)</div>
+    <div class="pill pill-forward">Public Facades: Entry Points via @forward</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Panel 1: Private Members -->
+    <div class="print-card card-private">
+      <div class="card-title-bar">
+        <span>DATA ENCAPSULATION</span>
+        <span>STRICT PRIVACY</span>
+      </div>
+      <div class="card-canvas">
+        <div class="code-node">
+          <b>// _palette.scss</b><br>
+          <span>$brand-primary: #1e40af; // Public token<br><b>$_secret-tint: #93c5fd;</b> // Private member</span>
+        </div>
+        <div class="arrow-step" style="color: #9f1239;">
+          ↓ EXTERNAL CONSUMER INVOCATION (MAIN.SCSS) ↓
+        </div>
+        <div class="code-node">
+          <b>@use 'palette';</b><br>
+          <span style="color: #0e7490; font-weight: 600;">color: palette.$brand-primary; // ✓ Allowed</span><br>
+          <span style="color: #9f1239; font-weight: 700;">color: palette.$_secret-tint; // ✕ Build Error!</span>
+        </div>
+        <div class="node-caption">
+          ✓ Underscore prefix enforces strict privacy; external callers cannot mutate internals.
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-code">$_ prefix marks members private to the declaring stylesheet</div>
+        <div class="footer-desc">Modern Sass modularity prevents leaky abstractions and establishes strict team boundaries.</div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Public Facades via @forward -->
+    <div class="print-card card-forward">
+      <div class="card-title-bar">
+        <span>FACADE ENTRY POINT</span>
+        <span>UNIFIED PUBLIC API</span>
+      </div>
+      <div class="card-canvas">
+        <div class="code-node">
+          <b>// foundation/_index.scss</b><br>
+          <span><b>@forward 'colors';</b><br><b>@forward 'typography';</b></span>
+        </div>
+        <div class="arrow-step" style="color: #0e7490;">
+          ↓ SINGLE ENTRY POINT IN APP.SCSS ↓
+        </div>
+        <div class="code-node">
+          <b>@use 'foundation' as f;</b><br>
+          <span>color: <b>f.$primary;</b><br>@include <b>f.heading-1;</b></span>
+        </div>
+        <div class="node-caption">
+          ✓ @forward acts as a public gateway, assembling multiple partials into one API namespace.
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-code">@forward exposes clean public API gateways for modules</div>
+        <div class="footer-desc">Simplifies consumption by eliminating multi-file import boilerplate across product features.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 42.3: Encapsulation and Facade Architecture: Private members prefixed with an underscore (left) are strictly hidden from external callers. The @forward directive (right) gathers multiple internal partials into a unified public API entry point.</figcaption>
+</figure>
+<p>Figure 42.3 demonstrates encapsulation and facade patterns. In the left column, the private variable <code>$_secret-tint</code> is protected from outside tampering. External attempts to read it fail at build time. In the right column, <code>foundation/_index.scss</code> uses <code>@forward</code> to assemble colors and typography into a single public gateway. Consumer files stay clean and maintainable, needing only one <code>@use 'foundation' as f</code> declaration.</p>
+<p>To design scalable modular stylesheets in your projects, apply this four-question architectural checklist:</p>
+<ol><li>*<em><strong>Does this token or helper belong strictly to internal calculations?</strong></em>* If yes, prefix its name with an underscore (<code>$_variable</code> or <code>@mixin _helper</code>). This keeps your internal implementation details completely private.</li>
+<li><strong>Are you assembling a multi-file folder or design token library?</strong> If yes, create an <code>_index.scss</code> file and use <strong><code>@forward</code></strong> to export its public API. This provides a single, convenient entry point for consumers.</li>
+<li><strong>Does a module require runtime parameter overrides?</strong> If yes, declare variables with <code>!default</code> and pass overrides using <strong><code>@use 'module' with ($var: value)</code></strong>. Sass requires configuration to happen during the initial module load.</li>
+<li><strong>Are you migrating legacy files with global <code>@import</code> calls?</strong> If yes, run the official Sass migrator CLI tool (<code>sass-migrator module --migrate-deps entry.scss</code>). This automatically updates file paths, adds explicit namespaces, and replaces <code>@import</code> with <code>@use</code>.</li></ol>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>To impress the interviewer:</strong> When asked why Sass deprecated <code>@import</code>, structure your answer around four core compiler advantages: (1) <strong>Namespace isolation:</strong> Explain that <code>@import</code> pollutes a single global scope where order-dependent overrides cause silent bugs, whereas <code>@use</code> creates explicit, isolated namespaces; (2) <strong>Singleton caching:</strong> Emphasize that <code>@use</code> compiles stylesheets once and shares them in memory, avoiding the duplicate CSS rule emission caused by repeated imports; (3) <strong>Encapsulation with private members:</strong> Highlight that prefixing variables or mixins with an underscore (<code>$_</code>) hides internal logic from external callers; and (4) <strong>Clean API facades with <code>@forward</code>:</strong> Describe how <code>@forward</code> bundles multiple partials into a unified index gateway without exposing private implementation details.</p>
+  </div>
+</aside>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">
+  <p>The <code>@import</code> rule creates global scope pollution and duplicate CSS emission, whereas <code>@use</code> and <code>@forward</code> establish isolated namespaces, singleton compilation caching, and private member encapsulation.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Design System Token Distribution:</strong> Packaging design token partials into an <code>_index.scss</code> entry point with <code>@forward</code>, allowing product teams to load complete systems via a single <code>@use</code>.</li>
+<li><strong>Enterprise Codebase Modernization:</strong> Using the <code>sass-migrator</code> CLI tool to eliminate deprecated <code>@import</code> statements across legacy codebases before upgrading to modern Dart Sass versions.</li>
+<li><strong>Third-Party Theme Configuration:</strong> Overriding default library variables during module initialization using <code>@use 'library' with ($primary: #1e3a8a)</code>.</li>
+<li><strong>Build Performance Optimization:</strong> Refactoring circular and deeply nested import chains into modular dependency graphs, reducing compilation times and eliminating redundant CSS rules.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Sass Module</strong>: A standalone Sass stylesheet loaded via <code>@use</code> whose variables, functions, and mixins are encapsulated inside an independent namespace.</li>
+<li><strong>Global Scope Pollution</strong>: A software defect where multiple files write to a single shared namespace, causing accidental variable overwrites and order-dependent bugs.</li>
+<li><strong>Singleton Compilation</strong>: An architectural caching pattern where the compiler processes and emits a stylesheet exactly once, regardless of how many times it is referenced.</li>
+<li><strong>Private Member</strong>: A variable, function, or mixin prefixed with an underscore (<code>$_</code>) that can only be accessed within the stylesheet where it is declared.</li>
+<li><strong>Facade Entry Point</strong>: A central stylesheet (typically <code>_index.scss</code>) that uses <code>@forward</code> to combine multiple internal partials into a unified public API for consumers.</li>
+<li><strong>Module Dependency Graph</strong>: A structured map of file relationships built by the compiler to ensure modules are evaluated in strict topological order.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>How Modern Sass Solves Legacy Import Defects</strong></p>
+<p>The deprecation of <code>@import</code> marks one of the most important architectural upgrades in the history of Sass. By replacing global text concatenation with an explicit module system, Sass eliminates order-dependent variable bugs, duplicate CSS emission, and uncontrolled global pollution. The combination of namespaced imports (<code>@use</code>), private encapsulation (<code>$_</code>), and facade entry points (<code>@forward</code>) gives frontend engineers the tools needed to build robust, enterprise-grade design systems.</p>
+<ol><li>The legacy <code>@import</code> directive dumps all variables into a <strong>single global namespace</strong>, mixins, and functions into a single global namespace.</li>
+<li>In a global namespace, whichever imported file loads last silently overwrites shared variable names.</li>
+<li>The modern <code>@use</code> directive encapsulates styles inside an isolated namespace matching the partial filename.</li>
+<li>Calling <code>@use 'grid'</code> requires accessing tokens via <code>grid.$gutter</code>, preventing accidental variable collisions.</li>
+<li>Importing a partial multiple times causes <code>@import</code> to re-execute the file and emit duplicate CSS rules into production.</li>
+<li>The <code>@use</code> rule implements singleton compilation, caching modules and ensuring CSS is emitted exactly once.</li>
+<li>Variables and mixins prefixed with an underscore (<code>$_</code>) are private and cannot be accessed by external files.</li>
+<li>The <code>@forward</code> directive combines multiple internal partials into a single public index facade for clean consumption.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Use deprecated <code>@import</code> to load partials into a shared global scope, triggering variable overwrites and duplicate CSS rules.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@import 'foundation/variables';</span></div>
+<div class="row"><span class="num">2</span><span class="src">@import 'foundation/reset';</span></div>
+<div class="row"><span class="num">3</span><span class="src">@import 'components/sidebar';</span></div>
+<div class="row"><span class="num">4</span><span class="src">@import 'components/grid';</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use <code>@use</code> with explicit namespaces and <code>@forward</code> facades to encapsulate tokens and compile clean singleton stylesheets.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@use 'foundation' as f;</span></div>
+<div class="row"><span class="num">2</span><span class="src">@use 'components/sidebar';</span></div>
+<div class="row"><span class="num">3</span><span class="src">@use 'components/grid';</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">.container </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">max-width</span>: f.$max-width;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">padding</span>: f.$spacing-md;</span></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<p>➔ NEVER rely on deprecated <code>@import</code> in modern Sass; migrate to <code>@use</code> to prevent global variable hijacking.</p>
+<p>➔ ALWAYS prefix internal tokens and helper mixins with an underscore (<code>$_</code>) to keep module implementation details private.</p>
+<p>➔ IF designing a multi-file component or design token library THEN use <code>@forward</code> in an <code>_index.scss</code> file to export a single clean API facade.</p>
+<table><thead><tr><th></th><th><strong>SASS @IMPORT</strong><br>(legacy concatenation)</th><th><strong>SASS @USE &amp; @FORWARD</strong><br>(modern module system)</th></tr></thead><tbody><tr><td><strong>Namespace Scope</strong></td><td>Flat global namespace;<br>all files share one scope</td><td>Isolated module namespace;<br>accessed via file prefix</td></tr><tr><td><strong>Collision Risk</strong></td><td>High risk;<br>last loaded file silently wins</td><td>Zero risk;<br>tokens bound to explicit namespaces</td></tr><tr><td><strong>CSS Output Frequency</strong></td><td>Multiplied emission;<br>re-emits CSS on every call</td><td>Singleton compilation;<br>emits CSS exactly once</td></tr><tr><td><strong>Encapsulation &amp; Privacy</strong></td><td>Unsupported;<br>all members are public</td><td>Strict privacy;<br><code>$_</code> hides private members</td></tr><tr><td><strong>Public API Facades</strong></td><td>Unsupported;<br>requires importing every file</td><td>Supported;<br><code>@forward</code> builds clean gateways</td></tr><tr><td><strong>Module Configuration</strong></td><td>Mutates global variables<br>prior to import line</td><td>Parameterized imports via<br><code>@use ... with (...)</code></td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

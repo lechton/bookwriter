@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 32: The useEffect Hook: Setup, Cleanup, and Synchronization</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 32: The useEffect Hook: Setup, Cleanup, and Synchronization</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you connect a component to an external system, and how do you disconnect it?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Clara connects a chat feed for The National Times website.</li>
+<li>Clara opens a network subscription directly inside the main body of the component function.</li>
+<li>After six screen updates, the browser opens six separate duplicate connections to the server.</li>
+<li>Why does placing connection code in the component body create duplicate network connections?</li>
+<li>Duplicate network connections overwhelm backend servers, leak memory, and corrupt incoming reader messages.</li>
+<li>Component functions run repeatedly during rendering, creating new subscriptions unless deferred to a dedicated effect.</li>
+<li>Today you learn how useEffect synchronizes components with external systems and manages cleanup.</li></ol>
+</div>
+<div class="keep-together">
+<h3>What is an Effect: Synchronizing with External Systems</h3>
+<p>Component logic in React falls into two distinct categories:</p>
+<ul>
+<li><strong>Rendering code</strong>: The calculation phase located in the top-level body of your component. It takes props and state, calculates JSX, and must remain completely pure. It must never reach outside the component or trigger side effects.</li>
+<li><strong>Event handlers</strong>: Nested functions triggered by specific user interactions like clicks, submits, or keyboard input. These handle side effects like saving an article or submitting a form.</li>
+</ul>
+<p>However, many applications require code to execute not because of a specific button click, but because the component appeared on the screen or because its reactive properties changed. Examples include:</p>
+<ul>
+<li>Subscribing to an external WebSocket, Server-Sent Events feed, or real-time message queue.</li>
+<li>Registering global browser event listeners on the <code>window</code> or <code>document</code> (such as resize or keydown handlers).</li>
+<li>Initializing a third-party, non-React plugin like a Leaflet map or a charting canvas.</li>
+<li>Starting a persistent interval timer to ping an external server.</li>
+</ul>
+<p>In React, an <strong>Effect</strong> is an intentional escape hatch designed to synchronize your component with an <strong>external system</strong> outside React's control.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>What is the purpose of an Effect?</strong> Imagine a submarine diving deep beneath the ocean waves. Inside the submarine, the navigation computers calculate depth and speed purely from internal equations. The crew does not open the submarine's outer hatch just to check their math! But if the submarine needs to receive a sonar broadcast from a surface ship, it extends an external antenna through the hull into the open water. When the mission ends or the submarine changes course, it retracts the antenna safely back into the hull. That is useEffect. Your component is the submarine. Rendering is pure internal navigation math. The external ocean is the outside world: WebSockets, browser event listeners, or third-party APIs. The Effect extends the antenna, and the cleanup function retracts it. If you forget to retract the antenna, it snaps off and floods the vessel with water! Understanding <strong>rendering</strong> as <strong>internal navigation</strong> and <strong>useEffect</strong> as an <strong>extendable antenna</strong> clarifies why <strong>Effects exist to synchronize with external systems</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Setup and Cleanup Symmetry and Strict Mode</h3>
+<p>The fundamental contract of <code>useEffect</code> is <strong>symmetry</strong>. Whatever side effect your setup function creates, your cleanup function must dismantle:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Setup and Cleanup Symmetry</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> sub = externalSystem.<span class="fn">subscribe</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Setup opens connection, starts timer, or adds listener</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    sub.<span class="fn">unsubscribe</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Cleanup closes connection, cancels timer, or removes listener</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  };</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}, [dependency]);</span></div></div></div></div>
+<p>React manages this symmetry across the component lifecycle:</p>
+<ol><li><strong>Mounting</strong>: React runs the setup code after committing the component to the DOM.</li>
+<li><strong>Re-rendering with changed dependencies</strong>: React runs the cleanup code from the <em>previous</em> render using the old dependency values, and then immediately runs the setup code with the new dependency values.</li>
+<li><strong>Unmounting</strong>: React runs the cleanup code one final time to detach from the external system permanently.</li></ol>
+<p>In development mode, React wraps your components in <code>&lt;StrictMode&gt;</code>. Under Strict Mode, React intentionally mounts your component, runs the cleanup, and immediately re-mounts it: <code>Setup -&gt; Cleanup -&gt; Setup</code>.</p>
+<p>This double-execution is not a bug; it is an intentional audit designed to expose missing cleanup functions. If your setup code opens a connection but your cleanup does not close it, you will immediately see two open connections in your network console.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does React run Effects twice in development?</strong> Imagine a parachute manufacturer testing emergency parachutes before soldiers board an airplane. The inspector does not just pack the chute once and say "looks good." The inspector pulls the rip cord to deploy the canopy, checks that it opens fully, folds it back up neatly into the pack, and then deploys it a second time to prove that it can be reset and deployed flawlessly! That is React Strict Mode. React mounts your component (deploys the parachute), immediately runs your cleanup (packs it back up), and then mounts it again. If your setup opens a WebSocket but your cleanup does not close it, you are left with two open sockets, instantly exposing the defect in development. Understanding <strong>Strict Mode</strong> as a <strong>parachute deployment test</strong> clarifies why <strong>running effects twice proves setup and cleanup symmetry</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Live Feed Subscription Architecture</h3>
+<p>To observe <code>useEffect</code> synchronization in production, inspect the live news feed subscriber for The National Times. The component subscribes to real-time bulletin updates from an external mock feed client:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>FeedSubscriber.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>LiveFeedApp.jsx</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>state</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9.5 13c-.8 1-1.5 1.7-1.5 2.5s.7 1.5 1.5 2.5"/><path d="M14.5 13c.8 1 1.5 1.7 1.5 2.5s-.7 1.5-1.5 2.5"/></svg><span>feedClient.js</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>LiveFeedApp</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>FeedSubscriber</span><span class="component-explorer-props">topic=&quot;...&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Active Feed Topic: breaking</span><span class="surface-render-line">[BREAKING] Bulletin at 10:45:00 AM</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above shows the hierarchy. On the left, <code>LiveFeedApp.jsx</code> controls the selected topic and toggles the subscription. On the right, <code>FeedSubscriber.jsx</code> receives <code>topic</code> as a prop and synchronizes with <code>feedClient.js</code>.</p>
+<p>First, examine the external system API <code>feedClient.js</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">feedClient.js</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">createFeedConnection</span>(topic) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">let</span> activeInterval = <span class="kw">null</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">connect</span>(onMessage) {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      activeInterval = <span class="fn">setInterval</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">        <span class="fn">onMessage</span>(<span class="str">`[${topic.toUpperCase()}] Bulletin at ${new Date().toLocaleTimeString()}`</span>);</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      }, <span class="nl">3000</span>);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    },</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">disconnect</span>() {</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      <span class="kw">if</span> (activeInterval) {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">        <span class="fn">clearInterval</span>(activeInterval);</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">        activeInterval = <span class="kw">null</span>;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      }</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    },</span></div>
+<div class="row even"><span class="num">16</span><span class="src">  }; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">External system provides explicit connect and disconnect <b class="tag">SYMMETRY</b></span>
+      </div></div>
+<div class="row odd"><span class="num">17</span><span class="src">}</span></div></div></div></div>
+<p>The external client constructor provides symmetrical <code>connect</code> and <code>disconnect</code> methods. If <code>disconnect</code> is never called, the interval continues running forever in the browser background.</p>
+<p>Next, examine the subscriber component <code>FeedSubscriber.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FeedSubscriber.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useEffect</span>, <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> { createFeedConnection } <span class="kw">from</span> <span class="str">'./feedClient.js'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">FeedSubscriber</span>({ topic }) {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [bulletin, setBulletin] = <span class="hook">useState</span>(<span class="str">'Connecting to live feed...'</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="kw">const</span> connection = <span class="fn">createFeedConnection</span>(topic); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Setup establishes connection to external <b class="tag">SYSTEM</b></span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">    connection.<span class="fn">connect</span>(message =&gt; {</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      <span class="fn">setBulletin</span>(message);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    });</span></div>
+<div class="row even"><span class="num">12</span><span class="src"></span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      connection.<span class="fn">disconnect</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Cleanup disconnects on unmount or topic <b class="tag">CHANGE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">15</span><span class="src">    };</span></div>
+<div class="row even"><span class="num">16</span><span class="src">  }, [topic]); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Re-synchronizes only when reactive dependency changes</span>
+      </div></div>
+<div class="row odd"><span class="num">17</span><span class="src"></span></div>
+<div class="row even"><span class="num">18</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">    &lt;div className=<span class="str">"feed-subscriber-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">      &lt;h4&gt;Active Feed Topic: {topic}&lt;/h4&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">      &lt;p className=<span class="str">"feed-bulletin"</span>&gt;{bulletin}&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">24</span><span class="src">}</span></div></div></div></div>
+<p>Notice the implementation in <code>FeedSubscriber.jsx</code>:</p>
+<ol><li><code>topic</code> is passed into the dependency array <code>[topic]</code>. When the parent switches the topic from <code>'breaking'</code> to <code>'markets'</code>, React first executes the cleanup function for <code>'breaking'</code> (calling <code>connection.disconnect()</code>), and then executes the setup function for <code>'markets'</code> (calling <span class="code-line-callout"><code><span class="fn">createFeedConnection</span>(<span class="str">'markets'</span>).<span class="fn">connect</span>(...)</code></span>).</li>
+<li>If the user unmounts <code>FeedSubscriber</code>, the cleanup function executes immediately, terminating the interval and freeing system resources.</li>
+<li>If Clara had placed <code>createFeedConnection</code> in the component body outside <code>useEffect</code>, every re-render caused by <code>setBulletin</code> would create a new connection, multiplying intervals exponentially!</li></ol>
+<p>Finally, examine the parent component <code>LiveFeedApp.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LiveFeedApp.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> FeedSubscriber <span class="kw">from</span> <span class="str">'./FeedSubscriber.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">LiveFeedApp</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [topic, setTopic] = <span class="hook">useState</span>(<span class="str">'breaking'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Selected news feed topic <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">const</span> [isSubscribed, setIsSubscribed] = <span class="hook">useState</span>(<span class="kw">true</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Active feed subscription toggle <b class="tag">FLAG</b></span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src"></span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;main className=<span class="str">"feed-app-container"</span>&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      &lt;select value={topic} onChange={e =&gt; <span class="fn">setTopic</span>(e.target.value)}&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">        &lt;option value=<span class="str">"breaking"</span>&gt;Breaking News&lt;/option&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">        &lt;option value=<span class="str">"markets"</span>&gt;Global Markets&lt;/option&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      &lt;/select&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">setIsSubscribed</span>(s =&gt; !s)}&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">        {isSubscribed ? <span class="str">'Disconnect Feed'</span> : <span class="str">'Connect Feed'</span>}</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      {isSubscribed &amp;&amp; &lt;FeedSubscriber topic={topic} /&gt;}</span></div>
+<div class="row even"><span class="num">18</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Mounts subscriber or unmounts it to trigger effect <b class="tag">CLEANUP</b></span>
+      </div></div>
+<div class="row even"><span class="num">20</span><span class="src">}</span></div></div></div></div>
+<p><code>LiveFeedApp</code> provides interactive controls to switch topics and toggle subscription state. When the editor clicks "Disconnect Feed", <code>FeedSubscriber</code> unmounts, proving that cleanup shuts down all active background feeds.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — useEffect Setup & Cleanup Symmetry</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Live Feed Desk</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            LiveFeedApp.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            FeedSubscriber.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JS</text></svg>
+            feedClient.js
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            useEffect(() =&gt; { ... return cleanup }, [topic])
+            <span class="rce-node-props">✓ SYMMETRICAL CLEANUP</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Topic Switch: User toggles from "breaking" to "markets"</div>
+            <div style="margin-top:0.3rem;">2. Cleanup Phase: <span class="ref-tag ref-green">cleanup()</span> disconnects previous "breaking" socket</div>
+            <div style="margin-top:0.3rem;">3. Setup Phase: <span class="ref-tag ref-green">setup()</span> opens fresh socket for "markets"</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Connection Health: Exactly 1 active connection at all times!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            React runs cleanup before every re-execution and on component unmount.<br>
+            Guarantees zero ghost listeners, zero memory leaks, and perfect state synchronization.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            connect() in render body OR missing cleanup
+            <span class="rce-node-props">✕ ZOMBIE LEAK</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Side Effect in Render: connection opened during JSX evaluation</div>
+            <div style="margin-top:0.3rem;">2. Missing Cleanup: Old sockets remain open indefinitely in memory</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">Zombie Multiplier: 6 re-renders create 6 duplicate parallel sockets!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Failing to clean up external subscriptions leaks memory and duplicates messages.<br>
+            Never place side effects in the render body; always return symmetrical cleanup.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 32.1: The National Times — useEffect Setup &amp; Cleanup Symmetry</figcaption>
+</figure>
+<p>The figure above visualizes the lifecycle symmetry. When dependencies change, React guarantees that teardown of the previous external connection precedes the establishment of the new one, preventing race conditions and ghost memory leaks.</p>
+</div>
+<div class="keep-together">
+<h3>The Dependency Array Rules</h3>
+<p>The dependency array tells React when to re-synchronize the effect. There are three dependency patterns:</p>
+<ol><li><strong><code>useEffect(fn, [a, b])</code> (with dependencies)</strong>: Runs setup on initial mount, and runs cleanup followed by setup whenever <code>a</code> or <code>b</code> changes by <code>Object.is</code> comparison.</li>
+<li><strong><code>useEffect(fn, [])</code> (empty array)</strong>: Runs setup exactly once on mount, and runs cleanup exactly once on unmount. Used for subscriptions that do not depend on any changing props or state.</li>
+<li><strong><code>useEffect(fn)</code> (omitted dependency array)</strong>: Runs on every single render. This is almost always an architectural defect because it re-synchronizes after every prop or state change.</li></ol>
+<p>The golden rule of dependencies is: <strong>Every reactive value (props, state, and variables derived from them) read inside the Effect must be declared in the dependency array.</strong> React's linter enforces this rule to prevent stale closure bugs.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked to explain <code>useEffect</code>, deliver this senior-level explanation: "1. Mental model: useEffect is not a lifecycle replacement for componentDidMount or componentDidUpdate; it is a synchronization mechanism connecting a component to an external system outside React. 2. Setup and Cleanup Symmetry: Every external side effect must have an equal and opposite cleanup function returned to release resources when dependencies change or the component unmounts. 3. Strict Mode double-invocations: React intentionally runs setup, cleanup, and setup in development to verify that teardown works symmetrically and prevent memory leaks before production."</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Real-time WebSockets and SSE: Connecting to chat rooms, collaboration boards, and live financial feeds.</li>
+<li>Global window event listeners: Listening to <code>keydown</code> for global hotkeys, <code>resize</code> for responsive canvases, or <code>online</code>/<code>offline</code> connectivity events.</li>
+<li>Third-party imperative library initialization: Setting up Mapbox or Leaflet map instances, Chart.js canvases, or video.js media players.</li>
+<li>Document title and head synchronization: Updating <code>document.title</code> to reflect active page titles in client-rendered apps.</li>
+<li>Animation loops and canvas rendering: Starting requestAnimationFrame loops and canceling them on unmount.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Synchronization Effect</strong>: A React mechanism designed to keep a component in sync with an external system outside React.</li>
+<li><strong>External System</strong>: Any system not managed by React's declarative state, including browser APIs, WebSockets, network timers, and third-party DOM libraries.</li>
+<li><strong>Setup Function</strong>: The primary function passed to useEffect that executes after the DOM has been committed.</li>
+<li><strong>Cleanup Function</strong>: The function optionally returned by the setup function that executes before the next effect run and on unmount.</li>
+<li><strong>Symmetrical Lifecycle</strong>: The design pattern where every resource acquired in setup is cleanly released in cleanup.</li>
+<li><strong>Strict Mode Verification</strong>: React's development-mode practice of running effects twice to verify setup and teardown integrity.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>The useEffect Hook: Setup, Cleanup, and Synchronization</strong></p>
+<p>The <code>useEffect</code> hook connects components to external systems outside React. Adhering to setup and cleanup symmetry guarantees that resources acquired during setup are released before re-synchronization and on unmount, preventing ghost listeners and connection leaks.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Takeaways of useEffect Architecture</span></div>
+<ol><li>Distinguish pure calculations from synchronization.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Keep pure render math in the component body.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Reserve <code>useEffect</code> strictly for synchronizing with external systems.</li>
+<li>Implement setup and cleanup symmetry.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Always return a cleanup function when opening connections, adding listeners, or starting timers.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) React executes cleanup before re-running the effect and upon component unmount.</li>
+<li>Obey the reactive dependency invariant.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Include every prop and state variable read inside the effect in the dependency array.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Understand that Strict Mode mounts twice in development to verify cleanup symmetry.
+➔ ALWAYS return a cleanup function when subscribing to external sockets, timers, or window events.<br>
+➔ NEVER place external side effects directly inside the component render body.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Create external connections inside the render body without cleanup.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BadSubscriber</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">BadSubscriber</span>({ topic }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> connection = <span class="fn">createFeedConnection</span>(topic);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  connection.<span class="fn">connect</span>(msg =&gt; console.<span class="fn">log</span>(msg));</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> &lt;div&gt;Connecting...&lt;/div&gt;;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Synchronize inside useEffect with symmetrical setup and cleanup functions.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">GoodSubscriber</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">GoodSubscriber</span>({ topic }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [bulletin, setBulletin] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="kw">const</span> connection = <span class="fn">createFeedConnection</span>(topic);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    connection.<span class="fn">connect</span>(msg =&gt; <span class="fn">setBulletin</span>(msg));</span></div>
+<div class="row odd"><span class="num">7</span><span class="src"></span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      connection.<span class="fn">disconnect</span>();</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    };</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">  }, [topic]);</span></div>
+<div class="row even"><span class="num">12</span><span class="src"></span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  <span class="kw">return</span> &lt;div&gt;{bulletin}&lt;/div&gt;;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>RENDER BODY SIDE EFFECT</strong><br>(anti-pattern)</th><th><strong>USEEFFECT SYNCHRONIZATION</strong><br>(idiomatic React)</th></tr></thead><tbody><tr><td><strong>Execution Timing</strong></td><td>Runs during pure calculation;<br>blocks DOM commit phase</td><td>Runs after DOM commit;<br>never blocks initial paint</td></tr><tr><td><strong>Cleanup Capability</strong></td><td>Impossible; cannot return or<br>register teardown logic</td><td>Symmetrical cleanup runs<br>before next run and on unmount</td></tr><tr><td><strong>Re-render Multiplier</strong></td><td>Multiplies connections on every<br>single component re-render</td><td>Controlled by dependencies;<br>re-runs only when inputs change</td></tr><tr><td><strong>Strict Mode Safety</strong></td><td>Fails catastrophically with<br>exponential zombie leaks</td><td>Passes development audit;<br>proves setup/cleanup symmetry</td></tr><tr><td><strong>Mental Model</strong></td><td>Treating component function<br>like an imperative script</td><td>Synchronizing component with<br>an external browser system</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

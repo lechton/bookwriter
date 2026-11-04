@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 4: Extracting Query Parameters with Query Decorator</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 4: Extracting Query Parameters with Query Decorator</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you extract query parameters like ?sort=desc?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer maintains the online store for The National Times.</li>
+<li>The store catalog displays items sorted by customer rating, because shoppers purchase the highest-rated products first.</li>
+<li>The developer writes an endpoint that returns all store products in alphabetical order by default.</li>
+<li>The marketing team requests the list with sorting added to the address, but the server still returns alphabetical order.</li>
+<li>Why does the server return alphabetical order when the web address asked for rating order?</li>
+<li>The server read the path name of the web address, but ignored the question mark and the text after it.</li>
+<li>Today you will learn how the server reads filtering and sorting options from web addresses.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Route Paths versus URL Query Strings</h3>
+<p>When a web browser or mobile application interacts with an API, the full URL conveys two separate categories of information: the identity of the target resource, and the presentation instructions for that resource.</p>
+<p>The URL path (such as <code>/products</code>) identifies the specific resource collection. Everything following the <code>?</code> delimiter is the <strong>query string</strong> (a series of key-value pairs appended to a URL to specify optional modifiers like filtering, sorting, and pagination without changing the identity of the resource).</p>
+<p>In traditional Node.js development, extracting query parameters requires importing the native URL module and manually parsing search parameters from the request stream on every incoming call.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Manual Query Parser</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> http <span class="kw">from</span> <span class="str">'node:http'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { URL } <span class="kw">from</span> <span class="str">'node:url'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> server = http.<span class="fn">createServer</span>((req, res) =&gt; {</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="kw">const</span> parsedUrl = <span class="kw">new</span> <span class="fn">URL</span>(req.url, <span class="str">'http://localhost:3000'</span>);</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="kw">const</span> sort = parsedUrl.searchParams.<span class="kw">get</span>(<span class="str">'sort'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> manually parses URL search strings on each <b class="tag">REQUEST</b></span>
+      </div></div>
+<div class="row"><span class="num">7</span><span class="src">  res.<span class="fn">writeHead</span>(<span class="nl">200</span>, { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> });</span></div>
+<div class="row"><span class="num">8</span><span class="src">  res.<span class="fn">end</span>(JSON.<span class="fn">stringify</span>({ sort: sort || <span class="str">'name'</span> }));</span></div>
+<div class="row"><span class="num">9</span><span class="src">});</span></div></div></div>
+<p>This manual parsing creates noisy boilerplate. Across an enterprise platform with dozens of searchable feeds, repeating URL parsing logic invites bugs, complicates testing, and obscures the core business logic of your route handlers.</p>
+</div>
+<div class="keep-together">
+<h3>Capturing Query Strings with the Query Decorator</h3>
+<p>To capture query parameters declaratively, NestJS provides the <strong><code>@Query()</code> decorator</strong> (a parameter decorator that extracts parsed URL query string parameters from the incoming HTTP request and injects them as arguments into your route handler).</p>
+<p>Under the hood, the underlying HTTP platform automatically splits the URL at the <code>?</code> character and parses the key-value pairs into a JavaScript dictionary. The <code>@Query()</code> decorator exposes that dictionary directly to your handler.</p>
+<p>NestJS allows you to use <code>@Query()</code> in two distinct ways:</p>
+<ol><li><strong>Named parameter extraction</strong>: passing a string key, such as <code>@Query('sort') sort: string</code>, extracts that single property directly from the query string.</li>
+<li><strong>Whole query object extraction</strong>: invoking <code>@Query()</code> without arguments injects the complete dictionary containing every parameter submitted by the client.</li></ol>
+<p>For an endpoint with only one query flag, extracting a named parameter directly is concise. However, real-world catalog endpoints frequently accept multiple options simultaneously, including sorting criteria, sort direction, page numbers, and category filters.</p>
+</div>
+<div class="keep-together">
+<h3>Structuring Queries with Query DTOs</h3>
+<p>When an endpoint accepts several query parameters, listing each one as an independent <code>@Query()</code> method argument creates bloated and unwieldy method signatures. To maintain clean architecture, NestJS encourages packaging related query parameters into a Data Transfer Object class.</p>
+<p>Using a dedicated DTO class for query parameters provides several key benefits: it groups optional parameters into a cohesive schema, enables IDE autocompletion, documents expected search options, and provides a target for runtime validation pipes.</p>
+<p>To see this in action on The National Times online store, our product listing endpoint coordinates three files. First, <code>list-products.dto.ts</code> defines the accepted query options. Second, <code>products.controller.ts</code> exposes <code>GET /products</code> and extracts the query options using <code>@Query()</code>. Third, <code>app.module.ts</code> registers the controller. When a client requests <code>GET /products?sort=rating</code>, the controller extracts the sort parameter and returns the products ordered by customer rating.</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times-api — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times-api — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>controllers</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8"/><path d="M8 16h5"/></svg><span>products.controller.ts</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>modules</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8"/><path d="M8 16h5"/></svg><span>app.module.ts</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>src</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8"/><path d="M8 16h5"/></svg><span>list-products.dto.ts</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>app.module</span><span class="component-explorer-props">mounts application controllers</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-navigation"><div class="component-explorer-label"><span>products.controller</span><span class="component-explorer-props">GET /products?sort=rating</span></div><div class="component-explorer-surface surface-navigation"><i></i><i></i><i></i></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>list-products.dto</span><span class="component-explorer-props">query parameters</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">sort=&quot;rating&quot;</span><span class="surface-render-line">[{&quot;id&quot;: 401, &quot;name&quot;: &quot;Archive Book&quot;, &quot;rating&quot;: <strong>4.9</strong>}]</span></div></div></div></div></div></div></div>
+		</div>
+	</div>
+	</section>
+<p>The component explorer panel above illustrates this structure. On the left, the file hierarchy shows <code>list-products.dto.ts</code> in <code>src/</code>, <code>products.controller.ts</code> in <code>controllers/</code>, and <code>app.module.ts</code> in <code>modules/</code>. On the right, <code>app.module.ts</code> mounts <code>products.controller.ts</code>, which nests <code>list-products.dto.ts</code>. When a request arrives with <code>?sort=rating</code>, the controller applies the sort parameter and produces the observable response: a list starting with the highest-rated Archive Book.</p>
+<p>Here is <code>list-products.dto.ts</code> declaring the query contract:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">list-products.dto.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">class</span> ListProductsDto {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  sort?: string; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> declares optional sorting criteria on <b class="tag">DTO</b></span>
+      </div></div>
+<div class="row"><span class="num">3</span><span class="src">  limit?: string; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> captures optional page size limit <b class="tag">PARAMETER</b></span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div></div></div>
+<p>Here is <code>products.controller.ts</code> consuming the query DTO:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">products.controller.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { Controller, Get, Query } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { ListProductsDto } <span class="kw">from</span> <span class="str">'./list-products.dto'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">@<span class="fn">Controller</span>(<span class="str">'products'</span>)</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">export</span> <span class="kw">class</span> ProductsController {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  @<span class="fn">Get</span>()</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="fn">findAll</span>(@<span class="fn">Query</span>() query: ListProductsDto) {</span></div>
+<div class="row"><span class="num">8</span><span class="src">    <span class="kw">const</span> sort = query.sort || <span class="str">'name'</span>;</span></div>
+<div class="row"><span class="num">9</span><span class="src">    <span class="kw">return</span> [</span></div>
+<div class="row"><span class="num">10</span><span class="src">      { id: <span class="nl">401</span>, name: <span class="str">'Archive Book'</span>, rating: <span class="nl">4.9</span> },</span></div>
+<div class="row"><span class="num">11</span><span class="src">      { id: <span class="nl">402</span>, name: <span class="str">'Canvas Tote'</span>, rating: <span class="nl">4.6</span> },</span></div>
+<div class="row"><span class="num">12</span><span class="src">    ]; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> applies query parameter to order catalog <b class="tag">DATA</b></span>
+      </div></div>
+<div class="row"><span class="num">13</span><span class="src">  }</span></div>
+<div class="row"><span class="num">14</span><span class="src">}</span></div></div></div>
+<p>And here is <code>app.module.ts</code> registering the controller:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">app.module.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { Module } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { ProductsController } <span class="kw">from</span> <span class="str">'./products.controller'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">@<span class="fn">Module</span>({</span></div>
+<div class="row"><span class="num">5</span><span class="src">  controllers: [ProductsController], </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> mounts products controller to expose query <b class="tag">ROUTING</b></span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">})</span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="kw">export</span> <span class="kw">class</span> AppModule {}</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>Route Parameters versus Query Parameters: When to Use Which</h3>
+<p>A common design challenge for backend developers is deciding whether an incoming value belongs in a route path or in a query string.</p>
+<p>To make the right choice, evaluate whether the parameter defines the identity of the resource or merely modifies how a collection is displayed:</p>
+<ul><li><strong>Use Route Parameters (<code>@Param</code>)</strong> when identifying a specific entity. In the URL <code>/products/401</code>, the ID <code>401</code> is an essential part of the resource's identity. If you omit <code>401</code>, the URL changes entirely and points to the whole collection rather than a single product. Route parameters are mandatory for matching the endpoint.</li>
+<li><strong>Use Query Parameters (<code>@Query</code>)</strong> when filtering, sorting, searching, or paginating a collection. In the URL <code>/products?sort=rating</code>, the endpoint still targets the general <code>/products</code> resource, but asks the server to arrange the result differently. If the client omits the query string entirely, the request still succeeds and returns the default view.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Query String Parsing and the String Type Reality</h3>
+<p>Just like route parameters captured by <code>@Param()</code>, all query parameters extracted by <code>@Query()</code> arrive as JavaScript <code>string</code> primitives at runtime.</p>
+<p>Even if you declare a property as <code>limit?: number</code> in your TypeScript DTO, TypeScript types are completely erased during compilation. When a client requests <code>/products?limit=25</code>, the runtime value of <code>query.limit</code> is the string <code>'25'</code>, not the number <code>25</code>.</p>
+<p>If your code performs arithmetic like <code>query.limit + 10</code>, JavaScript performs string concatenation instead of addition, resulting in the string <code>'2510'</code> rather than <code>35</code>. In future lectures, you will learn how NestJS transformation pipes automatically parse strings into validated numbers and booleans before your handler runs. Until pipes are applied, treat all incoming query parameters as strings or <code>undefined</code>.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Query parameters are optional modifiers used for filtering, sorting, and pagination, and they are always extracted as string primitives by default.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> Clearly differentiate the semantic roles of <code>@Param()</code> versus <code>@Query()</code> in REST API design. Explain that <code>@Param()</code> captures path tokens that uniquely identify a specific resource (such as <code>/products/:id</code>), making the value mandatory for route matching. In contrast, <code>@Query()</code> extracts optional modifiers that filter, sort, or paginate a collection (such as <code>?sort=price&amp;limit=20</code>) without changing the identity of the underlying endpoint.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>E-commerce product catalogs: parsing <code>GET /products?category=books&amp;sort=price</code> to filter and sort inventory for shoppers.</li>
+<li>Editorial archive searches: handling <code>GET /articles?q=election&amp;author=elena</code> to power full-text investigative search.</li>
+<li>Paginated subscriber tables: accepting <code>GET /subscribers?page=3&amp;limit=50</code> to deliver manageable slices of account records to billing administrators.</li>
+<li>Analytics reporting endpoints: extracting <code>GET /metrics?from=2026-01-01&amp;to=2026-01-31</code> to filter time-series readership statistics.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>URL Query Parameters and Collection Modifiers</strong></p>
+<p>In daily production, providing responsive filtering, sorting, and pagination while maintaining clean route signatures defines whether your API endpoints remain adaptable to client requirements. While manual URL parsing is fragile, NestJS leverages <code>@Query()</code> and class-based DTOs to provide structured parameter extraction. Here is your streetwise review.</p>
+<p>❒ Query Extraction and DTO Encapsulation</p>
+<ol><li>Avoid <strong>manually parsing query strings from the raw request URL</strong> inside controller methods.<br>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO NOT DO THIS:</strong> Using manual string splitting or native URL searchParams instances inside handlers creates clutter.
+<div class="mini-code wrong">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 0 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 0 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Get</span>()</div><div><span class="fn">findAll</span>(@<span class="fn">Req</span>() req: any) {</div><div>  <span class="kw">const</span> url = <span class="kw">new</span> <span class="fn">URL</span>(req.url, <span class="str">'http://localhost'</span>);</div><div>  <span class="kw">return</span> url.searchParams.<span class="kw">get</span>(<span class="str">'sort'</span>);</div><div>}</div></code></div>
+</div>
+&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Use the <code>@Query()</code> decorator to inject parsed query parameters directly.
+<div class="mini-code right">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Get</span>()</div><div><span class="fn">findAll</span>(@<span class="fn">Query</span>(<span class="str">'sort'</span>) sort: string) {</div><div>  <span class="kw">return</span> { sort };</div><div>}</div></code></div>
+</div></li>
+<li>Group multi-parameter query collections inside <strong>dedicated query DTO classes</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO NOT DO THIS:</strong> Declaring numerous individual <code>@Query()</code> parameters in a method signature degrades readability.
+<div class="mini-code wrong">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 0 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 0 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Get</span>()</div><div><span class="fn">findAll</span>(</div><div>  @<span class="fn">Query</span>(<span class="str">'sort'</span>) sort: string,</div><div>  @<span class="fn">Query</span>(<span class="str">'limit'</span>) limit: string,</div><div>  @<span class="fn">Query</span>(<span class="str">'page'</span>) page: string</div><div>) {</div><div>  <span class="kw">return</span> [];</div><div>}</div></code></div>
+</div>
+&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Bundle related query parameters into a structured DTO class with optional properties.
+<div class="mini-code right">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Get</span>()</div><div><span class="fn">findAll</span>(@<span class="fn">Query</span>() query: ListProductsDto) {</div><div>  <span class="kw">return</span> [];</div><div>}</div></code></div>
+</div></li></ol>
+<p>❒ Semantic Boundaries: Route Parameters versus Query Parameters</p>
+<ol><li>Always use <strong>route parameters for resource identity and query parameters for presentation modifiers</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Keep path segments reserved for identifying entities and query parameters for filtering.
+<div class="mini-code right">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Get</span>(<span class="str">':id'</span>)</div><div><span class="fn">findOne</span>(</div><div>  @<span class="fn">Param</span>(<span class="str">'id'</span>) id: string,</div><div>  @<span class="fn">Query</span>(<span class="str">'includeDetails'</span>) includeDetails: string</div><div>) {</div><div>  <span class="kw">return</span> { id, includeDetails };</div><div>}</div></code></div>
+</div></li></ol>
+<p>➔ NEVER use query parameters to identify a specific, mandatory resource entity.</p>
+<p>➔ ALWAYS supply sensible fallback defaults when reading optional query parameters.</p>
+<p>➔ IF an endpoint accepts multiple query parameters THEN <strong>package them inside a dedicated class-based DTO</strong>.</p>
+<table><thead><tr><th></th><th><strong>ROUTE PARAMETERS</strong><br>(@Param)</th><th><strong>QUERY PARAMETERS</strong><br>(@Query)</th></tr></thead><tbody><tr><td><strong>URL location</strong></td><td>Embedded inside path before the <code>?</code> delimiter</td><td>Appended after the <code>?</code> question mark</td></tr><tr><td><strong>Cardinality</strong></td><td>Mandatory segment required to match route</td><td>Optional modifiers that alter presentation</td></tr><tr><td><strong>Primary purpose</strong></td><td>Uniquely identifies a specific resource</td><td>Filters, sorts, or paginates collections</td></tr><tr><td><strong>Missing value</strong></td><td>Fails route match and returns 404 error</td><td>Evaluates to <code>undefined</code> if omitted</td></tr><tr><td><strong>Syntax pattern</strong></td><td>Declared with <code>:id</code> and read with<br><code>@Param('id')</code></td><td>Passed as <code>k=v</code> and read with<br><code>@Query('k')</code></td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

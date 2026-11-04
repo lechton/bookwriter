@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 37: Shallow State with $state.raw</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 37: Shallow State with $state.raw</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">What is $state.raw, and when should you choose it over $state?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A journalist opens the search archive on the National Times website to browse 10,000 published articles.</li>
+<li>The code stores the articles in $state(articles), but the display only updates when the journalist searches.</li>
+<li>The journalist types a single letter into the search box to find a story.</li>
+<li>Why does typing in the search box freeze the screen, even though no article ever changes?</li>
+<li>Letters appear seconds late on screen, locking up the interface while the journalist types.</li>
+<li>Svelte creates ten thousand deep reactive proxies to track properties that are never edited.</li>
+<li>Today you learn how shallow state ignores nested properties to keep large datasets fast.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Hidden Tax of Deep Reactive Proxies</h3>
+<p>In Lecture 36, we discovered how Svelte 5 achieves deep reactivity by wrapping plain objects and arrays in recursive JavaScript Proxies (see Lecture 36). Whenever code accesses or mutates a property, Svelte's proxy traps intercept the operation to track dependencies and trigger surgical DOM updates. In interactive forms and dynamic profiles, this fine-grained reactivity makes application state feel effortless and responsive.</p>
+<p>However, deep reactivity is not a zero-cost abstraction. To provide property-level tracking, Svelte must wrap the top-level container and recursively traverse every nested object and array, wrapping each child in its own proxy instance. When an application manages a handful of items, this proxying overhead is imperceptible. But frontend applications frequently ingest large reference datasets: catalog indexes, geographical coordinates, historical archives, or large article databases.</p>
+<p>On the National Times website, journalists rely on a central search archive containing ten thousand published articles. Each article record contains an identifier, headline, category, publication date, and word count. This archive is entirely read-only; journalists filter articles by category or keyword to research past reporting, but they never edit an individual article record on this page.</p>
+<p>When a developer stores this ten-thousand-record dataset using standard <code>$state</code> (see Lecture 4), Svelte obediently constructs ten thousand nested proxy wrappers across computer memory. This creates two severe performance bottlenecks:</p>
+<ul><li><strong>Memory footprint expansion:</strong> Every proxy instance and its associated signal metadata consume browser heap memory. Storing thousands of proxies multiplies garbage collection overhead and balloons application memory usage.</li>
+<li><strong>Initialization and traversal latency:</strong> Constructing thousands of proxies during component initialization consumes valuable CPU cycles. Whenever the journalist types into the search box, reading properties across thousands of proxied records forces the JavaScript engine to execute proxy <code>get</code> traps repeatedly, producing dropped frames and stuttering input lag.</li></ul>
+<p>Before inspecting how to eliminate this overhead, examine the component hierarchy that renders the archive. <code>ArticleSearch.svelte</code> serves as the container shell managing search input and article state, while <code>ArticleTable.svelte</code> renders the matching article rows on screen.</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-svelte" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8a4 4 0 1 1 -8 0"/><path d="M15 16a4 4 0 1 1 -8 0"/><path d="M15 8v8"/><path d="M11 8v8"/></svg><span>ArticleSearch.svelte</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-svelte" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8a4 4 0 1 1 -8 0"/><path d="M15 16a4 4 0 1 1 -8 0"/><path d="M15 8v8"/><path d="M11 8v8"/></svg><span>ArticleTable.svelte</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>ArticleSearch</span><span class="component-explorer-props">manages article search input and archive state</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-table"><div class="component-explorer-label"><span>ArticleTable</span><span class="component-explorer-props">renders published article rows from archive</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Headline: <strong>Election Analysis 2026</strong></span><span class="surface-render-line">Category: <strong>Politics</strong></span><span class="surface-render-line">Date: <strong>Nov 3</strong></span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+</div>
+<div class="keep-together">
+<h3>Opting Out of Deep Proxies with $state.raw</h3>
+<p>To eliminate the proxy overhead of large datasets, Svelte 5 introduces <code>$state.raw</code>.</p>
+<p>The <code>$state.raw</code> rune creates a shallow reactive signal. Unlike standard <code>$state</code>, <code>$state.raw</code> does not wrap objects or arrays in JavaScript Proxies. The underlying data structure remains completely untouched as plain, inert JavaScript data in computer memory. Svelte sets up a single reactive signal pointing directly to the variable reference itself, without inspecting, traversing, or instrumenting any nested properties.</p>
+<p>Consider the architectural contrast in memory:</p>
+<ul><li>With <code>let articles = $state(articleData)</code>: Svelte creates one parent proxy, ten thousand child proxies, and thousands of internal signal bindings.</li>
+<li>With <code>let articles = $state.raw(articleData)</code>: Svelte creates exactly one root signal holding a reference to the plain array. Zero proxy wrappers are allocated.</li></ul>
+<p>Because no proxies exist, accessing properties on raw data incurs zero trap overhead. Your code reads directly from native JavaScript objects at full hardware speed. Keystrokes in the search input remain instant, and memory consumption drops to the baseline cost of the raw JSON payload.</p>
+<p>Here is <code>ArticleTable.svelte</code>. It receives the <code>articles</code> array through <code>$props()</code> (see Lecture 9) and renders article rows using an <code>{#each}</code> loop (see Lecture 13).</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleTable.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">let</span> { articles } = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;table <span class="kw">class</span>=<span class="str">"article-table"</span>&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  &lt;thead&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">    &lt;tr&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">      &lt;th&gt;Headline&lt;/th&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">      &lt;th&gt;Category&lt;/th&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">      &lt;th&gt;Date&lt;/th&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src">    &lt;/tr&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">  &lt;/thead&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">  &lt;tbody&gt;</span></div>
+<div class="row"><span class="num">14</span><span class="src">    {#each articles as <span class="fn">article</span> (article.id)}</span></div>
+<div class="row"><span class="num">15</span><span class="src">      &lt;tr&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">        &lt;td&gt;{article.title}&lt;/td&gt;</span></div>
+<div class="row"><span class="num">17</span><span class="src">        &lt;td&gt;{article.category}&lt;/td&gt;</span></div>
+<div class="row"><span class="num">18</span><span class="src">        &lt;td&gt;{article.date}&lt;/td&gt;</span></div>
+<div class="row"><span class="num">19</span><span class="src">      &lt;/tr&gt;</span></div>
+<div class="row"><span class="num">20</span><span class="src">    {/each}</span></div>
+<div class="row"><span class="num">21</span><span class="src">  &lt;/tbody&gt;</span></div>
+<div class="row"><span class="num">22</span><span class="src">&lt;/table&gt;</span></div></div></div>
+<p>Notice that <code>ArticleTable.svelte</code> requires no special raw syntax. A component reading raw state looks and acts identical to a component reading standard state. Svelte templates read properties from raw objects cleanly because plain JavaScript objects already allow standard property reads.</p>
+</div>
+<div class="keep-together">
+<h3>The Reassignment Contract: Mutation Versus Replacement</h3>
+<p>While <code>$state.raw</code> eliminates proxy overhead, it fundamentally changes how you update data on screen.</p>
+<p>Because Svelte does not place proxy traps on raw objects, Svelte has no way of knowing when an internal property changes. If a developer attempts to mutate an item inside a raw state variable, the operation succeeds in computer memory, but Svelte receives zero notification:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">articles[<span class="nl">0</span>].title = <span class="str">'Breaking News Update'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Mutates memory, but DOM never updates.</span>
+      </div></div></div></div>
+<p>This brings us to the foundational contract of raw state: <strong>raw state cannot be mutated; it can only be reassigned.</strong></p>
+<p>To update a <code>$state.raw</code> value on screen, you must replace the entire reference by assigning a new value to the variable. When you reassign the variable, Svelte's root signal catches the assignment and notifies all dependent templates, derived calculations, and effects to update:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">articles = [...articles, newArticle]; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Reassignment fires the root signal.</span>
+      </div></div></div></div>
+<p>Here is <code>ArticleSearch.svelte</code>, demonstrating the contrast between broken in-place mutations and working whole-reference reassignments.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleSearch.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">import</span> ArticleTable <span class="kw">from</span> <span class="str">'./ArticleTable.svelte'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">const</span> defaultArticles = [</span></div>
+<div class="row"><span class="num">5</span><span class="src">    { id: <span class="nl">101</span>, title: <span class="str">'Election Analysis 2026'</span>, category: <span class="str">'Politics'</span>, date: <span class="str">'Nov 3'</span> },</span></div>
+<div class="row"><span class="num">6</span><span class="src">    { id: <span class="nl">102</span>, title: <span class="str">'Global Trade Agreement'</span>, category: <span class="str">'Economy'</span>, date: <span class="str">'Nov 2'</span> },</span></div>
+<div class="row"><span class="num">7</span><span class="src">    { id: <span class="nl">103</span>, title: <span class="str">'Championship Finals Recap'</span>, category: <span class="str">'Sports'</span>, date: <span class="str">'Nov 1'</span> }</span></div>
+<div class="row"><span class="num">8</span><span class="src">  ];</span></div>
+<div class="row"><span class="num">9</span><span class="src"></span></div>
+<div class="row"><span class="num">10</span><span class="src">  <span class="kw">let</span> articles = <span class="rune">$state</span>.<span class="fn">raw</span>(defaultArticles);</span></div>
+<div class="row"><span class="num">11</span><span class="src">  <span class="kw">let</span> search = <span class="rune">$state</span>(<span class="str">''</span>);</span></div>
+<div class="row"><span class="num">12</span><span class="src"></span></div>
+<div class="row"><span class="num">13</span><span class="src">  <span class="kw">function</span> <span class="fn">addArticleBroken</span>(newArticle) {</span></div>
+<div class="row"><span class="num">14</span><span class="src">    articles.<span class="fn">push</span>(newArticle); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">WRONG:</b> Mutating a raw array bypasses the <b class="tag">SIGNAL</b> completely.</span>
+      </div></div>
+<div class="row"><span class="num">15</span><span class="src">  }</span></div>
+<div class="row"><span class="num">16</span><span class="src"></span></div>
+<div class="row"><span class="num">17</span><span class="src">  <span class="kw">function</span> <span class="fn">addArticleWorking</span>(newArticle) {</span></div>
+<div class="row"><span class="num">18</span><span class="src">    articles = [...articles, newArticle]; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> Reassigning the variable notifies the top-level <b class="tag">SIGNAL</b>.</span>
+      </div></div>
+<div class="row"><span class="num">19</span><span class="src">  }</span></div>
+<div class="row"><span class="num">20</span><span class="src"></span></div>
+<div class="row"><span class="num">21</span><span class="src">  <span class="kw">function</span> <span class="fn">updateCategory</span>(id, newCategory) {</span></div>
+<div class="row"><span class="num">22</span><span class="src">    articles = articles.<span class="fn">map</span>((a) =&gt; (a.id === id ? { ...a, category: newCategory } : a)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> Replaces with a fresh <b class="tag">ARRAY</b>.</span>
+      </div></div>
+<div class="row"><span class="num">23</span><span class="src">  }</span></div>
+<div class="row"><span class="num">24</span><span class="src"></span></div>
+<div class="row"><span class="num">25</span><span class="src">  <span class="kw">let</span> filteredArticles = <span class="rune">$derived</span>(</span></div>
+<div class="row"><span class="num">26</span><span class="src">    articles.<span class="fn">filter</span>((a) =&gt; a.category.<span class="fn">toLowerCase</span>().<span class="fn">includes</span>(search.<span class="fn">toLowerCase</span>()))</span></div>
+<div class="row"><span class="num">27</span><span class="src">  );</span></div>
+<div class="row"><span class="num">28</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">29</span><span class="src"></span></div>
+<div class="row"><span class="num">30</span><span class="src">&lt;main <span class="kw">class</span>=<span class="str">"search-shell"</span>&gt;</span></div>
+<div class="row"><span class="num">31</span><span class="src">  &lt;h2&gt;Published Article Archive&lt;/h2&gt;</span></div>
+<div class="row"><span class="num">32</span><span class="src">  &lt;input bind:value={search} placeholder=<span class="str">"Filter by category..."</span> /&gt;</span></div>
+<div class="row"><span class="num">33</span><span class="src">  &lt;ArticleTable articles={filteredArticles} /&gt;</span></div>
+<div class="row"><span class="num">34</span><span class="src">&lt;/main&gt;</span></div></div></div>
+<p>In <code>ArticleSearch.svelte</code>, the derived calculation <code>filteredArticles</code> subscribes to both <code>search</code> and the root <code>articles</code> signal (see Lecture 7). Whenever the journalist types into the search box, <code>filteredArticles</code> re-runs instantly across plain, unproxied objects. When the application updates the archive via <code>addArticleWorking</code> or <code>updateCategory</code>, reassigning <code>articles</code> notifies the derived calculation to recalculate and refresh the table.</p>
+</div>
+<div class="keep-together">
+<h3>When to Choose $state.raw Over $state</h3>
+<p>The choice between <code>$state</code> and <code>$state.raw</code> comes down to the frequency of property-level mutations versus the cost of proxy allocation. Choose <code>$state.raw</code> in three primary scenarios:</p>
+<ul><li><strong>Large read-only or reference datasets:</strong> When storing static lookup tables, historical archives, geographical coordinates, or large API responses, you rarely mutate individual fields. Deep proxying wastes CPU and memory tracking changes that will never occur. Storing reference data in <code>$state.raw</code> gives you maximum performance.</li>
+<li><strong>Complex third-party library instances:</strong> Modern web applications integrate specialized client-side libraries: Chart.js visualization instances, Leaflet map objects, Three.js 3D scenes, WebGL renderers, or Monaco code editors. These external objects manage their own internal state, contain cyclic references, and rely on private class fields. Wrapping external instances in Svelte's <code>$state</code> proxies frequently triggers runtime errors or degrades performance. Wrapping them in <code>$state.raw</code> preserves the exact original instance while still letting your component react when the instance is swapped or reset.</li>
+<li><strong>High-frequency immutable streaming feeds:</strong> In financial dashboards, telemetry viewers, or multiplayer canvases, state updates frequently arrive as complete immutable snapshots over a WebSocket. Because each update replaces the entire payload, deep proxy tracking on every incoming message is discarded seconds later. Reassigning raw immutable snapshots avoids continuous proxy creation and keeps the garbage collector idle.</li></ul>
+<p>What about primitive values like numbers, strings, or booleans? For primitive values, <code>let count = $state(0)</code> and <code>let count = $state.raw(0)</code> behave identically. In JavaScript, primitive types are immutable and passed by value; Svelte never proxies primitives under any circumstances. <code>$state.raw</code> is specifically designed for reference types: objects, arrays, and class instances.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">$state.raw creates a shallow reactive signal that leaves objects and arrays unproxied, skipping deep tracking overhead and requiring whole-value reassignment to update the screen.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> Explain that $state.raw creates a shallow signal without wrapping objects or arrays in recursive JavaScript Proxies. Highlight the trade-off: you gain dramatic memory and CPU savings for large datasets by eliminating proxy allocation, but you forfeit fine-grained property mutation. Emphasize that mutating a property on a raw object or calling array methods like push fails silently because no proxy traps exist to notify Svelte; updates require variable reassignment like data = [...data, item]. Outline the three canonical use cases: first, large read-only datasets where individual properties never mutate; second, complex third-party class instances like Chart.js or Three.js objects whose internal prototypes and private fields would break under proxy wrapping; and third, high-frequency immutable streams where replacing entire snapshots is faster than deep traversal.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>The National Times search archive stores ten thousand published articles in raw state to filter categories without input lag.</li>
+<li>A financial dashboard receives complete order book snapshots every hundred milliseconds and reassigns raw state to render market depth.</li>
+<li>A mapping component holds a complex Leaflet map instance in raw state to prevent Svelte from proxying the library's internal DOM references.</li>
+<li>A data visualization tool stores ten thousand historical sensor readings in raw state to render a canvas chart without memory bloat.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p>Svelte 5 offers <code>$state.raw</code> as an intentional opt-out from recursive deep reactivity. While standard <code>$state</code> proxies nested objects to enable granular property mutations, <code>$state.raw</code> treats objects and arrays as plain, inert JavaScript structures. This eliminates proxy allocation, dramatically reducing memory usage and CPU latency for large datasets. In exchange, raw state enforces an immutable reassignment contract: internal property mutations never trigger updates, requiring developers to replace the entire object or array reference to update the screen.</p>
+<ul><li><code>$state.raw</code> creates a shallow reactive signal without wrapping objects or arrays in JavaScript Proxies.</li>
+<li>Deep proxying in <code>$state</code> introduces memory and initialization overhead on massive datasets.</li>
+<li>Mutating properties inside raw state fails to trigger DOM updates because no proxy traps exist.</li>
+<li>Updating raw state requires reassigning the variable reference using immutable replacement patterns.</li>
+<li><code>$state.raw</code> is ideal for large read-only datasets, external library instances, and immutable streaming feeds.</li>
+<li>For primitive values like numbers and strings, <code>$state</code> and <code>$state.raw</code> behave identically.</li></ul>
+<table><thead><tr><th></th><th><strong>PLAIN $STATE</strong><br>(deep)</th><th><strong>$STATE.RAW</strong><br>(shallow)</th></tr></thead><tbody><tr><td><strong>Proxy wrapping</strong></td><td>Recursively wraps objects<br>and arrays in JavaScript Proxies</td><td>Leaves objects and arrays<br>as plain unproxied memory</td></tr><tr><td><strong>Mutation behavior</strong></td><td>Mutating properties directly<br>updates the exact DOM node</td><td>Internal property mutations<br>are completely ignored by Svelte</td></tr><tr><td><strong>Update mechanism</strong></td><td>Property assignment or methods<br>like <code>array.push(item)</code></td><td>Must reassign the variable<br>via <code>data = [...data, item]</code></td></tr><tr><td><strong>Memory footprint</strong></td><td>Higher memory usage due to<br>proxy wrappers and signal nodes</td><td>Minimal memory overhead,<br>allocating one signal at root</td></tr><tr><td><strong>Best suited for</strong></td><td>Interactive forms, editable<br>models, and localized UI state</td><td>Large archives, immutable<br>data, and third-party instances</td></tr><tr><td><strong>Primitive types</strong></td><td>Identical behavior for numbers,<br>strings, and booleans</td><td>Identical behavior because<br>primitives are already immutable</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

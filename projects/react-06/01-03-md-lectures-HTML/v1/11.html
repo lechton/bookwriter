@@ -1,0 +1,1193 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 11: Rendering Lists and Keys — Edition v6.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v6.0";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 11: Rendering Lists and Keys</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you render a list from an array, and why does React demand a key on every item?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Elena builds the live breaking news desk for The National Times.</li>
+<li>The desk renders an editorial list of active breaking dispatches with notes inputs and status tags.</li>
+<li>When an editor prepends an urgent dispatch at the top of the array, the text notes stay glued to the wrong article!</li>
+<li>Why did the first input keep its typed text while the headline text updated underneath it?</li>
+<li>Without stable keys, React's reconciler assumes DOM nodes at index 0 are the same element across renders.</li>
+<li>Stable keys grant persistent identity to every list item, enabling React to insert, reorder, and remove elements accurately.</li>
+<li>Today, you will master list rendering with .map(), understand key reconciliation, and protect list item identity.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Scrambled Input Trap and Index Diffing</h3>
+<p>In web applications, data almost always arrives as collections of records: lists of news articles, subscriber profiles, or live market tickers. In vanilla JavaScript, developers wrote imperative loops to create DOM nodes, append them to parent containers, and manually remove outdated elements. In React, rendering lists is completely declarative: you transform an array of raw JavaScript objects into an array of JSX elements using the standard array .map() method. React takes this array of element descriptors and reconciles it against the real DOM.</p>
+<p>When developers first render lists in React, they encounter a compiler warning demanding a "key" prop. To silence the warning, many developers hastily write <code>key={index}</code>. This creates one of the most notorious and insidious bugs in React.</p>
+<p>Look at the naive attempt below:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Naive List Rendering and the Index Key Trap</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">BreakingFeed</span>({ stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> &lt;ul&gt;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    {stories.<span class="fn">map</span>((s, index) =&gt; (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;li key={index}&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">        &lt;span&gt;{s.headline}&lt;/span&gt; &lt;input placeholder=<span class="str">"Note..."</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text"><b class="tag">GLITCH:</b> state attaches to <b class="tag">INDEX</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;/li&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    ))}</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  &lt;/ul&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>When a new urgent headline arrives at index 0, every subsequent item shifts down by one position. The item previously at index 0 is now at index 1. Because the keys are indices, React compares the old tree's item at <code>key="0"</code> with the new tree's item at <code>key="0"</code>. React concludes that item 0 did not move; it simply changed its headline text! Therefore, React updates the text node inside the existing DOM node, but leaves the native <code>&lt;input&gt;</code> completely untouched. As a result, the note you typed for the old story is now visibly attached to the new breaking story!</p>
+<figure class="react-figure rce-figure css-figure">
+
+
+
+
+<style>
+  .eval-window-fig {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .ew-stage {
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    box-sizing: border-box;
+  }
+  .ew-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.76rem;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .ew-columns {
+    display: flex;
+    gap: 1rem;
+    position: relative;
+  }
+  .ew-col {
+    flex: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .ew-col-trap {
+    background: #fef2f2;
+    border: 1.5px solid #fca5a5;
+  }
+  .ew-col-declarative {
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    box-shadow: 0 2px 6px rgba(22, 101, 52, 0.08);
+  }
+  .ew-col-title {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ew-col-trap .ew-col-title {
+    background: #fee2e2;
+    color: #991b1b;
+    border-bottom: 1px solid #fca5a5;
+  }
+  .ew-col-declarative .ew-col-title {
+    background: #dcfce7;
+    color: #166534;
+    border-bottom: 1px solid #86efac;
+  }
+  .ew-col-body {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .ew-card {
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid #e2e8f0;
+  }
+  .ew-col-trap .ew-card {
+    border-color: #fecaca;
+  }
+  .ew-col-declarative .ew-card {
+    border-color: #bbf7d0;
+  }
+  .ew-card-label {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+  }
+  .ew-col-trap .ew-card-label {
+    color: #b91c1c;
+  }
+  .ew-col-declarative .ew-card-label {
+    color: #15803d;
+  }
+  .ew-code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: #1e293b;
+    background: #f8fafc;
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+  }
+  .ew-col-trap .ew-code {
+    background: #fff5f5;
+    border-color: #fed7d7;
+  }
+  .ew-col-declarative .ew-code {
+    background: #f0fdf4;
+    border-color: #dcfce7;
+  }
+  .ew-verdict {
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: #475569;
+  }
+  .ew-badge {
+    display: inline-block;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .badge-danger {
+    background: #ef4444;
+    color: #ffffff;
+  }
+  .badge-success {
+    background: #16a34a;
+    color: #ffffff;
+  }
+</style>
+
+
+<div class="eval-window-fig">
+  <div class="ew-stage">
+    <div class="ew-header">
+      <span>LIST RECONCILIATION: KEYS &amp; IDENTITY</span>
+      <span>REACT 19 LIST DIFFING CONTRACT</span>
+    </div>
+    <div class="ew-columns">
+      <div class="ew-col ew-col-trap">
+        <div class="ew-col-title">
+          <span>INDEX KEYS / UNKEYED DIFFING</span>
+          <span class="ew-badge badge-danger">DEFECTIVE</span>
+        </div>
+        <div class="ew-col-body">
+          <div class="ew-card">
+            <div class="ew-card-label">1. Positional Matching</div>
+            <div class="ew-code">{stories.map((s, i) =&gt; &lt;Item key={i} /&gt;)}</div>
+            <div class="ew-verdict">Reconciler matches nodes strictly by slot index; prepending an item shifts identities.</div>
+          </div>
+          <div class="ew-card">
+            <div class="ew-card-label">2. Scrambled State &amp; Inputs</div>
+            <div class="ew-code">DOM node at index 0 is mutated in place</div>
+            <div class="ew-verdict">Text updates to the new story, but uncontrolled inputs and focus stay glued to old slot.</div>
+          </div>
+          <div class="ew-card">
+            <div class="ew-card-label">3. Architectural Outcome</div>
+            <div class="ew-verdict"><strong>DOM State Corruption:</strong> Checkboxes, notes inputs, and audio buffers misalign across stories.</div>
+          </div>
+        </div>
+      </div>
+      <div class="ew-col ew-col-declarative">
+        <div class="ew-col-title">
+          <span>STABLE ENTITY KEYS</span>
+          <span class="ew-badge badge-success">RECOMMENDED</span>
+        </div>
+        <div class="ew-col-body">
+          <div class="ew-card">
+            <div class="ew-card-label">1. Identity-Based Matching</div>
+            <div class="ew-code">{stories.map(s =&gt; &lt;Item key={s.id} /&gt;)}</div>
+            <div class="ew-verdict">Reconciler matches items by permanent database ID regardless of their position in the array.</div>
+          </div>
+          <div class="ew-card">
+            <div class="ew-card-label">2. Preserved Node Integrity</div>
+            <div class="ew-code">Existing DOM nodes move without mutation</div>
+            <div class="ew-verdict">React inserts the new node at the top and leaves existing DOM nodes and inputs intact.</div>
+          </div>
+          <div class="ew-card">
+            <div class="ew-card-label">3. Architectural Outcome</div>
+            <div class="ew-verdict"><strong>Flawless Synchronization:</strong> Component identity and local state remain 100% stable.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<figcaption>Fig 11.1: List reconciliation: contrasting positional index recycling against stable entity keys.</figcaption>
+</figure>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does prepending an item scramble form inputs?</strong> When you prepend an item to an array using <code>key={index}</code>, the new item receives <code>key={0}</code>, the previous first item becomes <code>key={1}</code>, and so forth. React's reconciler assumes the element with <code>key={0}</code> is the exact same component instance as before, just with updated props. It reuses the physical DOM node in place. While React updates the text props it controls, the browser's native <code>&lt;input&gt;</code> state, text cursor, and focus live inside the unmanaged DOM node. Because the DOM node was recycled for the new record, your typed text remains stuck in the first input box while the headline above it changes completely!</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked why React requires keys, explain that keys do not exist for performance alone; they provide <strong>identity</strong>. Without stable keys, React falls back to positional diffing, mutating DOM nodes in place and corrupting internal component state or unmanaged DOM buffers. Always emphasize that keys must be unique among siblings and stable across renders, which is why database primary keys or unique entity IDs are mandatory.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Key Mechanics and the Reconciliation Contract</h3>
+<p>A key is a special string attribute that you must pass when creating arrays of elements in JSX. Keys act as permanent identity badges: they tell React which array item corresponds to which component instance across consecutive renders. When the data changes, React uses these identity badges to deduce what physically happened: was an item inserted, was an item removed, or did items simply switch places?</p>
+<p>When transforming an array of data into JSX, you encounter an architectural crossroad between two clean patterns:</p>
+<ul class="options-list">
+<li class="option-item"><strong>Option 1 (The foundational way)</strong>: Pre-compute the array of JSX elements in a local variable <span class="code-line-callout"><code><span class="kw">const</span> storyItems = stories.<span class="fn">map</span>(...)</code></span> outside the return statement, then project <code>{storyItems}</code> inside JSX.</li>
+<li class="option-item"><strong>Option 2 (The modern idiomatic way)</strong>: Inline the array <code>.map()</code> expression directly inside the return statement within JSX curly braces <span class="code-line-callout"><code>{stories.<span class="fn">map</span>(story =&gt; ...)}</code></span></li>
+</ul>
+<p>First, look at Option 1 using a pre-computed variable:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Option 1: The Foundational Way (Pre-computed Variable)</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">NewsFeed</span>({ stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> storyItems = stories.<span class="fn">map</span>((story) =&gt; ( </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Transforms data array into <b class="tag">ELEMENTS</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;li key={story.id}&gt;{story.headline}&lt;/li&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Assigns permanent database <b class="tag">KEY</b></span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  ));</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> &lt;ul className=<span class="str">"feed-list"</span>&gt;{storyItems}&lt;/ul&gt;; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Projects pre-computed <b class="tag">JSX ARRAY</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>In Option 1, storing the transformed array in <code>storyItems</code> makes the separation between data processing and markup projection explicit. This helps developers verify that the mapped output is a plain JavaScript array of React element objects.</p>
+<p>Next, look at Option 2 using the inline mapping idiom:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Option 2: The Modern Idiomatic Way (Inline JSX Mapping)</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">NewsFeed</span>({ stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;ul className=<span class="str">"feed-list"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      {stories.<span class="fn">map</span>((story) =&gt; ( </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Evaluates inline map within <b class="tag">EXPRESSION WINDOW</b></span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">        &lt;li key={story.id}&gt;{story.headline}&lt;/li&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Binds stable <b class="tag">ENTITY ID</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">      ))}</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/ul&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>In Option 2, the <code>.map()</code> call sits directly within JSX curly braces. This keeps parent container markup and child element generation tightly co-located, reducing boilerplate while preserving full identity reconciliation via <code>story.id</code>.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Keys must satisfy two non-negotiable rules: they must be <strong>unique among siblings</strong> (different lists can use the same keys), and they must be <strong>stable across renders</strong> (never generate keys on the fly using <code>Math.random()</code> or <code>crypto.randomUUID()</code>).</div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for news-feed - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">news-feed - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>NewsFeed</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryItem</span><span class="component-explorer-props">key=&quot;story-101&quot; story={story}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h3" data-elem="[h3.story-headline]"><div class="ui-elem-content">Summit Concludes in Geneva</div></div><div class="ui-elem ui-tag-span" data-elem="[span.category-tag]"><div class="ui-elem-content">World</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>StoryNote</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-input" data-elem="[input.note-input]"><div class="ui-elem-content"><div class="surface-ui-input"><span class="surface-ui-input-placeholder">Verified with Swiss bureau</span></div></div></div></div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryItem</span><span class="component-explorer-props">key=&quot;story-102&quot; story={story}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h3" data-elem="[h3.story-headline]"><div class="ui-elem-content">Market Index Reaches Record High</div></div><div class="ui-elem ui-tag-span" data-elem="[span.category-tag]"><div class="ui-elem-content">Markets</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>StoryNote</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-input" data-elem="[input.note-input]"><div class="ui-elem-content"><div class="surface-ui-input"><span class="surface-ui-input-placeholder">Check closing bell figures</span></div></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="news-feed: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">news-feed: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Top-level newsroom container providing live feed data</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">NewsFeed.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Maps stories array into StoryItem elements with stable keys</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryItem.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Renders story metadata, headline, and mounts editorial note control</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryNote.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Uncontrolled input demonstrating state affinity and DOM preservation</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Orange / Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #e09f67; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #eac4a1; }
+
+    /* Step 4 Colors (Green) */
+    .assembly-steps-figure .step-4 .card-edge { background: #74ad68; }
+    .assembly-steps-figure .step-4 .card-main { background: #d2ebc9; }
+    .assembly-steps-figure .step-4 .card-divider { background: #b2d5a5; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the parent container</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;NewsFeed.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the story item component</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;StoryItem.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Then, we declare the story note control</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;StoryNote.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card step-4">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">4</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we mount the feed inside</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 11.2: The progressive assembly pipeline: transforming arrays into JSX with stable entity keys.</figcaption>
+</figure>
+<p>To master list rendering and witness how stable keys protect DOM integrity, we will construct the live breaking news feed for The National Times. We will progress across four sequential steps: constructing the parent feed in <code>src/components/NewsFeed.jsx</code>, building the story item in <code>src/components/StoryItem.jsx</code>, declaring the story note control in <code>src/components/StoryNote.jsx</code>, and mounting the application inside <code>src/App.jsx</code>.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the parent container';">First, we construct the parent container</div>
+      <div class="card-components"><span class="component-tag">&lt;NewsFeed.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>We begin by constructing <code>src/components/NewsFeed.jsx</code>. This component acts as the orchestrating container. It accepts a <code>stories</code> array prop and transforms it into an array of <code>StoryItem</code> elements, passing each record's permanent <code>story.id</code> as the <code>key</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/NewsFeed.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> StoryItem <span class="kw">from</span> <span class="str">'./StoryItem.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">NewsFeed</span>({ stories }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> &lt;section className=<span class="str">"feed-container"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;h2&gt;Live Editorial Desk&lt;/h2&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    {stories.<span class="fn">map</span>((story) =&gt; (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;StoryItem key={story.id} story={story} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Binds persistent <b class="tag">ENTITY KEY</b></span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    ))}</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  &lt;/section&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice line 6: <code>key={story.id}</code>. The <code>key</code> prop is passed directly on the outermost JSX element returned inside the <code>.map()</code> callback. Notice that <code>key</code> is reserved for React: <code>StoryItem</code> does not receive <code>props.key</code> in its own parameter list; React absorbs the prop during element creation.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the story item component';">Next, we build the story item component</div>
+      <div class="card-components"><span class="component-tag">&lt;StoryItem.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Now we create <code>src/components/StoryItem.jsx</code>. This component displays the article headline, category badge, and renders the nested <code>StoryNote</code> control:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/StoryItem.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> StoryNote <span class="kw">from</span> <span class="str">'./StoryNote.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryItem</span>({ story }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> { headline, category, timestamp } = story;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;article className=<span class="str">"story-card"</span>&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;header className=<span class="str">"story-meta"</span>&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">        &lt;span className=<span class="str">"category-tag"</span>&gt;{category}&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">        &lt;time className=<span class="str">"story-time"</span>&gt;{timestamp}&lt;/time&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      &lt;/header&gt;</span></div></div></div></div>
+<p>Notice that <code>StoryItem</code> does not mention <code>key</code> in its props. The component focuses purely on rendering its visual content, completely decoupled from the array structure that holds it.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Then, we declare the story note control';">Then, we declare the story note control</div>
+      <div class="card-components"><span class="component-tag">&lt;StoryNote.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Next, we complete <code>src/components/StoryItem.jsx</code> by rendering the headline and embedding the nested <code>StoryNote</code> control:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">src/components/StoryItem.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row even"><span class="num">10</span><span class="src">      &lt;h3 className=<span class="str">"story-headline"</span>&gt;{headline}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;StoryNote storyId={story.id} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Mounts interactive <b class="tag">NOTE CONTROL</b></span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">14</span><span class="src">}</span></div></div></div></div>
+<p>Now we construct <code>src/components/StoryNote.jsx</code>. This component renders an uncontrolled text input where journalists type notes. Because its parent <code>StoryItem</code> has a stable <code>key</code>, this input's physical DOM node and typed text will stay permanently attached to this article even if other stories are prepended above it:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/StoryNote.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryNote</span>({ storyId }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> &lt;div className=<span class="str">"note-wrapper"</span>&gt;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;label htmlFor={<span class="str">`note-${storyId}`</span>}&gt;Desk Note&lt;/label&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;input</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      id={<span class="str">`note-${storyId}`</span>}</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      placeholder=<span class="str">"Add verification notes..."</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Native DOM holds <b class="tag">TYPED TEXT</b></span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    /&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  &lt;/div&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice that the <code>&lt;input&gt;</code> has no value binding or change handler. It relies on the browser's native DOM buffer. When <code>NewsFeed</code> re-renders with new stories prepended, React's key reconciliation recognizes that <code>StoryItem</code> with <code>key="story-101"</code> is the exact same element, moving the DOM node down rather than recreating it. The journalist's typed note is preserved!</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Finally, we mount the feed inside';">Finally, we mount the feed inside</div>
+      <div class="card-components"><span class="component-tag">&lt;App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Finally, we complete our scenario in <code>src/App.jsx</code>. We define the initial collection of breaking wire stories and mount <code>NewsFeed</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> NewsFeed <span class="kw">from</span> <span class="str">'./components/NewsFeed.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">const</span> WIRE_STORIES = [</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  { id: <span class="str">'wire-801'</span>, headline: <span class="str">'Geneva Climate Summit Concludes'</span>, category: <span class="str">'World'</span>, timestamp: <span class="str">'10:42 AM'</span> },</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  { id: <span class="str">'wire-802'</span>, headline: <span class="str">'Central Bank Holds Interest Rates'</span>, category: <span class="str">'Finance'</span>, timestamp: <span class="str">'10:38 AM'</span> },</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  { id: <span class="str">'wire-803'</span>, headline: <span class="str">'Deep-Sea Cable Restored in Pacific'</span>, category: <span class="str">'Tech'</span>, timestamp: <span class="str">'10:15 AM'</span> },</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">];</span></div>
+<div class="row even"><span class="num">8</span><span class="src"></span></div>
+<div class="row odd"><span class="num">9</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  <span class="kw">return</span> &lt;NewsFeed stories={WIRE_STORIES} /&gt;; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Feeds data to <b class="tag">COLLECTION BOUNDARY</b></span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+<p>Look at the structure of <code>WIRE_STORIES</code>: each item carries a unique, non-changing <code>id</code> property (<code>wire-801</code>, <code>wire-802</code>, <code>wire-803</code>). These IDs originate from the newsroom database, providing the stable foundation that React's reconciliation algorithm requires.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>NewsFeed</span><span class="component-explorer-props">stories={...}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>collection container</strong> orchestrates list rendering. It receives the <code>stories</code> data array and maps each item into a <code>StoryItem</code>. Notice it assigns <code>key={story.id}</code> directly at the array boundary. Why? To grant each rendered element a permanent identity badge before passing props downward.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryItem</span><span class="component-explorer-props">story={...}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>record card component</strong> encapsulates the visual layout of an individual article. It unpacks headline and category metadata and mounts <code>StoryNote</code>. Notice it receives zero key props in its own signature. This guarantees the card remains focused purely on presenting content, agnostic of its position in the list.</p></div></div></div><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>StoryNote</span><span class="component-explorer-props">storyId={...}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>terminal input control</strong> renders an uncontrolled editorial text field. It relies on its ancestor&#39;s stable key to preserve typed text and focus during list updates. When does React move this DOM node? Whenever array order changes, React repositions the entire subtree without wiping the native input buffer.</p></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      vertical-align: top !important;
+      background: #ffffff;
+      color: #334155 !important;
+    }
+    .architecture-audit-figure .audit-table td:first-child,
+    main .architecture-audit-figure .audit-table td:first-child {
+      width: 22% !important;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table td:nth-child(2) {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table td:nth-child(3),
+    .architecture-audit-figure .reality-cell {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .layer-num {
+      display: block;
+      font-weight: 800;
+      color: #0f172a;
+      font-size: 0.92rem;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-weight: 600;
+      color: #64748b;
+      font-size: 0.80rem;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .item-title {
+      display: block;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 4px;
+      font-size: 0.92rem;
+    }
+    .architecture-audit-figure .text-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .item-desc {
+      display: block;
+      color: #475569;
+      line-height: 1.45;
+      font-size: 0.86rem;
+    }
+    .architecture-audit-figure .reality-cell .item-desc {
+      color: #334155;
+    }
+    .architecture-audit-figure code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.80rem;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .reality-cell code {
+      background: #eef7f9;
+      border-color: rgba(14, 116, 144, 0.25);
+      color: #0e7490;
+    }
+    .architecture-audit-figure .verdict-row td,
+    main .architecture-audit-figure .verdict-row td {
+      border-top: 1.5px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 8px 12px !important;
+    }
+    .architecture-audit-figure .verdict-label {
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .verdict-tag {
+      display: block;
+      font-size: 0.80rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .verdict-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .verdict-teal {
+      color: #0e7490;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Lessons from the Code</div>
+    <div class="audit-title">The Breaking News Feed Challenge</div>
+    <p class="audit-subtitle">An architectural comparison evaluating how React reconciles dynamically rendered lists during insertions, prepends, and reordering.</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Component Layer</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-main">Naive Expectation</span>
+          <span class="th-sub sub-danger">(Positional Index Keys)</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-main">What Happened</span>
+          <span class="th-sub sub-teal">(Stable Entity Keys)</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <span class="layer-num">1. The Container</span>
+          <span class="layer-role">(Parent Feed)</span>
+        </td>
+        <td>
+          <span class="item-title">Positional Slot Matching</span>
+          <span class="item-desc">Developers map arrays using <code>key={index}</code>. When an item is prepended at index 0, every index shifts by one, forcing React to mutate every downstream DOM node in the list.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Entity Identity Mapping</span>
+          <span class="item-desc">React binds each item to a permanent database ID via <code>key={story.id}</code>. Prepending an item at index 0 inserts one new DOM node at the top while leaving all existing nodes completely untouched.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">2. The List Entry</span>
+          <span class="layer-role">(Story Item)</span>
+        </td>
+        <td>
+          <span class="item-title">In-Place Node Recycling</span>
+          <span class="item-desc">React mutates existing DOM attributes in place. Child state and uncontrolled text inputs do not move, remaining attached to the old physical slot.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Structural Node Repositioning</span>
+          <span class="item-desc">React physically moves the DOM node in the tree without remounting or mutating its internal contents, preserving focus and node integrity.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">3. The Terminal UI Control</span>
+          <span class="layer-role">(Story Note)</span>
+        </td>
+        <td>
+          <span class="item-title">Desynchronized Input State</span>
+          <span class="item-desc">User notes and checkboxes desynchronize from their headlines because the native <code>&lt;input&gt;</code> element was reused for a completely different article.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Permanent State Affinity</span>
+          <span class="item-desc">The native <code>&lt;input&gt;</code> element retains its typed text and focus because its host component maintained continuous identity via <code>story.id</code>.</span>
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td>
+          <span class="verdict-label">Final Verdict</span>
+        </td>
+        <td>
+          <span class="verdict-tag verdict-danger">Corrupted DOM State</span>
+          <span class="item-desc">Prepending items scrambles inputs, checkboxes, and media players across unrelated records.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="verdict-tag verdict-teal">Preserved Node Identity</span>
+          <span class="item-desc">List items retain their local DOM state, focus, and component identity across all reorders.</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 11.3: Architecture Audit: Contrasting positional index diffing against stable entity keys.</figcaption>
+</figure>
+<p>In our experiment, we replaced fragile index keys with stable database IDs. By attaching <code>key={story.id}</code> directly at the array transformation boundary, we guaranteed that React's reconciler tracks components by identity rather than slot position, completely eliminating scrambled form inputs and preserving DOM state across live feed updates.</p>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Live Messaging &amp; Chat Streams</strong>: Prepending incoming messages to the top or bottom of a chat log without resetting audio voice notes or read receipts.</li>
+<li><strong>E-Commerce Shopping Carts</strong>: Removing an item from the middle of a cart without shifting quantity selector focus to the adjacent product.</li>
+<li><strong>Kanban Task Boards</strong>: Dragging and reordering task cards across columns while preserving expand/collapse accordion states and active checklists.</li>
+<li><strong>Sortable Data Tables</strong>: Clicking column headers to sort hundreds of rows without causing expensive full-DOM node recreations.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>List Rendering</strong>: The pattern of transforming an array of raw JavaScript objects into an array of JSX elements using array .map().</li>
+<li><strong>Key Prop</strong>: A special string attribute passed to elements in an array that gives them a permanent, stable identity across renders.</li>
+<li><strong>Reconciliation</strong>: The algorithm React uses to diff one element tree against another to determine which DOM updates are necessary.</li>
+<li><strong>Index as Key Trap</strong>: The bug where using array indices as keys causes React to recycle DOM nodes in place, scrambling unmanaged DOM state during reorders.</li>
+<li><strong>Stable Identity</strong>: The guarantee that a component instance and its associated physical DOM node persist across renders regardless of array position.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Rendering lists with map</strong>: The official React guide details how to transform arrays of data into component trees using JavaScript's map function (see <a href="https://react.dev/learn/rendering-lists">react.dev/learn/rendering-lists</a>).</li>
+<li><strong>Why React needs keys</strong>: Deep dive into how keys provide identity across renders and why keys must remain stable (see <a href="https://react.dev/learn/rendering-lists#why-does-react-need-keys">react.dev/learn/rendering-lists#why-does-react-need-keys</a>).</li>
+<li><strong>Rules of keys</strong>: Official rules governing key uniqueness among siblings and why generated keys cause performance degradation (see <a href="https://react.dev/learn/rendering-lists#rules-of-keys">react.dev/learn/rendering-lists#rules-of-keys</a>).</li>
+<li><strong>Preserving and resetting state with keys</strong>: How React uses keys to distinguish between identical component types and reset state intentionally (see <a href="https://react.dev/learn/preserving-and-resetting-state">react.dev/learn/preserving-and-resetting-state</a>).</li>
+<li><strong>Extracting list item components</strong>: Best practices for structuring child components inside list mapping boundaries without passing unnecessary keys (see <a href="https://react.dev/learn/rendering-lists#keeping-list-items-in-order-with-key">react.dev/learn/rendering-lists#keeping-list-items-in-order-with-key</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Declarative List Transformation</span></div>
+<p class="summary-principle">➔ ALWAYS use standard array <code>.map()</code> to project arrays of data into arrays of JSX elements.</p>
+<p class="summary-principle">➔ NEVER use imperative loops or push methods to populate arrays of elements inside the render block.</p>
+<p class="summary-principle">➔ IF rendering a collection THEN place the <code>key</code> prop on the outermost JSX tag returned directly inside <code>.map()</code>.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Key Stability &amp; Identity Protection</span></div>
+<p class="summary-principle">➔ ALWAYS assign stable, unique entity identifiers (such as database primary keys <code>story.id</code>) as the <code>key</code> prop.</p>
+<p class="summary-principle">➔ NEVER use array indices (<code>key={index}</code>) when items in the list can be reordered, inserted, or deleted.</p>
+<p class="summary-principle">➔ NEVER generate keys on the fly using <code>Math.random()</code> or <code>crypto.randomUUID()</code> during render, as this forces complete DOM recreations on every render.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> assign stable database IDs directly to mapped elements</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryFeed</span>({ stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;ul&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      {stories.<span class="fn">map</span>((story) =&gt; (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">        &lt;li key={story.id}&gt;{story.title}&lt;/li&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      ))}</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/ul&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> use array indices as keys on dynamic lists</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryFeed</span>({ stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;ul&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      {stories.<span class="fn">map</span>((story, index) =&gt; (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">        &lt;li key={index}&gt;{story.title}&lt;/li&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      ))}</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/ul&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>STABLE ENTITY KEYS</strong><br>(Database IDs)</th><th><strong>INDEX AS KEY</strong><br>(Positional Slot)</th></tr></thead><tbody><tr><td><strong>Node Identity</strong></td><td>Tied permanently to business record</td><td>Tied to transient array index slot</td></tr><tr><td><strong>Prepending Items</strong></td><td>Inserts 1 new DOM node at top</td><td>Mutates all existing DOM nodes in place</td></tr><tr><td><strong>Unmanaged DOM State</strong></td><td>Inputs, focus, and audio buffers move cleanly</td><td>State stays glued to slot, scrambling data</td></tr><tr><td><strong>Diffing Efficiency</strong></td><td>Minimal targeted DOM insertions and moves</td><td>Expensive cascade of DOM attribute mutations</td></tr><tr><td><strong>Component Identity</strong></td><td>Component instance preserved across reorders</td><td>Instance recycled for completely different item</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

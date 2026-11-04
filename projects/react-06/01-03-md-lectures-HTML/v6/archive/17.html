@@ -1,0 +1,1189 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 17: Trigger, Render, and Commit — Edition v6.4-6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v6.4-6";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 17: Trigger, Render, and Commit</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">What are the trigger, render, and commit phases of the React lifecycle, and what runs in each?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Nora opens her editor at The Daily Courier newsroom to build an interactive like counter for a news article.</li>
+<li>She wants to read the updated count from the screen immediately after the reader clicks the Like button to log it for analytics.</li>
+<li>Nora calls setLikes(likes + 1) and inspects document.getElementById('count').textContent on the next line, but it still prints 0.</li>
+<li>Why does reading the DOM right after setting state show the old number, and what actually happens between clicking a button and seeing pixels on the screen?</li>
+<li>Believing that setting state immediately updates the DOM causes developers to read stale dimensions, write race conditions, and fear that rendering slows down the browser.</li>
+<li>If calling a setter does not immediately change the DOM, when does React calculate the new interface, and when does the browser physically update the page?</li>
+<li>Today, we master the three-phase engine rhythm: understanding how triggers queue work, how rendering executes component functions in memory, and how committing writes only the exact differences to the DOM.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Friction of Reading the DOM After Setting State</h3>
+<p>In our previous lesson, you learned how to give components persistent memory using the <code>useState</code> hook. When a reader clicks a button, invoking the state setter requests a re-render so React can display the updated count. In standard JavaScript, developers are accustomed to direct, immediate actions. If you change a variable in plain JavaScript, that variable updates instantly. If you write to an element in the browser document object model, the element's text changes on that exact line of code.</p>
+<p>Because of this mental model, developers naturally assume that calling a state setter immediately modifies the physical HTML elements on the screen. To see this friction in action on The Daily Courier, Nora builds an interactive like button for an article. When a reader clicks Like, she wants to log the newly updated count to an analytics server by reading the text directly from the page.</p>
+<p>Nora writes a click handler named <code>handleLike</code>. Inside the handler, she calls <code>setLikes(likes + 1)</code>. On the very next line of code, she uses the native browser method <span class="code-line-callout"><code>document.<span class="fn">getElementById</span>(<span class="str">'count'</span>)</code></span> and reads its <code>textContent</code> property:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Naive DOM Inspection</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">LikeCounter</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [likes, setLikes] = <span class="target-token"><span class="hook">useState</span>(<span class="nl">0</span>)</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px; --token-offset: 295px;">
+        <span class="text">Counter state initialized to zero</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">function</span> <span class="fn">handleLike</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">setLikes</span>(likes + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="target-token"><span class="str">'count'</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-right" style="--right-edge: 428px; --tail-shoulder: 24px;">
+        <span class="text">Queries real DOM element</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'DOM count:'</span>, el.textContent</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 243px;">
+        <span class="text">Logs stale 0 instead of 1</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> &lt;button onClick={handleLike}&gt;&lt;b id=<span class="str">"count"</span>&gt;{likes}&lt;/b&gt; Likes&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>When Nora opens the browser and clicks the Like button for the first time, a surprising sequence of events occurs. The button on the screen eventually updates to display "Like (1)". However, in the developer console, the log statement inside <code>handleLike</code> stubbornly prints <code>"DOM count: 0"</code>! Even though <code>setLikes</code> was called on line 4, the DOM element inspected on line 6 still contained the old number from before the click.</p>
+<p>This discrepancy produces real engineering bugs. If Nora sends <code>el.textContent</code> to her analytics service, the server records that the reader liked an article with 0 likes. If another developer measures an element's height or scroll position immediately after updating state, the browser measures the element's old dimensions, resulting in broken layouts and flickering animations.</p>
+<p>Why does reading the DOM right after calling a setter fail? It fails because calling a setter does not mutate the DOM on the spot. A setter function simply records the next desired state in React memory and asks React to schedule a render pass. The active JavaScript event handler continues running to completion before React ever calls your component function or touches the browser page.</p>
+<p>To understand why React behaves this way, we must examine the core lifecycle engine: the three-phase cycle of Trigger, Render, and Commit.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><p><strong>Why did reading the DOM right after setting state show the old number?</strong></p>
+  <p>Calling a state setter function does not modify browser DOM elements immediately. Instead, the setter acts as a trigger that places a render request into React's task queue. The active JavaScript event handler runs to completion first, still seeing the old DOM. Only after the handler finishes does React enter the render phase to calculate the new virtual tree in memory, followed by the commit phase which writes the updated differences to the physical DOM. To use the next value inside the handler, calculate the value into a local variable before passing it to the setter.</p></div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Three-Phase Cycle: Trigger, Render, and Commit</h3>
+<p>To visualize how React updates what the user sees, consider a familiar real-world setting: a busy restaurant. In this restaurant, your React components are skilled chefs working in the kitchen, preparing dishes from recipe instructions. React is the attentive waiter who takes orders from the guests, delivers those requests to the kitchen, and carries the finished dishes back to the tables.</p>
+<p>The process of serving an updated user interface follows three sequential steps:</p>
+<ol><li><strong>Triggering a render</strong>: A customer places an order, and the waiter takes the order ticket back to the kitchen.</li>
+<li><strong>Rendering the component</strong>: The chefs prepare the order in the kitchen by executing the recipe.</li>
+<li><strong>Committing to the DOM</strong>: The waiter brings the prepared dish from the kitchen and sets it on the customer's table.</li></ol>
+<p>Once the food is served on the table, the customer can see and enjoy the meal. In browser terms, after React finishes placing the updated nodes in the DOM, the browser <strong>paints</strong> the pixels on the display screen.</p>
+<p>Let us unpack each of these three phases in detail.</p>
+<p>Phase 1 is <strong>Triggering a render</strong>. A component renders for exactly two reasons. First, it is the component's <strong>initial render</strong> when the application boots up. Second, the component (or one of its ancestors) has had its <strong>state updated</strong> by calling a setter function. In an application entry file like <code>main.jsx</code>, calling <code>createRoot(container)</code> and <code>root.render(&lt;App /&gt;)</code> triggers the initial render. Once the application is living on screen, any call to a setter function like <code>setLikes(1)</code> acts as a trigger, placing a request in React's queue to re-render that component.</p>
+<p>Phase 2 is <strong>Rendering your components</strong>. After a render is triggered, React goes to work to figure out what markup should appear on screen. The official documentation emphasizes a fundamental definition: <strong>"Rendering" is React calling your components.</strong> On the initial render, React calls the root component function. On a re-render, React calls the component whose state update triggered the request. This process is recursive: if the component returns another component, React calls that child component next, continuing downward until all components in that subtree have been evaluated. Crucially, rendering is a pure calculation that takes place entirely in JavaScript memory. React creates a tree of lightweight JavaScript descriptor objects. React does not touch a single physical DOM element during this phase.</p>
+<p>Phase 3 is <strong>Committing changes to the DOM</strong>. Once React has called all components and calculated the desired interface tree, it enters the commit phase. In this phase, React modifies the real browser DOM. On the initial render, React creates all DOM elements using browser APIs like <code>document.createElement</code> and inserts them into the document container with <code>appendChild</code>. On a re-render, React compares the newly calculated virtual tree against the previous render and applies only the minimal necessary changes. If only a single number changed inside a paragraph, React updates only that single text node. If the returned markup is identical to what was rendered before, React makes zero changes to the browser DOM.</p>
+<p>Finally, after React updates the DOM and the active JavaScript call stack clears, the browser recalculates geometry and repaints the screen. The React documentation explicitly calls this final step <strong>browser paint</strong> to keep it clearly distinct from React rendering.</p>
+</div>
+<div class="keep-together">
+<h3>Principles of React: Trigger, Render, and Commit</h3>
+<p>Senior technical interview candidates must clearly explain the separation between JavaScript memory calculations and physical browser DOM mutations. Interviewers frequently probe: "What are the trigger, render, and commit phases of the React lifecycle, and what runs in each?" To answer with precision and authority, we formalize the four governing principles of render and commit:</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Treat a Setter Call as a Trigger That Queues a Render</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">initial render</span>
+          <span class="gloss-def">the first time React mounts and displays a component tree on screen</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">queued render</span>
+          <span class="gloss-def">a scheduled render pass that React executes after the active handler finishes</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Only two events start a render: the initial mounting call <code>root.render()</code> and a state update from a setter function. Calling a setter records the next value in React's memory and schedules a render, but it does not execute the render immediately. The rest of your event handler finishes running before React calls any component or touches the DOM.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>When a user clicks a button that invokes a state setter, JavaScript does not immediately pause the running function to re-render the component. Instead, calling <code>setLikes(likes + 1)</code> stores the requested number in React's internal memory cell and schedules a future render pass. The current JavaScript function continues executing synchronously until it reaches its closing brace.</p>
+<p>We can prove this execution timing by placing console logs inside an event handler and inside the component body. In <code>LikeCounter</code>, we log <code>"handler start"</code>, call <code>setLikes(likes + 1)</code>, inspect the DOM element's <code>textContent</code>, log <code>"handler end"</code>, and place a log statement in the component body:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Trigger Order: Handler Execution</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">LikeCounter</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [likes, setLikes] = <span class="target-token"><span class="hook">useState</span>(<span class="nl">0</span>)</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px; --token-offset: 295px;">
+        <span class="text">State initialized to 0</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  console.<span class="fn">log</span>(<span class="str">'render LikeCounter:'</span>, <span class="target-token">likes</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-right" style="--right-edge: 399px; --tail-shoulder: 24px;">
+        <span class="text">Logs during render phase</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">function</span> <span class="fn">handleLike</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'handler start'</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 181px;">
+        <span class="text">Handler executes first</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="fn">setLikes</span>(<span class="target-token">likes + <span class="nl">1</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 124px;">
+        <span class="text">Queues render in React task scheduler</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'count'</span>);</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    console.<span class="fn">log</span>(<span class="str">'DOM after setLikes:'</span>, <span class="target-token">el.textContent</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-right" style="--right-edge: 461px; --tail-shoulder: 24px;">
+        <span class="text">Still reads 0</span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'handler end'</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 172px;">
+        <span class="text">Handler finishes before render runs</span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">  }</span></div></div></div></div>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">10</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &lt;button</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      onClick=<span class="target-token">{handleLike}</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px; --token-offset: 129px;">
+        <span class="text">Attaches click handler to trigger render</span>
+      </div></div>
+<div class="row odd"><span class="num">13</span><span class="src">    &gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      <span class="fn">Like</span> (&lt;span id=<span class="str">"count"</span>&gt;{likes}&lt;/span&gt;)</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">}</span></div></div></div></div>
+<p>When you click the button in the browser, the console output demonstrates the exact engine sequence:</p>
+<ol><li><code>"handler start"</code></li>
+<li><code>"DOM after setLikes: 0"</code></li>
+<li><code>"handler end"</code></li>
+<li><code>"render LikeCounter: 1"</code></li></ol>
+<p>The click handler runs to completion while the DOM still holds <code>0</code>. Only after <code>"handler end"</code> prints does React begin the render phase and print <code>"render LikeCounter: 1"</code>. React intentionally waits for all code in the event handler to finish before rendering (Preview of Q19: React batches state updates to prevent unnecessary intermediate renders). Note that during development under <code>&lt;StrictMode&gt;</code> (recalled from Q12), React invokes component functions twice to verify purity, which explains why the render log appears twice in development.</p>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Treat Rendering as React Calling Your Components, Not as Drawing</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">render phase</span>
+          <span class="gloss-def">the execution of component functions to calculate a fresh virtual tree of JSX descriptors</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">pure calculation</span>
+          <span class="gloss-def">a function execution that produces data in memory without modifying outside state or DOM elements</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">In the render phase, React calls your component functions in memory to calculate what markup should appear on screen. Rendering is a pure JavaScript calculation that touches zero DOM nodes, and components above the updated component in the tree are not called at all. Each render pass passes a new props object to child components.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>A common misconception among web developers is equating React "rendering" with browser "drawing" or "painting". When developers hear that a component rendered, they often imagine the browser recalculating styles, reflowing page layouts, and redrawing pixels. This misunderstanding leads to premature optimization panic, where developers fear that frequent renders will ruin performance.</p>
+<p>In reality, React rendering is simply calling a JavaScript function. When <code>LikeCounter</code> renders, React executes the function <code>LikeCounter()</code>. The function runs pure mathematical expressions, instantiates a few plain JavaScript objects, and returns a JSX descriptor tree. Computing these descriptors in memory takes microseconds. The physical DOM is not touched, and the browser paints nothing during this phase.</p>
+<p>Furthermore, state updates do not re-render your entire application. When state changes inside <code>LikeCounter</code>, React re-renders only that component and any children it returns:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Parent Shell Render Log</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">StoryPage</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  console.<span class="fn">log</span>(<span class="target-token"><span class="str">'render StoryPage'</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px; --token-offset: 196px;">
+        <span class="text">Called on initial mount only</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;article className=<span class="str">"story"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h2&gt;Morning News Dispatch&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;LikeCounter /&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Child Presentation Render Log</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">LikeLabel</span>({ <span class="target-token">count</span> }) { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px; --token-offset: 219px;">
+        <span class="text">Receives fresh props object each render</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  console.<span class="fn">log</span>(<span class="target-token"><span class="str">'render LikeLabel:'</span>, count</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px; --token-offset: 234px;">
+        <span class="text">Executes on parent re-render</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;span&gt;{count} likes&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>When the reader clicks Like inside <code>LikeCounter</code>, the console logs <code>"render LikeCounter: 1"</code> and <code>"render LikeLabel: 1"</code>. Notice that <code>"render StoryPage"</code> never prints after the initial mount! Because <code>StoryPage</code> sits above <code>LikeCounter</code> in the hierarchy and holds no state of its own, React does not call it. During this re-render, React creates a brand-new props object <code>{ count: 1 }</code> and passes it to <code>LikeLabel</code> (recalled from Q06). Re-rendering component functions in memory is exceptionally fast (Preview of Q56: component re-rendering is standard React behavior and rarely requires premature performance optimization).</p>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Expect the Commit to Write Only What Changed</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">commit phase</span>
+          <span class="gloss-def">the stage where React applies minimal calculated differences to physical browser DOM nodes</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">surgical DOM update</span>
+          <span class="gloss-def">modifying only the exact attribute or text node that changed while leaving existing elements intact</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">In the commit phase, React compares the newly returned JSX with the previous render and surgically updates only the DOM nodes whose output differs. If a component re-renders but produces identical markup, React makes zero changes to the browser DOM. Because React does not replace unchanged elements, form inputs retain their typed text and focus.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>After React finishes calling your components and collecting their JSX trees, it enters the commit phase. In this phase, React synchronizes the physical browser DOM with the calculated virtual tree. The crucial design invariant of the commit phase is <strong>surgical precision</strong>: React applies only the minimal necessary operations.</p>
+<p>On the initial render, React uses DOM APIs like <code>document.createElement</code> and <code>appendChild</code> to insert the entire tree into the document container. But on a re-render, React compares the new JSX tree against the previous one. If only the number inside <code>LikeLabel</code> changed from <code>0</code> to <code>1</code>, React updates only the <code>nodeValue</code> of that single text node. It does not replace the <code>&lt;span&gt;</code>, it does not touch the <code>&lt;button&gt;</code>, and it does not re-create the surrounding layout.</p>
+<p>This surgical precision explains a behavior that often surprises beginners: typed input values and cursor focus survive re-renders intact. To see this, mount a standard HTML <code>&lt;input&gt;</code> next to <code>LikeCounter</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Surgical Commit and Preserved Inputs</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryPage</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;main className=<span class="str">"story-page"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;h2&gt;Latest News Stories&lt;/h2&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;input type=<span class="str">"text"</span> placeholder=<span class="target-token"><span class="str">"Type notes here..."</span></span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-right" style="--right-edge: 471px; --tail-shoulder: 24px;">
+        <span class="text">Value survives</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;LikeCounter /&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Open the browser, type the word "draft" into the text input, and then click the Like button. The like counter increments from 0 to 1, but the text "draft" inside the input remains completely undisturbed! The cursor stays in place, and the input does not lose focus. Because React sees that <code>&lt;input&gt;</code> occupies the same position and type as in the previous render, it leaves the physical DOM element untouched.</p>
+<p>Even more remarkably, if a component re-renders but returns markup with identical values, React makes zero changes to the DOM during the commit phase. The render phase executes in memory, but the commit phase performs no work. Once React finishes committing changes, the browser repaints the screen. The documentation terms this <strong>browser paint</strong> to distinguish browser layout calculations from React component execution.</p>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">Use the Next Value You Computed, Not the DOM, in the Rest of the Handler</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">stale DOM read</span>
+          <span class="gloss-def">reading an element property inside an event handler before React has committed the new render</span>
+        </div>
+        <div class="gloss-entry">
+          <span class="gloss-term">local calculation variable</span>
+          <span class="gloss-def">a JavaScript variable that holds the next state value for immediate use inside the handler</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Because React commits changes to the DOM only after your event handler finishes, any DOM read inside that handler captures stale data from the previous render. Calculate the next value into a local variable, pass that variable to the setter, and use that variable for any immediate calculations or analytics in the handler.</p>
+      </div>
+    </div>
+      </div>
+</aside>
+<p>Because the commit phase occurs after the event handler completes, querying the DOM on the lines following a setter always returns stale values from the previous render pass. If an event handler calls <code>setLikes(likes + 1)</code> and then attempts to send <span class="code-line-callout"><code>document.<span class="fn">getElementById</span>(<span class="str">'count'</span>).textContent</code></span> to an analytics endpoint, it sends the old count every single time.</p>
+<p>Attempting to read the state variable itself on the next line (such as logging <code>likes</code>) also yields the old value. In React, state behaves like a snapshot frozen for that specific render pass (Preview of Q18: state variables do not change value within the currently running handler).</p>
+<p>The correct architectural solution is straightforward: calculate the next value into a plain JavaScript variable before calling the setter. Pass that variable to the setter, and use that same variable for any subsequent operations in the handler:</p>
+<p><em>It is best practice to do this:</em>
+<span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">LikeCounter</span>() {</code></span>
+<span class="code-line-callout"><code>  <span class="kw">const</span> [likes, setLikes] = ~<span class="hook">useState</span>(<span class="nl">0</span>)~; <span class="cmt">// State cell in memory</span></code></span>
+<span class="code-line-callout"><code>  <span class="kw">function</span> <span class="fn">handleLike</span>() {</code></span>
+<span class="code-line-callout"><code>    <span class="kw">const</span> nextLikes = ~likes + <span class="nl">1</span>~; <span class="cmt">// Calculates next value into variable</span></code></span>
+<span class="code-line-callout"><code>    <span class="fn">setLikes</span>(nextLikes); <span class="cmt">// Queues render with next value</span></code></span>
+<span class="code-line-callout"><code>    console.<span class="fn">log</span>(~<span class="str">'Next count:'</span>, nextLikes~); <span class="cmt">// Immediately available for use</span></code></span>
+<code>  }</code>
+<span class="code-line-callout"><code>  <span class="kw">return</span> &lt;button onClick={handleLike}&gt;<span class="fn">Like</span> ({likes})&lt;/button&gt;;</code></span>
+<code>}</code></p>
+<p><em>Instead of doing this:</em>
+<span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">LikeCounter</span>() {</code></span>
+<span class="code-line-callout"><code>  <span class="kw">const</span> [likes, setLikes] = ~<span class="hook">useState</span>(<span class="nl">0</span>)~; <span class="cmt">// State cell in memory</span></code></span>
+<span class="code-line-callout"><code>  <span class="kw">function</span> <span class="fn">handleLike</span>() {</code></span>
+<span class="code-line-callout"><code>    <span class="fn">setLikes</span>(likes + <span class="nl">1</span>); <span class="cmt">// Queues render</span></code></span>
+<span class="code-line-callout"><code>    <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(~<span class="str">'count'</span>~); <span class="cmt">// Queries DOM before commit</span></code></span>
+<span class="code-line-callout"><code>    console.<span class="fn">log</span>(~<span class="str">'DOM:'</span>, el.textContent~); <span class="cmt">// Stale read: logs old 0</span></code></span>
+<code>  }</code>
+<span class="code-line-callout"><code>  <span class="kw">return</span> (</code></span>
+<code>    &lt;button onClick={handleLike}&gt;</code>
+<span class="code-line-callout"><code>      <span class="fn">Like</span> (&lt;span id=<span class="str">"count"</span>&gt;{likes}&lt;/span&gt;)</code></span>
+<code>    &lt;/button&gt;</code>
+<code>  );</code>
+<code>}</code></p>
+<p>By storing <span class="code-line-callout"><code><span class="kw">const</span> nextLikes = likes + <span class="nl">1</span>;</code></span> in a local variable, you have immediate access to the accurate next value. You can log it, pass it to analytics functions, or evaluate conditional checks without waiting for React to finish rendering or committing. (Preview of Q65: in rare advanced scenarios where you must measure layout geometry like scroll height immediately after a state update, React provides an escape hatch called <code>flushSync</code>, but standard application state should always use local calculation variables).</p>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for story-page - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">story-page - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>LikeCounter</span><span class="component-explorer-props">title={storyTitle}</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>LikeLabel</span><span class="component-explorer-props">count={likes}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.like-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Like (1)</span></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="story-page: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">story-page: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Top-level story container rendering an article headline, an interactive note input, and the like counter</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">LikeCounter.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Stateful counter managing like counts with useState and orchestrating trigger, render, and commit</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">LikeLabel.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-leaf">leaf</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Pure presentation label displaying the current like count and logging render-phase executions</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Warm Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #d98c47; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #f3caa3; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the interactive like counter</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/LikeCounter.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the presentation like label</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/LikeLabel.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we compose the interactive story page</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 17.1: Figure 17.1: The progressive assembly pipeline of the trigger, render, and commit demonstration application</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the interactive like counter';">First, we construct the interactive like counter</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/LikeCounter.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/LikeCounter.jsx</code></span> we create the stateful component that manages reader appreciation for our newsroom story. We import <code>useState</code> from the React package and import our presentation child component <code>LikeLabel</code>.</p>
+<p>Inside <code>LikeCounter</code>, we declare our state variable <code>likes</code> initialized to <code>0</code>. We also add a console log at the top level of the component function body. Placing <span class="code-line-callout"><code>console.<span class="fn">log</span>(<span class="str">'render LikeCounter:'</span>, likes)</code></span> directly in the component body lets us observe exactly when React enters the render phase for this component:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LikeCounter.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> LikeLabel <span class="kw">from</span> <span class="str">'./LikeLabel.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">LikeCounter</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [likes, setLikes] = <span class="target-token"><span class="hook">useState</span>(<span class="nl">0</span>)</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px; --token-offset: 295px;">
+        <span class="text">Component state cell</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  console.<span class="fn">log</span>(<span class="target-token"><span class="str">'render LikeCounter:'</span>, likes</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px; --token-offset: 243px;">
+        <span class="text">Logs during render phase</span>
+      </div></div></div></div></div>
+<p>Next, we construct the click handler <code>handleLike</code>. When a reader clicks the button, the handler executes. To avoid the pitfall of stale DOM reads, we calculate <span class="code-line-callout"><code><span class="kw">const</span> nextLikes = likes + <span class="nl">1</span>;</code></span> into a local variable. We pass <code>nextLikes</code> to <code>setLikes(nextLikes)</code> to queue a render pass.</p>
+<p>Then, we log both our calculated variable and a direct read of the DOM element <span class="code-line-callout"><code>document.<span class="fn">getElementById</span>(<span class="str">'like-text'</span>)</code></span> This allows us to observe in the console that while our local variable holds the updated number immediately, the physical DOM node remains at the old count until the handler completes and the commit phase runs:</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">function</span> <span class="fn">handleLike</span>() {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'handler start'</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 181px;">
+        <span class="text">Handler executes first</span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="kw">const</span> nextLikes = <span class="target-token">likes + <span class="nl">1</span></span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 210px;">
+        <span class="text">Computes next count into variable</span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">setLikes</span>(nextLikes);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'like-text'</span>);</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    console.<span class="fn">log</span>(<span class="str">'DOM during handler:'</span>, <span class="target-token">el?.textContent</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-right" style="--right-edge: 466px; --tail-shoulder: 24px;">
+        <span class="text">Reads old DOM</span>
+      </div></div>
+<div class="row odd"><span class="num">13</span><span class="src">    console.<span class="fn">log</span>(<span class="target-token"><span class="str">'handler end'</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 172px;">
+        <span class="text">Handler returns before render begins</span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">  }</span></div></div></div></div>
+<p>We complete <code>LikeCounter.jsx</code> by returning its JSX markup. We render a button with an <code>onClick</code> event listener that references <code>handleLike</code>. Inside the button, we mount the child component <span class="code-line-callout"><code>&lt;LikeLabel count={likes} /&gt;</code></span> Notice that we pass <code>likes</code> down to the child through props:</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">16</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    &lt;div className=<span class="str">"like-container"</span>&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      &lt;button type=<span class="str">"button"</span> onClick=<span class="target-token">{handleLike}</span>&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-right" style="--right-edge: 423px; --tail-shoulder: 24px;">
+        <span class="text">References click handler</span>
+      </div></div>
+<div class="row odd"><span class="num">19</span><span class="src">        <span class="fn">Like</span> (&lt;LikeLabel <span class="target-token">count={likes}</span> /&gt;) </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px; --token-offset: 219px;">
+        <span class="text">Passes state downward</span>
+      </div></div>
+<div class="row even"><span class="num">20</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">    &lt;/div&gt;);</span></div>
+<div class="row even"><span class="num">22</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the presentation like label';">Next, we build the presentation like label</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/LikeLabel.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <code>src/components/LikeLabel.jsx</code>, we create a pure presentation child component. <code>LikeLabel</code> owns zero state of its own; it receives <code>count</code> via props.</p>
+<p>At the top of the function, we log <code>render LikeLabel: count</code>. This demonstrates the recursive nature of the render phase: when <code>LikeCounter</code> updates its state, React calls <code>LikeCounter</code>, and then React immediately calls <code>LikeLabel</code> with a brand-new props object:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LikeLabel.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">LikeLabel</span>({ <span class="target-token">count = <span class="nl">0</span></span> }) { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-right" style="--right-edge: 409px; --tail-shoulder: 24px;">
+        <span class="text">Unpacks count prop</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  console.<span class="fn">log</span>(<span class="target-token"><span class="str">'render LikeLabel:'</span>, count</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px; --token-offset: 234px;">
+        <span class="text">Logs recursive child render</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;span id=<span class="target-token"><span class="str">"like-text"</span></span> className=<span class="str">"like-text"</span>&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px; --token-offset: 134px;">
+        <span class="text">Real DOM node target</span>
+      </div></div></div></div></div>
+<p>When rendering dynamic text based on numbers, developers often need to choose between singular and plural words. Because this is an essential JavaScript pattern, let us review the <strong>ternary conditional operator</strong> (<span class="code-line-callout"><code>condition ? valueIfTrue : valueIfFalse</code></span>).</p>
+<p>The ternary operator is JavaScript's inline if-else shortcut. If the condition before the question mark evaluates to true (<code>count === 1</code>), the expression resolves to the singular word <code>'like'</code>. Otherwise, it resolves to the plural <code>'likes'</code>. Because the ternary operator evaluates to a single expression value, it sits cleanly inside JSX curly braces without needing complex multi-line statements:</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">4</span><span class="src">      {count} {count === <span class="nl">1</span> ? <span class="target-token"><span class="str">'like'</span></span> : <span class="str">'likes'</span>} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px; --token-offset: 243px;">
+        <span class="text">Ternary selects label</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;/span&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we compose the interactive story page';">Finally, we compose the interactive story page</div>
+      <div class="card-components"><span class="component-tag">&lt;src/App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <code>src/App.jsx</code>, we compose the top-level application container. We place a console log inside <code>App</code> to observe whether the parent component re-renders when a child component's state changes.</p>
+<p>Inside <code>App</code>, we render the article headline, an interactive text <code>&lt;input&gt;</code>, and our <code>&lt;LikeCounter /&gt;</code> component:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> LikeCounter <span class="kw">from</span> <span class="str">'./components/LikeCounter.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  console.<span class="fn">log</span>(<span class="target-token"><span class="str">'render App'</span></span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px; --token-offset: 167px;">
+        <span class="text">Runs on mount, never on child like clicks</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;main className=<span class="str">"story-container"</span>&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;h1&gt;Latest News Stories&lt;/h1&gt;</span></div></div></div></div>
+<p>We complete <code>App.jsx</code> by rendering an interactive text input followed by <code>&lt;LikeCounter /&gt;</code>. This input element serves a crucial pedagogical role: it demonstrates that React does not destroy or recreate DOM elements during re-renders.</p>
+<p>Type some text like "Draft note" into the input, and then click the Like button. You will see that your typed text remains completely intact! Because React's commit phase applies only the minimal necessary changes, it updates the count's text node and leaves the <code>&lt;input&gt;</code> DOM element completely untouched:</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">7</span><span class="src">      &lt;section className=<span class="str">"article-body"</span>&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">        &lt;p&gt;The city council approved a <span class="kw">new</span> clean energy initiative today.&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">        &lt;input</span></div>
+<div class="row even"><span class="num">10</span><span class="src">          type=<span class="str">"text"</span></span></div>
+<div class="row odd"><span class="num">11</span><span class="src">          placeholder=<span class="target-token"><span class="str">"Type notes here..."</span></span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px; --token-offset: 205px;">
+        <span class="text">Input value survives re-renders</span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src">        /&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">        &lt;LikeCounter /&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    &lt;/main&gt;);</span></div>
+<div class="row even"><span class="num">16</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>story page shell</strong> renders the article headline and a text input, demonstrating that parent components stay idle during child state updates and that input values survive re-renders.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>LikeCounter</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>interactive counter boundary</strong> manages state with useState, demonstrating how setter calls queue triggers and run handlers before the render phase begins.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>LikeLabel</span><span class="component-explorer-props">count={likes}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>presentation like label</strong> receives counts via props and logs recursive rendering in memory before React commits surgical text updates to the DOM.</p></div></div></div></div></div></div></div></div>
+</div>
+<p>Review the complete architecture. In a naive implementation, a developer assumes that calling <code>setLikes(likes + 1)</code> immediately changes the text inside the HTML button. When they query <span class="code-line-callout"><code>document.<span class="fn">getElementById</span>(<span class="str">'like-text'</span>).textContent</code></span> on the next line, they receive the old count, creating confusion and subtle analytics bugs. They may also fear that calling a component function redraws the entire browser window and slows down the page.</p>
+<p>The React engine resolves this through three distinct phases. First, the trigger: clicking Like invokes <code>setLikes</code>, which schedules a future render and lets the rest of the click handler finish executing. Second, the render: React executes <code>LikeCounter</code> and <code>LikeLabel</code> in memory, calculating a fresh tree of virtual JSX descriptors without touching the real page. Third, the commit: React compares the new tree against the old one and surgically updates only the single text node that changed. The browser then paints the updated pixels. Unrelated DOM elements, like the text typed into the <code>&lt;input&gt;</code>, remain completely undisturbed.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    main .architecture-audit-figure .audit-table th.th-col-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      font-size: 0.81rem;
+      line-height: 1.4;
+      vertical-align: top !important;
+      color: #334155;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .audit-table td.td-layer,
+    main .architecture-audit-figure .audit-table td.td-layer {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .layer-tag {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 1px;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-size: 0.72rem;
+      color: #64748b;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .architecture-audit-figure .audit-table td.td-naive,
+    main .architecture-audit-figure .audit-table td.td-naive {
+      color: #475569;
+    }
+    .architecture-audit-figure .audit-table td.td-reality,
+    main .architecture-audit-figure .audit-table td.td-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+      color: #1e293b;
+    }
+    .architecture-audit-figure .bullet {
+      font-weight: 800;
+      margin-right: 3px;
+    }
+    .architecture-audit-figure .bullet-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .bullet-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .verdict-row td {
+      border-top: 2px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 10px 12px !important;
+      background: #f1f5f9;
+    }
+    .architecture-audit-figure .verdict-row td.td-reality {
+      background: #e2e8f0 !important;
+    }
+    .architecture-audit-figure .verdict-badge {
+      font-weight: 800;
+      font-size: 0.82rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Lifecycle Architecture &amp; The Three Phases</div>
+    <div class="audit-title">The Architecture of Trigger, Render, and Commit</div>
+    <p class="audit-subtitle">Contrasting immediate DOM mutation assumptions, painting misconceptions, and stale reads with React's three-phase cycle, pure tree calculations, and surgical DOM commits</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Architecture</span>
+          <span class="th-main">Layer</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">Naive Assumption</span>
+          <span class="th-main">Immediate Mutation</span>
+          <span class="th-sub sub-danger">Stale DOM Reads &amp; Paint Confusion</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">React Reality</span>
+          <span class="th-main">Three-Phase Pipeline</span>
+          <span class="th-sub sub-teal">Queued Trigger, Pure Render &amp; Commit</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">&lt;App.jsx&gt;</span>
+          <span class="layer-role">Story Page Shell</span>
+        </td>
+        <td class="td-naive">
+          <div><span class="bullet bullet-danger">&times;</span> Assumes child state change forces entire page and parent to re-render</div>
+          <div><span class="bullet bullet-danger">&times;</span> Fears that typing in an input gets erased when another component updates</div>
+          <div><span class="bullet bullet-danger">&times;</span> Believes every render repaints the entire screen from scratch</div>
+        </td>
+        <td class="td-reality">
+          <div><span class="bullet bullet-teal">&check;</span> Re-renders only the updated component subtree; uncalled ancestors stay idle</div>
+          <div><span class="bullet bullet-teal">&check;</span> Preserves native DOM input nodes and typed text across sibling updates</div>
+          <div><span class="bullet bullet-teal">&check;</span> Browser paints only after React commits differences to the real DOM</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">&lt;LikeCounter.jsx&gt;</span>
+          <span class="layer-role">Stateful Boundary</span>
+        </td>
+        <td class="td-naive">
+          <div><span class="bullet bullet-danger">&times;</span> Assumes calling setLikes immediately mutates the DOM text content</div>
+          <div><span class="bullet bullet-danger">&times;</span> Reads document.getElementById right after setter, receiving stale data</div>
+          <div><span class="bullet bullet-danger">&times;</span> Expects the render phase to write directly to browser DOM elements</div>
+        </td>
+        <td class="td-reality">
+          <div><span class="bullet bullet-teal">&check;</span> Calling setter queues a render and lets handler finish running first</div>
+          <div><span class="bullet bullet-teal">&check;</span> Computes next value into a variable for handler use instead of reading DOM</div>
+          <div><span class="bullet bullet-teal">&check;</span> Render phase executes component purely in memory to produce JSX</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">&lt;LikeLabel.jsx&gt;</span>
+          <span class="layer-role">Presentation Child</span>
+        </td>
+        <td class="td-naive">
+          <div><span class="bullet bullet-danger">&times;</span> Expects child function to paint pixels directly to the canvas</div>
+          <div><span class="bullet bullet-danger">&times;</span> Assumes re-rendering always causes heavy layout recalculation</div>
+          <div><span class="bullet bullet-danger">&times;</span> Replaces whole child container markup via innerHTML on change</div>
+        </td>
+        <td class="td-reality">
+          <div><span class="bullet bullet-teal">&check;</span> Receives fresh props and returns virtual JSX descriptors</div>
+          <div><span class="bullet bullet-teal">&check;</span> Commit phase updates only the specific text node that changed</div>
+          <div><span class="bullet bullet-teal">&check;</span> Identical render output skips DOM modification completely</div>
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td class="td-layer">
+          <span class="verdict-badge">System Verdict</span>
+        </td>
+        <td class="td-naive">
+          <strong>IMMEDIATE MUTATION &amp; PAINTING FEAR</strong><br>
+          Treating setters as immediate DOM writes leads to stale DOM reads, race conditions, and unjustified fears that frequent renders degrade browser performance.
+        </td>
+        <td class="td-reality">
+          <strong>THE THREE-PHASE CYCLE</strong><br>
+          Trigger queues work, render calculates fresh JSX trees purely in memory, and commit surgically applies minimal DOM differences before the browser paints.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 17.2: Figure 17.2: Architecture audit table contrasting naive DOM mutation assumptions with React's three-phase lifecycle</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Analytics Logging and Event Reporting</strong>: When tracking user actions like button clicks or purchases, developers calculate the next value in a local variable before passing it to analytics to avoid reporting stale DOM content.</li>
+<li><strong>Interactive Form Inputs and Chat Boxes</strong>: Text fields, comment inputs, and search bars rely on React's surgical commit phase to retain typed characters and focus states while other parts of the screen re-render.</li>
+<li><strong>Animation and Dimension Measurement</strong>: When measuring an element's new height or scroll position after an update, developers recognize that the DOM has not changed during the handler, scheduling measurements after the commit phase completes.</li>
+<li><strong>High-Frequency Counters and Dashboards</strong>: Live counters, like buttons, and notification badges re-render frequently in memory without causing costly browser reflows because React commits only the exact text nodes that change.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Trigger Phase</strong>: The opening stage of an update where an initial mount or state setter requests a render pass from React.</li>
+<li><strong>Render Phase</strong>: The pure calculation stage where React calls component functions in memory to generate a fresh tree of JSX descriptors.</li>
+<li><strong>Commit Phase</strong>: The stage where React compares virtual trees and applies the minimal necessary mutations to the physical browser DOM.</li>
+<li><strong>Browser Paint</strong>: The native browser process where the rendering engine calculates visual layout and draws pixels on the screen after the DOM changes.</li>
+<li><strong>Stale DOM Read</strong>: Inspecting a physical DOM node inside an event handler before React has committed the newly calculated render pass.</li>
+<li><strong>Surgical DOM Update</strong>: React's technique of patching only the specific text node or attribute that changed while leaving existing DOM elements intact.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li>Official guide to the three steps of displaying a component on screen (see <a href="https://react.dev/learn/render-and-commit">react.dev/learn/render-and-commit</a>).</li>
+<li>Deep dive into understanding state as a snapshot in time across render passes (see <a href="https://react.dev/learn/state-as-a-snapshot">react.dev/learn/state-as-a-snapshot</a>).</li>
+<li>Official explanation of how React batches state updates inside event handlers (see <a href="https://react.dev/learn/queueing-a-series-of-state-updates">react.dev/learn/queueing-a-series-of-state-updates</a>).</li>
+<li>Architectural rules for keeping component functions strictly pure during the render phase (see <a href="https://react.dev/reference/rules/components-and-hooks-must-be-pure">react.dev/reference/rules/components-and-hooks-must-be-pure</a>).</li>
+<li>Comprehensive API documentation for createRoot caveats and root rendering behavior (see <a href="https://react.dev/reference/react-dom/client/createRoot">react.dev/reference/react-dom/client/createRoot</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Triggering &amp; Event Handler Timing</span></div>
+<p class="summary-principle">➔ ALWAYS calculate the next state value into a local variable if you need to use it in the rest of the handler.</p>
+<p class="summary-principle">➔ NEVER read physical DOM properties immediately after calling a state setter expecting updated content.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> compute next values into variables before passing them to state setters</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">LikeCounter</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">function</span> <span class="fn">handleLike</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="kw">const</span> nextLikes = likes + <span class="nl">1</span>;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">setLikes</span>(nextLikes);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    console.<span class="fn">log</span>(<span class="str">'Next count:'</span>, nextLikes);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> &lt;button onClick={handleLike}&gt;<span class="fn">Like</span> ({likes})&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> read DOM properties right after calling a setter expecting updated content</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">LikeCounter</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [likes, setLikes] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">function</span> <span class="fn">handleLike</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">setLikes</span>(likes + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'count'</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    console.<span class="fn">log</span>(<span class="str">'DOM:'</span>, el.textContent);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> &lt;button onClick={handleLike}&gt;<span class="fn">Like</span> (&lt;span id=<span class="str">"count"</span>&gt;{likes}&lt;/span&gt;)&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Rendering vs Painting Mechanics</span></div>
+<p class="summary-principle">➔ ALWAYS understand that React rendering means executing JavaScript functions in memory without touching the DOM.</p>
+<p class="summary-principle">➔ NEVER confuse React component rendering with browser painting or layout recalculation.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> allow pure component functions to calculate virtual JSX trees in memory</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">LikeLabel</span>({ count }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> &lt;span&gt;{count} likes&lt;/span&gt;;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> attempt to mutate DOM elements or styles imperatively during the render phase</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">LikeLabel</span>({ count }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> el = document.<span class="fn">getElementById</span>(<span class="str">'count'</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">if</span> (el) el.textContent = count + <span class="str">' likes'</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> &lt;span id=<span class="str">"count"</span> /&gt;;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Committing &amp; DOM Preservation</span></div>
+<p class="summary-principle">➔ ALWAYS rely on React to surgically update only the specific DOM nodes whose content changed.</p>
+<p class="summary-principle">➔ EXPECT unchanged sibling elements, such as text inputs and their typed values, to survive re-renders intact.</p>
+<table class="comparison-table"><thead><tr><th></th><th><strong>TRIGGER &amp; RENDER</strong><br>(JavaScript Memory)</th><th><strong>COMMIT &amp; PAINT</strong><br>(Browser DOM)</th></tr></thead><tbody><tr><td><strong>Primary action</strong></td><td>Queuing work and executing component functions to compute JSX</td><td>Surgically updating real DOM nodes and drawing pixels on screen</td></tr><tr><td><strong>Where it runs</strong></td><td>Purely in JavaScript memory; call stack and V8 heap</td><td>Browser document object model and GPU display pipeline</td></tr><tr><td><strong>DOM modification</strong></td><td>Zero DOM changes; physical elements remain untouched</td><td>Applies minimal calculated differences (<code>nodeValue</code>, <code>appendChild</code>)</td></tr><tr><td><strong>Execution frequency</strong></td><td>Runs for the updated component and its returned children</td><td>Runs only if the newly calculated JSX differs from the previous render</td></tr><tr><td><strong>User text inputs</strong></td><td>Memory descriptors calculated; native input element is unbothered</td><td>Existing input element and its typed text survive completely intact</td></tr><tr><td><strong>Timing relative to handler</strong></td><td>Trigger queues request; render executes after active handler returns</td><td>Commit runs after render finishes; browser paints pixels last</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

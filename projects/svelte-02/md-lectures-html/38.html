@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 38: Taking Snapshots with $state.snapshot</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 38: Taking Snapshots with $state.snapshot</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">How do you get a plain, non-reactive snapshot of $state data?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A journalist writes a breaking news story in an editor on the National Times website.</li>
+<li>The code stores the draft in $state(draft), updating the live word count on screen as the journalist types.</li>
+<li>The journalist clicks the backup button, which runs the browser function structuredClone to save a duplicate draft.</li>
+<li>Why does the backup button crash the editor, even though the draft text is valid?</li>
+<li>The editor crashes with an error, preventing the journalist from saving their duplicate draft.</li>
+<li>The browser cannot clone Svelte's reactive proxy wrapper because structuredClone only accepts plain JavaScript data.</li>
+<li>Today you learn how to extract plain static data from reactive state to share with external browser tools.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Proxy Barrier in the Outside World</h3>
+<p>In Lecture 36, we discovered how Svelte 5 achieves deep reactivity by wrapping plain objects and arrays in recursive JavaScript Proxies (see Lecture 36). Whenever code accesses or mutates a property, Svelte's proxy traps intercept the operation to track dependencies and trigger surgical DOM updates. In interactive forms and dynamic newsroom editors, this property-level reactivity makes UI state feel effortless and responsive.</p>
+<p>Inside Svelte's component tree, reactive proxies are invisible and delightful. Your templates read properties directly, event handlers modify nested fields, and derived values recompute automatically when inputs change (see Lecture 7). But web applications do not exist in isolation. Modern frontend applications constantly exchange structured data with systems that live outside Svelte: external browser APIs, third-party libraries, network protocols, and developer debugging tools.</p>
+<p>On the National Times website, journalists write investigative reports inside an editorial workspace. As the journalist types, the workspace tracks draft content, headline text, word counts, and section outlines. To prevent accidental data loss during breaking news coverage, the editor includes a backup manager. Whenever the journalist clicks the backup button, the application attempts to clone the current draft using the browser's native structuredClone function, saving an isolated duplicate record to browser storage.</p>
+<p>This is where the application hits a sudden wall. When the code hands an article draft stored in $state directly to structuredClone, the browser immediately throws an uncaught DataCloneError exception. The backup operation aborts, an error message appears across the screen, and the journalist cannot save their work. The draft data itself consists of ordinary strings, numbers, and arrays, yet the browser flatly refuses to duplicate it.</p>
+<p>The cause of this crash lies in the boundary between Svelte and the wider JavaScript runtime. To the browser's native cloning algorithm, a reactive Svelte object is not a plain object: it is a Proxy instance equipped with internal trap handlers and signal bindings. The native structuredClone algorithm explicitly forbids cloning Proxy instances, throwing an error whenever it encounters one. Similar friction occurs across the entire frontend ecosystem: web worker communication through postMessage fails on proxies, external charting libraries like Chart.js or D3 can produce unpredictable rendering loops when caching proxied objects, and calling console.log prints confusing internal proxy targets rather than readable data.</p>
+<p>Before examining how to cross this boundary safely, examine the component hierarchy that powers the newsroom workspace. ArticleEditor.svelte serves as the container shell managing article state and input bindings, while BackupManager.svelte renders the backup controls and status card on screen.</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-svelte" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8a4 4 0 1 1 -8 0"/><path d="M15 16a4 4 0 1 1 -8 0"/><path d="M15 8v8"/><path d="M11 8v8"/></svg><span>ArticleEditor.svelte</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-svelte" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8a4 4 0 1 1 -8 0"/><path d="M15 16a4 4 0 1 1 -8 0"/><path d="M15 8v8"/><path d="M11 8v8"/></svg><span>BackupManager.svelte</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>ArticleEditor</span><span class="component-explorer-props">manages article draft state and backup actions</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>BackupManager</span><span class="component-explorer-props">creates offline backups and exports plain article data</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Draft: <strong>Offshore Energy Crisis</strong></span><span class="surface-render-line">Words: <strong>1450</strong></span><span class="surface-render-line">Status: <strong>Ready to archive</strong></span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+</div>
+<div class="keep-together">
+<h3>Peeling Off the Proxy with $state.snapshot</h3>
+<p>To safely pass reactive state across framework boundaries, Svelte 5 introduces the $state.snapshot rune function.</p>
+<p>The $state.snapshot rune takes a reactive $state proxy, or any data structure containing reactive proxies, and returns a plain, non-reactive deep copy with every proxy wrapper completely stripped away. You can think of it as taking an instant static photograph of your data. Inside Svelte, your reactive state continues running normally, maintaining its proxy traps and driving the user interface. But the value returned by $state.snapshot is an inert, ordinary JavaScript object residing in standard computer memory, entirely disconnected from Svelte's signal graph.</p>
+<p>Consider the contrast in memory between a live reactive state variable and its snapshot:</p>
+<ul><li>With live state: The object is wrapped in a JavaScript Proxy with get and set traps. Reading properties registers dependencies in active effects, and mutating properties notifies Svelte to update the DOM.</li>
+<li>With $state.snapshot: The returned object is a plain JavaScript clone. Reading properties performs zero dependency tracking, and mutating properties has zero effect on Svelte or the rendered screen.</li></ul>
+<p>Because $state.snapshot returns native unproxied data, browser APIs like structuredClone and postMessage accept it without hesitation. Third-party charting libraries receive pure data without proxy interference, and debugging tools display clean, transparent object structures.</p>
+<p>Here is BackupManager.svelte. It receives the reactive article draft and an onSaveBackup callback through $props() (see Lecture 9), rendering the draft title, word count, and backup status card.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BackupManager.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">let</span> { article, onSaveBackup } = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">let</span> statusMessage = <span class="rune">$state</span>(<span class="str">'Ready to archive'</span>);</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">handleBackup</span>() {</span></div>
+<div class="row"><span class="num">7</span><span class="src">    <span class="fn">onSaveBackup</span>();</span></div>
+<div class="row"><span class="num">8</span><span class="src">    statusMessage = <span class="str">'Backup saved to disk'</span>;</span></div>
+<div class="row"><span class="num">9</span><span class="src">  }</span></div>
+<div class="row"><span class="num">10</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src"></span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;aside <span class="kw">class</span>=<span class="str">"backup-panel"</span>&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">  &lt;h3&gt;Backup Manager&lt;/h3&gt;</span></div>
+<div class="row"><span class="num">14</span><span class="src">  &lt;p&gt;Draft: &lt;strong&gt;{article.title}&lt;/strong&gt;&lt;/p&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src">  &lt;p&gt;Words: &lt;strong&gt;{article.words}&lt;/strong&gt;&lt;/p&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">  &lt;p&gt;Status: {statusMessage}&lt;/p&gt;</span></div>
+<div class="row"><span class="num">17</span><span class="src">  &lt;button onclick={handleBackup}&gt;Save Backup&lt;/button&gt;</span></div>
+<div class="row"><span class="num">18</span><span class="src">&lt;/aside&gt;</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>Crossing Boundaries: Structured Clone, Storage, and Logging</h3>
+<p>Now examine ArticleEditor.svelte, where the application manages the reactive article draft and executes backup operations. This example demonstrates the contrast between passing live proxies to external tools versus unwrapping them with $state.snapshot.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleEditor.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">import</span> BackupManager <span class="kw">from</span> <span class="str">'./BackupManager.svelte'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">let</span> article = <span class="rune">$state</span>({</span></div>
+<div class="row"><span class="num">5</span><span class="src">    title: <span class="str">'Offshore Energy Crisis'</span>,</span></div>
+<div class="row"><span class="num">6</span><span class="src">    words: <span class="nl">1450</span>,</span></div>
+<div class="row"><span class="num">7</span><span class="src">    sections: [<span class="str">'Investigation'</span>, <span class="str">'Public Records'</span>, <span class="str">'Interviews'</span>]</span></div>
+<div class="row"><span class="num">8</span><span class="src">  });</span></div>
+<div class="row"><span class="num">9</span><span class="src"></span></div>
+<div class="row"><span class="num">10</span><span class="src">  <span class="kw">let</span> savedSnapshots = <span class="rune">$state</span>([]);</span></div>
+<div class="row"><span class="num">11</span><span class="src"></span></div>
+<div class="row"><span class="num">12</span><span class="src">  <span class="kw">function</span> <span class="fn">backupBroken</span>() {</span></div>
+<div class="row"><span class="num">13</span><span class="src">    <span class="kw">const</span> copy = <span class="fn">structuredClone</span>(article); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">WRONG:</b> Native clone throws an error on a Svelte <b class="tag">PROXY</b>.</span>
+      </div></div>
+<div class="row"><span class="num">14</span><span class="src">    savedSnapshots = [...savedSnapshots, copy];</span></div>
+<div class="row"><span class="num">15</span><span class="src">  }</span></div>
+<div class="row"><span class="num">16</span><span class="src"></span></div>
+<div class="row"><span class="num">17</span><span class="src">  <span class="kw">function</span> <span class="fn">backupWorking</span>() {</span></div>
+<div class="row"><span class="num">18</span><span class="src">    <span class="kw">const</span> rawCopy = <span class="rune">$state</span>.<span class="fn">snapshot</span>(article); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> Strips all proxies and returns a plain <b class="tag">OBJECT</b>.</span>
+      </div></div>
+<div class="row"><span class="num">19</span><span class="src">    <span class="kw">const</span> deepClone = <span class="fn">structuredClone</span>(rawCopy); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> Native browser clone accepts plain <b class="tag">DATA</b>.</span>
+      </div></div>
+<div class="row"><span class="num">20</span><span class="src">    savedSnapshots = [...savedSnapshots, deepClone];</span></div>
+<div class="row"><span class="num">21</span><span class="src">  }</span></div>
+<div class="row"><span class="num">22</span><span class="src"></span></div>
+<div class="row"><span class="num">23</span><span class="src">  <span class="kw">function</span> <span class="fn">logDraft</span>() {</span></div>
+<div class="row"><span class="num">24</span><span class="src">    console.<span class="fn">log</span>(<span class="rune">$state</span>.<span class="fn">snapshot</span>(article)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> Prints clean data without proxy <b class="tag">TRAPS</b>.</span>
+      </div></div>
+<div class="row"><span class="num">25</span><span class="src">  }</span></div>
+<div class="row"><span class="num">26</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">27</span><span class="src"></span></div>
+<div class="row"><span class="num">28</span><span class="src">&lt;main <span class="kw">class</span>=<span class="str">"editor-shell"</span>&gt;</span></div>
+<div class="row"><span class="num">29</span><span class="src">  &lt;h2&gt;Investigative Newsroom Editor&lt;/h2&gt;</span></div>
+<div class="row"><span class="num">30</span><span class="src">  &lt;label&gt;</span></div>
+<div class="row"><span class="num">31</span><span class="src">    Headline:</span></div>
+<div class="row"><span class="num">32</span><span class="src">    &lt;input bind:value={article.title} /&gt;</span></div>
+<div class="row"><span class="num">33</span><span class="src">  &lt;/label&gt;</span></div>
+<div class="row"><span class="num">34</span><span class="src">  &lt;label&gt;</span></div>
+<div class="row"><span class="num">35</span><span class="src">    Word Count:</span></div>
+<div class="row"><span class="num">36</span><span class="src">    &lt;input type=<span class="str">"number"</span> bind:value={article.words} /&gt;</span></div>
+<div class="row"><span class="num">37</span><span class="src">  &lt;/label&gt;</span></div>
+<div class="row"><span class="num">38</span><span class="src">  &lt;BackupManager {article} onSaveBackup={backupWorking} /&gt;</span></div>
+<div class="row"><span class="num">39</span><span class="src">&lt;/main&gt;</span></div></div></div>
+<p>In backupBroken, the function passes the reactive article proxy directly into structuredClone. The browser encounters Svelte's proxy traps and throws a DataCloneError, terminating execution before the record can be added to savedSnapshots. In backupWorking, calling $state.snapshot(article) traverses the draft structure, stripping every proxy wrapper and producing an inert deep clone. When structuredClone receives this clean clone, it duplicates the record smoothly and appends it to savedSnapshots.</p>
+<p>Notice also the logDraft function. When developers log reactive state directly using console.log(article), browser developer tools display Proxy { &lt;target&gt;: Object, &lt;handler&gt;: Object }. To view actual values, developers must expand nested internal properties manually. In development mode, Svelte even displays a helpful console warning reminding developers to use $inspect (see Lecture 45) for tracking values over time or $state.snapshot for one-off logging. Wrapping the variable in $state.snapshot(article) logs a crisp, immediately readable JavaScript object.</p>
+</div>
+<div class="keep-together">
+<h3>Snapshots Versus JSON Serialization and Shallow State</h3>
+<p>When developers first encounter the proxy barrier, a common naive question arises: why not simply use JSON.parse(JSON.stringify(article)) to strip proxies? We have used JSON serialization for years to clone objects in JavaScript; why does Svelte need a dedicated rune function?</p>
+<p>While JSON serialization appears to produce plain objects, it suffers from severe limitations that corrupt application data:</p>
+<ul><li><strong>Loss of data types:</strong> JSON serialization converts Date instances into plain strings, permanently destroying their date methods. It converts NaN and Infinity into null, strips undefined object properties entirely, and converts Map and Set instances into empty objects.</li>
+<li><strong>Crash on circular references:</strong> If your application data contains circular object references, JSON.stringify throws a fatal TypeError: Converting circular structure to JSON.</li>
+<li><strong>Performance overhead:</strong> Converting an entire memory structure into an intermediate text string and parsing that string back into memory is significantly slower and generates unnecessary garbage collector pressure.</li></ul>
+<p>By contrast, $state.snapshot is built directly into Svelte's runtime. It traverses object graphs natively, cloning data structures without text serialization. Furthermore, if an object in your state tree defines a custom toJSON method, $state.snapshot respects it by cloning the value returned by toJSON rather than the raw instance. If an object cannot be cloned, such as a browser DOM node or a window reference, $state.snapshot retains the original reference and warns you in development, ensuring your application never crashes unexpectedly.</p>
+<p>It is equally important to distinguish $state.snapshot from $state.raw (see Lecture 37). While both tools deal with unproxied data, they serve opposite directions:</p>
+<ul><li><strong>$state.raw:</strong> An input strategy. It creates a shallow reactive signal for large datasets at creation time, preventing Svelte from ever creating nested proxies.</li>
+<li><strong>$state.snapshot:</strong> An output strategy. It takes an existing deeply reactive $state proxy and extracts an inert, plain copy so you can export it to external systems.</li></ul>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">$state.snapshot extracts a plain, static, non-reactive deep copy of reactive state, stripping all JavaScript Proxies so the data can safely pass to outside libraries, browser APIs, and developer tools.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> Explain that $state.snapshot takes a deeply reactive $state proxy and returns a static, non-reactive deep clone with all Proxy wrappers removed. Contrast its role with $state.raw: while $state.raw defines a shallow reactive variable that avoids proxying at creation time, $state.snapshot extracts an inert snapshot from existing deeply reactive state. Detail the three primary reasons to use it: first, native browser APIs like structuredClone and worker.postMessage throw DataCloneError when passed a Proxy; second, external libraries like Chart.js or D3 can experience identity bugs or unexpected mutations if handed reactive proxies; and third, console.log outputs cluttered proxy internals unless unwrapped. Mention that $state.snapshot respects toJSON methods on nested objects, and contrast it with JSON.parse(JSON.stringify(data)) by noting that $state.snapshot preserves dates, undefined values, and non-JSON data types.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>The National Times editorial editor takes snapshots of investigative drafts to create offline backups with structuredClone.</li>
+<li>An analytics dashboard takes a snapshot of reactive metrics data before passing the points to an external Chart.js canvas instance.</li>
+<li>A background spellchecking service sends plain draft text snapshots to a Web Worker thread using worker.postMessage.</li>
+<li>An event handler takes a one-off snapshot of form state to log clean, unproxied values to the browser console during debugging.</li>
+<li>An offline-first notes application serializes reactive state snapshots to IndexedDB without triggering proxy serialization errors.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p>Svelte 5 wraps objects and arrays in JavaScript Proxies to deliver fine-grained reactivity, but external tools and native browser APIs require plain JavaScript data. The $state.snapshot rune bridges this divide by extracting an inert, non-reactive deep clone with all proxy wrappers removed. This allows your application to share data seamlessly with structuredClone, Web Workers, external libraries, and developer tools without sacrificing the benefits of deep reactivity inside your Svelte components.</p>
+<ul><li>$state.snapshot returns a plain, static deep copy of reactive state with all Proxies removed.</li>
+<li>Native browser APIs like structuredClone and worker.postMessage throw errors when passed Proxies.</li>
+<li>External charting libraries and developer tools expect plain unproxied JavaScript data.</li>
+<li>Snapshots are completely detached from Svelte's signal graph; mutating them never updates the DOM.</li>
+<li>Unlike JSON serialization, $state.snapshot preserves data types and handles toJSON methods natively.</li>
+<li>Use $state.raw to avoid proxies at creation; use $state.snapshot to export plain data on demand.</li></ul>
+<table><thead><tr><th></th><th><strong>REACTIVE $STATE</strong><br>(proxy)</th><th><strong>$STATE.SNAPSHOT</strong><br>(static)</th></tr></thead><tbody><tr><td><strong>Reactivity</strong></td><td>Fully reactive with signal<br>tracking and DOM updates</td><td>Completely inert with zero<br>signals or DOM subscriptions</td></tr><tr><td><strong>Internal structure</strong></td><td>Wrapped in native JavaScript<br>recursive Proxy instances</td><td>Plain JavaScript objects and<br>arrays with no wrappers</td></tr><tr><td><strong>External tools</strong></td><td>Incompatible with browser tools<br>like <code>structuredClone</code></td><td>Fully compatible with native APIs<br>and third-party libraries</td></tr><tr><td><strong>Console output</strong></td><td>Displays cluttered <code>Proxy</code><br>targets and handler traps</td><td>Displays clean, inspectable<br>plain JavaScript properties</td></tr><tr><td><strong>Mutation effect</strong></td><td>Mutating properties updates the<br>connected DOM elements</td><td>Mutating properties has zero<br>effect on Svelte or the screen</td></tr><tr><td><strong>Primary purpose</strong></td><td>Managing live application state<br>and driving the template</td><td>Exporting data across boundaries<br>to external systems</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

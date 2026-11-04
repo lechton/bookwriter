@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 16: State as a Snapshot — Edition v7.1-1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v7.1-1";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 16: State as a Snapshot</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">Why does state appear frozen inside a render, even right after you set it?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>You build an interactive feedback card with rating buttons and an analytics tracker.</li>
+<li>You call setRating(5) and log the rating on the next line, but the console still prints 0.</li>
+<li>Why does state appear frozen inside a render, even right after you set it?</li></ol>
+</div>
+<div class="keep-together">
+<h3>Every render receives a fixed state snapshot</h3>
+<p>In modern web applications, user interfaces update dynamically in response to user interactions. When a reader clicks a star rating, submits feedback, or confirms an order, the interface changes to reflect the new data. In plain JavaScript, developers modify memory by reassigning variables directly with <code>=</code>, expecting every subsequent line of code to see the new value immediately. In React, application state behaves differently: it acts as a snapshot. Calling a state setter does not mutate the variable in the running code; instead, it asks React to schedule a future render where <code>useState</code> returns the new value. Understanding that a state variable remains frozen as a constant for the entire duration of a render is essential for coordinating user events, network requests, and delayed callbacks without synchronization bugs.</p>
+<p>When developers transition from traditional scripting to React, they often assume that calling a state setter works like variable reassignment. In plain JavaScript, writing <code>rating = 5</code> changes the variable immediately, so logging <code>rating</code> on the very next line prints 5. In React, calling <code>setRating(5)</code> does not touch the local variable <code>rating</code> in the currently executing function. React keeps state memory outside the component and hands the current render a constant snapshot of that data. The running event handler continues executing using its existing snapshot value. Consequently, reading the state variable on the line immediately following a setter call prints the old value. Furthermore, developers often expect that calling <code>setRating(rating + 1)</code> three times in a row will increment the number by three, unaware that every call in that handler evaluates using the exact same snapshot number.</p>
+<p>This chapter answers four core questions. <strong>Why does reading a state variable immediately after calling its setter still return the old value?</strong> <strong>How should an event handler coordinate state updates with external API calls or network dispatches?</strong> <strong>Why does calling a state setter three times in a row only advance the count by one?</strong> <strong>If a delayed timer runs after the user selects a new rating, which value does its callback read?</strong></p>
+<p>Later lessons build directly on this snapshot mental model. Lecture 17 explores batching and update queues, showing how updater functions <code>r =&gt; r + 1</code> let multiple updates chain together. Lecture 18 covers state objects and immutability, explaining why mutating an existing state object breaks snapshot isolation. Lecture 29 introduces refs, showing how to store mutable values that delayed callbacks can read at their latest version. Lecture 35 covers effect events, showing how effects read reactive values without re-triggering synchronization. Lecture 36 examines effect dependencies, preventing stale closure captures inside background subscriptions.</p>
+<ul>
+<li><strong>Lecture 1 (What is React):</strong> Plain JavaScript modifies memory directly, while React updates the screen by calculating user interface descriptions from data.</li>
+<li><strong>Lecture 2 (Component anatomy):</strong> React calls our component functions because JSX names them; our code never calls component functions directly.</li>
+<li><strong>Lecture 4 (JSX expressions):</strong> Curly braces open an inline JavaScript window to project variables and evaluate template literals.</li>
+<li><strong>Lecture 13 (Responding to events):</strong> A function is passed to an event prop like onClick, never called during rendering, and handlers execute side effects.</li>
+<li><strong>Lecture 14 (Component memory with useState):</strong> The setter function stores the next state value in React and asks React to render again, while plain local variables reset on every run.</li>
+<li><strong>Lecture 15 (Trigger, render, and commit):</strong> The page updates only after the event handler finishes, so a DOM read immediately after a setter sees the old content.</li>
+</ul>
+</div>
+<div class="keep-together">
+<h3>How React captures state in a render snapshot</h3>
+<p>In Lecture 14, we learned that calling <code>useState</code> gives a component memory. React preserves state variables outside the component function, and calling a state setter tells React to schedule a re-render. In Lecture 15, we discovered that React runs event handlers to completion before initiating the render and commit phases.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Declarative State Snapshot</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">FeedbackSnapshot</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [rating, setRating] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Rating is constant 0 in this run</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">function</span> <span class="fn">handleRate</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">setRating</span>(<span class="nl">5</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Requests next render with 5</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">    console.<span class="fn">log</span>(rating); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Still prints 0 in this run</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> &lt;button onClick={handleRate}&gt;<span class="fn">Rate</span> ({rating})&lt;/button&gt;;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>When React renders a component, it calls your component function. The <code>useState</code> call retrieves the current state value from React internal storage and returns it to your function. Inside that function execution, the state variable is a standard JavaScript <code>const</code>. It never changes while that function executes. The JSX, local variables, and event handlers are all computed using this fixed value. We call this fixed set of values a <strong>snapshot</strong>.</p>
+<p>Calling a setter function like <code>setRating(5)</code> does not mutate the variable <code>rating</code> in your running code; it only tells React what value to supply in the next render. You can visualize this behavior using the <strong>substitution method</strong>: if <code>rating</code> is <code>0</code> when the component runs, you can mentally substitute <code>0</code> for <code>rating</code> everywhere in that render code.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">The Substitution Method</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleTripleBoost</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setRating</span>(<span class="nl">0</span> + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Substituted: requests 1 for next render</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setRating</span>(<span class="nl">0</span> + <span class="nl">1</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">setRating</span>(<span class="nl">0</span> + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Queues 1 again for the screen</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<p>Calling <code>setRating(rating + 1)</code> three times in one handler evaluates as <code>setRating(0 + 1)</code> three times. Each call asks React for 1, not 3. The screen moves from 0 to 1, exactly as if you called <code>setRating(1)</code> three times.</p>
+</div>
+<div class="keep-together">
+<h3>How functions capture state across time through closures</h3>
+<p>In Lecture 13, we saw that event handlers are JavaScript functions passed to JSX elements to handle user events. In standard JavaScript, functions declared inside an outer function have access to the outer function scope.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Delayed Timer Closure</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">DelayedConfirmation</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [rating, setRating] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Snapshot constant for this render</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSend</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">setTimeout</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      console.<span class="fn">log</span>(<span class="str">`Rating: ${rating}`</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Closure reads rating from this render</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">    }, <span class="nl">1000</span>);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> &lt;button onClick={handleSend}&gt;<span class="fn">Send</span> ({rating})&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Every time React renders a component, it executes the component function from top to bottom, creating fresh event handler functions for that specific render. In JavaScript, an inner function forms a <strong>closure</strong>: it permanently remembers the variables of the lexical scope where it was created.</p>
+<p>When an event handler schedules a delayed callback with <code>setTimeout</code>, that callback closes over the specific snapshot values of the render that created it. The browser native <code>setTimeout</code> method accepts a callback function and a delay in milliseconds, executing the callback after the timer expires. Even if subsequent user clicks trigger new renders that update the screen with fresh state, existing timer callbacks retain the snapshot values from the render where they were scheduled. This behavior prevents timing bugs and race conditions in asynchronous user workflows.</p>
+</div>
+<div class="keep-together">
+<h3>Principles of React: State as a Snapshot</h3>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="1">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 1</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 1: Calling a setter leaves the variable unchanged until the next render';">Calling a setter leaves the variable unchanged until the next render</h3>
+</div>
+<p>A developer builds a reader rating widget for stories. When a reader clicks five stars, the widget must update the screen to show 5 stars. The developer calls <code>setRating(5)</code> and logs <code>rating</code> on the very next line:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryFeedback.jsx, first attempt</span></div><div class="code"><div class="row even"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">handleFiveStars</span>() {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="fn">setRating</span>(<span class="nl">5</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Requests next render with 5</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    console.<span class="fn">log</span>(<span class="str">'rating after setter:'</span>, rating); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Still prints 0 here</span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">  }</span></div></div></div></div>
+<p>The developer opens the browser and clicks the five-star button. The development console prints <code>rating after setter: 0</code>. A body log placed at the top of the component prints <code>render rating = 5</code> only after the click handler completes, when the button on screen changes to show 5 stars. In a boost button calling <code>setRating(rating + 1)</code> three times, the screen moves from 0 to 1 instead of 3.</p>
+<p><strong>I call setRating(5) and log the rating on the next line. Why does it still print 0?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> In plain JavaScript, assigning a variable with <code>=</code> changes it immediately, but React treats state as a snapshot fixed for an entire render.</p>
+<p>In plain JavaScript, assigning a variable with <code>rating = 5</code> overwrites memory in place. In React, <span class="code-line-callout"><code><span class="kw">const</span> [rating, setRating] = <span class="hook">useState</span>(<span class="nl">0</span>)</code></span> provides the running function with a constant value <code>0</code> for this specific execution. React stores component state outside the function body. Calling <code>setRating(5)</code> does not mutate the variable in the running code; it stores <code>5</code> in React internal storage and queues a future render.</p>
+<p>Every line inside the current handler continues reading the constant <code>0</code>. Furthermore, when calling <code>setRating(rating + 1)</code> three times in one handler, the substitution method shows that each line evaluates <code>0 + 1</code> and asks React to replace the value with <code>1</code>. After the handler returns, React executes the new render, where <code>useState</code> returns <code>5</code> (or <code>1</code>), and the component calculates its new JSX.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">State as a Snapshot During Handler Execution</div>
+<pre class="ascii-diagram">[User Clicks "5 Stars"]
+      |
+      v
+[handleFiveStars Execution: rating is constant 0]
+  - setRating(5) queues 5 for next render
+  - console.log(rating) reads constant: prints 0
+      |
+      v
+[React Re-renders StoryFeedback with rating = 5]</pre>
+</div>
+<p>When code inside the handler needs the new value immediately, compute the next value once in a local variable: <span class="code-line-callout"><code><span class="kw">const</span> nextRating = <span class="nl">5</span>; <span class="fn">setRating</span>(nextRating); console.<span class="fn">log</span>(<span class="str">'rating ='</span>, nextRating);</code></span></p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">A state variable keeps one value for the whole render</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">snapshot</span>
+          <span class="gloss-def">the fixed set of values React gives to one run of a component</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">React provides each component run with a fixed <strong>snapshot</strong> of its state. In that run, a state variable is a standard JavaScript constant. Calling a setter does not change that constant in your running code. The setter only tells React what value to return on the next run. So reading the state variable on the line after the setter still reads the value from the current run. The new value exists only when React calls the component again.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> nextCount = count + <span class="nl">1</span>;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">compute the value once</span></div><div class="case-code-line"><span class="fn">setCount</span>(nextCount);</div><div class="case-code-line">console.<span class="fn">log</span>(nextCount);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">logs 1 in this handler</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setCount</span>(count + <span class="nl">1</span>);</div><div class="case-code-line">console.<span class="fn">log</span>(count);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">prints the old count, 0</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="2">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 2</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 2: Calling an API after a setter sends the old value unless computed once';">Calling an API after a setter sends the old value unless computed once</h3>
+</div>
+<p>The developer now connects the rating widget to an analytics helper named <code>sendRating</code>. When a reader clicks five stars, the component must update the screen and notify the analytics server:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryFeedback.jsx, sending rating</span></div><div class="code"><div class="row even"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">handleFiveStars</span>() {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="fn">setRating</span>(<span class="nl">5</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Schedules next render with 5</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="fn">sendRating</span>(rating); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Sends stale snapshot value 0!</span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">  }</span></div></div></div></div>
+<p>The developer clicks the five-star button. The screen updates to show 5 stars. But the analytics server records a rating of 0 stars.</p>
+<p><strong>When the reader clicks 5 stars, I set the rating and send it to the server. Which value do I give sendRating?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> The function <code>sendRating</code> executes inside the running handler where <code>rating</code> is still 0.</p>
+<p>The developer expects <code>rating</code> to hold 5 because <code>setRating(5)</code> was just called on the preceding line. But <code>rating</code> is a constant <code>0</code> for the entire execution of this handler. Passing <code>rating</code> to <code>sendRating(rating)</code> passes <code>0</code>. The server receives a rating of 0 while the reader sees 5 stars on screen, creating a silent telemetry defect.</p>
+<p>To synchronize the server payload with the requested UI state, the handler must compute the next value once in a local variable before calling the setter. Calling <span class="code-line-callout"><code><span class="kw">const</span> nextRating = <span class="nl">5</span>; <span class="fn">setRating</span>(nextRating); <span class="fn">sendRating</span>(nextRating);</code></span> gives <code>5</code> to React for the next render and passes <code>5</code> to the network helper immediately.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Sending Stale State Versus Computed Next Value</div>
+<pre class="ascii-diagram">[BROKEN APPROACH]
+  setRating(5);
+  sendRating(rating);      ---&gt; Sends 0 (stale snapshot)
+  Screen updates to 5      ---&gt; Server has 0, UI shows 5 (MISMATCH)
+
+[CORRECT APPROACH]
+  const nextRating = 5;    ---&gt; Computed once in local variable
+  setRating(nextRating);   ---&gt; Queues 5 for screen
+  sendRating(nextRating);  ---&gt; Sends 5 to server (IN SYNC)</pre>
+</div>
+<p>By computing the next value once in a variable, both the state setter and the external helper receive the identical value.</p>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Compute the next value once and use it after the setter</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row no-glossary">
+      <div class="principle-definition-card">
+        <p class="principle-statement">When an event handler must update state and notify an outside service or API, do not read the state variable right after calling the setter. The state variable still holds the value from the current run. Instead, calculate the new value once in a local variable. Pass that variable to the setter to schedule the screen update, and pass the same variable to the outside function.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> nextCount = <span class="nl">5</span>;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">compute next value once</span></div><div class="case-code-line"><span class="fn">setCount</span>(nextCount);</div><div class="case-code-line"><span class="fn">sendCount</span>(nextCount);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">sends 5 to the server</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="fn">setCount</span>(<span class="nl">5</span>);</div><div class="case-code-line"><span class="fn">sendCount</span>(count);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">sends old count 0 to server</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="3">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 3</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 3: A delayed timer callback keeps reading the rating from its own render';">A delayed timer callback keeps reading the rating from its own render</h3>
+</div>
+<p>The developer adds a Send Confirmation button that schedules an alert using <code>setTimeout</code>. When clicked, the widget waits 100 milliseconds and prints a confirmation message:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryFeedback.jsx, delayed confirmation</span></div><div class="code"><div class="row even"><span class="num">10</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSend</span>() {</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="fn">setTimeout</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      console.<span class="fn">log</span>(<span class="str">'Thanks for rating '</span> + rating); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Reads captured snapshot</span>
+      </div></div>
+<div class="row odd"><span class="num">13</span><span class="src">    }, <span class="nl">100</span>);</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  }</span></div></div></div></div>
+<p>The user rates 5 stars, clicks Send Confirmation, and quickly clicks 2 stars before the 100-millisecond timer expires. The screen updates to show 2 stars, but the timer callback prints "Thanks for rating 5" in the console.</p>
+<p><strong>If the rating changes before the timer fires, which number does the message show?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code works as expected.</strong> The timer callback is a JavaScript closure that retains the state snapshot of the render that created it.</p>
+<p>A developer might expect the delayed callback to read the newest rating (2) because it executes after the screen has already re-rendered. In JavaScript, an inner function forms a closure that captures the variables in scope when the function was created. The render where <code>rating</code> was 5 created its own Send handler. Clicking Send created a timer callback that closed over that render constant <code>rating</code> value of 5.</p>
+<p>When the user later clicked 2, React re-rendered <code>StoryFeedback</code> with a new constant <code>rating = 2</code> and generated fresh event handlers for the new screen. That second render does not mutate the variables held by the existing timer callback. When the timer fires, it reads the 5 from its own render snapshot.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Closure Capture Across Component Re-renders</div>
+<pre class="ascii-diagram">[Render 1: rating = 5]
+  |-- "Send" schedules timer (closure captures 5)
+  |
+  +--&gt; [User clicks 2 Stars -&gt; Render 2: rating = 2]
+         |-- Screen updates to 2 Stars
+         |
+         +--&gt; [Timer expires after 100ms]
+                |-- Runs callback from Render 1
+                |-- Prints "Thanks for rating 5"</pre>
+</div>
+<p>This snapshot behavior is a protective feature. If a user sends a chat message to Alice and immediately switches the active recipient to Bob, a delayed network timeout or confirmation alert still sends the message to Alice, preventing race conditions.</p>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">An event handler keeps the state of the render that created it</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">closure</span>
+          <span class="gloss-def">a JavaScript function that remembers variables from the scope where it was defined</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Every time React runs a component, that run creates its own fresh event handler functions. In JavaScript, an inner function is a <strong>closure</strong>: it remembers the variables of the function call where it was created. When a timer or delayed callback is scheduled, it closes over the state variables of that specific run. If a later click changes state and causes React to run the component again, the new run gets new state variables and new handlers. The earlier timer callback continues running with the values from the run that created it.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">handleSend</span>() {</div><div class="case-code-line">  <span class="fn">setTimeout</span>(() =&gt; {</div><div class="case-code-line">    console.<span class="fn">log</span>(<span class="str">`Rating: ${count}`</span>);</div><div class="cmt-bubble" style="--indent-offset: 33px;"><span class="text">reads count from this render</span></div><div class="case-code-line">  }, <span class="nl">3000</span>);</div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for story-feedback - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">story-feedback - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>StoryFeedback</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h1" data-elem="[h1.headline]"><div class="ui-elem-content">Reader Ratings</div></div><div class="ui-elem ui-tag-p" data-elem="[p.score]"><div class="ui-elem-content">Rating: 0 Stars</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>RatingControls</span><span class="component-explorer-props">onRate={handleRate} onSend={handleSend}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.btn-star]"><div class="ui-elem-content"><span class="surface-ui-btn">Rate 5 Stars</span></div></div><div class="ui-elem ui-tag-button" data-elem="[button.btn-submit]"><div class="ui-elem-content"><span class="surface-ui-btn">Send Confirmation</span></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="story-feedback: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">story-feedback: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Application shell hosting the feedback widget</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryFeedback.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">State owner managing rating memory, computing next values, and scheduling timers</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">RatingControls.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-leaf">leaf</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Child controls rendering rating buttons and dispatching user actions</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.75;
+      line-height: 1;
+      margin-bottom: 3px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.45rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      display: flex;
+      align-items: center;
+      padding: 6px 0;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 1px;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.09);
+    }
+    .assembly-steps-figure .card-content {
+      padding: 9px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.70rem;
+      font-weight: 600;
+      background: rgba(15, 23, 42, 0.05);
+      color: #475569;
+      padding: 1.5px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Warm Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #d98c47; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #f3caa3; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we lay out the feedback application</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the rating boundary</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/StoryFeedback.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we build the rating action controls</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/RatingControls.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 16.1: Figure 16.1: Progressive three-step assembly pipeline for the feedback rating widget</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we lay out the feedback application';">First, we lay out the feedback application</div>
+      <div class="card-components"><span class="component-tag">&lt;src/App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <code>src/App.jsx</code>, we establish the outer application shell. The root component renders the main title and mounts the <code>StoryFeedback</code> widget.</p>
+<p>Notice that <code>App</code> owns zero interactive state. Because <code>App</code> does not declare <code>useState</code>, state changes triggered by user interactions inside <code>StoryFeedback</code> remain encapsulated within the child component. React re-renders only <code>StoryFeedback</code> and its subtree, keeping the outer layout stable.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> StoryFeedback <span class="kw">from</span> <span class="str">'./components/StoryFeedback.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"feedback-app"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h1&gt;Reader Ratings&lt;/h1&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;StoryFeedback /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">State owner boundary</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>This structural separation ensures that user interactions do not trigger unnecessary top-level re-renders.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the rating boundary';">Next, we build the rating boundary</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/StoryFeedback.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/StoryFeedback.jsx</code></span> we construct the interactive rating boundary. This component owns the <code>rating</code> state variable using <code>useState(0)</code>.</p>
+<p>We declare the <code>handleRate</code> action handler. When the user selects a score, <code>handleRate</code> computes <code>nextRating</code> in a local variable. It passes <code>nextRating</code> to <code>setRating</code> to schedule the next render, and synchronously logs the value to simulate sending it to an analytics server.</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StoryFeedback.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> RatingControls <span class="kw">from</span> <span class="str">'./RatingControls.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryFeedback</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [rating, setRating] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Snapshot constant for this render</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">handleRate</span>(newScore) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="kw">const</span> nextRating = newScore; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Compute next value once</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="fn">setRating</span>(nextRating);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    console.<span class="fn">log</span>(<span class="str">'Sending rating:'</span>, nextRating); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Sends fresh computed value</span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">  }</span></div></div></div></div>
+<p>Computing <code>nextRating</code> once guarantees that both the state update and the external side effect operate on the identical number.</p>
+<p>Next, we implement <code>handleBoost</code> and <code>handleSend</code> to verify repeated updates and delayed closure capture.</p>
+<p>Calling <code>setRating(rating + 1)</code> three times in <code>handleBoost</code> evaluates against the current snapshot value, demonstrating why one click increments the score by one. In <code>handleSend</code>, scheduling <code>setTimeout</code> creates a closure that permanently captures the rating of the render that created it.</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row even"><span class="num">10</span><span class="src">  <span class="kw">function</span> <span class="fn">handleBoost</span>() {</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="fn">setRating</span>(rating + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Evaluates 0 + 1 against current snapshot</span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src">    <span class="fn">setRating</span>(rating + <span class="nl">1</span>);</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    <span class="fn">setRating</span>(rating + <span class="nl">1</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Queues 1 three times</span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSend</span>() {</span></div>
+<div class="row even"><span class="num">16</span><span class="src">    <span class="fn">setTimeout</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      console.<span class="fn">log</span>(<span class="str">`Confirmed rating: ${rating}`</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Closure captures snapshot</span>
+      </div></div>
+<div class="row even"><span class="num">18</span><span class="src">    }, <span class="nl">1500</span>);</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  }</span></div></div></div></div>
+<p>Finally, we complete <code>StoryFeedback.jsx</code> by rendering the card container, displaying the score, and passing action handlers downward to <code>RatingControls</code>.</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">20</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">    &lt;div className=<span class="str">"feedback-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">      &lt;p className=<span class="str">"score"</span>&gt;Score: {rating}&lt;/p&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Shows render snapshot</span>
+      </div></div>
+<div class="row odd"><span class="num">23</span><span class="src">      &lt;RatingControls</span></div>
+<div class="row even"><span class="num">24</span><span class="src">        onRate={handleRate}</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">        onSend={handleSend}</span></div>
+<div class="row even"><span class="num">26</span><span class="src">      /&gt;</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">28</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">29</span><span class="src">}</span></div></div></div></div>
+<p>The component passes its state and handler functions downward to <code>RatingControls</code>.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we build the rating action controls';">Finally, we build the rating action controls</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/RatingControls.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/RatingControls.jsx</code></span> we create the button controls that trigger user actions.</p>
+<p>Notice that <code>RatingControls</code> owns zero local state. It receives callback functions from its parent and wires them directly to button click events. When a user clicks a button, the callback executes in <code>StoryFeedback</code> memory, demonstrating inverse data flow.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">RatingControls.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">RatingControls</span>({ onRate, onSend }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"rating-actions"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">onRate</span>(<span class="nl">5</span>)}&gt;Rate&lt;/button&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Upward action</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;button onClick={onSend}&gt;Send&lt;/button&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Upward timer trigger</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>This presentation leaf remains decoupled from state storage, delegating all state transitions upward to its parent boundary.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>application shell</strong> mounts the feedback widget in the user interface without managing state.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>StoryFeedback</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>state boundary</strong> manages rating memory, computes next values, and schedules timer alerts.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>RatingControls</span><span class="component-explorer-props">onRate={handleRate} onSend={handleSend}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>action controls</strong> render rating buttons and dispatch interactions upward through callbacks.</p></div></div></div></div></div></div></div></div>
+</div>
+<p>Across our three files, the architectural roles are distinct. <code>App.jsx</code> acts as a static host. <code>StoryFeedback.jsx</code> holds state memory, computes next values once to prevent stale dispatches, and captures render snapshots for timers. <code>RatingControls.jsx</code> provides interactive buttons that dispatch user events upward without owning persistent data.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0d9488;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      padding: 8px 12px !important;
+      font-size: 0.81rem !important;
+      line-height: 1.35 !important;
+      vertical-align: top !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      color: #1e293b;
+    }
+    .architecture-audit-figure .audit-table tr:last-child td {
+      border-bottom: 3px solid #0f172a !important;
+    }
+    .architecture-audit-figure .td-layer {
+      background: #ffffff;
+    }
+    .architecture-audit-figure .td-naive {
+      background: #ffffff;
+    }
+    .architecture-audit-figure .td-reality {
+      background: #f8fafc;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .layer-tag {
+      display: block;
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-size: 0.70rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .bullet {
+      display: inline-block;
+      font-weight: 800;
+      margin-right: 4px;
+    }
+    .architecture-audit-figure .bullet-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .bullet-teal {
+      color: #0d9488;
+    }
+    .architecture-audit-figure .verdict-row td {
+      background: #f1f5f9 !important;
+      border-top: 2px solid #0f172a !important;
+      padding-top: 10px !important;
+      padding-bottom: 10px !important;
+    }
+    .architecture-audit-figure .verdict-row td.td-reality {
+      background: #e6f4f1 !important;
+      border-left: 1px solid #cbd5e1 !important;
+    }
+    .architecture-audit-figure .verdict-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: #0f172a;
+      color: #ffffff;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">LESSONS FROM THE CODE</div>
+    <div class="audit-title">State as a Snapshot in Practice</div>
+    <p class="audit-subtitle">Why React treats state as a fixed constant for the whole render</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Component Layer</span>
+          <span class="th-main">Architecture</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">Naive Expectation</span>
+          <span class="th-main">Mutable Memory</span>
+          <span class="th-sub sub-danger">Assumes variables change in place</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">What Happened</span>
+          <span class="th-main">Snapshot Reality</span>
+          <span class="th-sub sub-teal">State is fixed for each render</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">App.jsx</span>
+          <span class="layer-role">Root Shell</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Global state propagation</strong><br>
+          Parent must hold state so rating changes trigger a full tree refresh.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Isolated boundary memory</strong><br>
+          <code>StoryFeedback</code> encapsulates its own state; parent <code>App</code> never re-renders on clicks.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">StoryFeedback.jsx</span>
+          <span class="layer-role">Setter Call</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Immediate variable update</strong><br>
+          Calling <code>setRating(5)</code> changes the variable on the very next line.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Fixed constant in running code</strong><br>
+          The running function still holds <code>0</code>; setter only requests the next render.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">StoryFeedback.jsx</span>
+          <span class="layer-role">API Dispatch</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Read state after setting</strong><br>
+          Passing <code>rating</code> to <code>sendRating</code> delivers the new rating to the server.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Compute once in a local variable</strong><br>
+          Passing <code>rating</code> sent <code>0</code>; <code>const nextRating = 5</code> sends the true value.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">StoryFeedback.jsx</span>
+          <span class="layer-role">Timer Alert</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Delayed code reads newest data</strong><br>
+          A delayed timer fires and reads whatever rating the user chose later.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>Closures capture their own render</strong><br>
+          The timer callback closes over its render's rating and reports the rating from that click.
+        </td>
+      </tr>
+      <tr>
+        <td class="td-layer">
+          <span class="layer-tag">RatingControls.jsx</span>
+          <span class="layer-role">Repeated Calls</span>
+        </td>
+        <td class="td-naive">
+          <span class="bullet bullet-danger">✕</span> <strong>Three calls increment by three</strong><br>
+          Calling <code>setRating(rating + 1)</code> three times adds three in one click.
+        </td>
+        <td class="td-reality">
+          <span class="bullet bullet-teal">✓</span> <strong>All calls read the same snapshot</strong><br>
+          Each call evaluates <code>0 + 1</code>, so React schedules a single render with <code>1</code>.
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td class="td-layer">
+          <span class="verdict-badge">Verdict</span>
+        </td>
+        <td class="td-naive">
+          <strong>Mutable variable mental model</strong><br>
+          Treating state as a live mutable pointer produces subtle timing bugs and stale dispatches.
+        </td>
+        <td class="td-reality">
+          <strong>Immutable snapshot mental model</strong><br>
+          Each render receives a fixed snapshot, protecting delayed code and ensuring predictable UI.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 16.2: Figure 16.2: Architecture audit table contrasting mutable memory habits with the React snapshot mental model</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<p>In production applications, understanding state snapshots is vital when sending analytics telemetry, dispatching API requests, and managing delayed notifications. A frequent bug occurs when an engineer calls a state setter and immediately passes the state variable to an analytics helper on the next line, causing telemetry pipelines to record outdated values. Computing the value once in a local variable resolves this issue permanently.</p>
+<p>Another universal scenario involves form submissions with delayed confirmation toasts or undo banners. When a user submits an item and quickly navigates or edits another record, delayed timer callbacks rely on closure capture to display the exact data submitted at that moment, rather than whatever record the user is currently editing.</p>
+<p>Interviewers frequently probe candidate understanding of state snapshots by asking whether <code>setState</code> is asynchronous or by presenting code snippets that call a setter three times in a single handler. Candidates who explain that state variables are render constants and demonstrate the substitution method immediately distinguish themselves.</p>
+</div>
+<div class="keep-together interview-section">
+<h3>For the interview</h3>
+<blockquote><strong>The Interview Question:</strong> Why does state appear frozen inside a render, even right after you set it?</blockquote>
+<p><strong>1. The Hidden Signal</strong></p>
+<p>The interviewer is probing whether you understand React declarative execution lifecycle and closure mechanics, or whether you still hold an imperative mental model where setters mutate variables in place. Senior engineers explain that React keeps state outside the component and provides each render with an immutable snapshot. They clearly articulate that setters schedule future renders rather than altering variables in currently executing code.</p>
+<p><strong>2. The Classic Trap</strong></p>
+<p>The classic trap is claiming that "setState is asynchronous, so the variable has not updated yet." This answer confuses the timing of the next render with variable mutability. Even if JavaScript waited, the state variable inside the current function execution is a <code>const</code> primitive; no background process could mutate a local constant in running JavaScript. Another frequent trap is trying to fix the old value by adding a <code>setTimeout(..., 0)</code>, unaware that the callback still closes over the same render snapshot.</p>
+<p><strong>3. What is Actually Going On</strong></p>
+<p>React calls your component function to render the user interface. During that call, <code>useState</code> returns the state value for that specific render. Inside that function execution, the state variable is a constant. Calling a state setter queues a request for React to run the component again with a new value during the next render. The current function continues executing using its existing snapshot values. If code inside the handler needs the new value immediately, it must calculate that value once in a local variable and use it for both the setter and subsequent operations.</p>
+<p><strong>4. Where It Gets Tricky</strong></p>
+<p>What happens across an <code>await</code> pause in an asynchronous handler? If a handler awaits a network request and reads state after the promise settles, it still reads the snapshot value from the render that created it, even if user clicks in the meantime caused React to re-render. What happens with repeated setter calls? Calling <code>setCount(count + 1)</code> three times queues three requests to replace state with <code>0 + 1</code>, incrementing the counter by only one. What if code genuinely requires reading the latest mutable value across renders without triggering updates? That requirement calls for a ref (<code>useRef</code>), which React provides specifically for mutable storage outside the render snapshot.</p>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Snapshot</strong>: The immutable set of state values, props, and event handlers provided by React for a single execution of a component function.</li>
+<li><strong>State Variable</strong>: A constant value returned by useState that reflects the component data for the current render.</li>
+<li><strong>Setter Function</strong>: The update function returned by useState that records a requested value in React and schedules a future render.</li>
+<li><strong>Closure</strong>: A JavaScript function that retains access to variables from its defining lexical scope, even when executed at a later time.</li>
+<li><strong>Substitution Method</strong>: The mental debugging technique of replacing state variables with their concrete render values to predict handler behavior.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Official React documentation on state snapshots</strong>: Comprehensive guide explaining how rendering captures snapshots of UI and event handlers (see <a href="https://react.dev/learn/state-as-a-snapshot">react.dev/learn/state-as-a-snapshot</a>).</li>
+<li><strong>Official guide on queueing state updates</strong>: In-depth explanation of update queues and updater functions for chaining state transitions (see <a href="https://react.dev/learn/queueing-a-series-of-state-updates">react.dev/learn/queueing-a-series-of-state-updates</a>).</li>
+<li><strong>Reference documentation for useState</strong>: API reference detailing setter caveats, timing, and troubleshooting for old values in logs (see <a href="https://react.dev/reference/react/useState">react.dev/reference/react/useState</a>).</li>
+<li><strong>Rules of React on component purity</strong>: Technical rules detailing why props and state must remain immutable during rendering (see <a href="https://react.dev/reference/rules/components-and-hooks-must-be-pure">react.dev/reference/rules/components-and-hooks-must-be-pure</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Declarative State Snapshots</span></div>
+<p class="summary-principle">➔ ALWAYS treat state variables as immutable constants for the duration of a single render.</p>
+<p class="summary-principle">➔ NEVER expect a state setter call to modify the state variable in the currently executing code block.</p>
+<p class="summary-principle">➔ IF an event handler needs to use an updated value immediately THEN compute the next value once in a local variable before calling the setter.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> compute next value once and pass to setter and tracker</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleRate</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> nextRating = <span class="nl">5</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setRating</span>(nextRating);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">sendAnalytics</span>(nextRating);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> read state variable immediately after calling setter</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleRate</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setRating</span>(<span class="nl">5</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">sendAnalytics</span>(rating);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Event Handler Closures &amp; Timing</span></div>
+<p class="summary-principle">➔ ALWAYS expect event handlers and timers to capture the state snapshot from the render that created them.</p>
+<p class="summary-principle">➔ NEVER assume delayed callbacks or code after <code>await</code> will automatically see future state values from subsequent renders.</p>
+<p class="summary-principle">➔ IF multiple updates must chain together in a single handler THEN use an updater function in Lecture 17.</p>
+<table class="comparison-table"><thead><tr><th></th><th><strong>MUTABLE MEMORY HABIT</strong><br>(Plain JavaScript Variables)</th><th><strong>DECLARATIVE SNAPSHOT</strong><br>(React State Architecture)</th></tr></thead><tbody><tr><td><strong>Variable mutability</strong></td><td>Reassigning with <code>=</code> modifies variable immediately on that line</td><td>State variable is a <code>const</code> for the duration of that render</td></tr><tr><td><strong>Setter execution</strong></td><td>Modifies memory in place synchronously before next statement</td><td>Records next value in React and schedules a future render</td></tr><tr><td><strong>Subsequent reads</strong></td><td>Code on next line reads the newly assigned value</td><td>Code on next line continues reading the current snapshot value</td></tr><tr><td><strong>Repeated updates</strong></td><td>Three increment statements produce three sequential mutations</td><td>Three calls evaluate against same snapshot, requesting one update</td></tr><tr><td><strong>Delayed callbacks</strong></td><td>Timer callback reads whatever value exists in memory at fire time</td><td>Closure captures snapshot from the render where timer was created</td></tr><tr><td><strong>Side effect sharing</strong></td><td>Reads variable directly after mutation to pass to network calls</td><td>Computes next value once in a local variable and passes to both</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

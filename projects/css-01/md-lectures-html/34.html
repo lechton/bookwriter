@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 34: Mastering Precedence with Cascade Layers and Scoped Styles</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 34: Mastering Precedence with Cascade Layers and Scoped Styles</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do Cascade Layers and Scoped Styles solve specificity escalation and component leakage?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Elena builds an editorial navigation bar for the investigative desk.</li>
+<li>A third-party stylesheet styles the navigation links using an ID selector.</li>
+<li>Elena tries to override a link color using a simple component class.</li>
+<li>The browser ignores her class because the ID selector has higher specificity.</li>
+<li>Slapping exclamation mark important on the class starts a destructive specificity arms race.</li>
+<li>Cascade layers let developers define explicit priority tiers that outrank selector specificity.</li>
+<li>Scoped styles establish clear component boundaries, preventing style rules from leaking into nested widgets.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Specificity Escalation War: Why Legacy Cascades Broke Down</h3>
+<p>In large software projects, managing which CSS rule wins when two styles target the same element has been a constant struggle. For over twenty years, web development suffered from what senior engineers call the <strong>specificity escalation war</strong>.</p>
+<p>Under the classical CSS cascade algorithm, once origin and importance are settled, the browser resolves competing declarations by evaluating selector <strong>specificity</strong>. Specificity is a mathematical score based on the count of IDs, classes, and tag types, followed by source order.</p>
+<p>Look at the physical HTML structure of the navigation bar on The National Times:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">nav-conflict.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;nav id=<span class="str">"editorial-nav"</span> <span class="kw">class</span>=<span class="str">"news-nav"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;a href=<span class="str">"/breaking"</span> <span class="kw">class</span>=<span class="str">"btn-breaking"</span>&gt;Breaking News&lt;/a&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;a href=<span class="str">"/opinion"</span> <span class="kw">class</span>=<span class="str">"nav-link"</span>&gt;Opinion&lt;/a&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">&lt;/nav&gt;</span></div></div></div></div>
+<p>In <code>nav-conflict.html</code>, the navigation container carries an ID attribute (<code>id="editorial-nav"</code>) and a class attribute (<code>class="news-nav"</code>). Inside, the first link carries the class <code>btn-breaking</code>.</p>
+<p>Suppose an imported design system styles the navigation bar using an ID selector:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">legacy-conflict.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">#editorial-nav a </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">text-decoration</span>: <span class="kw">none</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="sel">.btn-breaking </span>{</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#dc2626"></i><span class="clr">#dc2626</span>;</span></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>In <code>legacy-conflict.css</code>, <code>#editorial-nav a</code> carries a specificity score of (1, 0, 1) because it contains one ID and one tag selector. By contrast, <code>.btn-breaking</code> carries a specificity score of (0, 1, 0) because it contains only a single class.</p>
+<p>When the browser renders the page, the link text remains dark slate (<code>#0f172a</code>). The browser rejects the red color from <code>.btn-breaking</code> because its specificity score is mathematically lower than the ID selector.</p>
+<p>In legacy CSS, an engineer trying to apply the red alert color faced two toxic choices:</p>
+<ol><li><strong>Artificially inflate the selector:</strong> Write <code>html body #editorial-nav .btn-breaking</code> to out-score the design system rule.</li>
+<li><strong>Use brute force:</strong> Slap <code>!important</code> onto the declaration (<code>color: #dc2626 !important;</code>).</li></ol>
+<p>Both approaches pollute the codebase. If Elena inflates her selector, the next developer must write an even longer selector to override her. If she uses <code>!important</code>, every future style change also requires <code>!important</code>. The entire stylesheet escalates into an unmaintainable war.</p>
+<p>The official W3C specification explains why modern cascade layers were created:</p>
+<blockquote>"Cascade layers provide a structured way to organize and balance concerns within a single origin. Rules within a single cascade layer cascade together, without interleaving with style rules outside the layer. Authors can create layers to represent element defaults, third-party libraries, themes, components, overrides, and other styling concerns, and are able to re-order the cascade of layers in an explicit way, without altering selectors or specificity within each layer, or relying on order of appearance to resolve conflicts across layers."<br><br><em>W3C CSS Working Group, CSS Cascading and Inheritance Module Level 5 (<code>resources/spec/csswg-drafts/css-cascade-5/Overview.bs</code>)</em></blockquote>
+</div>
+<div class="keep-together">
+<h3>The Cascade Layer Revolution: Explicit Precedence Over Specificity</h3>
+<p>Modern CSS ends the specificity war with <strong>cascade layers</strong>, declared using the <strong><code>@layer</code> at-rule</strong>.</p>
+<p>Cascade layers allow you to organize your CSS rules into explicit priority tiers. The fundamental architectural breakthrough of cascade layers is that <strong>layer priority beats selector specificity</strong>.</p>
+<p>When two declarations compete, the browser checks which layer each declaration belongs to before checking its selector specificity. A rule inside a higher-priority layer always defeats a rule inside a lower-priority layer, even if the lower-priority rule uses an ID selector.</p>
+<p>You define the priority order of your layers at the very top of your stylesheet using a single master declaration:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">layer-master-definition.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@layer reset, base, components, overrides;</span></div></div></div></div>
+<p>In <code>layer-master-definition.css</code>, the four layers are listed from lowest priority to highest priority:</p>
+<ol><li><code>reset</code>: Baseline browser normalization rules.</li>
+<li><code>base</code>: Typography and global layout defaults.</li>
+<li><code>components</code>: Modular design system components.</li>
+<li><code>overrides</code>: High-priority contextual utilities and overrides.</li></ol>
+<p>Any rule placed in <code>overrides</code> beats a rule in <code>components</code>. Any rule in <code>components</code> beats a rule in <code>base</code>.</p>
+<p>Now, look at how this resolves our navigation conflict:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">layered-navigation.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">@layer base </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="sel">  #editorial-nav a </span>{</span></div>
+<div class="row"><span class="num">3</span><span class="src">    <span class="prop">color</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    <span class="prop">text-decoration</span>: <span class="kw">none</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src"><span class="sel">@layer components </span>{</span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="sel">  .btn-breaking </span>{</span></div>
+<div class="row"><span class="num">10</span><span class="src">    <span class="prop">color</span>: <i class="swatch" style="background:#dc2626"></i><span class="clr">#dc2626</span>;</span></div>
+<div class="row"><span class="num">11</span><span class="src">  }</span></div>
+<div class="row"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+<p>In <code>layered-navigation.css</code>, <code>#editorial-nav a</code> lives in <code>@layer base</code>. The class <code>.btn-breaking</code> lives in <code>@layer components</code>.</p>
+<p>Even though <code>#editorial-nav a</code> has an ID score of (1, 0, 1), the browser applies <code>color: #dc2626</code> from <code>.btn-breaking</code>. Because <code>@layer components</code> sits higher in the layer order than <code>@layer base</code>, its declarations take precedence automatically. Elena wins the conflict with a clean, single-class selector.</p>
+<figure class="css-figure">
+<style>
+  .fig-layer-priority {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-layer-priority .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-layer-priority .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-layer-priority .pill-lower {
+    background: #fde8e8;
+    border: 1px solid #f9b4b4;
+    color: #b91c1c;
+  }
+  .fig-layer-priority .pill-higher {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-layer-priority .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-layer-priority .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-layer-priority .card-lower {
+    border: 1px solid #fca5a5;
+  }
+  .fig-layer-priority .card-higher {
+    border: 1.5px solid #86efac;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-layer-priority .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+    gap: 10px;
+  }
+
+  .fig-layer-priority .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #475569;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .fig-layer-priority .canvas-area {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 16px;
+    box-sizing: border-box;
+    height: 185px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+
+  .fig-layer-priority .spec-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .fig-layer-priority .badge-high {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+  .fig-layer-priority .badge-low {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+  }
+
+  .fig-layer-priority .sample-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  .fig-layer-priority .btn-blue {
+    background: #1e3a8a;
+    color: #ffffff;
+  }
+  .fig-layer-priority .btn-gold {
+    background: #d97706;
+    color: #ffffff;
+  }
+
+  .fig-layer-priority .card-footer {
+    padding: 10px 14px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 52px;
+    box-sizing: border-box;
+  }
+
+  .fig-layer-priority .footer-line-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .fig-layer-priority .footer-line-desc {
+    font-size: 11px;
+    color: #475569;
+  }
+  .fig-layer-priority .text-wrong {
+    color: #b91c1c;
+  }
+  .fig-layer-priority .text-right {
+    color: #03543f;
+  }
+</style>
+
+<div class="fig-layer-priority">
+  <div class="compare-header">
+    <div class="compare-pill pill-lower">✕ LOWER LAYER DEFEATED (ID TRAPPED)</div>
+    <div class="compare-pill pill-higher">✓ HIGHER LAYER WINS (CLASS TRIUMPHS)</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Panel 1: Lower Layer with High Specificity ID -->
+    <div class="preview-card card-lower">
+      <div class="card-body">
+        <div class="stage-label">
+          <span>@LAYER BASE</span>
+          <span style="color: #b91c1c;">SPECIFICITY (1, 0, 1) OVERRIDDEN</span>
+        </div>
+        <div class="canvas-area">
+          <div class="spec-badge badge-high">Selector: #editorial-nav button | (1, 0, 1)</div>
+          <button class="sample-btn btn-blue" style="opacity: 0.6; text-decoration: line-through;">Blue Base Button</button>
+          <div style="font-size: 10.5px; color: #64748b;">Declared in earlier @layer base</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-line-code text-wrong">#editorial-nav button in @layer base;</div>
+        <div class="footer-line-desc">ID selector is completely overridden because its layer sits earlier in the order.</div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Higher Layer with Low Specificity Class -->
+    <div class="preview-card card-higher">
+      <div class="card-body">
+        <div class="stage-label">
+          <span>@LAYER COMPONENTS</span>
+          <span style="color: #03543f;">SPECIFICITY (0, 1, 0) WINS CASCADE</span>
+        </div>
+        <div class="canvas-area">
+          <div class="spec-badge badge-low">Selector: .btn-breaking | (0, 1, 0)</div>
+          <button class="sample-btn btn-gold">Gold Breaking Button</button>
+          <div style="font-size: 10.5px; color: #059669; font-weight: 600;">Declared in later @layer components</div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-line-code text-right">.btn-breaking in @layer components;</div>
+        <div class="footer-line-desc">Class selector wins the cascade because later layers outrank earlier layers.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 34.1: Cascade Layer Precedence Beats Selector Specificity: Under CSS Cascading and Inheritance Level 5, the browser sorts declarations by Cascade Layer before evaluating selector specificity. The single class in @layer components outranks the ID selector in @layer base.</figcaption>
+</figure>
+<p>Figure 34.1 shows this architectural triumph. The browser evaluates layer hierarchy first. Because the <code>components</code> layer sits above the <code>base</code> layer, the single class <code>.btn-breaking</code> defeats the heavy ID selector without artificial specificity tricks.</p>
+</div>
+<div class="keep-together">
+<h3>The Inverted Cascade: How Important Declarations Reverse Layer Order</h3>
+<p>A crucial and counter-intuitive mechanic of cascade layers is how the browser handles <strong><code>!important</code> declarations</strong>.</p>
+<p>In normal, non-important CSS rules, higher layers defeat lower layers. However, when declarations declare <code>!important</code>, the browser engine completely <strong>inverts layer precedence</strong>.</p>
+<p>When two <code>!important</code> declarations conflict, the rule in the <strong>lowest layer</strong> wins the conflict:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">important-layer-inversion.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">@layer reset </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="sel">  [hidden] </span>{</span></div>
+<div class="row"><span class="num">3</span><span class="src">    <span class="prop">display</span>: <span class="kw">none</span> <span class="kw">!important</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">@layer components </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src"><span class="sel">  .dialog-panel </span>{</span></div>
+<div class="row"><span class="num">9</span><span class="src">    <span class="prop">display</span>: <span class="kw">flex</span> <span class="kw">!important</span>;</span></div>
+<div class="row"><span class="num">10</span><span class="src">  }</span></div>
+<div class="row"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+<p>In <code>important-layer-inversion.css</code>, both declarations declare <code>!important</code>. The <code>reset</code> layer was defined first, making it the lowest normal layer.</p>
+<p>If an element has both the class <code>.dialog-panel</code> and the <code>[hidden]</code> attribute, which rule wins? In standard CSS without layers, developers feared that component rules would accidentally override reset rules.</p>
+<p>With cascade layers, the inverted precedence guarantees safety. The <code>!important</code> declaration in <code>@layer reset</code> defeats the <code>!important</code> declaration in <code>@layer components</code>. The element remains reliably hidden.</p>
+<p>This inversion is intentional. It allows fundamental architectural rules, resets, and accessibility guarantees in lower layers to protect themselves against careless <code>!important</code> flags written in higher component layers.</p>
+</div>
+<div class="keep-together">
+<h3>Native CSS Nesting and the :is() Specificity Trap</h3>
+<p>In addition to cascade layers, modern browsers support native <strong>CSS Nesting</strong>. You can nest child selectors directly inside parent rules without needing preprocessors like Sass.</p>
+<p>Look at how native nesting groups styles inside an article card:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">native-nesting.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.story-card </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">background-color</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="sel">  &amp; .headline </span>{</span></div>
+<div class="row"><span class="num">5</span><span class="src">    <span class="prop">font-size</span>: <span class="nl">20px</span>;</span></div>
+<div class="row"><span class="num">6</span><span class="src">    <span class="prop">font-weight</span>: <span class="nl">700</span>;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="sel">  &amp; a </span>{</span></div>
+<div class="row"><span class="num">10</span><span class="src">    <span class="prop">color</span>: <i class="swatch" style="background:#1e3a8a"></i><span class="clr">#1e3a8a</span>;</span></div>
+<div class="row"><span class="num">11</span><span class="src">  }</span></div>
+<div class="row"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+<p>In <code>native-nesting.css</code>, the ampersand symbol (<code>&amp;</code>) represents the parent selector <code>.story-card</code>. The rule <code>&amp; a</code> compiles internally into <code>.story-card a</code>.</p>
+<p>However, native nesting introduces a hidden danger known as the <strong><code>:is()</code> specificity trap</strong>.</p>
+<p>Under the CSS Nesting specification, the browser engine desugars nested selectors using the <code>:is()</code> pseudo-class. When you nest styles under a list of comma-separated parent selectors, the entire group adopts the specificity of its highest-scoring member.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">nesting-specificity-trap.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.story-card, #spotlight </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">padding</span>: <span class="nl">16px</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="sel">  &amp; a </span>{</span></div>
+<div class="row"><span class="num">5</span><span class="src">    <span class="prop">color</span>: <i class="swatch" style="background:#1e3a8a"></i><span class="clr">#1e3a8a</span>;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>In <code>nesting-specificity-trap.css</code>, the parent selector list contains one class (<code>.story-card</code>) and one ID (<code>#spotlight</code>).</p>
+<p>The browser engine desugars the nested link rule to <code>:is(.story-card, #spotlight) a</code>. The CSS specification dictates that the specificity of <code>:is()</code> is always equal to the <strong>most specific selector</strong> in its argument list.</p>
+<p>Because <code>#spotlight</code> is an ID, the <code>:is()</code> wrapper carries a specificity score of (1, 0, 0). Consequently, any link inside a plain <code>.story-card</code> element now inherits an inflated specificity score of (1, 0, 1). A subsequent single-class rule like <code>.story-card .custom-link</code> (0, 2, 0) cannot override it.</p>
+<figure class="css-figure">
+<style>
+  .fig-nesting-spec {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-nesting-spec .header-pill {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    margin-bottom: 12px;
+  }
+
+  .fig-nesting-spec .main-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fig-nesting-spec .canvas-stage {
+    background: #f8fafc;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .fig-nesting-spec .code-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .fig-nesting-spec .code-panel {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .fig-nesting-spec .panel-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .fig-nesting-spec .syntax-box {
+    background: #f1f5f9;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    color: #1e293b;
+    line-height: 1.4;
+  }
+
+  .fig-nesting-spec .spec-breakdown {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .fig-nesting-spec .metric-box {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .fig-nesting-spec .metric-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+  }
+  .fig-nesting-spec .metric-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .fig-nesting-spec .card-footer {
+    padding: 12px 16px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .fig-nesting-spec .footer-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  .fig-nesting-spec .footer-status {
+    font-size: 11px;
+    color: #059669;
+    font-weight: 600;
+  }
+</style>
+
+<div class="fig-nesting-spec">
+  <div class="header-pill">
+    NATIVE NESTING SPECIFICITY: DESUGARING TO :IS() IN THE BROWSER
+  </div>
+
+  <div class="main-card">
+    <div class="canvas-stage">
+      <div class="code-comparison">
+        <!-- Authored Nested CSS -->
+        <div class="code-panel">
+          <div class="panel-title">1. Authored Native CSS</div>
+          <div class="syntax-box">
+            .card, #spotlight {<br>
+            &nbsp;&nbsp;a {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;color: #d97706;<br>
+            &nbsp;&nbsp;}<br>
+            }
+          </div>
+        </div>
+
+        <!-- Internal Browser Desugaring -->
+        <div class="code-panel">
+          <div class="panel-title">2. Browser Internal Desugaring</div>
+          <div class="syntax-box">
+            :is(.card, #spotlight) a {<br>
+            &nbsp;&nbsp;color: #d97706;<br>
+            }<br>
+            <span style="color: #64748b;">/* :is() adopts heaviest branch */</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="spec-breakdown">
+        <div class="metric-box">
+          <div class="metric-label">Parent Selector List</div>
+          <div class="metric-val" style="font-size: 11px; color: #1e293b;">.card (0,1,0) vs #spotlight (1,0,0)</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">:is() Resolution</div>
+          <div class="metric-val" style="color: #d97706;">Takes Max: (1, 0, 0)</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Total Link Specificity</div>
+          <div class="metric-val" style="color: #b91c1c;">(1, 0, 1) Everywhere!</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <div class="footer-code">:is(.card, #spotlight) a evaluates to (1, 0, 1);</div>
+      <div class="footer-status">Notice: Nesting adopts the highest specificity in the parent list</div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 34.2: The Native Nesting Specificity Trap: When nesting styles under a comma-separated selector list containing an ID, the browser desugars the rule to :is(.card, #spotlight) a. Because :is() adopts the maximum specificity in its list, links inside plain .card elements carry an ID specificity score of (1, 0, 1).</figcaption>
+</figure>
+<p>Figure 34.2 illustrates this trap. Because <code>#spotlight</code> has an ID, the nested link selector adopts ID-level specificity across all branches. A single class cannot defeat it unless it also inflates its specificity.</p>
+</div>
+<div class="keep-together">
+<h3>Scoped Styles and Donut Scoping with @scope</h3>
+<p>While cascade layers resolve priority between stylesheets, they do not prevent style rules from leaking into child components.</p>
+<p>Consider an article card that embeds a third-party advertising banner:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">embedded-ad.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;article <span class="kw">class</span>=<span class="str">"story-card"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;h2&gt;Federal Clean Energy Expansion&lt;/h2&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;a href=<span class="str">"/article"</span>&gt;Read Full Story&lt;/a&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"ad-slot"</span>&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">    &lt;p&gt;Sponsored Content&lt;/p&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">    &lt;a href=<span class="str">"https://example.com"</span>&gt;Visit Sponsor&lt;/a&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">&lt;/article&gt;</span></div></div></div></div>
+<p>In <code>embedded-ad.html</code>, the <code>.ad-slot</code> container is an independent child widget nested inside the <code>.story-card</code>.</p>
+<p>If you write <code>.story-card a { color: #1e3a8a; }</code>, that descendant selector targets every <code>&lt;a&gt;</code> tag inside the card, including the sponsor link inside <code>.ad-slot</code>. The card styles leak into the advertisement, overriding its intended design.</p>
+<p>To solve this component leakage, modern CSS introduces <strong><code>@scope</code></strong>.</p>
+<p>The <code>@scope</code> at-rule defines a boundary for your styles. It allows you to select elements only within a specific DOM subtree:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">basic-scope.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">@scope (.story-card) </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="sel">  a </span>{</span></div>
+<div class="row"><span class="num">3</span><span class="src">    <span class="prop">color</span>: <i class="swatch" style="background:#1e3a8a"></i><span class="clr">#1e3a8a</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<p>In <code>basic-scope.css</code>, the rule applies only to <code>&lt;a&gt;</code> tags inside <code>.story-card</code>.</p>
+<p>To prevent styles from penetrating nested child components, <code>@scope</code> provides <strong>donut scoping</strong>. You specify both a scoping root and a scoping limit using the <code>to</code> keyword:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">donut-scope.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">@scope (.story-card) to (.ad-slot) </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="sel">  a </span>{</span></div>
+<div class="row"><span class="num">3</span><span class="src">    <span class="prop">color</span>: <i class="swatch" style="background:#1e3a8a"></i><span class="clr">#1e3a8a</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<p>In <code>donut-scope.css</code>, <code>@scope (.story-card) to (.ad-slot)</code> creates a styling donut. The rule styles links inside <code>.story-card</code>, but stops completely when it hits the <code>.ad-slot</code> boundary. The sponsor link is left untouched.</p>
+<figure class="css-figure">
+<style>
+  .fig-donut-scope {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-donut-scope .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-donut-scope .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-donut-scope .pill-bleed {
+    background: #fde8e8;
+    border: 1px solid #f9b4b4;
+    color: #b91c1c;
+  }
+  .fig-donut-scope .pill-scope {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-donut-scope .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-donut-scope .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-donut-scope .card-bleed {
+    border: 1px solid #fca5a5;
+  }
+  .fig-donut-scope .card-scope {
+    border: 1.5px solid #86efac;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-donut-scope .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+    gap: 10px;
+  }
+
+  .fig-donut-scope .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #475569;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .fig-donut-scope .canvas-area {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px;
+    box-sizing: border-box;
+    height: 195px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fig-donut-scope .card-outer {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 8px;
+    background: #f8fafc;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .fig-donut-scope .ad-hole {
+    border: 1.5px dashed #f87171;
+    background: #fff5f5;
+    border-radius: 4px;
+    padding: 8px;
+    text-align: center;
+  }
+  .fig-donut-scope .ad-hole-safe {
+    border: 1.5px dashed #10b981;
+    background: #ecfdf5;
+  }
+
+  .fig-donut-scope .card-footer {
+    padding: 10px 14px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 52px;
+    box-sizing: border-box;
+  }
+
+  .fig-donut-scope .footer-line-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .fig-donut-scope .footer-line-desc {
+    font-size: 11px;
+    color: #475569;
+  }
+  .fig-donut-scope .text-wrong {
+    color: #b91c1c;
+  }
+  .fig-donut-scope .text-right {
+    color: #03543f;
+  }
+</style>
+
+<div class="fig-donut-scope">
+  <div class="compare-header">
+    <div class="compare-pill pill-bleed">✕ CASCADE LEAKS INTO SUBTREE</div>
+    <div class="compare-pill pill-scope">✓ DONUT SCOPING ISOLATES HOLE</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Panel 1: Descendant Bleed -->
+    <div class="preview-card card-bleed">
+      <div class="card-body">
+        <div class="stage-label">
+          <span>DESCENDANT SELECTOR</span>
+          <span style="color: #b91c1c;">BLEEDS THROUGH ALL DESCENDANTS</span>
+        </div>
+        <div class="canvas-area">
+          <div class="card-outer">
+            <div style="font-weight: 700; font-size: 11px; color: #1e293b;">.story-card body</div>
+            <p style="font-size: 10.5px; color: #0284c7; margin: 0;">Investigative lede styled blue.</p>
+            <div class="ad-hole">
+              <span style="font-size: 9.5px; font-weight: 700; color: #b91c1c;">.ad-slot (Third-Party Widget)</span>
+              <p style="font-size: 10px; color: #0284c7; margin: 4px 0 0; font-weight: 700;">
+                ✕ Ad text mutated to blue by card CSS!
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-line-code text-wrong">.story-card p { color: #0284c7; }</div>
+        <div class="footer-line-desc">Descendant selector pierces into child components, corrupting ad formatting.</div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Donut Scoping -->
+    <div class="preview-card card-scope">
+      <div class="card-body">
+        <div class="stage-label">
+          <span>@SCOPE WITH SCOPE-LIMIT</span>
+          <span style="color: #03543f;">DONUT HOLE PRESERVED</span>
+        </div>
+        <div class="canvas-area">
+          <div class="card-outer">
+            <div style="font-weight: 700; font-size: 11px; color: #1e293b;">@scope (.story-card)</div>
+            <p style="font-size: 10.5px; color: #0284c7; margin: 0;">Investigative lede styled blue.</p>
+            <div class="ad-hole ad-hole-safe">
+              <span style="font-size: 9.5px; font-weight: 700; color: #059669;">to (.ad-slot)</span>
+              <p style="font-size: 10px; color: #334155; margin: 4px 0 0;">
+                ✓ Ad text preserves independent styling
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="footer-line-code text-right">@scope (.story-card) to (.ad-slot);</div>
+        <div class="footer-line-desc">Styles punch a hole around .ad-slot, stopping cascade bleed at boundary.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 34.3: Donut Scoping with @scope: In the left panel, a classic descendant selector bleeds into the nested .ad-slot widget. In the right panel, @scope (.story-card) to (.ad-slot) establishes a clean boundary hole, isolating the child component without complex class overrides.</figcaption>
+</figure>
+<p>Figure 34.3 demonstrates donut scoping in action. In the left panel, the descendant selector penetrates all nested containers, corrupting the ad link. In the right panel, the <code>to (.ad-slot)</code> boundary cuts a clean hole through the styling scope, protecting the child widget.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>To impress the interviewer:</strong> Explain that Cascade Layers decouple precedence from selector specificity. When an interviewer asks how to defeat an imported third-party ID selector, do not say "add !important" or "inflate your class chain". Explain that placing your custom code in a higher <code>@layer</code> defeats the ID selector cleanly with a single class.</p>
+  </div>
+</aside>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">
+  <p>Cascade Layers (<code>@layer</code>) establish explicit priority tiers where layer order beats selector specificity; Scoped Styles (<code>@scope</code>) establish strict DOM boundaries that prevent styles from leaking into nested child components.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Third-Party Design System Integration:</strong> Wrapping third-party component libraries in a <code>@layer vendor</code> block so internal application classes can override them cleanly.</li>
+<li><strong>Enterprise CSS Resets:</strong> Placing global box-sizing and reset rules into <code>@layer reset</code> to ensure they never accidentally out-score component styles.</li>
+<li><strong>Complex Content Cards with Embedded Widgets:</strong> Using donut scoping (<code>@scope (.card) to (.widget)</code>) to style editorial text without bleeding into embedded social posts or ads.</li>
+<li><strong>Design System Token Theming:</strong> Managing dark mode and high-contrast theme overrides inside a dedicated <code>@layer theme</code> without inflating selector specificity.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Cascade Layers (<code>@layer</code>)</strong>: A CSS feature allowing developers to group stylesheets into explicit priority tiers where layer order outranks selector specificity.</li>
+<li><strong>Specificity Escalation</strong>: The architectural breakdown that occurs when developers must write increasingly complex selectors to override existing styles.</li>
+<li><strong>Inverted Layer Precedence</strong>: The browser behavior where <code>!important</code> declarations reverse layer order, granting the highest priority to the lowest layer.</li>
+<li><strong><code>:is()</code> Specificity Trap</strong>: The condition where a nested selector list inherits the specificity of its highest-scoring selector member.</li>
+<li><strong>Scoped Styles (<code>@scope</code>)</strong>: A CSS at-rule that limits style application to a specific DOM subtree.</li>
+<li><strong>Donut Scoping</strong>: Setting both a scoping root and a scoping limit (<code>to (.limit)</code>) to carve out protected holes in a component's styling boundary.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Mastering Precedence with Cascade Layers and Scoped Styles</strong></p>
+<p>Cascade layers and scoped styles represent a massive evolution in CSS architecture. By replacing the brute force of <code>!important</code> with structured layer tiers and clear DOM boundaries, modern teams can build massive component libraries without specificity collisions.</p>
+<ol><li>Classical CSS resolves style conflicts primarily using selector specificity, causing specificity escalation wars.</li>
+<li>Artificially inflating selectors or adding <code>!important</code> creates toxic, unmaintainable stylesheets.</li>
+<li>The <code>@layer</code> at-rule creates explicit priority tiers defined at the top of the stylesheet.</li>
+<li>In normal declarations, layer precedence outranks selector specificity: a class in a higher layer beats an ID in a lower layer.</li>
+<li>In <code>!important</code> declarations, layer precedence inverts: the lowest layer wins, protecting fundamental reset rules.</li>
+<li>Native CSS nesting desugars rules using <code>:is()</code>, which can inflate specificity if an ID is present in the selector list.</li>
+<li>The <code>@scope</code> at-rule limits style rules to a designated subtree, eliminating global selector leakage.</li>
+<li>Donut scoping (<code>@scope (root) to (limit)</code>) cuts protected holes in component styles for embedded child widgets.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Use <code>!important</code> or artificially inflated selector chains to override lower-tier styles, triggering an escalation war.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">#editorial-nav a </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">html body #editorial-nav .btn-breaking </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#dc2626"></i><span class="clr">#dc2626</span> <span class="kw">!important</span>;</span></div>
+<div class="row"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Organize your styles into cascade layers so that component rules in higher layers naturally defeat base rules without specificity tricks.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">@layer base, components;</span></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="sel">@layer base </span>{</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="sel">  #editorial-nav a </span>{</span></div>
+<div class="row"><span class="num">5</span><span class="src">    <span class="prop">color</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row"><span class="num">7</span><span class="src">}</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="sel">@layer components </span>{</span></div>
+<div class="row"><span class="num">10</span><span class="src"><span class="sel">  .btn-breaking </span>{</span></div>
+<div class="row"><span class="num">11</span><span class="src">    <span class="prop">color</span>: <i class="swatch" style="background:#dc2626"></i><span class="clr">#dc2626</span>;</span></div>
+<div class="row"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row"><span class="num">13</span><span class="src">}</span></div></div></div></div>
+</div>
+<p>➔ NEVER rely on <code>!important</code> to resolve conflicts between design systems and application components; define explicit cascade layers.</p>
+<p>➔ ALWAYS establish your layer order at the top of your main stylesheet using <code>@layer reset, base, components, overrides;</code>.</p>
+<p>➔ IF you need to style a component containing third-party embeds THEN use donut scoping (<code>@scope (.card) to (.embed)</code>) to prevent style leakage.</p>
+<table><thead><tr><th></th><th><strong>CLASSICAL CASCADE</strong><br>(specificity sorting)</th><th><strong>CASCADE LAYERS &amp; SCOPE</strong><br>(layer &amp; boundary sorting)</th></tr></thead><tbody><tr><td><strong>Precedence Resolution</strong></td><td>Evaluates selector specificity<br>(IDs, classes, elements)</td><td>Evaluates explicit layer order<br>before selector specificity</td></tr><tr><td><strong>Override Strategy</strong></td><td>Requires inflating selectors<br>or adding <code>!important</code></td><td>Uses clean single classes<br>in a higher priority layer</td></tr><tr><td><strong>Reset Protection</strong></td><td>High specificity can override<br>important reset guarantees</td><td>Inverted <code>!important</code> logic<br>protects baseline resets</td></tr><tr><td><strong>Component Boundary</strong></td><td>Styles bleed through entire<br>descendant DOM subtree</td><td><code>@scope</code> confines styles to<br>a designated component tree</td></tr><tr><td><strong>Nested Widgets</strong></td><td>Requires complex manual class<br>overrides for inner items</td><td>Donut scoping (<code>to</code>) cuts clean<br>holes for child widgets</td></tr><tr><td><strong>Maintenance Cost</strong></td><td>Brittle; developers fear<br>editing legacy selectors</td><td>Modular; each layer cascades<br>in isolated priority tiers</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

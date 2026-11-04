@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 18: The Election-Night Grid Collision</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 18: The Election-Night Grid Collision</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How does explicit grid placement differ from the browser's auto-placement algorithm?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>An engineering team launches a live election-night dashboard for The National Times.</li>
+<li>The developer pins the interactive electoral map across columns one and two using explicit line numbers.</li>
+<li>A breaking results ticker is added to the markup, expecting to flow naturally underneath the map.</li>
+<li>The ticker crashes directly into the live map on line one, overlapping text and distorting vote counts.</li>
+<li>The developer tries manually reordering HTML tags, but items placed by line number stubbornly refuse to budge.</li>
+<li>The team needs to know how the browser resolves conflicts between fixed coordinates and automatic flow.</li>
+<li>Today you learn the two-stage placement algorithm that governs explicit coordinates and auto-placement.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Two-Stage Engine Reality: Explicit Anchors Versus Auto-Flow</h3>
+<p>When constructing complex web layouts with CSS Grid, developers routinely mix two fundamentally different positioning behaviors without realizing they operate in separate phases of the browser layout engine. <strong>Explicit grid placement</strong> occurs when you assign an element to definite grid lines or named areas (such as writing <code>grid-column: 1 / 3;</code> or <code>grid-row: 1 / 2;</code>), permanently locking that element into specific coordinates in the track matrix. In contrast, the <strong>auto-placement algorithm</strong> is the browser engine's internal positioning routine that automatically finds available grid slots for any child element that lacks explicit coordinates (governed by the <code>grid-auto-flow</code> property). Failing to understand how these two systems interact produces catastrophic visual bugs: either auto-placed cards crash directly on top of explicitly pinned components, or incoming items appear pushed into strange, unexpected rows while pinned items refuse to move.</p>
+<p>The root of this visual confusion lies in the execution order of the W3C grid item placement algorithm. In standard block and inline flow, adding a new HTML element at the top of a container automatically pushes all following elements down the page. In CSS Grid, this assumption is completely false. The browser layout engine executes a strict multi-stage placement routine: it evaluates all explicitly placed items first, marks those coordinate cells as occupied in its internal grid matrix, and only then initializes an auto-placement cursor to distribute unplaced items into whatever unoccupied cells remain. Because the auto-placement cursor operates around occupied territory rather than pushing elements aside, an explicitly placed element acts like a boulder dropped into a stream: the water flows around it, but the boulder never yields its position.</p>
+<p>Furthermore, if an author accidentally assigns two competing elements to the exact same explicit line coordinates, CSS Grid does not push the second element to the next line. Unlike legacy float or block layout models that prevent collisions, CSS Grid willingly stacks explicitly placed items directly on top of each other in the same spatial grid area. Unless you deliberately coordinate your explicit line declarations with the auto-placement flow, your live widgets and news feeds will either collide into overlapping illegibility or generate unwanted implicit empty rows that shatter your dashboard geometry.</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body"><strong>Industry Naming Conventions: Dashboard Hero Tiles, Placement Grids, and Area Tokens:</strong> In professional editorial products, complex operational screens like election dashboards, financial terminals, and sports hubs combine full-width "hero tiles" (such as a live SVG electoral map) with dozens of dynamic feed cards (such as state-by-state vote totals and senate projection tickers). Junior developers often attempt to place every single feed card manually by writing explicit line numbers like <code>grid-column: 1 / 2; grid-row: 2 / 3;</code>. This creates an unmaintainable stylesheet that completely shatters the moment editorial teams add a breaking news banner or reorder items in the CMS. Enterprise design systems solve this by establishing a hybrid architecture: explicit placement is reserved exclusively for primary anchor widgets (or mapped via semantic <code>grid-template-areas</code>), while dynamic repeating streams rely entirely on the browser's native auto-placement algorithm to flow seamlessly around those anchors without manual coordinate maintenance.</div>
+</aside>
+<p>To observe how explicit line placement locks into coordinates prior to auto-placement, examine the HTML structure of the election dashboard and the competing CSS rules that govern its spatial layout:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">dashboard.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;main <span class="kw">class</span>=<span class="str">"election-dashboard"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;section <span class="kw">class</span>=<span class="str">"widget-map"</span>&gt;Live Electoral Map&lt;/section&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;aside <span class="kw">class</span>=<span class="str">"widget-alert"</span>&gt;Breaking Alert&lt;/aside&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"widget-card"</span>&gt;Senate Balance&lt;/article&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"widget-card"</span>&gt;House Balance&lt;/article&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"widget-card"</span>&gt;Results Ticker&lt;/article&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;/main&gt;</span></div></div></div></div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">dashboard-layout.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.election-dashboard.clash </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">display</span>: <span class="kw">grid</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="nl">2</span>, <span class="nl">1fr</span>);</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">gap</span>: <span class="nl">8px</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">.election-dashboard.clash .widget-map </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">grid-column</span>: <span class="nl">1</span> / <span class="nl">3</span>;           </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Explicit placement across columns 1 to 3</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="prop">grid-row</span>: <span class="nl">1</span> / <span class="nl">2</span>;              </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> locks row 1, but alert also targets row 1 causing severe overlap</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src">}</span></div>
+<div class="row"><span class="num">11</span><span class="src"></span></div>
+<div class="row"><span class="num">12</span><span class="src"><span class="sel">.election-dashboard.clash .widget-alert </span>{</span></div>
+<div class="row"><span class="num">13</span><span class="src">  <span class="prop">grid-column</span>: <span class="nl">1</span> / <span class="nl">2</span>;           </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> explicit line 1 / 2 collides directly into the occupied map slot</span></div></div></div>
+<div class="row"><span class="num">14</span><span class="src">  <span class="prop">grid-row</span>: <span class="nl">1</span> / <span class="nl">2</span>;</span></div>
+<div class="row"><span class="num">15</span><span class="src">}</span></div>
+<div class="row"><span class="num">16</span><span class="src"></span></div>
+<div class="row"><span class="num">17</span><span class="src"><span class="sel">.election-dashboard.coordinated </span>{</span></div>
+<div class="row"><span class="num">18</span><span class="src">  <span class="prop">display</span>: <span class="kw">grid</span>;</span></div>
+<div class="row"><span class="num">19</span><span class="src">  <span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="nl">2</span>, <span class="nl">1fr</span>);</span></div>
+<div class="row"><span class="num">20</span><span class="src">  <span class="prop">gap</span>: <span class="nl">8px</span>;</span></div>
+<div class="row"><span class="num">21</span><span class="src">}</span></div>
+<div class="row"><span class="num">22</span><span class="src"></span></div>
+<div class="row"><span class="num">23</span><span class="src"><span class="sel">.election-dashboard.coordinated .widget-map </span>{</span></div>
+<div class="row"><span class="num">24</span><span class="src">  <span class="prop">grid-column</span>: <span class="nl">1</span> / <span class="nl">-1</span>;          </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> spans entire header track; auto-placement cleanly wraps remaining cards</span></div></div></div>
+<div class="row"><span class="num">25</span><span class="src">}</span></div></div></div></div>
+<figure class="css-figure">
+<style>
+  .fig-grid-placement {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-grid-placement .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-grid-placement .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-grid-placement .pill-wrong {
+    background: #fde8e8;
+    border: 1px solid #f9b4b4;
+    color: #b91c1c;
+  }
+  .fig-grid-placement .pill-right {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-grid-placement .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-grid-placement .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-grid-placement .card-wrong {
+    border: 1px solid #f9b4b4;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .fig-grid-placement .card-right {
+    border: 1.5px solid #84e1bc;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-grid-placement .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+  }
+
+  .fig-grid-placement .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .fig-grid-placement .dashboard-stage {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px;
+    box-sizing: border-box;
+    height: 180px;
+  }
+
+  /* Left: Collision layout */
+  .fig-grid-placement .grid-clash {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(3, 46px);
+    gap: 8px;
+    height: 100%;
+    position: relative;
+  }
+
+  /* Right: Coordinated layout */
+  .fig-grid-placement .grid-coordinated {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(3, 46px);
+    gap: 8px;
+    height: 100%;
+  }
+
+  .fig-grid-placement .dash-item {
+    border-radius: 4px;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .fig-grid-placement .item-h {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+  }
+  .fig-grid-placement .item-sub {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+
+  /* Map item */
+  .fig-grid-placement .item-map {
+    background: #eff6ff;
+    border: 1.5px solid #60a5fa;
+    grid-column: 1 / 3;
+    grid-row: 1 / 2;
+  }
+
+  /* Clash items */
+  .fig-grid-placement .item-clash {
+    background: #fef2f2;
+    border: 1.5px dashed #ef4444;
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    opacity: 0.85;
+    z-index: 2;
+  }
+  .fig-grid-placement .item-auto-clash {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+  }
+
+  /* Coordinated items */
+  .fig-grid-placement .item-auto-ok {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+  }
+  .fig-grid-placement .item-map-ok {
+    background: #f0fdf4;
+    border: 1.5px solid #22c55e;
+    grid-column: 1 / 3;
+    grid-row: 1 / 2;
+  }
+
+  /* Symmetrical Footers */
+  .fig-grid-placement .card-footer {
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 500;
+    border-top: 1px solid;
+    min-height: 52px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+  }
+  .fig-grid-placement .footer-wrong {
+    background: #fff5f5;
+    border-top-color: #fecdd3;
+    color: #991b1b;
+  }
+  .fig-grid-placement .footer-right {
+    background: #f0fdf4;
+    border-top-color: #d1fae5;
+    color: #065f46;
+  }
+  .fig-grid-placement .card-footer strong {
+    font-weight: 700;
+  }
+</style>
+
+<div class="fig-grid-placement">
+
+  <!-- Comparison Header Pills -->
+  <header class="compare-header">
+    <div class="compare-pill pill-wrong">✕ COLLISION: UNCOORDINATED LINE OVERLAP</div>
+    <div class="compare-pill pill-right">✓ COORDINATED: EXPLICIT LOCK + AUTO-FLOW</div>
+  </header>
+
+  <!-- Side-by-Side Component Cards -->
+  <div class="compare-grid">
+
+    <!-- LEFT: Uncoordinated Clashes -->
+    <article class="preview-card card-wrong">
+      <div class="card-body">
+        <span class="stage-label">UNCOORDINATED: grid-column: 1 / 3;</span>
+        <div class="dashboard-stage">
+          <div class="grid-clash">
+            <div class="dash-item item-map">
+              <span class="item-h">Live Election Map (Explicit: 1 / 3)</span>
+              <span class="item-sub">Pinned to row 1 / 2</span>
+            </div>
+            <div class="dash-item item-clash">
+              <span class="item-h">Breaking Alert (Clashing: 1 / 2)</span>
+              <span class="item-sub" style="color:#b91c1c;">Overlaps pinned map!</span>
+            </div>
+            <div class="dash-item item-auto-clash">
+              <span class="item-h">Senate Balance</span>
+              <span class="item-sub">Auto: row 2, col 1</span>
+            </div>
+            <div class="dash-item item-auto-clash">
+              <span class="item-h">House Balance</span>
+              <span class="item-sub">Auto: row 2, col 2</span>
+            </div>
+            <div class="dash-item item-auto-clash">
+              <span class="item-h">Results Ticker</span>
+              <span class="item-sub">Auto: row 3, col 1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer footer-wrong">
+        <span><strong>✕ Explicit Coordinate Clash:</strong> Hardcoded line 1 overlaps the pinned map; CSS Grid does not push explicitly placed items aside</span>
+      </div>
+    </article>
+
+    <!-- RIGHT: Coordinated Placement -->
+    <article class="preview-card card-right">
+      <div class="card-body">
+        <span class="stage-label">COORDINATED: grid-column: 1 / -1;</span>
+        <div class="dashboard-stage">
+          <div class="grid-coordinated">
+            <div class="dash-item item-map-ok">
+              <span class="item-h">Live Election Map (Explicit: 1 / -1)</span>
+              <span class="item-sub">Locks entire header track</span>
+            </div>
+            <div class="dash-item item-auto-ok">
+              <span class="item-h">Senate Balance</span>
+              <span class="item-sub">Auto-placed: row 2, col 1</span>
+            </div>
+            <div class="dash-item item-auto-ok">
+              <span class="item-h">House Balance</span>
+              <span class="item-sub">Auto-placed: row 2, col 2</span>
+            </div>
+            <div class="dash-item item-auto-ok">
+              <span class="item-h">Results Ticker</span>
+              <span class="item-sub">Auto-placed: row 3, col 1</span>
+            </div>
+            <div class="dash-item item-auto-ok">
+              <span class="item-h">State Polling Feed</span>
+              <span class="item-sub">Auto-placed: row 3, col 2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer footer-right">
+        <span><strong>✓ Engine Step Priority:</strong> Map locks coordinates first; auto-placement cursor routes remaining cards into unoccupied slots</span>
+      </div>
+    </article>
+
+  </div>
+
+</div>
+
+<figcaption>Fig 18.1: In the left panel, competing explicit line declarations force the breaking alert to collide directly on top of the electoral map. In the right panel, coordinated placement locks the map across columns while allowing the auto-placement algorithm to route remaining cards into unoccupied slots.</figcaption>
+</figure>
+<p>In the left panel of Figure 18.1, the container <code>.election-dashboard.clash</code> suffers from an explicit coordinate collision. The developer explicitly instructed <code>.widget-map</code> to occupy <code>grid-column: 1 / 3</code> and <code>grid-row: 1 / 2</code>. Moments later, a breaking news alert widget was added with <code>grid-column: 1 / 2; grid-row: 1 / 2;</code>. Notice what the browser layout engine does: it does not push the breaking alert below the map, nor does it displace the map into row two. Because both selectors provided definite coordinates targeting the exact same cells on row one, the engine places both elements inside row one, resulting in catastrophic visual overlap where the red alert box renders directly on top of the blue electoral map. The remaining three cards are auto-placed into rows two and three, completely blind to the visual disaster unfolding on row one.</p>
+<p>In the right panel of Figure 18.1, the container <code>.election-dashboard.coordinated</code> demonstrates proper placement harmony. The developer assigned the electoral map to <code>grid-column: 1 / -1</code>, instructing it to span the entire horizontal width from the first to the last column line. The remaining cards declare zero line numbers, leaving their positions entirely to the browser's auto-placement algorithm. The engine locks the map into row one first, marking columns one and two as occupied. When the auto-placement cursor begins processing the senate, house, and ticker cards, it notes that row one is fully occupied and automatically advances its cursor to row two, column one. Each subsequent card drops cleanly into the next available slot, producing a clean, legible hierarchy without a single coordinate conflict.</p>
+<p>The official W3C CSS Grid Layout Module Level 2 specification explicitly documents the multi-stage item placement algorithm:</p>
+<blockquote>The grid item placement algorithm resolves automatic positions of grid items into definite positions, ensuring that every grid item has a well-defined grid area to lay out into. Every grid cell can be occupied or unoccupied. A cell is occupied if it's covered by the grid area of a grid item with a definite grid position; otherwise, the cell is unoccupied.</blockquote>
+<p><em>CSS Grid Layout Module Level 2, <code>resources/spec/csswg-drafts/css-grid-2/Overview.bs</code></em></p>
+<p>Notice the critical principle codified in the W3C standard: every cell in the grid matrix maintains an internal binary state of either occupied or unoccupied. Definite positions (explicit placements) claim their territory first and flip those cells to occupied. The auto-placement algorithm only ever operates on cells that are unoccupied. It possesses zero authority to dislodge or push an element that has already secured an explicit definite coordinate.</p>
+</div>
+<h4>Tracing Execution Order from Markup to Grid Tracks</h4>
+<p>To master how the browser engine evaluates complex grid structures, trace the exact sequential order of execution through the layout pipeline:</p>
+<ol><li><strong>The HTML Structure:</strong> An editor constructs an election dashboard <code>&lt;main class="election-dashboard"&gt;</code> containing an interactive map <code>&lt;section class="widget-map"&gt;</code> followed by four metric cards <code>&lt;article class="widget-card"&gt;</code>.</li>
+<li><strong>The Explicit Placement Pass:</strong> During the initial grid item placement phase, the browser scans all children for explicit placement properties (<code>grid-column</code>, <code>grid-row</code>, <code>grid-area</code>). The map declares <code>grid-column: 1 / -1</code> and <code>grid-row: 1 / 2</code>. The browser assigns the map to cells (row 1, column 1) and (row 1, column 2), immediately tagging both cells as occupied in the layout matrix.</li>
+<li><strong>The Auto-Placement Cursor Initialization:</strong> The engine initializes its auto-placement cursor at the start of the implicit grid: row 1, column 1. It queries cell (row 1, column 1) and discovers it is occupied by the map. It queries cell (row 1, column 2) and finds it is also occupied.</li>
+<li><strong>Cursor Advancement and Slot Allocation:</strong> Finding no unoccupied slots on row 1, the cursor increments its row index to row 2 and resets its column index to column 1. Cell (row 2, column 1) is unoccupied, so the first auto-placed card is dropped there and the cell is marked occupied. The cursor advances to (row 2, column 2), finds it unoccupied, and places the second card. When the third card arrives, the cursor advances to row 3, generating an implicit row track to house the remaining content cleanly.</li></ol>
+<div class="keep-together">
+<h3>Deep Dive: Deconstructing the Placement Primitives</h3>
+<p>To speak with authority in technical architecture reviews and senior frontend interviews, you must understand the four architectural pillars that govern grid coordinate math and auto-flow mechanics.</p>
+<p><strong>Name and Origins:</strong> The term explicit grid placement derives from the explicit grid: the finite matrix of horizontal and vertical tracks created by declaring <code>grid-template-columns</code> and <code>grid-template-rows</code> on the parent container. The coordinates you assign (<code>grid-column: 1 / 3</code>) refer directly to the numbered grid lines that bound those tracks. Conversely, the term auto-placement refers to the automatic cursor dispatch system defined by <code>grid-auto-flow</code>. The keyword <code>row</code> commands the cursor to fill each row horizontally before creating new rows; <code>column</code> commands it to fill columns vertically before creating new columns; and the modifier <code>dense</code> commands the cursor to backtrack when layout holes appear.</p>
+<p><strong>Everyday Physical Analogy:</strong> Think of explicit grid placement and auto-placement as a <strong>major theater with reserved VIP seating versus a general admission line</strong>. The patrons who purchased reserved VIP tickets hold specific seat numbers printed on their tickets (row A, seats 1 and 2). When the theater doors open, those VIP guests walk straight to row A, sit down, and occupy those exact seats. Afterward, the general admission crowd enters without seat numbers. The usher (the auto-placement cursor) walks the general admission guests down the aisles, checking each seat one by one. If seat A1 is occupied by a VIP, the usher does not ask the VIP to move; the usher simply walks to the next empty seat. If all seats in row A are taken, the usher leads the general admission guests to row B. Explicit placement is the reserved ticket; auto-placement is the usher filling empty chairs.</p>
+<p><strong>Historical Context (The Problem It Solved):</strong> Before CSS Grid introduced native coordinate placement in 2017, constructing asymmetric dashboard layouts required catastrophic hacks. Developers had to wrap content in deeply nested <code>&lt;div&gt;</code> scaffolding, declare fragile floats (<code>float: left; width: 66.666%;</code>), inject clearfixes (<code>.clearfix::after</code>), or rely on absolute positioning hacks (<code>position: absolute; top: 0; left: 0;</code>). The moment an editorial team wanted to swap the position of two widgets or inject a dynamic alert banner, the entire float chain collapsed, pushing columns down the screen or causing parent container heights to collapse to zero. CSS Grid's placement engine permanently liberated web layout from markup sequence, allowing any element to be projected into any coordinate slot while preserving semantic HTML order.</p>
+<p><strong>Browser Calculation Sequence:</strong> When resolving grid item placement, the browser engine executes a strict five-step routine:</p>
+<ol><li>It generates any anonymous grid items (such as bare text nodes wrapped in phrasing markup).</li>
+<li>It locks all items with definite positions along both axes (items with both explicit row and explicit column lines).</li>
+<li>It processes items that are locked to a specific row (e.g. <code>grid-row: 2</code>) but have automatic column placement, advancing the cursor along that specific row to find empty slots.</li>
+<li>It processes items that are locked to a specific column (e.g. <code>grid-column: 1</code>) but have automatic row placement, advancing row by row along that column.</li>
+<li>It processes all remaining fully automatic items using the auto-placement cursor, stepping linearly through the grid and expanding the implicit grid whenever explicit tracks run out.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Sparse Versus Dense Packing: When the Auto-Placement Cursor Skips Ahead</h3>
+<p>One of the most frequent layout defects in content-heavy web applications is the appearance of mysterious empty gaps inside a multi-column card deck. A developer creates a three-column grid, populates it with news stories, and suddenly notices a massive white hole on row one, while a two-column story card sits awkwardly on row two.</p>
+<p>This phenomenon is governed by the difference between <strong>sparse packing</strong> and <strong>dense packing</strong> in the auto-placement algorithm.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">packing-grid.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;div <span class="kw">class</span>=<span class="str">"news-matrix"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"card card-1"</span>&gt;Story <span class="nl">1</span> (<span class="nl">1</span> col)&lt;/article&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"card card-wide"</span>&gt;Story <span class="nl">2</span> (<span class="nl">2</span> cols)&lt;/article&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"card card-3"</span>&gt;Story <span class="nl">3</span> (<span class="nl">1</span> col)&lt;/article&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"card card-4"</span>&gt;Story <span class="nl">4</span> (<span class="nl">1</span> col)&lt;/article&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/div&gt;</span></div></div></div></div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">packing-styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.news-matrix.sparse </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">display</span>: <span class="kw">grid</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="nl">3</span>, <span class="nl">1fr</span>);</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">grid-auto-flow</span>: <span class="kw">row</span>;           </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> default sparse flow leaves permanent gaps when wide items wrap</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">gap</span>: <span class="nl">8px</span>;</span></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src"><span class="sel">.news-matrix.sparse .card-wide </span>{</span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="prop">grid-column</span>: span <span class="nl">2</span>;          </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Cannot fit in column 2 or 3 on row 1, forcing premature wrap to row 2</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src">}</span></div>
+<div class="row"><span class="num">11</span><span class="src"></span></div>
+<div class="row"><span class="num">12</span><span class="src"><span class="sel">.news-matrix.dense </span>{</span></div>
+<div class="row"><span class="num">13</span><span class="src">  <span class="prop">display</span>: <span class="kw">grid</span>;</span></div>
+<div class="row"><span class="num">14</span><span class="src">  <span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="nl">3</span>, <span class="nl">1fr</span>);</span></div>
+<div class="row"><span class="num">15</span><span class="src">  <span class="prop">grid-auto-flow</span>: <span class="kw">row</span> dense;     </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> dense packing commands cursor to backtrack and backfill holes</span></div></div></div>
+<div class="row"><span class="num">16</span><span class="src">  <span class="prop">gap</span>: <span class="nl">8px</span>;</span></div>
+<div class="row"><span class="num">17</span><span class="src">}</span></div>
+<div class="row"><span class="num">18</span><span class="src"></span></div>
+<div class="row"><span class="num">19</span><span class="src"><span class="sel">.news-matrix.dense .card-wide </span>{</span></div>
+<div class="row"><span class="num">20</span><span class="src">  <span class="prop">grid-column</span>: span <span class="nl">2</span>;</span></div>
+<div class="row"><span class="num">21</span><span class="src">}</span></div></div></div></div>
+<figure class="css-figure">
+<style>
+  .fig-dense-packing {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-dense-packing .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-dense-packing .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-dense-packing .pill-sparse {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+  }
+  .fig-dense-packing .pill-dense {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-dense-packing .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-dense-packing .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-dense-packing .card-sparse {
+    border: 1px solid #fcd34d;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .fig-dense-packing .card-dense {
+    border: 1.5px solid #84e1bc;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-dense-packing .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+  }
+
+  .fig-dense-packing .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .fig-dense-packing .grid-stage {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px;
+    box-sizing: border-box;
+    height: 180px;
+  }
+
+  /* Left: Sparse grid */
+  .fig-dense-packing .stage-sparse {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 68px);
+    gap: 8px;
+    height: 100%;
+  }
+
+  /* Right: Dense grid */
+  .fig-dense-packing .stage-dense {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 68px);
+    grid-auto-flow: row dense;
+    gap: 8px;
+    height: 100%;
+  }
+
+  .fig-dense-packing .tile {
+    border-radius: 4px;
+    padding: 6px 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .fig-dense-packing .tile-h {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .fig-dense-packing .tile-sub {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    color: #64748b;
+    margin-top: 2px;
+  }
+
+  .fig-dense-packing .tile-1 {
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+  }
+  .fig-dense-packing .tile-wide {
+    grid-column: span 2;
+    background: #fdf4ff;
+    border: 1px solid #f0abfc;
+  }
+  .fig-dense-packing .tile-3 {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+  }
+  .fig-dense-packing .tile-4 {
+    background: #fefce8;
+    border: 1px solid #fde047;
+  }
+
+  .fig-dense-packing .sparse-hole {
+    border: 1.5px dashed #f59e0b;
+    border-radius: 4px;
+    background: #fffbeb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+    color: #b45309;
+    text-align: center;
+    line-height: 1.3;
+    padding: 4px;
+  }
+
+  /* Symmetrical Footers */
+  .fig-dense-packing .card-footer {
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 500;
+    border-top: 1px solid;
+    min-height: 52px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+  }
+  .fig-dense-packing .footer-sparse {
+    background: #fffbeb;
+    border-top-color: #fde68a;
+    color: #92400e;
+  }
+  .fig-dense-packing .footer-dense {
+    background: #f0fdf4;
+    border-top-color: #d1fae5;
+    color: #065f46;
+  }
+  .fig-dense-packing .card-footer strong {
+    font-weight: 700;
+  }
+</style>
+
+<div class="fig-dense-packing">
+
+  <!-- Comparison Header Pills -->
+  <header class="compare-header">
+    <div class="compare-pill pill-sparse">DEFAULT SPARSE FLOW (HOLE PRESERVED)</div>
+    <div class="compare-pill pill-dense">DENSE FLOW (HOLE BACKFILLED)</div>
+  </header>
+
+  <!-- Side-by-Side Component Cards -->
+  <div class="compare-grid">
+
+    <!-- LEFT: Sparse Flow -->
+    <article class="preview-card card-sparse">
+      <div class="card-body">
+        <span class="stage-label">SPARSE: grid-auto-flow: row;</span>
+        <div class="grid-stage">
+          <div class="stage-sparse">
+            <div class="tile tile-1">
+              <span class="tile-h">Card #1</span>
+              <span class="tile-sub">Col 1 / 2</span>
+            </div>
+            <div class="sparse-hole">
+              <strong>✕ Unfilled Void</strong>
+              <span>Cursor skips ahead</span>
+            </div>
+            <div class="sparse-hole">
+              <strong>✕ Unfilled Void</strong>
+              <span>Cannot fit span 2</span>
+            </div>
+            <div class="tile tile-wide">
+              <span class="tile-h">Card #2 (span 2)</span>
+              <span class="tile-sub">Row 2, col 1 to 3</span>
+            </div>
+            <div class="tile tile-3">
+              <span class="tile-h">Card #3</span>
+              <span class="tile-sub">Row 2, col 3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer footer-sparse">
+        <span><strong>Sparse Forward Flow:</strong> Cursor moves linearly without backtracking; items that do not fit trigger a line break, leaving gaps behind</span>
+      </div>
+    </article>
+
+    <!-- RIGHT: Dense Flow -->
+    <article class="preview-card card-dense">
+      <div class="card-body">
+        <span class="stage-label">DENSE: grid-auto-flow: row dense;</span>
+        <div class="grid-stage">
+          <div class="stage-dense">
+            <div class="tile tile-1">
+              <span class="tile-h">Card #1</span>
+              <span class="tile-sub">Col 1 / 2</span>
+            </div>
+            <div class="tile tile-3" style="border: 1.5px solid #16a34a;">
+              <span class="tile-h">Card #3 (Backfilled)</span>
+              <span class="tile-sub">Fills row 1 slot!</span>
+            </div>
+            <div class="tile tile-4">
+              <span class="tile-h">Card #4</span>
+              <span class="tile-sub">Fills row 1 slot!</span>
+            </div>
+            <div class="tile tile-wide">
+              <span class="tile-h">Card #2 (span 2)</span>
+              <span class="tile-sub">Row 2, col 1 to 3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer footer-dense">
+        <span><strong>Dense Backtracking Flow:</strong> Cursor backtracks to fill earlier empty holes with smaller items; eliminates visual gaps automatically</span>
+      </div>
+    </article>
+
+  </div>
+
+</div>
+
+<figcaption>Fig 18.2: Default sparse auto-placement strictly moves forward, leaving an unfilled hole on row one when card two cannot fit. Enabling dense packing commands the engine to backtrack, placing card three into the empty row one slot to maintain a compact grid.</figcaption>
+</figure>
+</div>
+<h4>Why Sparse Packing Leaves Holes</h4>
+<p>In Figure 18.2, examine the left panel illustrating default sparse packing (<code>grid-auto-flow: row</code>). The browser processes the cards in document order:</p>
+<ol><li>Card one requests a default span of 1. It drops into row 1, column 1. The cursor advances to row 1, column 2.</li>
+<li>Card two arrives and declares <code>grid-column: span 2</code>. The browser queries the remaining space on row 1. Because the grid only has 3 columns, and the cursor is currently at column 2, only two columns remain (columns 2 and 3). Wait, column 2 plus column 3 equals two available tracks! But what if the cursor was at column 3? Only one track remains. A two-column card cannot fit into a single column.</li>
+<li>Because card two cannot fit into the remaining slot on row 1, the browser leaves column 2 and column 3 empty, advances the cursor to row 2, column 1, and places card two across columns 1 and 2 on row 2.</li>
+<li>When card three arrives, sparse packing dictates that the cursor <strong>never backtracks</strong>. The cursor sits at row 2, column 3. It places card three there.</li>
+<li>The result is an ugly, permanent hole on row 1! The browser skipped past empty space and refused to look backward.</li></ol>
+<h4>How Dense Packing Solves the Hole</h4>
+<p>In the right panel of Figure 18.2, the container declares <code>grid-auto-flow: row dense;</code>. The word <code>dense</code> radically alters the cursor's behavior. When card two is forced to wrap to row two because it cannot fit on row one, the engine records that row 1 still contains unoccupied cells. When card three (a single-column card) arrives, the dense algorithm resets its search to the very beginning of the grid, discovers the unoccupied hole on row 1, and drops card three directly into the hole!</p>
+<h4>The Accessibility Hazard of Dense Packing</h4>
+<p>While <code>grid-auto-flow: row dense</code> appears to be a magic cure for empty grid holes, senior front-end engineers deploy it with extreme caution because of a severe accessibility flaw: <strong>visual reading order diverges from DOM focus order</strong>.</p>
+<p>When dense packing backfills an earlier hole, it moves card three visually before card two. However, the browser's underlying DOM tree remains completely unchanged. A sighted user pressing the Tab key or a reader using a screen reader will navigate through the elements in DOM order: they will focus on card one, jump down to card two on row two, and then jump backward and upward to card three on row one! This erratic visual jumping violates WCAG 2.4.3 (Focus Order). Only use dense packing for non-interactive visual galleries where sequential reading order carries zero functional significance.</p>
+<div class="keep-together">
+<h3>Coordinate Resilience: Negative Indexing and Spans</h3>
+<p>When placing elements explicitly, junior developers frequently hardcode positive grid line numbers: <code>grid-column: 1 / 3;</code>. While this works during initial development on a fixed two-column layout, it creates extreme fragility in responsive stylesheets. If a media query expands the desktop grid from two columns to four columns, an element hardcoded to line 3 suddenly spans only half the page instead of full width!</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">resilient-grid.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;div <span class="kw">class</span>=<span class="str">"resilient-dashboard"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;header <span class="kw">class</span>=<span class="str">"dash-banner"</span>&gt;Election Night Special&lt;/header&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"dash-tile"</span>&gt;Result Tile&lt;/div&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"dash-matrix"</span>&gt;Projection Matrix&lt;/div&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;/div&gt;</span></div></div></div></div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">resilient-styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.resilient-dashboard </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">display</span>: <span class="kw">grid</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">grid-template-columns</span>: <span class="fn">repeat</span>(<span class="nl">3</span>, <span class="nl">1fr</span>);</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">gap</span>: <span class="nl">12px</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">.dash-banner.brittle </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">grid-column</span>: <span class="nl">1</span> / <span class="nl">4</span>;           </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> hardcoded positive line 4 breaks if column count changes</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">}</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src"><span class="sel">.dash-banner.resilient </span>{</span></div>
+<div class="row"><span class="num">12</span><span class="src">  <span class="prop">grid-column</span>: <span class="nl">1</span> / <span class="nl">-1</span>;          </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> negative index -1 anchors permanently to the last explicit grid line</span></div></div></div>
+<div class="row"><span class="num">13</span><span class="src">}</span></div>
+<div class="row"><span class="num">14</span><span class="src"></span></div>
+<div class="row"><span class="num">15</span><span class="src"><span class="sel">.dash-matrix.resilient </span>{</span></div>
+<div class="row"><span class="num">16</span><span class="src">  <span class="prop">grid-column</span>: span <span class="nl">2</span>;          </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> relative span adapts to whatever column position the cursor reaches</span></div></div></div>
+<div class="row"><span class="num">17</span><span class="src">}</span></div></div></div></div>
+<figure class="css-figure">
+<style>
+  .fig-grid-lines {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-grid-lines .header-pill {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+    margin-bottom: 12px;
+  }
+
+  .fig-grid-lines .preview-card {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+  }
+
+  .fig-grid-lines .card-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    background: #f8fafc;
+  }
+
+  .fig-grid-lines .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  /* Grid Ruler Stage */
+  .fig-grid-lines .ruler-stage {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 16px 12px;
+    box-sizing: border-box;
+  }
+
+  /* Coordinate Axis Rulers */
+  .fig-grid-lines .ruler-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    padding: 0 4px;
+  }
+  .fig-grid-lines .line-badge {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .fig-grid-lines .badge-pos {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+  }
+  .fig-grid-lines .badge-neg {
+    background: #fdf2f8;
+    color: #be185d;
+    border: 1px solid #fbcfe8;
+  }
+
+  .fig-grid-lines .tracks-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: 50px 50px;
+    gap: 12px;
+    position: relative;
+    border: 1.5px dashed #94a3b8;
+    padding: 8px;
+    border-radius: 4px;
+    background: #f1f5f9;
+  }
+
+  .fig-grid-lines .grid-cell-demo {
+    border-radius: 4px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  .fig-grid-lines .cell-full {
+    grid-column: 1 / -1;
+    background: #dbeafe;
+    border: 1.5px solid #3b82f6;
+  }
+  .fig-grid-lines .cell-single {
+    background: #dcfce7;
+    border: 1.5px solid #22c55e;
+  }
+  .fig-grid-lines .cell-span {
+    grid-column: span 2;
+    background: #fef9c3;
+    border: 1.5px solid #eab308;
+  }
+
+  .fig-grid-lines .cell-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .fig-grid-lines .cell-code {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+    color: #475569;
+    margin-top: 2px;
+  }
+
+  .fig-grid-lines .card-footer {
+    padding: 10px 16px;
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 500;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #334155;
+  }
+  .fig-grid-lines .card-footer strong {
+    font-weight: 700;
+    color: #0f172a;
+  }
+</style>
+
+<div class="fig-grid-lines">
+
+  <div class="header-pill">CSS GRID COORDINATE SYSTEM: 1-BASED AND NEGATIVE INDEXING</div>
+
+  <article class="preview-card">
+    <div class="card-body">
+      <span class="stage-label">COORDINATE AXIS: 3 COLUMNS = 4 GRID LINES</span>
+
+      <div class="ruler-stage">
+        <!-- Top Ruler: Positive Line Numbers -->
+        <div class="ruler-labels">
+          <span class="line-badge badge-pos">Line 1</span>
+          <span class="line-badge badge-pos">Line 2</span>
+          <span class="line-badge badge-pos">Line 3</span>
+          <span class="line-badge badge-pos">Line 4</span>
+        </div>
+
+        <!-- Grid Tracks Representation -->
+        <div class="tracks-container">
+          <div class="grid-cell-demo cell-full">
+            <span class="cell-title">Full-Bleed Header Track</span>
+            <span class="cell-code">grid-column: 1 / -1; (Spans line 1 to line -1 regardless of column count)</span>
+          </div>
+          <div class="grid-cell-demo cell-single">
+            <span class="cell-title">Result Tile</span>
+            <span class="cell-code">span 1</span>
+          </div>
+          <div class="grid-cell-demo cell-span">
+            <span class="cell-title">Live Projection Matrix</span>
+            <span class="cell-code">grid-column: span 2; (Relative span without rigid line locks)</span>
+          </div>
+        </div>
+
+        <!-- Bottom Ruler: Negative Line Numbers -->
+        <div class="ruler-labels" style="margin-top: 8px; margin-bottom: 0;">
+          <span class="line-badge badge-neg">Line -4</span>
+          <span class="line-badge badge-neg">Line -3</span>
+          <span class="line-badge badge-neg">Line -2</span>
+          <span class="line-badge badge-neg">Line -1</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <span><strong>Line Coordinate Resilience:</strong> Hardcoding positive line numbers (`1 / 4`) breaks if columns increase; declaring `-1` anchors resiliently to the trailing edge of the explicit grid</span>
+    </div>
+  </article>
+
+</div>
+
+<figcaption>Fig 18.3: The CSS Grid coordinate axis supports both positive (1 to 4) and negative (-4 to -1) line indexing. Negative line indices let you anchor items to the trailing boundary of the explicit grid regardless of track count.</figcaption>
+</figure>
+<p>In Figure 18.3, examine how CSS Grid numbers its lines along the inline axis. For a three-column grid, the browser generates four grid lines. These lines can be addressed from left to right using positive integers (1, 2, 3, 4) or from right to left using negative integers (-4, -3, -2, -1).</p>
+<p>By writing <code>grid-column: 1 / -1</code>, you instruct the browser to span from the very first grid line (1) all the way to the very last line of the explicit grid (-1). If you later change the stylesheet to <code>repeat(4, 1fr)</code> or <code>repeat(12, 1fr)</code>, line <code>-1</code> automatically resolves to the new trailing boundary. The banner continues to stretch across one hundred percent of the container without requiring you to update a single placement declaration.</p>
+<p>Similarly, writing <code>grid-column: span 2</code> frees the element from rigid starting coordinates altogether. It allows the auto-placement algorithm to determine <em>where</em> the item starts, while guaranteeing that it always claims exactly two columns of width wherever it lands.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> explain that explicit placement and auto-placement operate in distinct phases of the browser layout engine. State clearly that explicit items (definite positions) claim grid territory first, marking cells as occupied. The auto-placement algorithm only ever operates on unoccupied cells and can never dislodge or push explicitly placed items. Mention that while <code>grid-auto-flow: row dense</code> eliminates visual holes by backtracking, it creates an accessibility defect under WCAG 2.4.3 by disconnecting DOM focus order from visual reading order.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Election night dashboards: pinning live interactive national maps across multiple columns while dynamic state tickers flow underneath.</li>
+<li>Newspaper editorial matrices: locking breaking news hero articles to column one while opinion columns auto-flow into adjacent tracks.</li>
+<li>E-commerce product galleries: displaying featured double-width promotional banners that weave through auto-placed product cards.</li>
+<li>Financial analytics consoles: anchoring stock ticker charts across full-width rows while currency conversion widgets auto-populate remaining grid cells.</li>
+<li>Media streaming applications: positioning featured trailer players across prime grid areas while episode thumbnail grids auto-fill the lower rows.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Explicit Grid Placement</strong>: Assigning a grid item to definite grid lines or named areas using properties like grid-column and grid-row, permanently locking it into specific coordinates.</li>
+<li><strong>Auto-Placement Algorithm</strong>: The browser engine's positioning routine that evaluates unplaced items and automatically slots them into available grid cells.</li>
+<li><strong>Occupied Cell</strong>: A grid slot that is already covered by the grid area of an explicitly placed item or an earlier auto-placed item.</li>
+<li><strong>Sparse Packing</strong>: The default auto-placement behavior where the cursor strictly moves forward along tracks and never backtracks, leaving holes when large items wrap.</li>
+<li><strong>Dense Packing</strong>: An auto-placement mode enabled via grid-auto-flow dense that allows the cursor to backtrack and fill earlier empty holes with smaller items.</li>
+<li><strong>Negative Line Indexing</strong>: Addressing grid lines in reverse from the trailing edge of the explicit grid, where line -1 represents the final track boundary.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>The Two-Stage Grid Placement Law</strong></p>
+<p>Attempting to control CSS Grid layouts by mixing explicit line numbers with dynamic content streams without understanding the browser's placement algorithm is a primary source of dashboard defects. Explicit placement does not participate in standard normal-flow displacement: it claims definite coordinates during the first pass of the layout engine and marks those cells as occupied. Auto-placement runs second, routing unplaced items strictly through remaining unoccupied slots without the power to push explicit items aside.</p>
+<p>When designing robust grid systems, reserve explicit line placement exclusively for permanent structural anchors, use negative line indexing (<code>1 / -1</code>) for full-bleed spans, and rely on relative spans (<code>span 2</code>) combined with auto-placement for dynamic cards. If visual holes appear, weigh the visual benefits of dense packing against the severe accessibility risk of disconnecting visual order from DOM focus order. Here is your streetwise review.</p>
+<p>❒ Core Placement Principles</p>
+<ol><li>Definite coordinates claim territory first.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Explicit grid placements are resolved in pass one, marking cells as permanently occupied.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) The auto-placement algorithm runs in pass two, stepping only through unoccupied cells.</li>
+<li>Auto-placement never pushes explicit items.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) If an auto-placed item needs space, it steps around occupied cells or creates new implicit rows.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Two items given the same explicit coordinates will overlap directly rather than wrap.</li>
+<li>Sparse versus dense cursor traversal.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Default sparse packing strictly advances forward, preserving empty holes when large items wrap.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Dense packing backtracks to fill earlier empty holes, which can disorient screen readers.</li></ol>
+<p>❒ Placement Best Practices</p>
+<ol><li>Never hardcode explicit positive line numbers for elements that must span the entire container width.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Hardcode positive line numbers that snap when the column count changes.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.hero-banner </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">grid-column</span>: <span class="nl">1</span> / <span class="nl">4</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use negative line indices to anchor resiliently to the final track boundary.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.hero-banner </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">grid-column</span>: <span class="nl">1</span> / <span class="nl">-1</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+</div>
+<p>➔ NEVER assume auto-placed items will push an explicitly placed grid item down the page.</p>
+<p>➔ ALWAYS use <code>grid-column: 1 / -1</code> instead of positive line counts for full-width grid headers.</p>
+<p>➔ IF you enable <code>grid-auto-flow: row dense</code> THEN verify that visual tab order matches DOM order for accessibility.</p>
+<table><thead><tr><th></th><th><strong>EXPLICIT PLACEMENT</strong><br>(definite coordinates)</th><th><strong>AUTO-PLACEMENT</strong><br>(cursor flow)</th></tr></thead><tbody><tr><td><strong>Resolution Phase</strong></td><td>Stage one;<br>claims cells first</td><td>Stage two;<br>fills remaining slots</td></tr><tr><td><strong>Placement Syntax</strong></td><td>`<code> </code>grid-column<code> </code><code><br></code>: 1 / 3;`</td><td>`<code> </code>grid-auto-flow<code> </code><code><br></code>: row;`</td></tr><tr><td><strong>Collision Rule</strong></td><td>Stacks and overlaps<br>in identical cells</td><td>Steps around and skips<br>all occupied slots</td></tr><tr><td><strong>Grid Boundary</strong></td><td>Can create new rows<br>or snap to limits</td><td>Generates implicit<br>tracks as needed</td></tr><tr><td><strong>Best Used For</strong></td><td>Hero anchors, banners,<br>fixed dashboard maps</td><td>Dynamic cards, feeds,<br>repeat product tiles</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

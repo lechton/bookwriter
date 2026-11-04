@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 23: Sharing State Between Components: Lifting State to the Common Ancestor</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 23: Sharing State Between Components: Lifting State to the Common Ancestor</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do two sibling components share one changing value?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Maya builds the article search drawer for The National Times.</li>
+<li>Maya keeps the search query inside the input component and needs it in the list.</li>
+<li>Maya tries to pass the query string sideways between sibling components, but React fails.</li>
+<li>Why cannot sibling components send data sideways, and where must the shared state be kept?</li>
+<li>Trapped local state isolates sibling components and forces brittle hacks like global variables.</li>
+<li>React enforces unidirectional data flow, so siblings can only share data through a common parent.</li>
+<li>Today you learn how to lift state up to coordinate sibling components seamlessly.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Horizontal Barrier: Unidirectional Data Flow</h3>
+<p>In React architecture, data flows in a single direction: downward from parent to child through props. This rule, known as <strong>unidirectional data flow</strong>, gives React applications structural predictability. Every component receives data from its parent above and passes data down to its children below.</p>
+<p>However, this downward flow introduces a concrete boundary: the <strong>horizontal sharing barrier</strong>. Sibling components sitting next to each other on the same branch of the component tree cannot pass props directly sideways. In JSX syntax, there is no attribute or mechanism to connect one sibling's local state into another sibling's parameters:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Horizontal Sharing Barrier</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">&lt;header&gt;</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  &lt;HeadlineSearchBox /&gt; {/* holds query state */}</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">&lt;/header&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">&lt;main&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  &lt;ArticleFeedList /&gt; {/* wants query, but cannot reach across branches */}</span></div>
+<div class="row even"><span class="num">6</span><span class="src">&lt;/main&gt;</span></div></div></div></div>
+<p>When an engineer leaves state trapped inside <code>HeadlineSearchBox</code>, the sibling <code>ArticleFeedList</code> remains blind to what the reader is typing. Sibling components cannot inspect each other's memory cells. To enable communication, the data must travel upward through callback events to a shared parent component, which then passes the data back down.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why can't sibling components share state directly?</strong> Imagine two separate newsroom desks separated by a soundproof glass wall: the headline search desk and the printing press room. The search reporter cannot shout across the glass to the press operators. The only communication line runs upward to the managing editor's central podium. To update the printing press, the search reporter speaks into the phone to the managing editor, and the managing editor speaks through the loudspeaker down to the press room. That is unidirectional data flow in React. Sibling components cannot pass props sideways across the tree. The data must travel upward to the common parent through a callback, and then flow downward to the sibling through props. Understanding <strong>unidirectional data flow</strong> as <strong>vertical office communication</strong> clarifies why <strong>horizontal sharing barriers</strong> require <strong>lifting state up</strong> to the <strong>closest common ancestor</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Three-Step Lifting Refactor</h3>
+<p>To synchronize two or more sibling components, apply the <strong>lifting state refactor</strong> using three disciplined steps:</p>
+<ol><li><strong>Locate the closest common ancestor</strong>: Walk upward through the component tree from each sibling until you reach the lowest common parent component that sits above all of them.</li>
+<li><strong>Remove state from the child</strong>: Strip the <code>useState</code> hook from the child component. Turn the child into a <strong>controlled child component</strong> that receives its value and an update callback prop from the outside.</li>
+<li><strong>Declare state in the ancestor</strong>: Move the <code>useState</code> hook into the common ancestor component. Pass the current state value down to the sibling that renders it, and pass a state updater callback down to the sibling that changes it.</li></ol>
+<p>When you lift state up, neither child component owns the data anymore. The parent becomes the <strong>single source of truth</strong>, coordinating both children like an orchestra conductor.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Who should own the state when components share data?</strong> Remember a symphony orchestra performing in a concert hall. If the first violinist and the cellist each attempt to keep their own private tempo, the symphony disintegrates into chaotic noise. The tempo cannot belong to the violin or the cello. The tempo belongs to the conductor standing on the central podium. The conductor keeps the master tempo and beats the baton so every instrument plays in perfect synchronization. In React, when two sibling components need to agree on data, the data belongs to the conductor: their common parent. By placing state in the parent, both child components become controlled instruments following the exact same master baton. Understanding <strong>state ownership</strong> as <strong>orchestral conduction</strong> clarifies why the <strong>closest common parent</strong> must be the <strong>single source of truth</strong> for all <strong>shared state</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Edition Portal Architecture</h3>
+<p>To inspect lifted state in production, examine the reader edition portal for The National Times. The parent component <code>EditionPortal.jsx</code> parents two sibling components: <code>HeadlineSearchBox.jsx</code> in the portal header, and <code>ArticleFeedList.jsx</code> in the main article feed:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>ArticleFeedList.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>EditionPortal.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>HeadlineSearchBox.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>EditionPortal</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>HeadlineSearchBox</span><span class="component-explorer-props">query=&quot;&quot; onQueryChange={fn}</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Search headlines</span><span class="surface-render-line">Filter by keyword...</span></div></div><div class="component-explorer-node component-kind-table"><div class="component-explorer-label"><span>ArticleFeedList</span><span class="component-explorer-props">stories={[...]} query=&quot;&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Harbor tunnel budget approved</span><span class="surface-render-line">City library opens rare archive</span><span class="surface-render-line">Harbor ferry expands weekend runs</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above demonstrates this architectural layout. On the left, <code>EditionPortal.jsx</code> sits at the top of the tree, rendering both children. On the right, the rendered view displays the search form followed by the three matching editorial stories: "Harbor tunnel budget approved", "City library opens rare archive", and "Harbor ferry expands weekend runs".</p>
+<p>First, examine the search input child <code>HeadlineSearchBox.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">HeadlineSearchBox.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">HeadlineSearchBox</span>({ query, onQueryChange }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"search-box"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;label htmlFor=<span class="str">"headline-search"</span>&gt;Search headlines&lt;/label&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;input</span></div>
+<div class="row even"><span class="num">6</span><span class="src">        id=<span class="str">"headline-search"</span></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">        type=<span class="str">"search"</span></span></div>
+<div class="row even"><span class="num">8</span><span class="src">        placeholder=<span class="str">"Filter by keyword..."</span></span></div>
+<div class="row odd"><span class="num">9</span><span class="src">        value={query} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Receives controlled query string as <b class="tag">PROP</b></span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">        onChange={e =&gt; <span class="fn">onQueryChange</span>(e.target.value)} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Informs parent of updated <b class="tag">KEYSTROKE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">      /&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Controlled child receiving value and callback <b class="tag">PROP</b></span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">}</span></div></div></div></div>
+<p>Notice that <code>HeadlineSearchBox</code> holds zero local state. It receives <code>query</code> as a value prop and <code>onQueryChange</code> as an <strong>event handler prop</strong>. When the reader types a character, the native <code>onChange</code> event calls <code>onQueryChange(e.target.value)</code>, sending the new string upward to the parent.</p>
+<p>Next, examine the sibling consumer component <code>ArticleFeedList.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleFeedList.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleFeedList</span>({ stories, query }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> matchingStories = stories.<span class="fn">filter</span>(story =&gt;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    story.headline.<span class="fn">toLowerCase</span>().<span class="fn">includes</span>(query.<span class="fn">toLowerCase</span>())</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">if</span> (matchingStories.length === <span class="nl">0</span>) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="kw">return</span> &lt;p className=<span class="str">"feed-empty"</span>&gt;No stories match <span class="str">"{query}"</span>.&lt;/p&gt;;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">9</span><span class="src"></span></div>
+<div class="row even"><span class="num">10</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &lt;section className=<span class="str">"feed-section"</span>&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;h3&gt;Today<span class="str">'s Feed ({matchingStories.length})&lt;/h3&gt;</span></span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      &lt;ul className=<span class="str">"feed-list"</span>&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">        {matchingStories.<span class="fn">map</span>(s =&gt; (</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">          &lt;li key={s.id} className=<span class="str">"feed-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">            &lt;h4&gt;{s.headline}&lt;/h4&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">            &lt;span className=<span class="str">"feed-tag"</span>&gt;{s.section}&lt;/span&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">          &lt;/li&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">        ))}</span></div>
+<div class="row even"><span class="num">20</span><span class="src">      &lt;/ul&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Renders filtered view driven by lifted query <b class="tag">PROP</b></span>
+      </div></div>
+<div class="row odd"><span class="num">23</span><span class="src">}</span></div></div></div></div>
+<p>The <code>ArticleFeedList</code> component accepts <code>stories</code> and <code>query</code> as props. It derives <code>matchingStories</code> synchronously on every render pass. It does not know or care where <code>query</code> came from; it simply displays whatever stories match the current prop string.</p>
+<p>Finally, examine the common ancestor <code>EditionPortal.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">EditionPortal.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> HeadlineSearchBox <span class="kw">from</span> <span class="str">'./HeadlineSearchBox.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">import</span> ArticleFeedList <span class="kw">from</span> <span class="str">'./ArticleFeedList.jsx'</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="kw">const</span> sampleStories = [</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  { id: <span class="str">'h1'</span>, headline: <span class="str">'Harbor tunnel budget approved'</span>, section: <span class="str">'Metro'</span> },</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  { id: <span class="str">'h2'</span>, headline: <span class="str">'City library opens rare archive'</span>, section: <span class="str">'Culture'</span> },</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  { id: <span class="str">'h3'</span>, headline: <span class="str">'Harbor ferry expands weekend runs'</span>, section: <span class="str">'Metro'</span> }</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">];</span></div>
+<div class="row even"><span class="num">10</span><span class="src"></span></div>
+<div class="row odd"><span class="num">11</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">EditionPortal</span>() {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  <span class="kw">const</span> [query, setQuery] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">13</span><span class="src"></span></div>
+<div class="row even"><span class="num">14</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    &lt;div className=<span class="str">"edition-portal"</span>&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      &lt;header className=<span class="str">"portal-header"</span>&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">        &lt;h2&gt;The National Times Edition Portal&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">        &lt;HeadlineSearchBox query={query} onQueryChange={setQuery} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Passes query state and setter to <b class="tag">INPUT</b></span>
+      </div></div>
+<div class="row odd"><span class="num">19</span><span class="src">      &lt;/header&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">      &lt;main className=<span class="str">"portal-content"</span>&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">        &lt;ArticleFeedList stories={sampleStories} query={query} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Passes lifted query to filter <b class="tag">FEED</b></span>
+      </div></div>
+<div class="row even"><span class="num">22</span><span class="src">      &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">24</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">}</span></div></div></div></div>
+<p>In <code>EditionPortal</code>, the <code>useState</code> hook lives at the common apex. The component passes <code>query</code> and <code>setQuery</code> down into <code>HeadlineSearchBox</code>, and simultaneously passes <code>query</code> into <code>ArticleFeedList</code>. When typing occurs, <code>setQuery</code> updates the parent state, triggering a re-render of <code>EditionPortal</code> that updates both children in lockstep.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — Unidirectional Data Flow & Lifting State</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Edition Portal</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            EditionPortal.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            HeadlineSearchBox.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            ArticleFeedList.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            EditionPortal.jsx ➔ LIFTS [query, setQuery]
+            <span class="rce-node-props">✓ COMMON ANCESTOR</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Common Ancestor: <span class="ref-tag ref-green">const [query, setQuery]</span> lives in EditionPortal</div>
+            <div style="margin-top:0.3rem;">2. Downward Flow: query passed to HeadlineSearchBox and ArticleFeedList</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Harmonized Circuit: typing in search immediately filters feed!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            Data flows strictly downward through props; events flow upward through callbacks.<br>
+            Placing state in the closest common ancestor creates a synchronized two-way circuit.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            HeadlineSearchBox.jsx ➔ LOCAL STATE
+            <span class="rce-node-props">✕ HORIZONTAL BARRIER</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Trapped State: <span class="ref-tag ref-red">query lives only inside HeadlineSearchBox</span></div>
+            <div style="margin-top:0.3rem;">2. Horizontal Barrier: React cannot pass props sideways to siblings</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">Disconnected UI: ArticleFeedList receives nothing and stays static!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Sibling components cannot communicate directly across tree branches.<br>
+            Trapping state inside one sibling leaves all other siblings completely blind.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 23.1: The National Times — Unidirectional Data Flow &amp; Lifting State</figcaption>
+</figure>
+<p>The figure above illustrates the vertical circuit. State is stored high enough in the tree that all dependent components sit beneath it. The search box fires events upward, and the updated value flows downward to the article feed.</p>
+</div>
+<div class="keep-together">
+<h3>Controlled versus Self-Managed Child Architecture</h3>
+<p>When you lift state out of a component, you transform it from a <strong>self-managed component</strong> (which manages its own internal state) into a <strong>controlled component</strong> (which is driven entirely by props).</p>
+<p>Controlled components offer decisive engineering advantages:</p>
+<ul>
+<li><strong>Predictability</strong>: A controlled component has no hidden internal mood; its rendered output is a pure projection of the props passed to it.</li>
+<li><strong>Testability</strong>: You can test a controlled component in isolation simply by passing mock props and verifying that callbacks fire with expected arguments.</li>
+<li><strong>Composability</strong>: The parent can intercept or transform user input before updating state, enforcing formatting, uppercase rules, or input length limits.</li>
+</ul>
+<p>However, lifting state introduces an operational trade-off: <strong>prop drilling</strong>. When two deeply nested components need to share data, lifting state to their common ancestor may require passing props through three or four intermediate components that have no interest in the data themselves. In later lessons, you will learn how React Context solves prop drilling across large component trees.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how high state should be lifted in a production application, state the rule of least privilege: "Lift state only as high as necessary to encompass all components that need it, and no higher." Lifting state unnecessarily high up to the root causes unrelated sibling subtrees to re-render whenever the state changes. Always keep state as local as possible while satisfying all dependent consumers.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Site header search bars: Coordinating an input in the top navigation bar with a live results feed in the main document layout.</li>
+<li>Interactive accordion panels: Ensuring only one panel remains expanded at a time by lifting the active panel ID to the accordion container.</li>
+<li>Checkout form wizards: Sharing customer shipping address and delivery preferences between step forms and the order summary sidebar.</li>
+<li>Audio and video players: Synchronizing playback progress between a sticky bottom media bar and an inline album tracklist.</li>
+<li>Tabbed dashboard navigation: Sharing the active tab identifier between horizontal tab buttons and tab content panels.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Lifting State Up</strong>: The refactoring technique of moving state from child components to their closest common ancestor to allow siblings to share data.</li>
+<li><strong>Closest Common Ancestor</strong>: The lowest component node in the render tree that sits hierarchically above all components requiring access to a given piece of state.</li>
+<li><strong>Unidirectional Data Flow</strong>: The architectural principle in React where data flows strictly downward through props, while notifications flow upward through callback functions.</li>
+<li><strong>Inverse Data Flow</strong>: The pattern of passing callback functions from parent to child, allowing children to trigger state updates in ancestor components.</li>
+<li><strong>Controlled Child</strong>: A component that maintains no internal state for a feature and is driven entirely by props passed down from its parent.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>State Elevation Architecture: Lifting State Up to the Closest Common Ancestor</strong></p>
+<p>In React's unidirectional component hierarchy, sibling components cannot communicate horizontally. To share data between siblings, you must elevate state to their closest common ancestor and establish a vertical communication circuit using props and callbacks.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">The Core Mechanics of Lifting State</span></div>
+<ol><li>Identify the lowest common parent in the component tree.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Inspect the hierarchy to find the single component that wraps all consumers and producers of the data.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Avoid lifting state to the application root when a local container wraps all interested components.</li>
+<li>Convert children into controlled components.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Remove local <code>useState</code> hooks from child components, replacing them with value and callback props.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Children become pure presentation and event-forwarding units that are easy to test and reuse.</li>
+<li>Manage the vertical data circuit.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Pass state values downward to children that render the data.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Pass state setter callbacks downward to children that handle user interactions.
+➔ ALWAYS place shared state in the closest common ancestor of the components that need it.<br>
+➔ NEVER attempt to pass props sideways between sibling components or read sibling state through refs.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Keep state trapped inside a child and leave siblings blind.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">TrappedChildState</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">SearchBox</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [query, setQuery] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> &lt;input value={query} onChange={e =&gt; <span class="fn">setQuery</span>(e.target.value)} /&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">function</span> <span class="fn">Page</span>() {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;div&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;SearchBox /&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      &lt;ArticleList /&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Lift state to the common parent and pass value and callback props downward.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LiftedStatePattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">Page</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [query, setQuery] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;div&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;SearchBox query={query} onQueryChange={setQuery} /&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;ArticleList query={query} /&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>LOCAL CHILD STATE</strong><br>(isolated)</th><th><strong>LIFTED PARENT STATE</strong><br>(shared)</th></tr></thead><tbody><tr><td><strong>State Ownership</strong></td><td>Trapped inside one child<br>component's memory</td><td>Held centrally in the<br>closest common ancestor</td></tr><tr><td><strong>Sibling Access</strong></td><td>Zero; siblings cannot<br>read across tree branches</td><td>Full; siblings receive data<br>and callbacks via props</td></tr><tr><td><strong>Component Nature</strong></td><td>Self-managed child<br>holding internal state</td><td>Controlled child driven<br>entirely by incoming props</td></tr><tr><td><strong>Reusability</strong></td><td>Rigid; bound to specific<br>internal storage logic</td><td>Highly reusable; can be<br>wired to any parent source</td></tr><tr><td><strong>Testing Friction</strong></td><td>Requires triggering internal<br>events and DOM queries</td><td>Trivial; pass mock props<br>and assert callback calls</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,1303 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 21: Reacting to Input with State — Edition v7.1-1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v7.1-1";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 21: Reacting to Input with State</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you design a component that reacts to input with state instead of touching the DOM?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>You build a subscription paywall modal where users type a card number and click Subscribe.</li>
+<li>An imperative handler leaves "Payment failed" and "Welcome, subscriber" on screen together after a retry.</li>
+<li>How do you design a component that reacts to input with state instead of touching the DOM?</li></ol>
+</div>
+<div class="keep-together">
+<h3>Imperative DOM commands leave conflicting messages on screen</h3>
+<p>Today we learn how React components react to user actions and network events using declarative state machines, why imperative DOM scripting leaves conflicting UI elements on screen, and how to model form lifecycles cleanly with a single status string.</p>
+<p>In modern frontend web applications, user interfaces constantly react to user input and background network events. When a customer subscribes to a service, they type payment details, click a submit button, watch a loading indicator appear while the network request is in flight, and finally see either an error notification or a confirmation banner. In plain JavaScript, developers write imperative commands that modify the DOM element by element: disabling buttons, removing hidden classes, and toggling error styles. Each command changes the page step by step and stays there forever until another explicit command undoes it. If a single branch forgets to reset an element, contradictory elements remain visible simultaneously, displaying an error banner right alongside a welcome message. In React, we solve this synchronization breakdown by declaring visual states first, storing the active state in component memory, and letting JSX describe what each state displays. Event handlers never touch the DOM; they only set the next state.</p>
+<p>When developers transition from vanilla JavaScript or jQuery to React, they often bring along imperative scripting habits. When an error occurs, an imperative handler queries the DOM to set <span class="code-line-callout"><code>errorText.style.display = <span class="str">'block'</span></code></span> When the user retries and the request succeeds, the success handler displays the welcome message, but forgets to hide the error container. The user ends up seeing "Payment failed" and "Welcome, subscriber" at the exact same time. The same defect appears when developers represent the form's lifecycle using three separate boolean state variables: <code>isSubmitting</code>, <code>isSuccess</code>, and <code>isError</code>. Three booleans allow eight distinct combinations, most of which represent impossible real-world states. When a retry succeeds and sets <code>isSuccess</code> to true without resetting <code>isError</code> back to false, the form renders both messages. React replaces both traps with a systematic design process: first, list every visual state; second, identify human and computer triggers; third, store the current state in a single status string.</p>
+<p>This chapter investigates three core questions. <strong>Why does an imperative handler leave conflicting messages on screen after a retry, and how does JSX driven by status eliminate DOM commands?</strong> <strong>Where should component design begin: with the click handler, or by listing and mocking visual states before wiring triggers?</strong> <strong>Why do separate boolean flags create impossible states, and why does a single status string guarantee mutual exclusivity?</strong></p>
+<p>Later lessons deepen these state modeling patterns: Lecture 22 investigates choosing the right state structure and removing redundant state variables, while Lecture 26 introduces reducers for managing complex state transitions that depend on previous values.</p>
+<ul>
+<li><strong>Lecture 1 (What is React)</strong>: Declarative code describes what the page shows, and React updates the DOM to match without manual element queries.</li>
+<li><strong>Lecture 5 (The UI Tree)</strong>: Props flow downward from parent containers to child presentation components.</li>
+<li><strong>Lecture 6 (Component props)</strong>: Components accept props with default parameter values to customize their rendering.</li>
+<li><strong>Lecture 10 (Conditional rendering)</strong>: Logical AND (<code>&amp;&amp;</code>) operators and early returns render distinct markup based on truthy conditions.</li>
+<li><strong>Lecture 11 (Rendering lists)</strong>: Array <code>map()</code> transforms items into JSX element lists with unique <code>key</code> attributes.</li>
+<li><strong>Lecture 13 (Event handling)</strong>: Event handlers capture user actions like clicks and submits without executing during render.</li>
+<li><strong>Lecture 14 (Component memory with useState)</strong>: The <code>useState</code> hook provides a state variable and a setter function that requests a re-render.</li>
+<li><strong>Lecture 15 (Render and commit)</strong>: Calling a setter triggers a render, and React commits the minimal DOM mutations to the screen.</li>
+<li><strong>Lecture 17 (State updates)</strong>: Asynchronous event handlers use <code>async</code> and <code>await</code> to coordinate state changes across network operations.</li>
+<li><strong>Lecture 18 (Updating objects in state)</strong>: Form fields pair input names with state values using controlled handlers.</li>
+<li><strong>Lecture 20 (Controlled inputs)</strong>: Form fields bind <code>value</code> to state and update on every keystroke via <code>onChange</code>, making state the single source of truth.</li>
+</ul>
+</div>
+<div class="keep-together">
+<h3>A component changes its screen across visual states</h3>
+<p>In Lecture 10, we learned how conditional rendering with early returns and logical AND operators controls what JSX appears on screen, and in Lecture 17, we learned how asynchronous event handlers use <code>async</code> and <code>await</code> to coordinate state changes during network operations. Today we combine those mechanics to model complete visual component states.</p>
+<p>A visual state represents the complete visual appearance of a component at a specific moment in its lifecycle. A subscription form typically has four visual states: <code>typing</code> (the card input is editable and the Subscribe button is active), <code>submitting</code> (the input and button are disabled while a loading spinner spins), <code>success</code> (the form is replaced by a welcome message), and <code>error</code> (the button is active again and an error message is visible). The HTML <code>disabled</code> attribute prevents users from clicking buttons or typing into fields. In React, passing a boolean expression like <span class="code-line-callout"><code>&lt;button disabled={status === <span class="str">'submitting'</span>}&gt;</code></span> binds button interactivity directly to state. When coordinating network requests, JavaScript provides <code>try</code> and <code>catch</code> blocks. An <code>async</code> handler runs code inside <code>try</code>, and if a network Promise rejects, execution immediately transfers to the <code>catch</code> block, allowing the component to transition cleanly from <code>submitting</code> to <code>error</code>.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Visual States and Disabled Handling</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="fn">setStatus</span>(<span class="str">'submitting'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Transitions to loading state</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">try</span> {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="kw">await</span> <span class="fn">submitPayment</span>(card);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="fn">setStatus</span>(<span class="str">'success'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Transitions to confirmation</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">  } <span class="kw">catch</span> {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="fn">setStatus</span>(<span class="str">'error'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Transitions to error state</span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>The relationship between visual states, form buttons, and network handling involves three core concepts:</p>
+<ol><li><code>visual state</code>: the complete visual appearance of a component for a given state.</li>
+<li><code>disabled attribute</code>: a boolean HTML attribute that prevents user interaction on buttons and inputs.</li>
+<li><code>try...catch</code>: a JavaScript control structure that intercepts errors thrown during asynchronous operations.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Testing visual states with props before wiring triggers</h3>
+<p>In Lecture 6, we learned that components accept props with default values to configure their output, and in Lecture 11, we saw how array <code>map()</code> renders repeated items into an element list. In this section, we apply those mechanics to inspect every visual state before attaching interactive event handlers.</p>
+<p>When developing a complex interactive component, writing event handlers first forces you to test screens by manually triggering every step in the browser. A more disciplined approach is to mock each visual state first. By accepting a <code>status</code> prop with a default value, such as <span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">PaywallModal</span>({ status = <span class="str">'typing'</span> })</code></span> an engineer can change the prop value by hand to verify how <code>submitting</code>, <code>error</code>, or <code>success</code> look without writing any network logic. In fact, rendering an array of statuses side by side with <span class="code-line-callout"><code>[<span class="str">'typing'</span>, <span class="str">'submitting'</span>, <span class="str">'error'</span>, <span class="str">'success'</span>].<span class="fn">map</span>(...)</code></span> creates a living styleguide showing all four states simultaneously. Once the visual states are verified, you catalogue the triggers that move the component between them. Triggers divide into two categories: human inputs (such as typing into an input field or clicking a button) and computer inputs (such as an incoming network response or a timer firing). Each trigger becomes a single <code>setStatus</code> call in an event handler.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Mocking Visual States with Props</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">PaywallModal</span>({ status = <span class="str">'typing'</span> }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">if</span> (status === <span class="str">'success'</span>) <span class="kw">return</span> &lt;p&gt;Welcome, subscriber!&lt;/p&gt;;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;form&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;button disabled={status === <span class="str">'submitting'</span>}&gt;Subscribe&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      {status === <span class="str">'error'</span> &amp;&amp; &lt;p&gt;Payment failed&lt;/p&gt;}</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Error banner</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>The process of mocking visual states and identifying transitions relies on four foundational concepts:</p>
+<ol><li><code>mock</code>: a visual preview rendered with static props to verify UI layout before attaching logic.</li>
+<li><code>living styleguide</code>: rendering multiple visual states simultaneously side by side for visual auditing.</li>
+<li><code>human inputs</code>: user interactions such as keystrokes, button clicks, and form submissions.</li>
+<li><code>computer inputs</code>: system events such as network responses resolving, promises rejecting, and timeouts firing.</li></ol>
+</div>
+<div class="keep-together">
+<h3>One status string prevents impossible states</h3>
+<p>In Lecture 14, we learned how <code>useState</code> stores component values across renders. Developers often create a boolean state variable for each piece of UI they need to toggle, which works well for independent flags but fails when states are mutually exclusive.</p>
+<p>When a component can exist in only one visual mode at a time, representing those modes with separate boolean flags invites critical bugs. For example, using <code>isSubmitting</code>, <code>isSuccess</code>, and <code>isError</code> creates $2^3 = 8$ possible combinations. A state where <code>isError === true</code> and <code>isSuccess === true</code> is an impossible state: a screen cannot logically show a payment failure banner and a subscriber welcome message at the same time. If a retry handler sets <code>setIsSuccess(true)</code> but forgets to call <code>setIsError(false)</code>, the component enters this impossible state. Using a single <code>status</code> string state variable with <span class="code-line-callout"><code><span class="str">'typing'</span> | <span class="str">'submitting'</span> | <span class="str">'success'</span> | <span class="str">'error'</span></code></span> makes impossible states mathematically impossible, because a string variable can hold exactly one value at any moment. Values that change independently, such as user input (<code>card</code>) or dynamic error messages (<code>error</code>), remain separate state variables alongside <code>status</code>.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Single Status String Versus Multiple Booleans</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> [status, setStatus] = <span class="hook">useState</span>(<span class="str">'typing'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text">Single string guarantees mutual exclusivity<br>One active mode</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">const</span> [card, setCard] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">const</span> [isSubmitting, setIsSubmitting] = <span class="hook">useState</span>(<span class="kw">false</span>);</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Multiple booleans allow contradictory combinations</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="kw">const</span> [isSuccess, setIsSuccess] = <span class="hook">useState</span>(<span class="kw">false</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Can conflict</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">const</span> [isError, setIsError] = <span class="hook">useState</span>(<span class="kw">false</span>);</span></div></div></div></div>
+<p>Representing form states cleanly without combinatorial errors centers on three core concepts:</p>
+<ol><li><code>impossible state</code>: a contradictory combination of state values that causes the UI to render broken or conflicting elements.</li>
+<li><code>single status string</code>: a state variable holding a string enum that guarantees only one visual state is active at a time.</li>
+<li><code>independent state</code>: state variables that change autonomously, such as input field values or error details, kept separate from status.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Principles of React: Reacting to Input with State</h3>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="1">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 1</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 1: A successful retry shows the error and welcome messages together';">A successful retry shows the error and welcome messages together</h3>
+</div>
+<p>A developer builds a subscription paywall modal where users type a card number and click Subscribe. To handle user interactions, the developer uses imperative DOM scripting, manually finding elements and modifying their styles and properties:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">PaywallModal.jsx, imperative attempt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  document.<span class="fn">querySelector</span>(<span class="str">'#btn'</span>).disabled = <span class="kw">true</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Disables button</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="fn">submitPayment</span>(card).<span class="fn">then</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    document.<span class="fn">querySelector</span>(<span class="str">'#welcome'</span>).style.display = <span class="str">'block'</span>;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  }).<span class="kw">catch</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    document.<span class="fn">querySelector</span>(<span class="str">'#error'</span>).style.display = <span class="str">'block'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Shows error</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">  });</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>On the first attempt, the payment network request fails. The <code>catch</code> callback runs, and the browser displays "Payment failed". The user corrects their card number and clicks Subscribe a second time. This time the payment succeeds, and the <code>then</code> callback runs. On screen, the modal now displays "Payment failed" and "Welcome, subscriber" simultaneously.</p>
+<p><strong>My Subscribe handler disables the button, shows the spinner, and hides the error. Why does the form end up showing "Payment failed" and "Welcome, subscriber" together?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> Direct DOM edits stay on the page until another line manually undoes them.</p>
+<p>In imperative programming, every command given to the browser changes the DOM directly, and each change remains in place indefinitely. On the first payment attempt, the request failed, so the <code>catch</code> handler executed <span class="code-line-callout"><code>document.<span class="fn">querySelector</span>(<span class="str">'#error'</span>).style.display = <span class="str">'block'</span></code></span> That line made the error banner visible. On the second attempt, the request succeeded, so the <code>then</code> handler executed <span class="code-line-callout"><code>document.<span class="fn">querySelector</span>(<span class="str">'#welcome'</span>).style.display = <span class="str">'block'</span></code></span> That line made the welcome message visible. However, because no line in the success path instructed the browser to hide the error banner, the error element remained visible.</p>
+<p>React never sees these manual DOM mutations. React does not inspect element styles or query DOM nodes to decide what belongs on screen. When an imperative handler modifies the DOM behind React's back, state and the screen drift out of sync.</p>
+<p>To fix this problem, you must remove all direct DOM commands from your event handlers. Instead of telling the browser how to change the page step by step, you describe what the screen displays for each visual state in JSX. You store the current state in a React state variable named <code>status</code>. Your event handlers only call <code>setStatus('submitting')</code>, <code>setStatus('success')</code>, or <code>setStatus('error')</code>. React re-renders the component and updates the DOM to match the JSX for that status. When status transitions to <code>'success'</code>, React unmounts the form and renders only the welcome message, making it physically impossible for the error message to remain visible.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Imperative DOM edits vs declarative status render</div>
+<pre class="ascii-diagram">Attempt 1 (Fail):
+  Imperative: error.style.display = 'block' -&gt; [Payment failed] visible
+  Declarative: setStatus('error')           -&gt; renders error JSX
+
+Attempt 2 (Retry Success):
+  Imperative: welcome.style.display = 'block' (forgot to hide error!)
+              Screen shows: [Payment failed] AND [Welcome, subscriber]
+  Declarative: setStatus('success')
+              Screen shows: ONLY [Welcome, subscriber]</pre>
+</div>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Describe what each status shows, and let handlers only set the status</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">visual state</span>
+          <span class="gloss-def">a distinct screen appearance determined by component data</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Imperative commands tell the browser how to change the page step by step, and each change stays until another command undoes it. If a success branch forgets to hide an earlier error, both messages remain on screen together. In React, JSX declares what the screen shows for each <strong>visual state</strong>, and event handlers only update state. When state changes, React re-renders the component and updates the DOM to match the JSX, so conflicting elements never share the screen.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">Form</span>({ status, setStatus }) {</div><div class="case-code-line">  <span class="kw">if</span> (status === <span class="str">'success'</span>) {</div><div class="case-code-line">    <span class="kw">return</span> &lt;p&gt;Action complete&lt;/p&gt;;</div><div class="cmt-bubble" style="--indent-offset: 33px;"><span class="text">shows only success message</span></div><div class="case-code-line">  }</div><div class="case-code-line">  <span class="kw">return</span> (</div><div class="case-code-line">    &lt;form onSubmit={() =&gt; <span class="fn">setStatus</span>(<span class="str">'loading'</span>)}&gt;</div><div class="case-code-line">      &lt;button disabled={status === <span class="str">'loading'</span>}&gt;Submit&lt;/button&gt;</div><div class="case-code-line">      {status === <span class="str">'error'</span> &amp;&amp; &lt;p&gt;Action failed&lt;/p&gt;}</div><div class="case-code-line">    &lt;/form&gt;</div><div class="case-code-line">  );</div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">handleSubmit</span>() {</div><div class="case-code-line">  document.<span class="fn">querySelector</span>(<span class="str">'#status'</span>).textContent = <span class="str">'Loading...'</span>;</div><div class="case-code-line">  <span class="fn">sendRequest</span>()</div><div class="case-code-line">    .<span class="fn">then</span>(() =&gt; {</div><div class="case-code-line">      document.<span class="fn">querySelector</span>(<span class="str">'#success'</span>).style.display = <span class="str">'block'</span>;</div><div class="case-code-line">    })</div><div class="cmt-bubble" style="--indent-offset: 49px;"><span class="text">forgot to hide #error, so both messages stay visible</span></div><div class="case-code-line">    .<span class="kw">catch</span>(() =&gt; {</div><div class="case-code-line">      document.<span class="fn">querySelector</span>(<span class="str">'#error'</span>).style.display = <span class="str">'block'</span>;</div><div class="case-code-line">    });</div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="2">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 2</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 2: Listing visual states comes before writing event handlers';">Listing visual states comes before writing event handlers</h3>
+</div>
+<p>A developer begins building the subscription modal by immediately writing the submission event handler, attempting to wire button clicks and network requests before establishing what screens the form can display:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">PaywallModal.jsx, starting from handlers</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">PaywallModal</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [card, setCard] = <span class="hook">useState</span>(<span class="str">''</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Card input state</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleSubscribe</span>(e) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="kw">await</span> <span class="fn">submitPayment</span>(card); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Network request</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> &lt;form onSubmit={handleSubscribe}&gt;&lt;button&gt;Subscribe&lt;/button&gt;&lt;/form&gt;;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>The developer is unsure how to handle loading spinners, error banners, and success confirmations, and must constantly click the button and trigger mock network errors to test UI layouts.</p>
+<p><strong>Where do I start? Do I write the Subscribe handler first?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code works.</strong> However, starting from event handlers makes it hard to see every visual state before writing logic.</p>
+<p>When you start building a component from its event handlers outward, you are forced to test your user interface by clicking buttons, filling fields, and triggering real or mocked network failures in the browser. This makes development slow and error-prone because edge-case visual states, such as a network timeout or a validation failure, are difficult to reproduce repeatedly on demand.</p>
+<p>Idiomatic React development inverts this workflow by designing from the screen inward across four structured steps:</p>
+<ol><li><strong>List the visual states</strong>: Write down every distinct visual screen the user can encounter. For a subscription modal, these are <code>typing</code> (the initial editable form), <code>submitting</code> (disabled inputs with an active spinner), <code>success</code> (a confirmation message), and <code>error</code> (the editable form displaying an error banner).</li>
+<li><strong>Mock each visual state with props</strong>: Implement the JSX for each state inside the component, accepting a <code>status</code> prop with a default value like <code>status = 'typing'</code>. By manually editing the prop or rendering all states side by side with <code>statuses.map(...)</code>, you can audit and polish every screen before writing a single line of business logic.</li>
+<li><strong>Catalogue human and computer triggers</strong>: Identify every event that causes the component to change state. Human triggers include typing in a text field, clicking a submit button, or pressing reset. Computer triggers include a network response arriving, an API call rejecting, or a timer completing.</li>
+<li><strong>Connect event handlers</strong>: Finally, implement event handlers that call <code>setStatus</code> to transition the component from its current visual state to the next state when a trigger fires.</li></ol>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Visual states and input trigger transitions</div>
+<pre class="ascii-diagram">[ TYPING ] &lt;----------- [ User types / retries ] ----------+
+       |                                                     |
+[ Click Subscribe ]                                          |
+       v                                                     |
+ [ SUBMITTING ] ---&gt; [ Network reject ] ---&gt; [ ERROR ] ------+
+       |
+[ Network resolve ]
+       v
+  [ SUCCESS ]</pre>
+</div>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">List the visual states first, then what moves the form between them</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">mock</span>
+          <span class="gloss-def">a visual demonstration rendered with static props before adding logic</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">A component that reacts to input is built from the screen inward, not from the handlers outward. First, list every screen the user can see: empty, typing, submitting, success, and error. Second, <strong>mock</strong> each visual state with a <code>status</code> prop to verify its markup before writing logic. Third, list the human and computer triggers that cause transitions. Finally, wire event handlers that call <code>setStatus</code> to connect those triggers to the visual states.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">Form</span>({ status = <span class="str">'empty'</span> }) {</div><div class="case-code-line">  <span class="kw">if</span> (status === <span class="str">'success'</span>) {</div><div class="case-code-line">    <span class="kw">return</span> &lt;p&gt;Success message&lt;/p&gt;;</div><div class="cmt-bubble" style="--indent-offset: 33px;"><span class="text">renders success screen</span></div><div class="case-code-line">  }</div><div class="case-code-line">  <span class="kw">return</span> (</div><div class="case-code-line">    &lt;form&gt;</div><div class="case-code-line">      &lt;input disabled={status === <span class="str">'submitting'</span>} /&gt;</div><div class="case-code-line">      &lt;button disabled={status === <span class="str">'submitting'</span>}&gt;Submit&lt;/button&gt;</div><div class="case-code-line">      {status === <span class="str">'error'</span> &amp;&amp; &lt;p&gt;Error message&lt;/p&gt;}</div><div class="case-code-line">    &lt;/form&gt;</div><div class="case-code-line">  );</div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="3">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 3</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 3: Separate boolean flags allow conflicting states to show together';">Separate boolean flags allow conflicting states to show together</h3>
+</div>
+<p>A developer decides to manage the subscription modal's visual states using three boolean state variables:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">PaywallModal.jsx, three booleans attempt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleSubscribe</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setIsSubmitting</span>(<span class="kw">true</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">try</span> {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">fakePaymentApi</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">setIsSuccess</span>(<span class="kw">true</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Sets success to true</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  } <span class="kw">catch</span> {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="fn">setIsError</span>(<span class="kw">true</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Leaves both booleans true after retry</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>On the first submission, the request fails, setting <code>isError</code> to true. The user clicks Subscribe again. This time the payment succeeds, and <code>setIsSuccess(true)</code> executes. On screen, the component renders both the "Payment failed" banner and the "Welcome, subscriber" message.</p>
+<p><strong>Can I keep isSubmitting, isSuccess, and isError as three booleans instead?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> Multiple boolean flags allow conflicting states to be active simultaneously.</p>
+<p>When you use three independent boolean state variables, JavaScript evaluates $2^3 = 8$ potential combinations. However, out of those eight combinations, only four correspond to real-world visual screens:</p>
+<ol><li><span class="code-line-callout"><code>isSubmitting: <span class="kw">false</span>, isSuccess: <span class="kw">false</span>, isError: <span class="kw">false</span></code></span> -&gt; typing state.</li>
+<li><span class="code-line-callout"><code>isSubmitting: <span class="kw">true</span>, isSuccess: <span class="kw">false</span>, isError: <span class="kw">false</span></code></span> -&gt; submitting state.</li>
+<li><span class="code-line-callout"><code>isSubmitting: <span class="kw">false</span>, isSuccess: <span class="kw">true</span>, isError: <span class="kw">false</span></code></span> -&gt; success state.</li>
+<li><span class="code-line-callout"><code>isSubmitting: <span class="kw">false</span>, isSuccess: <span class="kw">false</span>, isError: <span class="kw">true</span></code></span> -&gt; error state.</li></ol>
+<p>The remaining four combinations represent impossible states. A component cannot be simultaneously submitting and successful, nor can it be simultaneously an error and a success. In the code above, when the first payment attempt failed, <code>isError</code> became <code>true</code>. When the second attempt succeeded, the handler set <code>isSuccess</code> to <code>true</code>, but forgot to call <code>setIsError(false)</code>. As a result, both <code>isSuccess</code> and <code>isError</code> were <code>true</code> at the same time, causing the JSX conditional checks <span class="code-line-callout"><code>{isError &amp;&amp; &lt;p&gt;Payment failed&lt;/p&gt;}</code></span> and <span class="code-line-callout"><code>{isSuccess &amp;&amp; &lt;p&gt;Welcome, subscriber&lt;/p&gt;}</code></span> to render both messages together.</p>
+<p>The solution is to model mutually exclusive visual states with a single <code>status</code> string state variable: <span class="code-line-callout"><code><span class="kw">const</span> [status, setStatus] = <span class="hook">useState</span>(<span class="str">'typing'</span>)</code></span> Because a string variable can hold exactly one value at any given instant, impossible states become physically impossible. When the success handler calls <code>setStatus('success')</code>, the old status <code>'error'</code> is automatically replaced without requiring any manual cleanup.</p>
+<p>State variables that change independently, such as user input (<code>card</code>) or dynamic server error text (<code>error</code>), should remain in separate state variables alongside <code>status</code>.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Multiple boolean combinations versus single status string</div>
+<pre class="ascii-diagram">Three Booleans (2^3 = 8 combinations):
+  isSubmitting | isSuccess | isError | Result
+  -------------+-----------+---------+-------------------------------
+  false        | true      | true    | IMPOSSIBLE: two messages show!
+  true         | true      | false   | IMPOSSIBLE: loading &amp; success
+
+Single Status String (1 of 4 mutually exclusive states):
+  'typing' | 'submitting' | 'error' | 'success'
+  Result: exactly one valid screen rendered at all times</pre>
+</div>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Keep states that exclude each other in one status string</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">impossible state</span>
+          <span class="gloss-def">a combination of state values that makes no visual sense</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Representing mutually exclusive visual modes with separate boolean variables allows contradictory flags to be active together, creating an <strong>impossible state</strong> where success and error messages share the screen. A single <code>status</code> string holding named states like <code>'typing'</code>, <code>'submitting'</code>, <code>'success'</code>, or <code>'error'</code> eliminates impossible combinations because a variable can hold only one string at a time. Keep separate state only for values that change independently, such as typed text.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> [status, setStatus] = <span class="hook">useState</span>(<span class="str">'typing'</span>);</div><div class="case-code-line"><span class="kw">const</span> [text, setText] = <span class="hook">useState</span>(<span class="str">''</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">text changes independently</span></div><div class="case-code-line"><span class="kw">function</span> <span class="fn">handleSuccess</span>() {</div><div class="case-code-line">  <span class="fn">setStatus</span>(<span class="str">'success'</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">automatically replaces error or typing</span></div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> [isError, setIsError] = <span class="hook">useState</span>(<span class="kw">false</span>);</div><div class="case-code-line"><span class="kw">const</span> [isSuccess, setIsSuccess] = <span class="hook">useState</span>(<span class="kw">false</span>);</div><div class="case-code-line"><span class="kw">function</span> <span class="fn">handleSuccess</span>() {</div><div class="case-code-line">  <span class="fn">setIsSuccess</span>(<span class="kw">true</span>);</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">isError stays true, showing both messages</span></div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<p>Now we build a production subscription paywall application. The interface consists of an application shell, an interactive subscription modal driven by a single status string, and an action controls leaf.</p>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for paywall-modal - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">paywall-modal - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>PaywallModal</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h2" data-elem="[h2.headline]"><div class="ui-elem-content">Premium Subscription</div></div><div class="ui-elem ui-tag-form" data-elem="[form.paywall-form]"><div class="ui-elem-content">Card Form</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>FormControls</span><span class="component-explorer-props">onReset={handleReset}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.btn-sub]"><div class="ui-elem-content"><span class="surface-ui-btn">Subscribe</span></div></div><div class="ui-elem ui-tag-button" data-elem="[button.btn-clr]"><div class="ui-elem-content"><span class="surface-ui-btn">Clear</span></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The file structure separates root layout, modal boundary, and leaf controls:</p>
+
+<section class="file-explorer" aria-label="paywall-modal: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">paywall-modal: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Application shell hosting the subscription flow</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">PaywallModal.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">State owner managing single status string and payment lifecycle</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">FormControls.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-leaf">leaf</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Action controls rendering buttons and dispatching user operations upward</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+    }
+    .assembly-steps-figure .card-content {
+      padding: 10px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 5px;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      color: #0f172a;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Warm Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #d98c47; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #f3caa3; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we lay out the subscription paywall shell</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the state-driven subscription modal</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/PaywallModal.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we build the form action controls</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/FormControls.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 21.1: Figure 21.1: Code assembly pipeline for the subscription paywall modal</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we lay out the subscription paywall shell';">First, we lay out the subscription paywall shell</div>
+      <div class="card-components"><span class="component-tag">&lt;src/App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <code>src/App.jsx</code>, we mount the application shell that hosts our subscription paywall modal:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> PaywallModal <span class="kw">from</span> <span class="str">'./components/PaywallModal.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"app-container"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h1&gt;Tech Journal Premium&lt;/h1&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;PaywallModal /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Mounts the subscription modal</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice that <code>App.jsx</code> owns zero form or network state. It acts strictly as an application shell, delegating subscription lifecycle management completely to <code>PaywallModal</code>.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the state-driven subscription modal';">Next, we build the state-driven subscription modal</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/PaywallModal.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/PaywallModal.jsx</code></span> we declare our single status string alongside independent card input state:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">PaywallModal.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> FormControls <span class="kw">from</span> <span class="str">'./FormControls.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">PaywallModal</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [status, setStatus] = <span class="hook">useState</span>(<span class="str">'typing'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Visual state machine</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">const</span> [card, setCard] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> isSubmitting = status === <span class="str">'submitting'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Derived disabled flag</span>
+      </div></div></div></div></div>
+<p>Next, we implement our asynchronous payment submission handler:</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row even"><span class="num">8</span><span class="src">  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleSubscribe</span>(e) {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    e.<span class="fn">preventDefault</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Prevents browser reload</span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">setStatus</span>(<span class="str">'submitting'</span>);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="kw">try</span> {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      <span class="kw">await</span> <span class="fn">fakePaymentApi</span>(card); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Network Promise</span>
+      </div></div>
+<div class="row odd"><span class="num">13</span><span class="src">      <span class="fn">setStatus</span>(<span class="str">'success'</span>);</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    } <span class="kw">catch</span> {</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      <span class="fn">setStatus</span>(<span class="str">'error'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Enters error visual state</span>
+      </div></div>
+<div class="row even"><span class="num">16</span><span class="src">    }</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  }</span></div></div></div></div>
+<p>Next, we declare our confirmation screen early return:</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">19</span><span class="src">  <span class="kw">if</span> (status === <span class="str">'success'</span>) {</span></div>
+<div class="row even"><span class="num">20</span><span class="src">    <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">      &lt;div className=<span class="str">"paywall-success"</span>&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">        &lt;h2&gt;Welcome, subscriber!&lt;/h2&gt;</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">        &lt;p&gt;Your subscription is active.&lt;/p&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Success message</span>
+      </div></div>
+<div class="row even"><span class="num">24</span><span class="src">        &lt;button onClick={() =&gt; <span class="fn">setStatus</span>(<span class="str">'typing'</span>)}&gt;Continue&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">      &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">26</span><span class="src">    );</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">  }</span></div></div></div></div>
+<p>Next, we render the editable form with conditional error messaging:</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">29</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">30</span><span class="src">    &lt;form onSubmit={handleSubscribe} className=<span class="str">"paywall-form"</span>&gt;</span></div>
+<div class="row odd"><span class="num">31</span><span class="src">      &lt;h2&gt;Subscribe to Premium&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">32</span><span class="src">      &lt;label&gt;</span></div>
+<div class="row odd"><span class="num">33</span><span class="src">        Card Number:</span></div>
+<div class="row even"><span class="num">34</span><span class="src">        &lt;input value={card} disabled={isSubmitting}</span></div>
+<div class="row odd"><span class="num">35</span><span class="src">          onChange={e =&gt; <span class="fn">setCard</span>(e.target.value)} /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px;">
+        <span class="text">Controlled</span>
+      </div></div>
+<div class="row even"><span class="num">36</span><span class="src">      &lt;/label&gt;</span></div>
+<div class="row odd"><span class="num">37</span><span class="src">      {status === <span class="str">'error'</span> &amp;&amp; &lt;p className=<span class="str">"error"</span>&gt;Payment failed&lt;/p&gt;}</span></div></div></div></div>
+<p>Finally, we mount the action controls leaf and provide our fake payment helper:</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">38</span><span class="src">      &lt;FormControls isSubmitting={isSubmitting}</span></div>
+<div class="row odd"><span class="num">39</span><span class="src">        onReset={() =&gt; { <span class="fn">setStatus</span>(<span class="str">'typing'</span>); <span class="fn">setCard</span>(<span class="str">''</span>); }} /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Reset</span>
+      </div></div>
+<div class="row even"><span class="num">40</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">41</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">42</span><span class="src">}</span></div>
+<div class="row odd"><span class="num">43</span><span class="src"><span class="kw">function</span> <span class="fn">fakePaymentApi</span>(card) {</span></div>
+<div class="row even"><span class="num">44</span><span class="src">  <span class="kw">return</span> <span class="kw">new</span> <span class="fn">Promise</span>((resolve, reject) =&gt; {</span></div>
+<div class="row odd"><span class="num">45</span><span class="src">    <span class="fn">setTimeout</span>(card.length &gt;= <span class="nl">4</span> ? resolve : reject, <span class="nl">500</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">500ms delay</span>
+      </div></div>
+<div class="row even"><span class="num">46</span><span class="src">  });</span></div>
+<div class="row odd"><span class="num">47</span><span class="src">}</span></div></div></div></div>
+<p>Notice how <code>PaywallModal</code> controls its entire lifecycle through <code>status</code>. Because <code>status</code> holds exactly one string value, the error message and the success confirmation can never appear together.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we build the form action controls';">Finally, we build the form action controls</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/FormControls.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/FormControls.jsx</code></span> we build the action buttons:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FormControls.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">FormControls</span>({ isSubmitting, onReset }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"form-actions"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;button type=<span class="str">"submit"</span> disabled={isSubmitting}&gt;Subscribe&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;button type=<span class="str">"button"</span> onClick={onReset} disabled={isSubmitting}&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">        Clear</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Resets state upward via callback</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Where do <code>isSubmitting</code> and <code>onReset</code> come from? They originate in <code>PaywallModal.jsx</code>, where <code>isSubmitting</code> is derived from <span class="code-line-callout"><code>status === <span class="str">'submitting'</span></code></span> and <code>onReset</code> is passed as a callback handler. Notice that <code>FormControls</code> owns zero local state; it simply holds a communication line to its parent component. When the user clicks the Clear button, the click triggers <code>onReset</code>, executing parent memory to reset <code>status</code> and <code>card</code>. This represents idiomatic <strong>inverse data flow</strong>.</p>
+<p>What would break if we merged <code>FormControls</code> into <code>PaywallModal</code> or gave it local state? Inlining the buttons would bloat the modal container, and giving <code>FormControls</code> local state would trap submission flags inside a presentation leaf where the parent form could not read them. Maintaining <code>FormControls</code> as a pure, stateless leaf enforcing zero <code>useState</code> guarantees that action controls remain completely reusable and easy to test.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>application shell</strong> hosts the subscription flow without owning form state, maintaining container stability.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>PaywallModal</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>modal boundary</strong> manages the single status string, coordinates network payment submission, and conditionally renders screens.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>FormControls</span><span class="component-explorer-props">onSubscribe={handleSubmit}, onReset={handleReset}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>action controls</strong> render submission and reset buttons, forwarding user clicks upward.</p></div></div></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0d9488;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 6px 12px !important;
+      vertical-align: top !important;
+      font-size: 0.81rem !important;
+      line-height: 1.35 !important;
+      color: #334155;
+    }
+    .architecture-audit-figure .audit-table td.cell-layer {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .audit-table td.cell-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .tag-danger {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: #fee2e2;
+      color: #991b1b;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .tag-success {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: #ccfbf1;
+      color: #115e59;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure code {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.74rem;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #0f172a;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Architectural Contrast Matrix</div>
+    <div class="audit-title">State Reaction Paradigms in React 19</div>
+    <div class="audit-subtitle">Contrasting imperative DOM element manipulation with declarative state machine architecture across six operational dimensions.</div>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Dimension</span>
+          <span class="th-main">Form Operation</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">Imperative Habit</span>
+          <span class="th-main">Direct DOM Commands</span>
+          <span class="th-sub sub-danger">querySelector & style.display</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">Declarative Model</span>
+          <span class="th-main">State-Driven UI</span>
+          <span class="th-sub sub-teal">status & React State</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="cell-layer">
+          <strong>Authority & Memory</strong>
+          <br><small>Source of truth</small>
+        </td>
+        <td>
+          <span class="tag-danger">DOM Internal</span><br>
+          DOM nodes hold display state; scripts query and mutate element visibility and properties directly.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Single Source of Truth</span><br>
+          React state variable drives the screen via <code>status</code>; handlers only call <code>setStatus</code> to request re-renders.
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-layer">
+          <strong>Element Visibility</strong>
+          <br><small>Show and hide logic</small>
+        </td>
+        <td>
+          <span class="tag-danger">Manual Mutations</span><br>
+          Toggles <code>style.display = 'block'</code> or classes; changes persist until explicitly reversed by code.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Declarative Branches</span><br>
+          JSX declares what each status displays using <code>&amp;&amp;</code> or early returns; React matches the DOM automatically.
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-layer">
+          <strong>Form Lifecycle</strong>
+          <br><small>State representation</small>
+        </td>
+        <td>
+          <span class="tag-danger">Boolean Explosion</span><br>
+          Three flags (<code>isSubmitting</code>, <code>isSuccess</code>, <code>isError</code>) create 8 combinations, causing impossible states.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Single Status String</span><br>
+          One state string (<code>'typing' | 'submitting' | 'success' | 'error'</code>) mathematically guarantees mutual exclusivity.
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-layer">
+          <strong>Error Recovery</strong>
+          <br><small>Retry handling</small>
+        </td>
+        <td>
+          <span class="tag-danger">Conflicting Messages</span><br>
+          Retrying after failure leaves error banners visible if the success branch forgets to reset the error element.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Automated Flushing</span><br>
+          Calling <code>setStatus('success')</code> re-renders only the confirmation branch, automatically unmounting the error banner.
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-layer">
+          <strong>Button Interactivity</strong>
+          <br><small>Double-click guard</small>
+        </td>
+        <td>
+          <span class="tag-danger">Imperative Property</span><br>
+          Assigns <code>button.disabled = true</code>; unhandled errors or missing resets leave buttons permanently locked.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Derived Disabled Prop</span><br>
+          Declares <code>disabled={status === 'submitting'}</code>; restores interactivity automatically when status changes.
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-layer">
+          <strong>Design Workflow</strong>
+          <br><small>Component construction</small>
+        </td>
+        <td>
+          <span class="tag-danger">Handler-First</span><br>
+          Writes event handlers first, testing visual transitions by manually clicking through every branch in the browser.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Visual States First</span><br>
+          Lists and mocks visual states first with a <code>status</code> prop; catalogues triggers and wires handlers second.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 21.2: Figure 21.2: Architectural audit contrasting imperative DOM manipulation with declarative React state</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<p>In production frontend applications, reacting to input with state is fundamental across authentication modals, payment checkouts, search bars, and multistep wizards. A frequent production bug occurs when teams implement a checkout flow with separate booleans: an intermittent network failure sets <code>isError(true)</code>, and when the customer retries successfully, the success handler displays the confirmation receipt while leaving the failure alert visible on screen. Adopting a single <code>status</code> string eliminates this bug completely.</p>
+<p>Another common production bug occurs when developers write imperative DOM queries inside React event handlers, such as <span class="code-line-callout"><code>document.<span class="fn">querySelector</span>(<span class="str">'#submit-btn'</span>).disabled = <span class="kw">true</span></code></span> If the network request throws an unhandled exception before reaching the <code>catch</code> block, the button remains permanently disabled, locking the user out of the application until they reload the page. Deriving <span class="code-line-callout"><code>disabled={status === <span class="str">'submitting'</span>}</code></span> guarantees that the button restores its interactivity whenever status changes.</p>
+<p>In technical interviews, interviewers use this question to evaluate whether a candidate thinks in imperative DOM commands or declarative state machines. Strong candidates immediately recognize that mutually exclusive visual modes must be modeled with a single string enum, explain how to mock states with props before wiring handlers, and describe how React reconciliation guarantees clean UI transitions.</p>
+</div>
+<div class="keep-together interview-section">
+<h3>For the interview</h3>
+<blockquote><strong>The Interview Question:</strong> How do you design a component that reacts to input with state instead of touching the DOM?</blockquote>
+<p>A senior response deconstructs the problem across four battle-tested architectural beats:</p>
+<p><strong>1. The Hidden Signal</strong></p>
+<p>The interviewer is probing whether you have transitioned from the imperative DOM manipulation habits of vanilla JavaScript to React's declarative state machine paradigm. Juniors often recite syntax or attempt to fix conflicting UI by querying DOM elements. Seniors demonstrate that React components are state-driven projection functions: you define the visual states first, store the current state in component memory, and let JSX describe what each state displays.</p>
+<p><strong>2. The Classic Trap</strong></p>
+<p>The primary misconception is managing mutually exclusive visual states with multiple independent boolean flags, such as <code>isSubmitting</code>, <code>isSuccess</code>, and <code>isError</code>. Multiple booleans create $2^N$ possible combinations, allowing impossible states where contradictory flags are true simultaneously. Candidates who rely on booleans frequently write buggy retry handlers that display error alerts and success banners at the same time.</p>
+<p><strong>3. What is Actually Going On</strong></p>
+<p>Idiomatic React design follows five structured steps:</p>
+<ol><li>Identify visual states (<code>typing</code>, <code>submitting</code>, <code>success</code>, <code>error</code>).</li>
+<li>Mock each visual state with a <code>status</code> prop to visually audit screens before adding logic.</li>
+<li>Catalogue human triggers (typing, clicking) and computer triggers (network responses, timeouts).</li>
+<li>Model the active mode using a single <code>status</code> string state variable, keeping independent data like input text in separate state.</li>
+<li>Wire event handlers that only call <code>setStatus</code> to transition the component between visual states.</li></ol>
+<p><strong>4. Where It Gets Tricky</strong></p>
+<p>Edge cases arise during asynchronous network handling and rapid user interaction. An <code>async</code> submission handler must run inside <code>try...catch</code> to catch rejected promises cleanly. Submit buttons must bind <span class="code-line-callout"><code>disabled={status === <span class="str">'submitting'</span>}</code></span> to prevent duplicate submissions during in-flight requests. Finally, user input fields must remain controlled and separate from <code>status</code> so typing remains responsive while the component transitions across states.</p>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Visual State</strong>: A distinct visual presentation of a component determined by its underlying data and lifecycle status.</li>
+<li><strong>Single Status String</strong>: A state variable containing a string enum that guarantees only one mutually exclusive visual mode is active at any time.</li>
+<li><strong>Impossible State</strong>: A contradictory combination of state values that causes the user interface to display invalid or conflicting elements.</li>
+<li><strong>Human Input</strong>: User-driven interactions such as typing into form inputs, clicking buttons, or submitting forms.</li>
+<li><strong>Computer Input</strong>: System-driven interactions such as network responses returning, promises rejecting, or timers completing.</li>
+<li><strong>Living Styleguide</strong>: Rendering all mocked visual states of a component simultaneously to audit and verify layout across all lifecycle phases.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Official React guide on reacting to input with state</strong>: Architectural walkthrough showing how declarative state replaces imperative DOM manipulation (see <a href="https://react.dev/learn/reacting-to-input-with-state">react.dev/learn/reacting-to-input-with-state</a>).</li>
+<li><strong>Official React reference on useState</strong>: Comprehensive documentation on state variables, initial values, and updater functions (see <a href="https://react.dev/reference/react/useState">react.dev/reference/react/useState</a>).</li>
+<li><strong>Official React guide on extracting state logic into a reducer</strong>: Advanced architectural pattern for managing complex state transitions that depend on previous states (see <a href="https://react.dev/learn/extracting-state-logic-into-a-reducer">react.dev/learn/extracting-state-logic-into-a-reducer</a>).</li>
+<li><strong>Official React guide on choosing the state structure</strong>: Rules for avoiding redundant and contradictory state variables (see <a href="https://react.dev/learn/choosing-the-state-structure">react.dev/learn/choosing-the-state-structure</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<p class="summary-principle">➔ ALWAYS list and mock visual states before wiring event handlers or network requests.</p>
+<p class="summary-principle">➔ ALWAYS represent mutually exclusive visual modes with a single <code>status</code> string state variable.</p>
+<p class="summary-principle">➔ IF handling asynchronous network transitions THEN wrap requests in <code>try...catch</code> and set status in each branch.</p>
+<p class="summary-principle">➔ IF disabling form actions during submission THEN derive <span class="code-line-callout"><code>disabled={status === <span class="str">'submitting'</span>}</code></span> directly from state.</p>
+<p class="summary-principle">➔ NEVER mutate DOM elements or styles directly with <code>document.querySelector</code> inside React handlers.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong></p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">PaywallModal</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [status, setStatus] = <span class="hook">useState</span>(<span class="str">'typing'</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">setStatus</span>(<span class="str">'submitting'</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="kw">try</span> {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      <span class="kw">await</span> <span class="fn">submitPayment</span>();</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      <span class="fn">setStatus</span>(<span class="str">'success'</span>);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    } <span class="kw">catch</span> {</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      <span class="fn">setStatus</span>(<span class="str">'error'</span>);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    }</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  <span class="kw">if</span> (status === <span class="str">'success'</span>) <span class="kw">return</span> &lt;p&gt;Welcome, subscriber!&lt;/p&gt;;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    &lt;form onSubmit={handleSubmit}&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      &lt;button disabled={status === <span class="str">'submitting'</span>}&gt;Subscribe&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      {status === <span class="str">'error'</span> &amp;&amp; &lt;p&gt;Payment failed&lt;/p&gt;}</span></div>
+<div class="row even"><span class="num">18</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">20</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong></p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">PaywallModal</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    document.<span class="fn">querySelector</span>(<span class="str">'#btn'</span>).disabled = <span class="kw">true</span>;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">submitPayment</span>()</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      .<span class="fn">then</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">        document.<span class="fn">querySelector</span>(<span class="str">'#welcome'</span>).style.display = <span class="str">'block'</span>;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      })</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      .<span class="kw">catch</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">10</span><span class="src">        document.<span class="fn">querySelector</span>(<span class="str">'#error'</span>).style.display = <span class="str">'block'</span>;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      });</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    &lt;form onSubmit={handleSubmit}&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      &lt;button id=<span class="str">"btn"</span>&gt;Subscribe&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      &lt;p id=<span class="str">"error"</span> style={{ display: <span class="str">'none'</span> }}&gt;Payment failed&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      &lt;p id=<span class="str">"welcome"</span> style={{ display: <span class="str">'none'</span> }}&gt;Welcome!&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">20</span><span class="src">}</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>IMPERATIVE DOM MUTATION</strong><br>(Native JavaScript Habit)</th><th><strong>DECLARATIVE STATE ARCHITECTURE</strong><br>(React UI Modeling)</th></tr></thead><tbody><tr><td><strong>State authority</strong></td><td>DOM nodes hold display states internally</td><td>Single <code>status</code> state variable drives JSX</td></tr><tr><td><strong>Element visibility</strong></td><td>Toggles <code>style.display</code> commands by hand</td><td>Conditional JSX branches via <code>&amp;&amp;</code> or early return</td></tr><tr><td><strong>State transitions</strong></td><td>Handlers mutate DOM elements directly</td><td>Handlers only call <code>setStatus</code> to trigger render</td></tr><tr><td><strong>Impossible states</strong></td><td>Multiple booleans allow conflicting flags</td><td>Single string guarantees mutual exclusivity</td></tr><tr><td><strong>Error recovery</strong></td><td>Leaves stale error banners visible on retry</td><td>Re-rendering new status flushes old UI branch</td></tr><tr><td><strong>Button disabling</strong></td><td>Sets button <code>disabled</code><br>property directly</td><td>Derives <code>disabled</code> prop<br>from submitting status</td></tr><tr><td><strong>Development flow</strong></td><td>Writes event handlers first to test steps</td><td>Lists and mocks visual states before writing logic</td></tr><tr><td><strong>Independent data</strong></td><td>Scrapes values directly from DOM inputs</td><td>Stores independent data in separate state (<code>card</code>)</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 21: The Virtual DOM Partition</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 21: The Virtual DOM Partition</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">What is the architectural difference between pseudo-classes and pseudo-elements?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A frontend developer builds a checkout subscription form for The National Times.</li>
+<li>The redesign requires a prominent red asterisk next to every mandatory field label.</li>
+<li>The developer manually pastes an inline span tag with an asterisk into forty separate templates.</li>
+<li>Later, the art director asks to replace the asterisk with a badge and change its spacing.</li>
+<li>The developer realizes updating forty templates requires touching every single view file in the CMS.</li>
+<li>The developer needs a way to style virtual sub-parts of an element purely from the stylesheet.</li>
+<li>Today you learn the architectural boundary separating state pseudo-classes from virtual pseudo-elements.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Structural Boundary: State Classifiers Versus Phantom Boxes</h3>
+<p>In CSS selector architecture, developers frequently conflate pseudo-classes and pseudo-elements because both attach to existing selectors using colon prefixes. However, beneath the surface syntax, they perform two radically opposite architectural roles in the browser layout engine.</p>
+<p>A <strong>pseudo-class</strong> is a selector that classifies an existing element in the HTML document tree based on its dynamic state, user interaction, or structural index (such as <code>:hover</code>, <code>:focus-visible</code>, <code>:checked</code>, or <code>:first-child</code>). In contrast, a <strong>pseudo-element</strong> creates a virtual abstraction: a phantom sub-element or generated box that does not exist in the source HTML document tree at all (such as <code>::before</code>, <code>::after</code>, <code>::placeholder</code>, or <code>::marker</code>).</p>
+<p>The practical consequence of failing to recognize this boundary is severe codebase degradation. When developers do not understand pseudo-elements, their default reflex is to pollute their HTML templates with redundant presentation tags. They paste <code>&lt;span class="req"&gt;*&lt;/span&gt;</code> into dozens of template partials, add empty decorative <code>&lt;div&gt;</code> wrappers for speech bubble tails, or hardcode quotation marks into article lead paragraphs.</p>
+<p>This introduces massive technical debt. Updating a visual indicator requires editing dozens of backend templates, while screen readers are forced to read aloud raw punctuation marks ("First name star, Last name star") that disrupt accessibility.</p>
+<p>Modern CSS solves this by establishing a strict punctuation partition: a single colon (<code>:</code>) denotes a pseudo-class, commanding the browser to filter an existing DOM node by its state; a double colon (<code>::</code>) denotes a pseudo-element, commanding the browser engine to synthesize a brand-new virtual box inside the element's layout container. By using <code>label.required::after</code>, a developer injects the required indicator directly from CSS, leaving the HTML semantic and clean, while retaining total centralized control over design tokens.</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p><strong>Required Form Flags, Replaced Elements, and Speech Disambiguation:</strong> In enterprise UI engineering, input forms mark required fields using classes like <code>.field-label.required</code>. A pervasive junior mistake is attempting to append a generated indicator directly to the form input: <code>input.required::after { content: " *"; }</code>. This rule silently fails in every browser. In HTML, <code>&lt;input&gt;</code> and <code>&lt;img&gt;</code> are replaced elements (void tags without closing tags whose visual geometry is rendered by the operating system or media engine). Because replaced elements cannot host internal child content, pseudo-elements like <code>::before</code> and <code>::after</code> can only attach to container elements (like <code>&lt;label&gt;</code> or <code>&lt;div class="field-wrapper"&gt;</code>). Furthermore, modern CSS allows you to declare alternative speech text for screen readers inside the <code>content</code> property: <code>content: " *" / " (required)";</code>, visually painting the red star while audibly speaking the clean semantic meaning.</p>
+  </div>
+</aside>
+<p>To see the architectural distinction between classifying an existing DOM node and generating a virtual child box, examine the HTML markup of a checkout subscription form:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">checkout-form.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;form <span class="kw">class</span>=<span class="str">"checkout-form"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"field-group"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">    &lt;label <span class="kw">class</span>=<span class="str">"field-label required"</span> <span class="kw">for</span>=<span class="str">"user-email"</span>&gt;Email Address&lt;/label&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;input <span class="kw">class</span>=<span class="str">"field-input"</span> id=<span class="str">"user-email"</span> type=<span class="str">"email"</span>&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  &lt;button <span class="kw">class</span>=<span class="str">"btn-submit"</span> type=<span class="str">"submit"</span>&gt;Complete Subscription&lt;/button&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;/form&gt;</span></div></div></div></div>
+<p>This form structure contains standard input fields, labels, and an interactive submit button. Now examine the competing CSS rules that style interactions and indicators across these elements:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">form-rules.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.btn-submit:hover </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">background-color</span>: <i class="swatch" style="background:#1d4ed8"></i><span class="clr">#1d4ed8</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Classifies existing button; modifies background state with zero new DOM nodes</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">.field-label.required::after </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">content</span>: <span class="str">" *"</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Generates virtual leaf box inside label; styled entirely from CSS</span></div></div></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#dc2626"></i><span class="clr">#dc2626</span>;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">font-weight</span>: <span class="kw">bold</span>;</span></div>
+<div class="row"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice how the two rules operate on fundamentally different levels of abstraction. The rule <code>.btn-submit:hover</code> targets an element that physically exists in the DOM tree. It queries the browser hit-testing system to determine if the cursor rests over the button, and updates the background color accordingly. Zero new boxes are created.</p>
+<p>In contrast, <code>.field-label.required::after</code> synthesizes a brand-new inline box inside the <code>&lt;label&gt;</code> boundary. The generated asterisk carries no DOM node overhead, cannot be selected with <code>document.querySelector()</code>, and exists exclusively inside the layout and render trees of the browser.</p>
+<figure class="css-figure">
+<style>
+  .fig-pseudo-anatomy {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-pseudo-anatomy .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-pseudo-anatomy .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-pseudo-anatomy .pill-class {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+  }
+  .fig-pseudo-anatomy .pill-elem {
+    background: #fdf4ff;
+    border: 1px solid #f0abfc;
+    color: #a21caf;
+  }
+
+  .fig-pseudo-anatomy .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-pseudo-anatomy .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: 1px solid #cbd5e1;
+  }
+
+  .fig-pseudo-anatomy .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+  }
+
+  .fig-pseudo-anatomy .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  /* Stage Canvas */
+  .fig-pseudo-anatomy .stage-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 14px;
+    box-sizing: border-box;
+    height: 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Left: Button with state classifier */
+  .fig-pseudo-anatomy .demo-btn {
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .fig-pseudo-anatomy .state-badge {
+    background: #dbeafe;
+    color: #1e40af;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #93c5fd;
+    margin-top: 10px;
+  }
+
+  /* Right: Label with generated virtual box */
+  .fig-pseudo-anatomy .demo-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    border: 1.5px dashed #94a3b8;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .fig-pseudo-anatomy .virtual-star {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .fig-pseudo-anatomy .virtual-badge {
+    background: #fae8ff;
+    color: #86198f;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #f0abfc;
+    margin-top: 10px;
+  }
+
+  .fig-pseudo-anatomy .card-footer {
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 500;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #334155;
+    min-height: 52px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+  }
+  .fig-pseudo-anatomy .card-footer strong {
+    font-weight: 700;
+    color: #0f172a;
+  }
+</style>
+
+<div class="fig-pseudo-anatomy">
+
+  <header class="compare-header">
+    <div class="compare-pill pill-class">PSEUDO-CLASS (SINGLE COLON :STATE)</div>
+    <div class="compare-pill pill-elem">PSEUDO-ELEMENT (DOUBLE COLON ::VIRTUAL-BOX)</div>
+  </header>
+
+  <div class="compare-grid">
+
+    <!-- LEFT: Pseudo-Class -->
+    <article class="preview-card">
+      <div class="card-body">
+        <span class="stage-label">CLASSIFIER: .btn:hover</span>
+        <div class="stage-box">
+          <button class="demo-btn">
+            <span>Subscribe Now</span>
+          </button>
+          <span class="state-badge">Targets existing &lt;button&gt; in :hover state</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span><strong>State &amp; Structural Filter:</strong> Selects an existing DOM element when it enters a specific state; generates zero new boxes</span>
+      </div>
+    </article>
+
+    <!-- RIGHT: Pseudo-Element -->
+    <article class="preview-card">
+      <div class="card-body">
+        <span class="stage-label">VIRTUAL SUB-BOX: label.req::after</span>
+        <div class="stage-box">
+          <label class="demo-label">
+            <span>Email Address</span>
+            <span class="virtual-star">*</span>
+          </label>
+          <span class="virtual-badge">Creates virtual generated box inside &lt;label&gt;</span>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span><strong>Virtual Box Generator:</strong> Injects a phantom leaf box into layout without altering the HTML source document tree</span>
+      </div>
+    </article>
+
+  </div>
+
+</div>
+
+<figcaption>Fig 21.1: A pseudo-class (:hover) classifies an existing DOM element in a specific state without creating boxes. A pseudo-element (::after) generates a brand-new virtual box inside the originating element's boundary.</figcaption>
+</figure>
+<p>In Figure 21.1, compare the two mechanisms side by side. In the left panel, <code>.btn-submit:hover</code> demonstrates a classic pseudo-class. The <code>&lt;button&gt;</code> element physically exists in the HTML document tree. When the user moves their pointer over the button, the browser hit-testing pipeline detects the pointer coordinates and flips the element's internal state flag to <code>:hover</code>. The browser recalculates styles and repaints the button with a darker blue background. The button remains the same single DOM node; no new boxes or elements are instantiated.</p>
+<p>In the right panel of Figure 21.1, <code>.field-label.required::after</code> demonstrates a pseudo-element. Inside the boundaries of <code>.field-label</code>, the browser layout engine synthesizes an entirely new child box containing the text <code>" *"</code>. This red asterisk does not exist in the HTML document source, cannot be selected via <code>document.querySelector()</code>, and carries zero DOM memory overhead. Yet to the layout engine, it behaves like a fully stylable child element that accepts font sizes, colors, margins, and padding.</p>
+<p>The official W3C Selectors Level 4 specification explicitly codifies this architectural boundary:</p>
+<blockquote>Similar to how certain pseudo-classes represent additional state information not directly present in the document tree, a pseudo-element represents an element not directly present in the document tree. They are used to create abstractions about the document tree beyond those provided by the document tree. For example, pseudo-elements can be used to select portions of the document that do not correspond to a document-language element... Pseudo-elements can also represent content that doesn't exist in the source document at all, such as the ::before and ::after pseudo-elements which allow additional content to be inserted before or after the contents of any element.</blockquote>
+<p><em>W3C Selectors Level 4, <code>resources/spec/csswg-drafts/selectors-4/Overview.bs</code></em></p>
+<p>Notice the precise language of the W3C standard: a pseudo-class represents state information about an existing node, while a pseudo-element represents an element that is not directly present in the document tree. A pseudo-element is literally a virtual element synthesized by the styling engine.</p>
+</div>
+<h4>Tracing Execution Order from Selector Parsing to Layout Box Generation</h4>
+<p>To understand how the browser engine processes pseudo-elements during page generation, trace the pipeline sequence:</p>
+<ol><li><strong>DOM Tree Construction:</strong> The HTML parser reads <code>&lt;label class="field-label required"&gt;Email Address&lt;/label&gt;</code>. It generates a single <code>HTMLLabelElement</code> node in the DOM tree with one text child node.</li>
+<li><strong>Style Resolution Pass:</strong> The CSS engine matches rules against the DOM tree. It matches <code>.field-label.required</code> and notices the attached <code>::after</code> selector with a declared <code>content</code> property.</li>
+<li><strong>Virtual Box Instantiation:</strong> Because <code>content</code> is not <code>none</code> or <code>normal</code>, the engine generates an anonymous inline box representing the pseudo-element. It attaches this box as the last child inside the layout tree of the label.</li>
+<li><strong>Layout and Geometry Calculation:</strong> The engine measures the text width of "Email Address" followed immediately by the text width of " *". Both boxes participate in the label's inline formatting context, laying out seamlessly side by side.</li>
+<li><strong>DOM Immutability:</strong> If a JavaScript script queries <code>label.childNodes.length</code>, it returns 1. The DOM tree remains pristine; the pseudo-element exists exclusively inside the layout and render trees.</li></ol>
+<div class="keep-together">
+<h3>Deconstructing the Pseudo Architecture</h3>
+<p>To answer senior frontend interview questions with unshakeable precision, you must understand the historical evolution and mechanical implementation of pseudo-selectors.</p>
+<p><strong>Name and Origins:</strong> The prefix pseudo derives from the Greek word for false or virtual. A pseudo-class is a "virtual class" because it acts as though the browser automatically added a class name (like <code>class="is-hovered"</code>) to the element when its state changed. A pseudo-element is a "virtual element" because it acts as though a new HTML tag (like <code>&lt;span class="after"&gt;</code>) was typed directly into the source code. The single colon (<code>:</code>) was established in CSS1 and CSS2 for both concepts; in CSS3, the W3C introduced the double colon (<code>::</code>) specifically to end developer confusion and create a permanent visual distinction between state classes and virtual elements.</p>
+<p><strong>Everyday Physical Analogy:</strong> Think of a pseudo-class as a <strong>mood ring worn by an actor</strong>, and a pseudo-element as an <strong>embroidered badge pinned to their lapel</strong>. The actor (the DOM element) walks on stage. When the spotlight hits them, their mood ring turns blue (<code>:hover</code>, <code>:focus</code>). The actor is still the exact same person; only their surface state has changed. In contrast, the lapel badge (<code>::after</code>) is an additional physical object attached to their coat. The badge has its own shape, its own fabric color, and takes up physical space on their chest, even though the actor's passport (the HTML document) only lists the person.</p>
+<p><strong>Historical Context (The Problem It Solved):</strong> In CSS Level 1 and Level 2, both pseudo-classes and pseudo-elements used a single colon: <code>:hover</code> and <code>:after</code> looked identical. This syntax ambiguity led developers to believe <code>:after</code> was a state filter that toggled when something happened "after" an event! To resolve this, the CSS Working Group mandated the double colon (<code>::</code>) for all pseudo-elements in Selectors Level 3. To prevent breaking millions of legacy websites, browsers still maintain backward compatibility for the four original CSS2 pseudo-elements (<code>:before</code>, <code>:after</code>, <code>:first-letter</code>, <code>:first-line</code>), but writing single colons for modern pseudo-elements like <code>::placeholder</code>, <code>::selection</code>, or <code>::marker</code> is an immediate syntax error.</p>
+<p><strong>Browser Calculation Sequence:</strong> When the browser encounters a pseudo-selector in a stylesheet, it follows a strict evaluation branch:</p>
+<ol><li>If the selector contains a single colon followed by a state token (<code>:checked</code>), the engine queries the element's internal state vector. If the state matches, styles are merged into the element's computed style map.</li>
+<li>If the selector contains a double colon (<code>::after</code>), the engine inspects the <code>content</code> property. If <code>content</code> is valid, it spawns an anonymous layout box inside the originating element's frame.</li>
+<li>The engine computes inheritance: the pseudo-element inherits CSS properties (like <code>color</code> and <code>font-family</code>) directly from its originating element unless explicitly overridden.</li></ol>
+</div>
+<div class="keep-together">
+<h3>DOM Bloat Versus Pure Generated Content: The Maintenance Test</h3>
+<p>In large enterprise applications, the difference between hardcoding presentation markup and generating it via pseudo-elements is the difference between agile redesigns and paralyzing tech debt.</p>
+<p>To see this contrast clearly, examine a legacy registration form that embeds presentation spans directly into the template:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">checkout-bloat.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;form <span class="kw">class</span>=<span class="str">"account-form"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"field-row"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">    &lt;label <span class="kw">class</span>=<span class="str">"label-legacy"</span>&gt;First Name &lt;span <span class="kw">class</span>=<span class="str">"req-star"</span> aria-hidden=<span class="str">"true"</span>&gt;*&lt;/span&gt;&lt;/label&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;input <span class="kw">class</span>=<span class="str">"input-text"</span> type=<span class="str">"text"</span>&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"field-row"</span>&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">    &lt;label <span class="kw">class</span>=<span class="str">"label-legacy"</span>&gt;Billing Address &lt;span <span class="kw">class</span>=<span class="str">"req-star"</span> aria-hidden=<span class="str">"true"</span>&gt;*&lt;/span&gt;&lt;/label&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">    &lt;input <span class="kw">class</span>=<span class="str">"input-text"</span> type=<span class="str">"text"</span>&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">&lt;/form&gt;</span></div></div></div></div>
+<p>In this legacy markup, every single label contains a manually authored <code>&lt;span&gt;</code> tag. When a design system update requires changing that asterisk to a pill badge, developers must edit dozens of template files.</p>
+<p>Now observe how modern CSS eliminates this template pollution by centralizing visual indicators in the stylesheet:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">generated-styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.label-modern.required::after </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">content</span>: <span class="str">" *"</span> / <span class="str">" (required)"</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Visual star with alternative speech text for accessibility</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#dc2626"></i><span class="clr">#dc2626</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">font-weight</span>: <span class="kw">bold</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<p>Notice the power of this single declaration. The HTML template remains completely semantic and unpolluted (<code>&lt;label class="label-modern required"&gt;First Name&lt;/label&gt;</code>). Changing the asterisk to a badge, altering its color, or adjusting its margins occurs in one central CSS file.</p>
+<p>Furthermore, the declaration uses the modern alternative text syntax: <code>content: " *" / " (required)";</code>. Sighted users see the crisp red asterisk, while screen readers announce the clean semantic word "required" instead of reading aloud raw punctuation.</p>
+<figure class="css-figure">
+<style>
+  .fig-dom-bloat {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-dom-bloat .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-dom-bloat .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-dom-bloat .pill-wrong {
+    background: #fde8e8;
+    border: 1px solid #f9b4b4;
+    color: #b91c1c;
+  }
+  .fig-dom-bloat .pill-right {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-dom-bloat .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-dom-bloat .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-dom-bloat .card-wrong {
+    border: 1px solid #f9b4b4;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .fig-dom-bloat .card-right {
+    border: 1.5px solid #84e1bc;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-dom-bloat .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+  }
+
+  .fig-dom-bloat .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .fig-dom-bloat .form-stage {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    height: 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+  }
+
+  .fig-dom-bloat .field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .fig-dom-bloat .field-lbl {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .fig-dom-bloat .hardcoded-star {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+    padding: 0 4px;
+    border-radius: 3px;
+  }
+  .fig-dom-bloat .field-input {
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    height: 22px;
+    background: #f8fafc;
+  }
+
+  .fig-dom-bloat .gen-star {
+    color: #dc2626;
+    font-weight: 800;
+    font-size: 12px;
+  }
+
+  .fig-dom-bloat .card-footer {
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 500;
+    border-top: 1px solid;
+    min-height: 52px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+  }
+  .fig-dom-bloat .footer-wrong {
+    background: #fff5f5;
+    border-top-color: #fecdd3;
+    color: #991b1b;
+  }
+  .fig-dom-bloat .footer-right {
+    background: #f0fdf4;
+    border-top-color: #d1fae5;
+    color: #065f46;
+  }
+  .fig-dom-bloat .card-footer strong {
+    font-weight: 700;
+  }
+</style>
+
+<div class="fig-dom-bloat">
+
+  <header class="compare-header">
+    <div class="compare-pill pill-wrong">✕ HARDCODED &lt;SPAN&gt; BLOAT (40 TEMPLATES)</div>
+    <div class="compare-pill pill-right">✓ PSEUDO-ELEMENT ::AFTER (CLEAN DOM)</div>
+  </header>
+
+  <div class="compare-grid">
+
+    <!-- LEFT: Hardcoded Span Bloat -->
+    <article class="preview-card card-wrong">
+      <div class="card-body">
+        <span class="stage-label">DOM BLOAT: &lt;span class="req"&gt;*&lt;/span&gt;</span>
+        <div class="form-stage">
+          <div class="field-row">
+            <span class="field-lbl">First Name <span class="hardcoded-star">&lt;span&gt;*&lt;/span&gt;</span></span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row">
+            <span class="field-lbl">Billing Address <span class="hardcoded-star">&lt;span&gt;*&lt;/span&gt;</span></span>
+            <div class="field-input"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer footer-wrong">
+        <span><strong>✕ DOM Pollution &amp; A11y Defects:</strong> Pasting spans pollutes 40 templates; screen readers announce "asterisk" on every single field</span>
+      </div>
+    </article>
+
+    <!-- RIGHT: Clean Pseudo-Element -->
+    <article class="preview-card card-right">
+      <div class="card-body">
+        <span class="stage-label">PURE CSS: .required::after { content: " *"; }</span>
+        <div class="form-stage">
+          <div class="field-row">
+            <span class="field-lbl">First Name <span class="gen-star">*</span></span>
+            <div class="field-input"></div>
+          </div>
+          <div class="field-row">
+            <span class="field-lbl">Billing Address <span class="gen-star">*</span></span>
+            <div class="field-input"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer footer-right">
+        <span><strong>✓ Clean Source &amp; Centralized Control:</strong> Zero phantom DOM nodes; updates ship in one stylesheet line while markup stays semantic</span>
+      </div>
+    </article>
+
+  </div>
+
+</div>
+
+<figcaption>Fig 21.2: Hardcoding manual span tags into forty templates pollutes the DOM tree and creates maintenance gridlock. Using ::after keeps the source HTML pristine while centralizing design tokens entirely in CSS.</figcaption>
+</figure>
+<p>In Figure 21.2, examine the real cost of template bloat illustrated in the left panel. Duplicating manual span tags across multiple templates creates maintenance gridlock. Every unnecessary DOM node consumes browser memory and increases the computational cost of style recalculation passes.</p>
+<p>In the right panel of Figure 21.2, the generated content approach keeps the DOM tree lean and focused strictly on content semantics. Design changes are deployed instantly across the entire application by modifying a single CSS property.</p>
+</div>
+<div class="keep-together">
+<h3>The Internal Attachment Law and Replaced Elements</h3>
+<p>A common mystery that baffles intermediate developers is why pseudo-elements work seamlessly on <code>&lt;div&gt;</code>, <code>&lt;p&gt;</code>, and <code>&lt;label&gt;</code>, but fail completely when declared on <code>&lt;input&gt;</code> or <code>&lt;img&gt;</code>.</p>
+<p>To investigate this behavior, inspect an input field and its associated label:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">attachment-test.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;div <span class="kw">class</span>=<span class="str">"form-container"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;label <span class="kw">class</span>=<span class="str">"email-label"</span>&gt;Email&lt;/label&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;input <span class="kw">class</span>=<span class="str">"email-input"</span> type=<span class="str">"email"</span> placeholder=<span class="str">"you@domain.com"</span>&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">&lt;/div&gt;</span></div></div></div></div>
+<p>Now observe what happens when a developer attempts to attach pseudo-elements to both elements:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">attachment-rules.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.email-input::after </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">content</span>: <span class="str">" ✕"</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Inputs are replaced elements; cannot contain child generated boxes</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#ef4444"></i><span class="clr">#ef4444</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="sel">.email-label::after </span>{</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">content</span>: <span class="str">" *"</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Container element; appends virtual box inside label boundary</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#dc2626"></i><span class="clr">#dc2626</span>;</span></div>
+<div class="row"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>When you load this stylesheet, <code>.email-label::after</code> renders a crisp red asterisk, while <code>.email-input::after</code> produces absolutely nothing. Why does the input rule silently fail?</p>
+<p>The answer lies in the <strong>Internal Attachment Law</strong>. The pseudo-elements <code>::before</code> and <code>::after</code> do not attach to the outside perimeter of an element. Instead, <code>::before</code> generates the <strong>first child box inside</strong> the element, and <code>::after</code> generates the <strong>last child box inside</strong> the element.</p>
+<figure class="css-figure">
+<style>
+  .fig-colon-syntax {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-colon-syntax .header-pill {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    margin-bottom: 12px;
+  }
+
+  .fig-colon-syntax .preview-card {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .fig-colon-syntax .card-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    background: #f8fafc;
+  }
+
+  .fig-colon-syntax .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  /* Tree Canvas */
+  .fig-colon-syntax .tree-canvas {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+
+  /* Originating element box */
+  .fig-colon-syntax .origin-box {
+    border: 2px solid #3b82f6;
+    border-radius: 6px;
+    background: #eff6ff;
+    padding: 12px 14px;
+    position: relative;
+  }
+  .fig-colon-syntax .origin-title {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #1d4ed8;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  /* Child sequence */
+  .fig-colon-syntax .child-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .fig-colon-syntax .sub-box {
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .fig-colon-syntax .box-before {
+    background: #fae8ff;
+    border: 1.5px dashed #d946ef;
+    color: #86198f;
+    flex: 1;
+  }
+  .fig-colon-syntax .box-content {
+    background: #ffffff;
+    border: 1.5px solid #94a3b8;
+    color: #0f172a;
+    flex: 2;
+  }
+  .fig-colon-syntax .box-after {
+    background: #fef2f2;
+    border: 1.5px dashed #ef4444;
+    color: #b91c1c;
+    flex: 1;
+  }
+
+  .fig-colon-syntax .rule-notes {
+    margin-top: 14px;
+    display: flex;
+    gap: 12px;
+  }
+  .fig-colon-syntax .note-badge {
+    flex: 1;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+    background: #f1f5f9;
+    padding: 6px 8px;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    line-height: 1.35;
+  }
+  .fig-colon-syntax .note-badge strong {
+    color: #0f172a;
+  }
+
+  .fig-colon-syntax .card-footer {
+    padding: 10px 16px;
+    font-size: 12px;
+    line-height: 1.35;
+    font-weight: 500;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #334155;
+  }
+  .fig-colon-syntax .card-footer strong {
+    font-weight: 700;
+    color: #0f172a;
+  }
+</style>
+
+<div class="fig-colon-syntax">
+
+  <div class="header-pill">INTERNAL ATTACHMENT: PSEUDO-ELEMENTS LIVE INSIDE THE BOX MODEL</div>
+
+  <article class="preview-card">
+    <div class="card-body">
+      <span class="stage-label">ANATOMY: &lt;div class="quote"&gt;Originating Element Text&lt;/div&gt;</span>
+
+      <div class="tree-canvas">
+        <div class="origin-box">
+          <span class="origin-title">Originating Element Box (.quote)</span>
+          <div class="child-row">
+            <div class="sub-box box-before">::before<br>(First Child Box)</div>
+            <div class="sub-box box-content">"Investigative Dispatch"<br>(Normal In-Flow Text Content)</div>
+            <div class="sub-box box-after">::after<br>(Last Child Box)</div>
+          </div>
+        </div>
+
+        <div class="rule-notes">
+          <div class="note-badge">
+            <strong>Single Colon (:hover)</strong><br>Filters whole node on state; zero boxes added
+          </div>
+          <div class="note-badge">
+            <strong>Double Colon (::after)</strong><br>Appends virtual child box inside element boundary
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <span><strong>The Internal Attachment Law:</strong> ::before and ::after generate child boxes inside the originating element boundary; they cannot attach to replaced elements like &lt;img&gt; or &lt;input&gt;</span>
+    </div>
+  </article>
+
+</div>
+
+<figcaption>Fig 21.3: The Internal Attachment Law: ::before and ::after generate child boxes inside the originating element's frame. Replaced elements like &lt;input&gt; cannot host child boxes, causing pseudo-elements to silently fail.</figcaption>
+</figure>
+<p>In Figure 21.3, examine the box model hierarchy. In HTML, elements like <code>&lt;input&gt;</code>, <code>&lt;img&gt;</code>, <code><br></code>, and <code>&lt;hr&gt;</code> are <strong>replaced elements</strong> (or void elements). Their internal visual presentation is rendered directly by the operating system or an external media engine, and they cannot possess closing tags or child nodes.</p>
+<p>Because an <code>&lt;input&gt;</code> cannot host internal children, the browser layout engine has nowhere to attach the pseudo-element box. The declaration is silently discarded. To place an indicator next to an input field, you must always attach the pseudo-element to its parent container or to its associated <code>&lt;label&gt;</code>.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>To impress the interviewer:</strong> Summarize the architectural boundary in one clean sentence: "A pseudo-class classifies an existing DOM element based on its dynamic state or structural position, whereas a pseudo-element generates a virtual box not present in the DOM tree." Then mention that <code>::before</code> and <code>::after</code> generate the first and last child boxes inside the originating element's boundary, which explains why they silently fail on replaced elements like <code>&lt;input&gt;</code> and <code>&lt;img&gt;</code>.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Mandatory form labels: generating red asterisks or required badges on <code>&lt;label&gt;</code> elements without polluting template markup.</li>
+<li>Custom list styling: styling list markers using <code>::marker</code> to customize numbers and bullets without removing native list semantics.</li>
+<li>Accessible icon adornments: prepending external link icons or file format tags to anchor tags using <code>a[href$=".pdf"]::after</code>.</li>
+<li>Decorative quotation marks: injecting oversized hanging quote marks into editorial blockquotes using <code>blockquote::before</code>.</li>
+<li>Animated button underlines: creating sliding hover underlines using an absolutely positioned <code>::after</code> box with <code>transform: scaleX(0)</code>.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Pseudo-Class</strong>: A CSS selector preceded by a single colon (:) that selects an existing element in the DOM tree based on state, history, or structural position.</li>
+<li><strong>Pseudo-Element</strong>: A CSS selector preceded by a double colon (::) that creates a virtual abstraction or generated box not present in the HTML document tree.</li>
+<li><strong>Originating Element</strong>: The physical HTML element in the document tree to which a pseudo-element or pseudo-class is attached.</li>
+<li><strong>Generated Content</strong>: Text, symbols, or empty boxes injected into the layout tree via the content property of a pseudo-element.</li>
+<li><strong>Replaced Element</strong>: An element whose content is rendered outside the scope of the CSS formatting model (like input or img) that cannot host internal pseudo-element child boxes.</li>
+<li><strong>Content Property</strong>: The mandatory CSS declaration required for ::before and ::after to instantiate an active box in the layout tree.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>The Virtual DOM Partition Law</strong></p>
+<p>Confusing pseudo-classes with pseudo-elements leads to bloated HTML templates, accessibility defects, and brittle stylesheets. A pseudo-class is a state classifier: it acts as a dynamic filter on an existing DOM node (<code>:hover</code>, <code>:focus-visible</code>, <code>:checked</code>), generating zero new boxes in the layout tree. A pseudo-element is a virtual box generator: it synthesizes a brand-new phantom box inside the originating element (<code>::before</code>, <code>::after</code>, <code>::marker</code>), allowing developers to inject decorative and structural styling entirely from CSS.</p>
+<p>To maintain professional codebases, use double colons (<code>::</code>) for all pseudo-elements to respect modern W3C standards, and reserve single colons (<code>:</code>) exclusively for pseudo-classes. When authoring generated indicators, remember the Internal Attachment Law: pseudo-elements live inside the originating element's frame, meaning they work beautifully on containers and labels, but fail silently on replaced elements like <code>&lt;input&gt;</code> and <code>&lt;img&gt;</code>. Here is your streetwise review.</p>
+<p>❒ Core Pseudo Principles</p>
+<ol><li>State filter versus virtual box.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Pseudo-classes classify an existing DOM node based on temporary state or document structure.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Pseudo-elements instantiate an anonymous child box that exists only in the layout tree.</li>
+<li>The colon syntax partition.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Single colon (<code>:</code>) belongs strictly to pseudo-classes (<code>:hover</code>, <code>:focus</code>).<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Double colon (<code>::</code>) belongs strictly to pseudo-elements (<code>::before</code>, <code>::after</code>).</li>
+<li>The internal attachment rule.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) The <code>::before</code> and <code>::after</code> selectors generate the first and last child boxes inside the element.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Replaced elements (<code>&lt;input&gt;</code>, <code>&lt;img&gt;</code>) cannot contain child boxes and reject pseudo-elements.</li></ol>
+<p>❒ Pseudo Best Practices</p>
+<ol><li>Never paste decorative presentation spans into multiple HTML templates.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Hardcode manual spans into templates for simple visual indicators.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;label&gt;Email Address &lt;span <span class="kw">class</span>=<span class="str">"star"</span>&gt;*&lt;/span&gt;&lt;/label&gt;</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use the ::after pseudo-element to generate visual indicators cleanly from CSS.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.field-label.required::after </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">content</span>: <span class="str">" *"</span> / <span class="str">" (required)"</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#dc2626"></i><span class="clr">#dc2626</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<p>➔ NEVER attempt to attach <code>::before</code> or <code>::after</code> to replaced void elements like <code>&lt;input&gt;</code> or <code>&lt;img&gt;</code>.</p>
+<p>➔ ALWAYS use double colons (<code>::</code>) for pseudo-elements and single colons (<code>:</code>) for pseudo-classes.</p>
+<p>➔ IF visual indicators must be accessible THEN pair <code>content</code> with alternative speech text.</p>
+<table><thead><tr><th></th><th><strong>PSEUDO-CLASSES (:)</strong><br>(state classifiers)</th><th><strong>PSEUDO-ELEMENTS (::)</strong><br>(virtual box generators)</th></tr></thead><tbody><tr><td><strong>DOM Existence</strong></td><td>Targets existing<br>physical DOM node</td><td>Generates virtual box<br>not in HTML DOM</td></tr><tr><td><strong>Standard Syntax</strong></td><td>Single colon: <code>:hover</code>,<br><code>:focus</code>, <code>:checked</code></td><td>Double colon: <code>::before</code>,<br><code>::after</code>, <code>::marker</code></td></tr><tr><td><strong>Box Generation</strong></td><td>Zero new boxes;<br>modifies node style</td><td>Synthesizes new child<br>box in layout tree</td></tr><tr><td><strong>Content Property</strong></td><td>Completely ignored<br>on pseudo-classes</td><td>Mandatory declaration;<br>triggers box creation</td></tr><tr><td><strong>Primary Role</strong></td><td>Dynamic state filters,<br>structural indexing</td><td>Decorative indicators,<br>sub-part styling, badges</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

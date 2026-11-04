@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 33: Client-Side Data Fetching: Loading, Error, and Race Conditions</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 33: Client-Side Data Fetching: Loading, Error, and Race Conditions</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you fetch data from an API in a client component, and how do you handle loading, error, and race conditions?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Liam builds an article viewer for The National Times website.</li>
+<li>Liam fetches story details from an API whenever the user clicks an article title.</li>
+<li>When switching tabs rapidly, an earlier slow response arrives late and overwrites the newest story.</li>
+<li>Why does the viewer display old article text under a completely different headline?</li>
+<li>Out-of-order responses create jarring race conditions that show wrong content to readers.</li>
+<li>Network requests complete asynchronously, and late responses overwrite newer data unless explicitly ignored.</li>
+<li>Today you learn how to fetch data safely, handle loading states, and prevent race conditions.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Client-Side Fetching State Machine</h3>
+<p>Fetching data from a REST endpoint on the client is fundamentally asynchronous. Because the network request takes time, your component cannot simply return data immediately. Instead, your UI must represent the full lifecycle of an asynchronous transaction using a three-state machine:</p>
+<ol><li><strong><code>data</code></strong>: Holds the parsed JSON payload when the request succeeds (initially <code>null</code>).</li>
+<li><strong><code>loading</code></strong>: A boolean flag that is <code>true</code> while the request is in-flight, allowing you to render a loading spinner or placeholder skeleton.</li>
+<li><strong><code>error</code></strong>: Holds an error message or error object if the request fails, allowing you to display fallback recovery UI rather than crashing the page.</li></ol>
+<p>A critical trap in client-side data fetching lies in the browser's native <code>fetch()</code> API. Unlike libraries like Axios, <code>fetch()</code> <strong>does not reject</strong> its Promise on HTTP 404 (Not Found) or 500 (Internal Server Error) status codes!</p>
+<p>If a server returns a 404 status, <code>fetch()</code> considers the HTTP transaction successful because the server answered. To handle HTTP errors properly, you must explicitly check <code>if (!response.ok)</code> and throw an error manually to route execution into your <code>.catch()</code> block.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does fetch not reject on HTTP 404?</strong> Imagine sending a courier to a distant warehouse to ask for an archival newspaper issue. The courier arrives at the warehouse, speaks to the clerk, and the clerk hands the courier a formal stamped letter: "Error 404: Archived story was destroyed." The courier runs back to your office and hands you the letter. Did the courier trip, get hit by a car, or lose the letter? No! The courier completed the journey successfully and delivered the clerk's response. That is how the browser's fetch API works. A 404 or 500 response is a successful HTTP round-trip: the server received the request and sent back an answer. Fetch only rejects its promise if the network cable was physically severed or DNS lookup failed. Therefore, you must explicitly inspect response.ok. If response.ok is false, you must throw your own error to trigger the catch block. Understanding <strong>fetch</strong> as a <strong>successful courier delivery</strong> clarifies why <strong>checking response.ok is mandatory for client error handling</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Race Condition Trap and AbortController Cleanup</h3>
+<p>In dynamic client applications, users frequently switch tabs, type into search inputs, or navigate between items. Each action initiates a new fetch request.</p>
+<p>Consider what happens when a user clicks Article 101, and then immediately clicks Article 102:</p>
+<ol><li>Request A (for Article 101) launches, but encounters temporary network congestion and takes 1,500 milliseconds.</li>
+<li>Request B (for Article 102) launches, travels on a fast route, and resolves in 200 milliseconds.</li>
+<li>The component receives Response B and renders Article 102 on the screen.</li>
+<li>1,300 milliseconds later, Response A finally arrives! Its promise resolution callback executes, calling <code>setArticle(dataA)</code>.</li>
+<li>The screen is suddenly overwritten with Article 101, even though the reader selected Article 102!</li></ol>
+<p>This defect is an <strong>asynchronous race condition</strong>. Because network latency is non-deterministic, responses will not always arrive in the order they were requested.</p>
+<p>To eliminate race conditions, pair <code>useEffect</code> with the browser's native <strong><code>AbortController</code></strong>. When the effect runs, create an <code>AbortController</code> and pass its <code>signal</code> to <code>fetch()</code>. In the effect's cleanup function, invoke <code>controller.abort()</code>. When the component unmounts or <code>articleId</code> changes, the browser immediately cancels the stale HTTP request in the network stack!</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why do race conditions corrupt client UI?</strong> Imagine a news editor calling two different field reporters: reporter Alice in London and reporter Bob in Tokyo. The editor asks Alice for a report on the harbor strike, then five seconds later asks Bob for a breaking stock report. Bob's report is short and takes ten seconds to transmit. Alice's report has heavy static and takes two minutes to transmit. If the newsroom printer simply prints whatever transmission finishes, Bob's stock report prints first, followed by Alice's harbor report two minutes later, overwriting the front page with outdated news! That is a network race condition. Network packets travel through unpredictable internet routers. You cannot control which response arrives first. By using an AbortController, the moment the editor calls Bob, the editor presses a red button on the desk that hangs up Alice's phone line immediately. Only Bob's response is allowed to reach the printer. Understanding <strong>network requests</strong> as <strong>unpredictable phone transmissions</strong> clarifies why <strong>AbortController cancels stale fetches to eliminate race conditions</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Article Reader Architecture</h3>
+<p>To observe client data fetching in production, inspect the live dispatch viewer for The National Times. Readers switch between article dispatches using a tab bar. The viewer fetches story details on demand, displays a loading state, handles errors, and prevents race conditions using <code>AbortController</code>:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>ArticleDetailViewer.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>ArticleReaderApp.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ArticleReaderApp</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleDetailViewer</span><span class="component-explorer-props">articleId=&quot;...&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">City Transit Ballot</span><span class="surface-render-line">By Editorial Board (Metro Desk)</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above shows the hierarchy. On the left, <code>ArticleReaderApp.jsx</code> controls the active <code>articleId</code> and renders <code>ArticleDetailViewer.jsx</code>. On the right, the rendered view displays the fetched article content.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure">
+  <style>
+    .pipeline-card-figure {
+      margin: 1.5rem auto;
+      max-width: 590px;
+      background: #f4f6f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pipeline-card-figure .pipeline-header {
+      background: #344154;
+      padding: 10px 18px;
+    }
+    .pipeline-card-figure .pipeline-header span {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .pipeline-card-figure .pipeline-body {
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pipeline-card-figure .step-node {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #fcfcfb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 20px 14px 26px;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .pipeline-card-figure .step-node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #0e7490;
+    }
+    .pipeline-card-figure .step-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 5px;
+      text-align: center;
+    }
+    .pipeline-card-figure .step-num {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 0.86rem;
+      color: #0e7490;
+    }
+    .pipeline-card-figure .step-label {
+      font-weight: 700;
+      font-size: 0.86rem;
+      color: #1e293b;
+    }
+    .pipeline-card-figure .step-code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 500;
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      display: inline-block;
+      margin-bottom: 7px;
+      text-align: center;
+    }
+    .pipeline-card-figure .step-desc {
+      font-size: 0.77rem;
+      line-height: 1.42;
+      color: #475569;
+      font-style: italic;
+      text-align: center;
+    }
+    .pipeline-card-figure .step-desc strong {
+      color: #0f172a;
+      font-weight: 700;
+      font-style: normal;
+    }
+    .pipeline-card-figure .step-connector {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 28px;
+      margin: 1px 0;
+    }
+  </style>
+
+  <div class="pipeline-header">
+    <span>DATA FETCHING &amp; ABORT CONTROLLER ASSEMBLY PIPELINE</span>
+  </div>
+
+  <div class="pipeline-body">
+    <!-- Step 1 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 1:</span>
+        <span class="step-label">Declaring Loading, Error, and Data State</span>
+      </div>
+      <div class="step-code">useState(null) &amp; useState(true) &amp; useState(null)</div>
+      <div class="step-desc">
+        Initialize <strong>data, loading, and error states</strong> to represent all possible request states deterministically.
+      </div>
+    </div>
+
+    <!-- Connector 1 -> 2 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 2:</span>
+        <span class="step-label">Fetching Article Data with AbortController Cleanup</span>
+      </div>
+      <div class="step-code">fetch(url, { signal: controller.signal })</div>
+      <div class="step-desc">
+        Attach <strong>AbortController signal</strong> to the network request, catching HTTP errors and <strong>aborting in cleanup</strong>.
+      </div>
+    </div>
+
+    <!-- Connector 2 -> 3 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 3:</span>
+        <span class="step-label">Rendering the Article and Fallback States</span>
+      </div>
+      <div class="step-code">if (loading) return ... ; return &lt;article&gt;...&lt;/article&gt;</div>
+      <div class="step-desc">
+        Guard rendering with <strong>loading and error feedback</strong> before presenting the <strong>settled article content</strong>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 33.1: Step-by-step code assembly pipeline for resilient data fetching architecture</figcaption>
+</figure>
+<p>To construct this resilient data fetching flow cleanly, we assemble <code>ArticleDetailViewer.jsx</code> across three progressive implementation steps:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: Declaring Loading, Error, and Data State';">Declaring Loading, Error, and Data State</div>
+      
+    </div>
+  </div>
+</div>
+<p>We open <code>ArticleDetailViewer.jsx</code> and declare three explicit state variables to represent the lifecycle of the fetch request:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleDetailViewer.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useEffect</span>, <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleDetailViewer</span>({ articleId }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [article, setArticle] = <span class="hook">useState</span>(<span class="kw">null</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Settled server response payload <b class="tag">DATA</b></span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [loading, setLoading] = <span class="hook">useState</span>(<span class="kw">true</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Active network transmission indicator <b class="tag">FLAG</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">const</span> [error, setError] = <span class="hook">useState</span>(<span class="kw">null</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Network or HTTP failure message <b class="tag">STATE</b></span>
+      </div></div></div></div></div>
+<p>Allocating independent state slots for data, loading, and error gives the component full control over every visual transition. The initial state starts in a loading condition because the component requests data immediately upon mounting.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Fetching Article Data with AbortController Cleanup';">Fetching Article Data with AbortController Cleanup</div>
+      
+    </div>
+  </div>
+</div>
+<p>Next, we establish the <code>useEffect</code> hook, instantiating an <code>AbortController</code> and binding its abort signal to the fetch call:</p>
+<div class="editor continues-both has-sticky-note"><div class="sticky-note"><span class="note-filename">ArticleDetailViewer.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">7</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="kw">const</span> controller = <span class="kw">new</span> <span class="fn">AbortController</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Browser network abort controller <b class="tag">HANDLE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="fn">setLoading</span>(<span class="kw">true</span>);</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">setError</span>(<span class="kw">null</span>);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src"></span></div>
+<div class="row even"><span class="num">12</span><span class="src">    <span class="fn">fetch</span>(<span class="str">`https://api.nationaltimes.org/articles/${articleId}`</span>, { signal: controller.signal })</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      .<span class="fn">then</span>(res =&gt; {</span></div>
+<div class="row even"><span class="num">14</span><span class="src">        <span class="kw">if</span> (!res.ok) <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">`HTTP Error: ${res.status}`</span>);</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">        <span class="kw">return</span> res.<span class="fn">json</span>();</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      })</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      .<span class="fn">then</span>(data =&gt; { <span class="fn">setArticle</span>(data); <span class="fn">setLoading</span>(<span class="kw">false</span>); })</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      .<span class="kw">catch</span>(err =&gt; {</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">        <span class="kw">if</span> (err.name !== <span class="str">'AbortError'</span>) {</span></div>
+<div class="row even"><span class="num">20</span><span class="src">          <span class="fn">setError</span>(err.message);</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">          <span class="fn">setLoading</span>(<span class="kw">false</span>);</span></div>
+<div class="row even"><span class="num">22</span><span class="src">        }</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">      });</span></div>
+<div class="row even"><span class="num">24</span><span class="src"></span></div>
+<div class="row odd"><span class="num">25</span><span class="src">    <span class="kw">return</span> () =&gt; controller.<span class="fn">abort</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Cleanup cancels pending network socket on unmount or <b class="tag">PROP_CHANGE</b></span>
+      </div></div>
+<div class="row even"><span class="num">26</span><span class="src">  }, [articleId]);</span></div></div></div></div>
+<p>Every time <code>articleId</code> changes or the component unmounts, React runs the cleanup return. Calling <code>controller.abort()</code> cancels the previous network transfer inside the browser engine, preventing stale data from arriving out of order.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Rendering the Article and Fallback States';">Rendering the Article and Fallback States</div>
+      
+    </div>
+  </div>
+</div>
+<p>Finally, we guard the rendering with loading and error boundaries before rendering the settled article view:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">ArticleDetailViewer.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">27</span><span class="src">  <span class="kw">if</span> (loading) <span class="kw">return</span> &lt;p className=<span class="str">"fetch-loading"</span>&gt;Ingesting live dispatch...&lt;/p&gt;;</span></div>
+<div class="row even"><span class="num">28</span><span class="src">  <span class="kw">if</span> (error) <span class="kw">return</span> &lt;p className=<span class="str">"fetch-error"</span>&gt;Error loading dispatch: {error}&lt;/p&gt;;</span></div>
+<div class="row odd"><span class="num">29</span><span class="src">  <span class="kw">if</span> (!article) <span class="kw">return</span> <span class="kw">null</span>;</span></div>
+<div class="row even"><span class="num">30</span><span class="src"></span></div>
+<div class="row odd"><span class="num">31</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">32</span><span class="src">    &lt;article className=<span class="str">"article-view"</span>&gt;</span></div>
+<div class="row odd"><span class="num">33</span><span class="src">      &lt;h3&gt;{article.headline}&lt;/h3&gt;</span></div>
+<div class="row even"><span class="num">34</span><span class="src">      &lt;p className=<span class="str">"article-meta"</span>&gt;By {article.author} | {article.department}&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">35</span><span class="src">      &lt;div className=<span class="str">"article-content"</span>&gt;{article.body}&lt;/div&gt;</span></div>
+<div class="row even"><span class="num">36</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">37</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">38</span><span class="src">}</span></div></div></div></div>
+<p>Now examine the parent component <code>ArticleReaderApp.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleReaderApp.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> ArticleDetailViewer <span class="kw">from</span> <span class="str">'./ArticleDetailViewer.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">const</span> ARTICLES = [</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  { id: <span class="str">'art-101'</span>, title: <span class="str">'Transit Ballot'</span> },</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  { id: <span class="str">'art-102'</span>, title: <span class="str">'Port Authority'</span> },</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">];</span></div>
+<div class="row even"><span class="num">8</span><span class="src"></span></div>
+<div class="row odd"><span class="num">9</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleReaderApp</span>() {</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  <span class="kw">const</span> [selectedId, setSelectedId] = <span class="hook">useState</span>(<span class="str">'art-101'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Active selected article identifier <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src"></span></div>
+<div class="row even"><span class="num">12</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    &lt;div className=<span class="str">"reader-app-container"</span>&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      &lt;nav className=<span class="str">"tab-bar"</span>&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">        {ARTICLES.<span class="fn">map</span>(a =&gt; (</span></div>
+<div class="row even"><span class="num">16</span><span class="src">          &lt;button key={a.id} onClick={() =&gt; <span class="fn">setSelectedId</span>(a.id)}&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">            {a.title}</span></div>
+<div class="row even"><span class="num">18</span><span class="src">          &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">        ))}</span></div>
+<div class="row even"><span class="num">20</span><span class="src">      &lt;/nav&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">      &lt;ArticleDetailViewer articleId={selectedId} /&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Passes selection prop downward triggering race-safe effect <b class="tag">SYNCHRONIZATION</b></span>
+      </div></div>
+<div class="row even"><span class="num">24</span><span class="src">}</span></div></div></div></div>
+<p><code>ArticleReaderApp</code> simulates rapid reader navigation across article tabs. Regardless of how quickly the user clicks between tabs or how variable network latency is, the cleanup mechanism guarantees that only the response corresponding to the currently selected tab updates the interface.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — Asynchronous Race Condition Elimination</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Dispatch Terminal</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            ArticleReaderApp.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            ArticleDetailViewer.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            AbortController + signal: controller.signal
+            <span class="rce-node-props">✓ RACE CONDITION ELIMINATED</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. User switches from Article 101 to Article 102</div>
+            <div style="margin-top:0.3rem;">2. Cleanup Phase: <span class="ref-tag ref-green">controller.abort()</span> cancels 101 fetch in browser</div>
+            <div style="margin-top:0.3rem;">3. Resolution: Article 102 resolves safely without being overwritten</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Zero State Corruption: Display always matches selected article!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            AbortController cancels in-flight HTTP requests inside the browser network stack.<br>
+            Prevents stale delayed responses from overwriting the latest active state.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            fetch() without abort cleanup
+            <span class="rce-node-props">✕ OUT-OF-ORDER DESYNC</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Request 101: 1500ms delay; Request 102: 200ms delay</div>
+            <div style="margin-top:0.3rem;">2. Out-of-Order: Request 102 renders, then Request 101 finishes 1.3s later</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">UI Desync: Tab displays "Article 102", but body displays Article 101!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Uncontrolled async requests allow stale network responses to corrupt user UI.<br>
+            Always abort or ignore in-flight requests when reactive query parameters change.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 33.2: The National Times — Asynchronous Race Condition Elimination</figcaption>
+</figure>
+<p>The figure above illustrates the race condition elimination. When the user switches articles, the previous pending request is aborted inside the browser network stack, completely preventing stale responses from corrupting the active view.</p>
+</div>
+<div class="keep-together">
+<h3>Modern Data Fetching in React 19: Server Components and use()</h3>
+<p>While understanding client-side <code>useEffect</code> data fetching is essential for standalone single-page applications, client widgets, and engineering interviews, modern React 19 introduces higher-level primitives:</p>
+<ol><li><strong>React Server Components (RSC)</strong>: Fetch data directly on the server inside <code>async</code> component functions without <code>useEffect</code> or client-side loading states.</li>
+<li><strong>The <code>use(Promise)</code> API with Suspense</strong>: In client components, React 19 allows reading Promises directly with the <code>use()</code> API wrapped in <span class="code-line-callout"><code>&lt;Suspense fallback={&lt;Loading /&gt;}&gt;</code></span></li></ol>
+<p>However, for client-only widgets, polling dashboards, and REST API integrations in standard Vite or client architectures, mastering the <code>useEffect</code> + <code>AbortController</code> state machine remains a mandatory core competency.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how to implement client-side data fetching safely in React, provide this structured answer: "1. Three-state machine: Maintain explicit data, loading, and error states to handle every phase of the asynchronous request. 2. Manual HTTP verification: Browser fetch() does not reject on HTTP 404 or 500 errors, so you must explicitly check response.ok and throw an error to route failures to the catch block. 3. Race condition prevention: Instantiate an AbortController inside useEffect, pass its signal to fetch, and call controller.abort() in the cleanup function. Finally, filter out AbortError in the catch block to ignore intentional teardowns when props change or the component unmounts."</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Autocomplete search fields: Canceling previous keyword queries as the user continues typing.</li>
+<li>Tabbed content switchers: Ensuring that switching rapidly between tabs never renders stale content from an earlier tab.</li>
+<li>Paginated table views: Aborting previous page requests when the user jumps across page numbers quickly.</li>
+<li>Live metric polling: Polling telemetry endpoints every five seconds while cleaning up pending requests on unmount.</li>
+<li>User profile drawers: Fetching user details on drawer open and aborting when the user closes the drawer.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Client Fetching State Machine</strong>: The orchestration of <code>data</code>, <code>loading</code>, and <code>error</code> states to represent asynchronous operations in the UI.</li>
+<li><strong>response.ok</strong>: A boolean property on browser Response objects indicating whether the HTTP status code is in the successful 200–299 range.</li>
+<li><strong>Asynchronous Race Condition</strong>: A defect where network requests resolve out of order, causing stale responses to overwrite newer UI states.</li>
+<li><strong>AbortController</strong>: A built-in browser API providing an AbortSignal that can abort DOM requests like fetch in-flight.</li>
+<li><strong>AbortSignal</strong>: A signal object passed to fetch allowing the request to communicate with an AbortController.</li>
+<li><strong>In-Flight Cancellation</strong>: Terminating an ongoing network transmission before completion to save bandwidth and prevent stale callbacks.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Client-Side Data Fetching: Loading, Error, and Race Conditions</strong></p>
+<p>Client-side data fetching requires a three-state machine (<code>data</code>, <code>loading</code>, <code>error</code>), explicit validation of <code>response.ok</code>, and request cancellation via <code>AbortController</code> in <code>useEffect</code> cleanup to prevent race conditions and memory leaks.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Takeaways of Data Fetching Architecture</span></div>
+<ol><li>Orchestrate the complete state machine.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Manage <code>data</code>, <code>loading</code>, and <code>error</code> states explicitly.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Reset loading and error states before initiating a new fetch request.</li>
+<li>Validate HTTP status codes manually.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Inspect <code>response.ok</code> on every fetch response.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Throw an explicit Error when <code>response.ok</code> is false to trigger the catch handler.</li>
+<li>Prevent race conditions with AbortController.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Instantiate <code>new AbortController()</code> and pass <code>{ signal }</code> to <code>fetch()</code>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Call <code>controller.abort()</code> in the cleanup function and ignore <code>AbortError</code> in catch.
+➔ ALWAYS pass an AbortSignal to client-side fetch calls in useEffect to prevent out-of-order race conditions.<br>
+➔ NEVER assume fetch rejects on 404 or 500 errors; always check response.ok explicitly.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Fetch data without error validation or race condition protection.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BadArticle</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">BadArticle</span>({ id }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [article, setArticle] = <span class="hook">useState</span>(<span class="kw">null</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">fetch</span>(<span class="str">`/api/articles/${id}`</span>)</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      .<span class="fn">then</span>(res =&gt; res.<span class="fn">json</span>())</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      .<span class="fn">then</span>(data =&gt; <span class="fn">setArticle</span>(data));</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  }, [id]);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src"></span></div>
+<div class="row even"><span class="num">10</span><span class="src">  <span class="kw">return</span> &lt;div&gt;{article?.headline}&lt;/div&gt;;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Implement three-state machine with response.ok check and AbortController cleanup.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">GoodArticle</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">GoodArticle</span>({ id }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [data, setData] = <span class="hook">useState</span>(<span class="kw">null</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [loading, setLoading] = <span class="hook">useState</span>(<span class="kw">true</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="kw">const</span> controller = <span class="kw">new</span> <span class="fn">AbortController</span>();</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="fn">fetch</span>(<span class="str">`/api/articles/${id}`</span>, { signal: controller.signal })</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      .<span class="fn">then</span>(res =&gt; res.ok ? res.<span class="fn">json</span>() : Promise.<span class="fn">reject</span>(res))</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      .<span class="fn">then</span>(json =&gt; { <span class="fn">setData</span>(json); <span class="fn">setLoading</span>(<span class="kw">false</span>); })</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      .<span class="kw">catch</span>(err =&gt; { <span class="kw">if</span> (err.name !== <span class="str">'AbortError'</span>) <span class="fn">setLoading</span>(<span class="kw">false</span>); });</span></div>
+<div class="row odd"><span class="num">11</span><span class="src"></span></div>
+<div class="row even"><span class="num">12</span><span class="src">    <span class="kw">return</span> () =&gt; controller.<span class="fn">abort</span>();</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  }, [id]);</span></div>
+<div class="row even"><span class="num">14</span><span class="src"></span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  <span class="kw">if</span> (loading) <span class="kw">return</span> &lt;div&gt;Loading...&lt;/div&gt;;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">  <span class="kw">return</span> &lt;div&gt;{data?.headline}&lt;/div&gt;;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>NAIVE FETCH IN EFFECT</strong><br>(anti-pattern)</th><th><strong>ABORTCONTROLLER FETCH</strong><br>(production standard)</th></tr></thead><tbody><tr><td><strong>Race Condition Risk</strong></td><td>High; slower old responses<br>overwrite fast new responses</td><td>Zero; stale in-flight requests<br>aborted in browser stack</td></tr><tr><td><strong>HTTP Error Handling</strong></td><td>Silently fails; 404/500 treated<br>as successful JSON payloads</td><td>Explicit check of <code>response.ok</code><br>throws into catch handler</td></tr><tr><td><strong>Unmounted Component</strong></td><td>Attempts to update state on<br>unmounted component tree</td><td>Aborted immediately when<br>component unmounts</td></tr><tr><td><strong>Network Bandwidth</strong></td><td>Wastes bandwidth transferring<br>unneeded stale payloads</td><td>Cancels network transfer<br>as soon as user navigates</td></tr><tr><td><strong>User Experience</strong></td><td>Flashing, out-of-order content<br>and cryptic parsing crashes</td><td>Predictable loading, error, and<br>content state transitions</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

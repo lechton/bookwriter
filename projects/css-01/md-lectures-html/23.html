@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 23: The Frozen Footprint Law</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 23: The Frozen Footprint Law</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">How do transform functions alter the coordinate space without triggering layout recalculations?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>On the National Times historical archive page, two hundred investigative report cards render in a responsive four-column grid.</li>
+<li>A frontend engineer implements an interactive hover lift, intending to raise each hovered card slightly above its neighbors to provide tactile user feedback.</li>
+<li>The engineer's first attempt applies <code>position: relative; top: -4px;</code> (or <code>margin-top: -4px;</code>), which mutates layout geometry and triggers reflow calculations across all two hundred grid siblings.</li>
+<li>Switching the implementation to <code>transform: translateY(-4px);</code> completely eliminates the layout recalculation, keeping frame render times strictly under two milliseconds.</li>
+<li>Under the CSS visual formatting model, an element styled with <code>transform</code> retains its original layout geometry box, freezing its footprint in normal flow while its visual appearance is projected via an affine transformation matrix.</li>
+<li>This coordinate transformation introduces profound structural side effects: it establishes a brand new local coordinate space, creates a new stacking context, and acts as a containing block for all descendants, including <code>position: fixed</code> modals.</li>
+<li>Master Rule: The <code>transform</code> property alters visual vertex projection at the compositor stage while leaving normal flow layout geometry completely frozen, decoupling visual appearance from document flow.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Geometry Tree vs The Visual Projector: Why Normal Flow Freezes</h3>
+<p>To understand why coordinate transforms execute without triggering layout recalculations, we must examine the fundamental separation between normal flow layout geometry and visual raster projection inside a modern browser engine.</p>
+<p>When the browser constructs the render tree, it assigns every box a physical footprint: an offset relative to its parent formatting context, an explicit content width, padding, border boundaries, and margin clearance. This footprint determines where every subsequent sibling element can legally position itself in the document stream.</p>
+<p>When a developer alters an element's position using layout properties such as <code>top</code>, <code>left</code>, <code>margin-top</code>, or <code>height</code>, the engine cannot treat that element in isolation. Because normal flow elements participate in a shared geometric negotiation, adjusting the vertical position of one card can cause subsequent elements to wrap, flex containers to redistribute remaining free space, or page scroll heights to expand. The engine is forced to invalidate the layout tree, walk the DOM hierarchy, and recalculate the physical coordinate offsets for all dependent nodes on the CPU main thread.</p>
+<p>In sharp contrast, the CSS <code>transform</code> property operates under what browser engineers call the <strong>Frozen Footprint Law</strong>. When an element is transformed, its geometry box inside the visual formatting model remains strictly locked at its pre-transformed location. The browser layout engine records the element width, height, and flow position exactly as if no transform were applied. Surrounding sibling cards in the archive grid have no knowledge that the hovered card has moved, preventing any cascade of geometric recalculations.</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p><strong>Local Coordinate Space vs Visual Formatting Footprint:</strong> Many developers conflate an element layout footprint with its visual appearance. The layout footprint is an abstract rectangle managed by the browser visual formatting model on the CPU. It represents the space an element reserves in normal document flow to negotiate positions with its siblings. The visual projection, by contrast, is a display texture mapped through a transformation matrix and rasterized to the screen by the compositor. The <code>transform</code> property mutates the coordinate space of the visual projection while leaving the layout footprint frozen in normal flow.</p>
+  </div>
+</aside>
+<p>To see why animating <code>top</code> forces continuous main-thread reflow while <code>transform</code> runs cleanly on the GPU compositor, examine the markup of the archive grid:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">archive-grid.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;main <span class="kw">class</span>=<span class="str">"archive-container"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"archive-grid"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">    &lt;article <span class="kw">class</span>=<span class="str">"archive-card naive-shift"</span>&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">      &lt;h3 <span class="kw">class</span>=<span class="str">"card-title"</span>&gt;Investigation: Municipal Infrastructure&lt;/h3&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">      &lt;p <span class="kw">class</span>=<span class="str">"card-date"</span>&gt;Published September <span class="nl">1984</span>&lt;/p&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">    &lt;article <span class="kw">class</span>=<span class="str">"archive-card gpu-projected"</span>&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">      &lt;h3 <span class="kw">class</span>=<span class="str">"card-title"</span>&gt;Investigation: Water Rights Division&lt;/h3&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">      &lt;p <span class="kw">class</span>=<span class="str">"card-date"</span>&gt;Published November <span class="nl">1987</span>&lt;/p&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;/main&gt;</span></div></div></div></div>
+<p>This markup arranges multiple investigative report cards inside a responsive grid container. Now inspect the naive hover implementation that mutates positioned layout geometry:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">naive-shift.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.archive-card.naive-shift </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">position</span>: <span class="kw">relative</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">transition</span>: top <span class="nl">0.2s</span> ease;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">.archive-card.naive-shift:hover </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">top</span>: <span class="nl">-4px</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Invalidates positioned layout; causes repaint and reflow queries</span></div></div></div>
+<div class="row"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>In this naive stylesheet, hovering over the card alters <code>top: -4px</code>. Although relative positioning does not shift neighboring boxes in document flow, altering positioned offsets forces the engine to invalidate layer tree coordinates, recompute paint offsets, and trigger repaint passes on every frame.</p>
+<p>Now compare that with the compositor-driven approach:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">gpu-projected.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.archive-card.gpu-projected </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">transition</span>: transform <span class="nl">0.2s</span> ease;</span></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="sel">.archive-card.gpu-projected:hover </span>{</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">transform</span>: translateY(<span class="nl">-4px</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Alters local coordinate matrix; layout footprint remains frozen</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>In this modern stylesheet, hovering over the card applies <code>transform: translateY(-4px)</code>. The element physical footprint in normal flow remains completely frozen. The browser does not recalculate the layout tree, and adjacent cards remain totally undisturbed.</p>
+<figure class="css-figure">
+<style>
+  .fig-frozen-footprint {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-frozen-footprint .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-frozen-footprint .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-frozen-footprint .pill-wrong {
+    background: #fde8e8;
+    border: 1px solid #f9b4b4;
+    color: #b91c1c;
+  }
+  .fig-frozen-footprint .pill-right {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-frozen-footprint .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-frozen-footprint .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-frozen-footprint .card-wrong {
+    border: 1px solid #f9b4b4;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .fig-frozen-footprint .card-right {
+    border: 1.5px solid #84e1bc;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-frozen-footprint .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+  }
+
+  .fig-frozen-footprint .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .fig-frozen-footprint .canvas-area {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 14px 12px;
+    box-sizing: border-box;
+    height: 195px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+  }
+
+  /* Flow shift container */
+  .fig-frozen-footprint .grid-flow-sim {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    height: 120px;
+    position: relative;
+    padding-top: 10px;
+  }
+
+  .fig-frozen-footprint .sim-card {
+    flex: 1;
+    height: 90px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+  }
+
+  .fig-frozen-footprint .sim-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #334155;
+  }
+  .fig-frozen-footprint .sim-badge {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    color: #64748b;
+  }
+
+  /* Shifted card in flow (wrong) */
+  .fig-frozen-footprint .sim-card-shifted {
+    border: 1.5px dashed #ef4444;
+    background: #fef2f2;
+    margin-top: -8px;
+    box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.15);
+  }
+
+  /* Frozen footprint (right) */
+  .fig-frozen-footprint .frozen-slot {
+    flex: 1;
+    height: 90px;
+    position: relative;
+  }
+
+  .fig-frozen-footprint .ghost-footprint {
+    position: absolute;
+    inset: 0;
+    border: 1.5px dashed #3b82f6;
+    background: #eff6ff;
+    border-radius: 5px;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .fig-frozen-footprint .ghost-title {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: #1d4ed8;
+  }
+  .fig-frozen-footprint .ghost-badge {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    color: #3b82f6;
+  }
+
+  .fig-frozen-footprint .visual-projected {
+    position: absolute;
+    inset: 0;
+    top: -8px;
+    background: #ffffff;
+    border: 1.5px solid #10b981;
+    border-radius: 5px;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    z-index: 2;
+  }
+
+  .fig-frozen-footprint .proj-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #065f46;
+  }
+  .fig-frozen-footprint .proj-badge {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    font-weight: 600;
+    color: #059669;
+  }
+
+  /* Status and note */
+  .fig-frozen-footprint .status-strip {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    line-height: 1.3;
+  }
+  .fig-frozen-footprint .status-wrong {
+    background: #fee2e2;
+    color: #991b1b;
+    border-left: 3px solid #ef4444;
+  }
+  .fig-frozen-footprint .status-right {
+    background: #ecfdf5;
+    color: #065f46;
+    border-left: 3px solid #10b981;
+  }
+
+  .fig-frozen-footprint .card-footer {
+    padding: 10px 16px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-frozen-footprint">
+  <div class="compare-header">
+    <div class="compare-pill pill-wrong">FLOW DISPLACEMENT (top: -4px / margin)</div>
+    <div class="compare-pill pill-right">FROZEN FOOTPRINT (transform: translateY)</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Left: Flow Displacement -->
+    <div class="preview-card card-wrong">
+      <div class="card-body">
+        <span class="stage-label">GEOMETRY TREE MUTATION</span>
+        <div class="canvas-area">
+          <div class="grid-flow-sim">
+            <div class="sim-card sim-card-shifted">
+              <span class="sim-title">Story Card #1</span>
+              <span class="sim-badge">top: -8px (reflow)</span>
+            </div>
+            <div class="sim-card">
+              <span class="sim-title">Story Card #2</span>
+              <span class="sim-badge">Flow recalculation</span>
+            </div>
+          </div>
+          <div class="status-strip status-wrong">
+            &times; Normal flow geometry shifts; triggers layout thrashing across all sibling grid items.
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        Modifying layout properties changes the element's geometry box, invalidating parent layout and forcing reflow.
+      </div>
+    </div>
+
+    <!-- Right: Frozen Footprint -->
+    <div class="preview-card card-right">
+      <div class="card-body">
+        <span class="stage-label">COORDINATE SPACE PROJECTION</span>
+        <div class="canvas-area">
+          <div class="grid-flow-sim">
+            <div class="frozen-slot">
+              <div class="ghost-footprint">
+                <span class="ghost-title">Footprint (Frozen)</span>
+                <span class="ghost-badge">DOM box untouched</span>
+              </div>
+              <div class="visual-projected">
+                <span class="proj-title">Story Card #1</span>
+                <span class="proj-badge">translateY(-8px) [GPU]</span>
+              </div>
+            </div>
+            <div class="sim-card">
+              <span class="sim-title">Story Card #2</span>
+              <span class="sim-badge">Zero layout shift</span>
+            </div>
+          </div>
+          <div class="status-strip status-right">
+            &#10003; Layout footprint remains locked in place; only GPU texture coordinates shift. Zero reflow.
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        Transforms alter the local coordinate projection matrix after layout completes, leaving flow geometry 100% frozen.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 23.1: The Frozen Footprint Law: modifying layout properties shifts the box geometry and triggers reflow across grid siblings. Modifying transform keeps the normal flow footprint frozen in layout memory while projecting visual pixels via the compositor.</figcaption>
+</figure>
+<p>In Figure 23.1, examine the difference between the two approaches. In the left panel, shifting layout properties displaces the box geometry, requiring the browser to perform coordinate checks across the entire container.</p>
+<p>In the right panel of Figure 23.1, the card normal flow footprint remains locked in place, represented by the dashed green outline. The visual pixels are projected four pixels upward by the GPU compositor, allowing the card to float smoothly above its neighbors with zero layout cost.</p>
+</div>
+<div class="keep-together">
+<h3>Affine Transformation Matrices: How Coordinate Spaces Mutate</h3>
+<p>To formalize this behavior, the World Wide Web Consortium (W3C) defines transforms not as simple drawing offsets, but as mathematical operations applied to a local coordinate system established at the element itself. Rather than moving an element across the global page canvas, the browser creates a new coordinate space centered at the element transformation origin.</p>
+<p>The official W3C CSS Transforms Module Level 1 specification explicitly documents this coordinate mutation:</p>
+<blockquote>Specifying a value other than none for the transform property establishes a new local coordinate system at the element that it is applied to. The mapping from where the element would have rendered into that local coordinate system is given by the element's transformation matrix... These effects are applied after elements have been sized and positioned according to the visual formatting model from CSS2. Some values of these properties result in the creation of a containing block, and/or the creation of a stacking context.</blockquote>
+<p><em>W3C CSS Transforms Module Level 1, <code>resources/spec/csswg-drafts/css-transforms-1/Overview.bs</code></em></p>
+<p>When you specify one or more transform functions in CSS, such as <code>transform: translateY(-4px) scale(1.02);</code>, the browser converts these human-readable declarations into a composite affine transformation matrix:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">matrix-transforms.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.archive-card.compound </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">transform-origin</span>: <span class="kw">center</span> <span class="kw">center</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Default origin: (50%, 50%) of element reference box</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">transform</span>: translateY(<span class="nl">-4px</span>) scale(<span class="nl">1.02</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Multiplies translation matrix by scale matrix</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+<p>In two-dimensional space, an affine transformation is represented as a three-by-three matrix that preserves straight lines, parallelism, and flat geometry:</p>
+<div class="math-block"><math display="block" class="math-display"><mrow><mrow><mo>[</mo><mtable><mtr><mtd><msup><mi>x</mi><mrow><mo>′</mo></mrow></msup></mtd></mtr><mtr><mtd><msup><mi>y</mi><mrow><mo>′</mo></mrow></msup></mtd></mtr><mtr><mtd><mn>1</mn></mtd></mtr></mtable><mo>]</mo></mrow><mo lspace="0.22em" rspace="0.22em">=</mo><mrow><mo>[</mo><mtable><mtr><mtd><mi>a</mi></mtd><mtd><mi>c</mi></mtd><mtd><mi>e</mi></mtd></mtr><mtr><mtd><mi>b</mi></mtd><mtd><mi>d</mi></mtd><mtd><mi>f</mi></mtd></mtr><mtr><mtd><mn>0</mn></mtd><mtd><mn>0</mn></mtd><mtd><mn>1</mn></mtd></mtr></mtable><mo>]</mo></mrow><mo lspace="0.22em" rspace="0.22em">·</mo><mrow><mo>[</mo><mtable><mtr><mtd><mi>x</mi></mtd></mtr><mtr><mtd><mi>y</mi></mtd></mtr><mtr><mtd><mn>1</mn></mtd></mtr></mtable><mo>]</mo></mrow></mrow></math></div>
+<p>In this matrix, <math class="math-inline"><mrow><mi>a</mi></mrow></math> and <math class="math-inline"><mrow><mi>d</mi></mrow></math> govern horizontal and vertical scaling, <math class="math-inline"><mrow><mi>b</mi></mrow></math> and <math class="math-inline"><mrow><mi>c</mi></mrow></math> govern shearing and rotation, and <math class="math-inline"><mrow><mi>e</mi></mrow></math> and <math class="math-inline"><mrow><mi>f</mi></mrow></math> represent translation offsets. For a simple vertical shift like <code>translateY(-4px)</code>, the matrix simplifies to an identity matrix with a vertical translation vector:</p>
+<div class="math-block"><math display="block" class="math-display"><mrow><mrow><mo>[</mo><mtable><mtr><mtd><mn>1</mn></mtd><mtd><mn>0</mn></mtd><mtd><mn>0</mn></mtd></mtr><mtr><mtd><mn>0</mn></mtd><mtd><mn>1</mn></mtd><mtd><mo lspace="0.22em" rspace="0.22em">−</mo><mn>4</mn></mtd></mtr><mtr><mtd><mn>0</mn></mtd><mtd><mn>0</mn></mtd><mtd><mn>1</mn></mtd></mtr></mtable><mo>]</mo></mrow></mrow></math></div>
+<figure class="css-figure">
+<style>
+  .fig-affine-matrix {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-affine-matrix .header-pill {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    margin-bottom: 12px;
+  }
+
+  .fig-affine-matrix .preview-card {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .fig-affine-matrix .card-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    background: #f8fafc;
+  }
+
+  .fig-affine-matrix .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  /* Matrix flow diagram container */
+  .fig-affine-matrix .matrix-pipeline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 14px 12px;
+    box-sizing: border-box;
+  }
+
+  .fig-affine-matrix .pipeline-node {
+    flex: 1;
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 8px 6px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+  .fig-affine-matrix .node-active {
+    border-color: #3b82f6;
+    background: #eff6ff;
+  }
+  .fig-affine-matrix .node-math {
+    border-color: #8b5cf6;
+    background: #f5f3ff;
+  }
+  .fig-affine-matrix .node-final {
+    border-color: #10b981;
+    background: #ecfdf5;
+  }
+
+  .fig-affine-matrix .node-step {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    font-weight: 800;
+    color: #64748b;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .fig-affine-matrix .node-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #0f172a;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .fig-affine-matrix .node-formula {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    color: #334155;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 2px 4px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  .fig-affine-matrix .pipeline-arrow {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 14px;
+    font-weight: 800;
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+
+  /* Coordinate Space Visualization */
+  .fig-affine-matrix .coord-canvas {
+    margin-top: 14px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 14px;
+    box-sizing: border-box;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .fig-affine-matrix .coord-graph {
+    width: 170px;
+    height: 110px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .fig-affine-matrix .axis-x {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 15px;
+    height: 1.5px;
+    background: #94a3b8;
+  }
+  .fig-affine-matrix .axis-y {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    bottom: 15px;
+    width: 1.5px;
+    background: #94a3b8;
+  }
+  .fig-affine-matrix .axis-label-x {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    color: #64748b;
+  }
+  .fig-affine-matrix .axis-label-y {
+    position: absolute;
+    bottom: 4px;
+    left: 8px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    color: #64748b;
+  }
+
+  /* Point markers */
+  .fig-affine-matrix .point-original {
+    position: absolute;
+    top: 60px;
+    left: 70px;
+    width: 8px;
+    height: 8px;
+    background: #64748b;
+    border-radius: 50%;
+  }
+  .fig-affine-matrix .point-shifted {
+    position: absolute;
+    top: 40px;
+    left: 70px;
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  }
+  .fig-affine-matrix .vector-line {
+    position: absolute;
+    top: 44px;
+    left: 73px;
+    width: 2px;
+    height: 18px;
+    background: #10b981;
+  }
+  .fig-affine-matrix .vector-label {
+    position: absolute;
+    top: 45px;
+    left: 84px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 7.5px;
+    font-weight: 700;
+    color: #059669;
+  }
+
+  .fig-affine-matrix .coord-explanation {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .fig-affine-matrix .expl-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #0f172a;
+  }
+  .fig-affine-matrix .expl-text {
+    font-size: 9.5px;
+    color: #475569;
+    line-height: 1.4;
+  }
+  .fig-affine-matrix .matrix-box {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: #1e293b;
+  }
+
+  .fig-affine-matrix .card-footer {
+    padding: 10px 16px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-affine-matrix">
+  <div class="header-pill">
+    W3C TRANSFORMATION MATRIX COMPUTATION PIPELINE
+  </div>
+
+  <div class="preview-card">
+    <div class="card-body">
+      <span class="stage-label">ALGORITHM 3.1: MAPPING LOCAL COORDINATES TO PARENT SPACE</span>
+
+      <!-- 4-step pipeline -->
+      <div class="matrix-pipeline">
+        <div class="pipeline-node node-active">
+          <span class="node-step">STEP 1</span>
+          <span class="node-title">+Origin Shift</span>
+          <span class="node-formula">T(Ox, Oy)</span>
+        </div>
+        <span class="pipeline-arrow">&rarr;</span>
+        <div class="pipeline-node node-math">
+          <span class="node-step">STEP 2</span>
+          <span class="node-title">Affine Matrix</span>
+          <span class="node-formula">M(scale &middot; translate)</span>
+        </div>
+        <span class="pipeline-arrow">&rarr;</span>
+        <div class="pipeline-node node-active">
+          <span class="node-step">STEP 3</span>
+          <span class="node-title">-Origin Shift</span>
+          <span class="node-formula">T(-Ox, -Oy)</span>
+        </div>
+        <span class="pipeline-arrow">&rarr;</span>
+        <div class="pipeline-node node-final">
+          <span class="node-step">STEP 4</span>
+          <span class="node-title">Point Map</span>
+          <span class="node-formula">P' = CTM &middot; P_local</span>
+        </div>
+      </div>
+
+      <!-- Coordinate canvas -->
+      <div class="coord-canvas">
+        <div class="coord-graph">
+          <div class="axis-x"></div>
+          <div class="axis-y"></div>
+          <span class="axis-label-x">+X</span>
+          <span class="axis-label-y">+Y</span>
+          <div class="point-original"></div>
+          <div class="vector-line"></div>
+          <div class="point-shifted"></div>
+          <span class="vector-label">&Delta;y = -4px</span>
+        </div>
+        <div class="coord-explanation">
+          <span class="expl-title">Direct Post-Layout Coordinate Projection</span>
+          <span class="expl-text">
+            Instead of updating CSS box dimensions in the layout tree, the browser computes a transformation matrix. Each vertex $(x, y)$ in the element's local space is multiplied during display list generation:
+          </span>
+          <div class="matrix-box">
+            matrix(1, 0, 0, 1, 0, -4) &times; [x, y, 1]&trade; &rarr; [x, y - 4, 1]&trade;
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      The visualFormattingModel positions elements in normal flow; the transformation matrix projects vertices to the screen without altering surrounding box geometries.
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 23.2: The W3C transformation matrix computation algorithm: the browser shifts coordinates to the transform-origin, post-multiplies each transform function matrix in sequence, shifts the origin back, and maps local vertices directly to the parent coordinate space.</figcaption>
+</figure>
+<p>In Figure 23.3, observe the mathematical pipeline. According to the W3C specification, the browser calculates the final transformation matrix using a strict four-step algorithm:</p>
+<ol><li><strong>Matrix Initialization:</strong> The engine initializes a four-by-four transformation matrix to the identity state, where all diagonal elements equal one and off-diagonal elements equal zero.</li>
+<li><strong>Shift to Origin:</strong> The engine translates the coordinate system by the computed values of <code>transform-origin</code> (defaulting to fifty percent horizontal and vertical).</li>
+<li><strong>Post-Multiplication:</strong> The engine iterates through the declared transform functions from left to right, post-multiplying each matrix into the accumulated transformation matrix.</li>
+<li><strong>Origin Reversal:</strong> The engine translates the coordinate system by the negated coordinates of <code>transform-origin</code>, mapping local vertices directly into the parent coordinate space.</li></ol>
+<p>Because this matrix multiplication operates directly on vertex coordinates during display list generation and GPU compositing, it never enters the box model geometry pass. The browser calculates layout once; the transformation matrix merely projects those coordinates onto the display surface.</p>
+</div>
+<div class="keep-together">
+<h3>Stacking Contexts and the Containing Block Trap for Fixed Modals</h3>
+<p>While the Frozen Footprint Law makes transforms exceptionally fast, establishing a new local coordinate system has radical consequences for document structure.</p>
+<p>The W3C specification dictates two major architectural side effects whenever <code>transform</code> is set to any value other than <code>none</code>:</p>
+<blockquote>For elements whose layout is governed by the CSS box model, any value other than none for the transform property results in the creation of a stacking context. Implementations must paint the layer it creates, within its parent stacking context, at the same stacking order that would be used if it were a positioned element with z-index: 0... For elements whose layout is governed by the CSS box model, any value other than none for the transform property also causes the element to establish a containing block for all descendants. Its padding box will be used to layout for all of its absolute-position descendants, fixed-position descendants, and descendant fixed background attachments.</blockquote>
+<p><em>W3C CSS Transforms Module Level 1, <code>resources/spec/csswg-drafts/css-transforms-1/Overview.bs</code></em></p>
+<p>To understand the practical impact of this rule, consider a modal overlay nested inside an archive card:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">modal-trap.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;article <span class="kw">class</span>=<span class="str">"archive-card hovered"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;h3 <span class="kw">class</span>=<span class="str">"card-title"</span>&gt;Secret Government Telegrams&lt;/h3&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"article-modal"</span>&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;div <span class="kw">class</span>=<span class="str">"modal-dialog"</span>&gt;Document Viewer&lt;/div&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/article&gt;</span></div></div></div></div>
+<p>In standard CSS, an element with <code>position: fixed</code> breaks free from its ancestral DOM hierarchy and positions itself relative to the viewport (the initial containing block). Now observe what happens when the parent card receives a transform:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">modal-trap.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.archive-card.hovered </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">transform</span>: translateY(<span class="nl">-4px</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Creates containing block for ALL descendants</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">.article-modal </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">position</span>: <span class="kw">fixed</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Trapped inside the card padding box</span></div></div></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">inset</span>: <span class="nl">0</span>;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">background</span>: <span class="fn">rgba</span>(<span class="nl">0</span>, <span class="nl">0</span>, <span class="nl">0</span>, <span class="nl">0.7</span>);</span></div>
+<div class="row"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice the trap: the moment <code>.archive-card</code> receives <code>transform: translateY(-4px)</code>, that card becomes the containing block for <code>.article-modal</code>. Instead of covering the entire browser window, the fixed overlay is trapped inside the small 280-pixel card container!</p>
+<figure class="css-figure">
+<style>
+  .fig-containing-trap {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-containing-trap .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-containing-trap .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-containing-trap .pill-expected {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+  }
+  .fig-containing-trap .pill-trapped {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+  }
+
+  .fig-containing-trap .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  /* Browser Window Substrate */
+  .fig-containing-trap .browser-frame {
+    flex: 1;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+
+  .fig-containing-trap .browser-bar {
+    background: #f1f5f9;
+    padding: 6px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .fig-containing-trap .window-dots {
+    display: flex;
+    gap: 4px;
+  }
+  .fig-containing-trap .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  .fig-containing-trap .dot-r { background: #f87171; }
+  .fig-containing-trap .dot-y { background: #fbbf24; }
+  .fig-containing-trap .dot-g { background: #34d399; }
+
+  .fig-containing-trap .browser-url {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    color: #64748b;
+    flex-grow: 1;
+    text-align: center;
+  }
+
+  .fig-containing-trap .browser-viewport {
+    height: 185px;
+    background: #f8fafc;
+    position: relative;
+    padding: 12px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  /* Story Card inside viewport */
+  .fig-containing-trap .story-card {
+    width: 140px;
+    height: 90px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+  }
+  .fig-containing-trap .card-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #334155;
+  }
+  .fig-containing-trap .card-sub {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    color: #64748b;
+  }
+
+  /* Transformed Story Card */
+  .fig-containing-trap .card-transformed {
+    border: 1.5px solid #6366f1;
+    background: #eef2ff;
+    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+    transform: scale(1.02);
+  }
+
+  /* Fixed Modal Overlay */
+  .fig-containing-trap .fixed-modal-fullscreen {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.75);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    box-sizing: border-box;
+    z-index: 10;
+  }
+  .fig-containing-trap .modal-box {
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 10px 14px;
+    width: 80%;
+    text-align: center;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  }
+  .fig-containing-trap .modal-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #0f172a;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .fig-containing-trap .modal-desc {
+    font-size: 8.5px;
+    color: #64748b;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  /* Trapped modal inside card */
+  .fig-containing-trap .fixed-modal-trapped {
+    position: absolute;
+    inset: 0;
+    background: rgba(239, 68, 68, 0.85);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    box-sizing: border-box;
+    z-index: 10;
+  }
+  .fig-containing-trap .trapped-box {
+    background: #ffffff;
+    border-radius: 4px;
+    padding: 6px 8px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .fig-containing-trap .trapped-title {
+    font-size: 9px;
+    font-weight: 800;
+    color: #b91c1c;
+    display: block;
+  }
+  .fig-containing-trap .trapped-desc {
+    font-size: 7.5px;
+    color: #ef4444;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-weight: 700;
+  }
+
+  .fig-containing-trap .card-footer {
+    padding: 10px 14px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+  .fig-containing-trap .footer-alert {
+    color: #b91c1c;
+    font-weight: 600;
+  }
+</style>
+
+<div class="fig-containing-trap">
+  <div class="compare-header">
+    <div class="compare-pill pill-expected">VIEWPORT CONTAINING BLOCK (transform: none)</div>
+    <div class="compare-pill pill-trapped">ANCESTOR CONTAINING BLOCK TRAP (transform &ne; none)</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Left: Expected Fullscreen Modal -->
+    <div class="browser-frame">
+      <div class="browser-bar">
+        <div class="window-dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="browser-url">nationaltimes.com/archive</div>
+      </div>
+      <div class="browser-viewport">
+        <div class="story-card">
+          <span class="card-label">Article Card</span>
+          <span class="card-sub">transform: none</span>
+        </div>
+        <!-- Descendant modal breaks out to Viewport -->
+        <div class="fixed-modal-fullscreen">
+          <div class="modal-box">
+            <span class="modal-title">Article Preview Modal</span>
+            <span class="modal-desc">position: fixed; inset: 0; (Viewport)</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        With <code>transform: none</code>, fixed descendants use the Viewport as containing block, covering the entire display area.
+      </div>
+    </div>
+
+    <!-- Right: Trapped Modal Inside Card -->
+    <div class="browser-frame">
+      <div class="browser-bar">
+        <div class="window-dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+        <div class="browser-url">nationaltimes.com/archive (hover)</div>
+      </div>
+      <div class="browser-viewport">
+        <div class="story-card card-transformed">
+          <span class="card-label" style="color: #3730a3;">Article Card</span>
+          <span class="card-sub" style="color: #4f46e5;">transform: translateY(-4px)</span>
+          <!-- Descendant modal trapped inside card! -->
+          <div class="fixed-modal-trapped">
+            <div class="trapped-box">
+              <span class="trapped-title">TRAPPED MODAL</span>
+              <span class="trapped-desc">inset: 0 bounds to Card!</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="footer-alert">W3C Spec Trap:</span> Any non-none transform establishes a containing block for <em>all</em> descendants, clipping fixed modals to the card.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 23.3: The Containing Block Trap: when an ancestor has transform: none, fixed-position descendants break out to the viewport. When transform is applied, the ancestor's padding box becomes the containing block, trapping fixed overlays inside the small card container.</figcaption>
+</figure>
+<p>In Figure 23.2, compare the two states. When the parent card has <code>transform: none</code>, the fixed modal expands across the entire viewport. The moment the card is hovered and receives a transform, the modal snaps to the boundaries of the card padding box.</p>
+<p>Why does the browser impose this behavior? Because a transformed element establishes a local, potentially rotated or scaled coordinate space. If a fixed child were positioned relative to the global viewport, the browser would face an impossible contradiction: should the fixed child inherit the ancestor rotation and scale, or ignore them? To preserve rendering integrity, the W3C mandates that transformed ancestors always establish the containing block for all descendants.</p>
+<p>The professional architectural solution is <strong>DOM teleportation</strong>:</p>
+<ul><li>In <strong>React</strong>: Use <code>createPortal(modalNode, document.body)</code> to render the modal directly beneath <code>&lt;body&gt;</code>.</li>
+<li>In <strong>Vue</strong>: Use <code>&lt;Teleport to="body"&gt;</code> to detach the modal from the component template.</li>
+<li>In <strong>Svelte</strong>: Use snippet mounting or append the dialog element directly to the document root upon activation.</li>
+<li>In <strong>Vanilla JavaScript</strong>: Call <code>document.body.appendChild(modalElement)</code> when opening the dialog.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Pointer Hit Testing and Geometry Probing: offsetTop vs getBoundingClientRect</h3>
+<p>When an element undergoes a transformation, how do input events and browser measurement APIs interact with the displaced visual appearance versus the frozen layout footprint?</p>
+</div>
+<h4>Inverse Matrix Hit Testing</h4>
+<p>A common misconception among beginner developers is that because the layout footprint remains frozen at the original location, clicking on the visually shifted card will fail to register the mouse click. This is completely false.</p>
+<p>When a user clicks their mouse or taps a touch screen, the browser event pipeline performs hit testing. The engine takes the cursor global screen coordinates and walks down the layer tree. When it encounters a transformed layer, it does not compare the cursor position against the un-transformed layout box. Instead, the engine takes the element transformation matrix <math class="math-inline"><mrow><mi>M</mi></mrow></math> and calculates its mathematical inverse:</p>
+<div class="math-block"><math display="block" class="math-display"><mrow><msub><mi>P</mi><mrow><mtext>local</mtext></mrow></msub><mo lspace="0.22em" rspace="0.22em">=</mo><msup><mi>M</mi><mrow><mo lspace="0.22em" rspace="0.22em">−</mo><mn>1</mn></mrow></msup><mo lspace="0.22em" rspace="0.22em">·</mo><msub><mi>P</mi><mrow><mtext>screen</mtext></mrow></msub></mrow></math></div>
+<p>By multiplying the cursor coordinates by the inverted transformation matrix, the browser translates the pointer position into the element local coordinate system. If the local pointer falls within the element content boundaries, the click event fires directly on that element.</p>
+<h4>Querying Geometry: offsetTop vs getBoundingClientRect</h4>
+<p>Another vital operational distinction is how JavaScript DOM inspection APIs measure transformed elements:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">geometry-probe.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">const</span> card = document.<span class="fn">querySelector</span>(<span class="str">'.archive-card.gpu-projected'</span>);</span></div>
+<div class="row"><span class="num">2</span><span class="src">console.<span class="fn">log</span>(card.offsetTop); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">400: returns frozen normal flow layout offset</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">const</span> rect = card.<span class="fn">getBoundingClientRect</span>(); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Calculates post-transform matrix projection</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">console.<span class="fn">log</span>(rect.top); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">396: visual viewport coordinate after translateY(-4px)</span></div></div></div></div></div></div>
+<ul><li><strong><code>element.offsetTop</code> and <code>element.offsetLeft</code></strong>: Read directly from the layout engine box model record. They completely ignore <code>transform</code>, returning the element frozen normal flow offset relative to its <code>offsetParent</code>.</li>
+<li><strong><code>element.getBoundingClientRect()</code></strong>: Traverses ancestor transformation matrices, multiplies all accumulated coordinate spaces, and returns the actual visual bounding rectangle on the screen in floating-point pixels.</li></ul>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>The Senior Engineer Interview Formulation:</strong> When asked: <em>"How do transform functions alter the coordinate space without triggering layout recalculations?"</em> deliver your response in four crisp architectural phases:</p>
+  <ol>
+    <li><strong>The Frozen Footprint Principle</strong>: State that under the CSS visual formatting model, <code>transform</code> is evaluated after layout completes. The element box geometry in normal flow remains strictly frozen, so surrounding siblings experience zero layout displacement and the browser avoids reflow.</li>
+    <li><strong>Affine Matrix Multiplication</strong>: Explain that the browser converts transform functions into a <math class="math-inline"><mrow><mn>3</mn><mo lspace="0.22em" rspace="0.22em">×</mo><mn>2</mn></mrow></math> (2D) or <math class="math-inline"><mrow><mn>4</mn><mo lspace="0.22em" rspace="0.22em">×</mo><mn>4</mn></mrow></math> (3D) affine matrix using the four-step origin algorithm (+origin, multiply, -origin). This matrix maps local vertex coordinates directly to parent space during display list construction and GPU compositing.</li>
+    <li><strong>The Architectural Side Effects</strong>: Mention that applying any non-none transform creates both a new stacking context and a containing block for all descendants. Highlight the containing block trap, explaining why <code>position: fixed</code> modals snap to the transformed element and must be teleported to <code>document.body</code>.</li>
+    <li><strong>Runtime Mechanics</strong>: Distinguish between <code>offsetTop</code> (which queries the frozen layout footprint) and <code>getBoundingClientRect()</code> (which calculates the transformed visual projection), and explain how inverse matrix hit testing preserves accurate pointer interaction.</li>
+  </ol>
+  </div>
+</aside>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Interactive card grids: elevating hovered article tiles using <code>translateY(-4px)</code> across dense multi-column layouts without shifting siblings.</li>
+<li>Fullscreen modal dialogs: discovering that nested <code>position: fixed</code> backdrops are clipped inside transformed parent cards.</li>
+<li>Dropdown menus and popovers: aligning contextual action menus using coordinate math while avoiding parent transform distortions.</li>
+<li>Parallax scrolling effects: moving hero images and background illustrations at varied speeds without altering document height.</li>
+<li>Drag-and-drop interfaces: translating dragged tiles across the canvas smoothly while maintaining their original slot in document flow.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Frozen Footprint Law</strong>: The layout principle where an element styled with <code>transform</code> retains its original geometry in document flow while its visual presentation is shifted.</li>
+<li><strong>Affine Transformation Matrix</strong>: A mathematical matrix that performs linear transformations (translation, rotation, scaling, shearing) while preserving parallelism and flat geometry.</li>
+<li><strong>Transform Origin</strong>: The fixed reference point (defaulting to 50% 50%) around which transformation functions like rotation and scaling are calculated.</li>
+<li><strong>Containing Block Trap</strong>: The structural phenomenon where applying a non-none transform causes an ancestor to become the containing block for all descendants, including <code>position: fixed</code> elements.</li>
+<li><strong>Inverse Matrix Hit Testing</strong>: The browser algorithm that multiplies screen pointer coordinates by the inverted transformation matrix to map user clicks accurately onto transformed elements.</li>
+<li><strong>Stacking Context</strong>: A three-dimensional conceptualization of HTML elements along an imaginary z-axis that dictates the visual paint order on screen.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>The Frozen Footprint Law</strong></p>
+<p>Modifying layout properties like <code>top</code>, <code>left</code>, or <code>margin</code> for interactive elevation effects is a major source of main-thread layout thrashing. Because layout properties alter the element physical box model geometry, changing them forces the browser engine to walk the DOM tree, invalidate parent formatting contexts, and recalculate coordinates across all sibling nodes on every frame.</p>
+<p>CSS transforms bypass layout recalculations by decoupling visual raster projection from document flow geometry. Under the CSS visual formatting model, an element styled with <code>transform</code> keeps its normal flow footprint frozen in layout memory. The browser constructs an affine transformation matrix that maps local coordinates to parent space during display list construction and GPU compositing. While transforms guarantee 60 FPS performance, they create two profound architectural side effects: establishing a new stacking context and acting as a containing block for all descendants, trapping nested <code>position: fixed</code> overlays unless teleported to the document root. Here is your streetwise review.</p>
+<p>❒ Core Transformation Principles</p>
+<ol><li>The Frozen Footprint Law.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Normal flow layout geometry remains strictly locked in place.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Sibling elements experience zero layout invalidation or reflow cascades.</li>
+<li>Affine Matrix Projection.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Transforms compute a <math class="math-inline"><mrow><mn>3</mn><mo lspace="0.22em" rspace="0.22em">×</mo><mn>2</mn></mrow></math> or <math class="math-inline"><mrow><mn>4</mn><mo lspace="0.22em" rspace="0.22em">×</mo><mn>4</mn></mrow></math> coordinate mapping matrix.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Operates during display list rasterization and GPU compositing.</li>
+<li>The Containing Block Trap.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Any non-none transform establishes a containing block for all descendants.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Fixed-position modals must be teleported to <code>document.body</code> to prevent clipping.</li></ol>
+<p>❒ Transformation Best Practices</p>
+<ol><li>Never mutate layout geometry properties for interactive hover elevations or continuous motion.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Shift layout properties on hover, forcing synchronous reflow across siblings.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.archive-card </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">position</span>: <span class="kw">relative</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">transition</span>: top <span class="nl">0.2s</span> ease;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">.archive-card:hover </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">top</span>: <span class="nl">-4px</span>;</span></div>
+<div class="row"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use CSS transforms to alter visual coordinates without triggering layout recalculations.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.archive-card </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">transition</span>: transform <span class="nl">0.2s</span> ease;</span></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="sel">.archive-card:hover </span>{</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">transform</span>: translateY(<span class="nl">-4px</span>);</span></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+</div>
+<p>➔ NEVER use <code>top</code>, <code>left</code>, or <code>margin</code> for interactive elevation effects.</p>
+<p>➔ ALWAYS use <code>transform: translateY()</code> or <code>translate()</code> for hardware-accelerated movement.</p>
+<p>➔ IF nesting fixed modals inside cards THEN teleport them to <code>document.body</code> to avoid the containing block trap.</p>
+<table><thead><tr><th></th><th><strong>LAYOUT PROPERTIES</strong><br>(top, left, margin)</th><th><strong>LOCAL TRANSFORMS</strong><br>(transform: translate)</th></tr></thead><tbody><tr><td><strong>Pipeline Stage</strong></td><td>Layout (Reflow on CPU main thread)</td><td>Composite (Matrix multiplication on GPU)</td></tr><tr><td><strong>Normal Flow Footprint</strong></td><td>Geometry box shifts; pushes siblings</td><td>Footprint remains completely frozen in place</td></tr><tr><td><strong>Sibling Impact</strong></td><td>Invalidation cascade across adjacent boxes</td><td>Zero impact; siblings maintain coordinates</td></tr><tr><td><strong>Descendant Positioning</strong></td><td>Standard containing block rules apply</td><td>Establishes containing block for fixed descendants</td></tr><tr><td><strong>Stacking Context</strong></td><td>None (unless positioned with z-index)</td><td>Always creates a brand new stacking context</td></tr><tr><td><strong>Scrollable Overflow</strong></td><td>Adjusts container overflow bounds dynamically</td><td>Extends container overflow bounds; never shrinks</td></tr><tr><td><strong>Hit Testing Mechanism</strong></td><td>Bounding box intersection</td><td>Inverse transformation matrix coordinate map</td></tr><tr><td><strong>DOM Inspection API</strong></td><td><code>offsetTop</code> updates with position changes</td><td><code>offsetTop</code> remains static; <code>rect</code> updates</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

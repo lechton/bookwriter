@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 12: Keeping Components Pure — Edition v8.1-1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v8.1-1";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 12: Keeping Components Pure</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">What does it mean for a component to be pure, and what breaks when it is not?</p>
+</aside>
+
+<ul>
+<li>Your article list numbers its cards with a counter that lives outside the card component.</li>
+<li>The cards show #2, #4, and #6, and after you save a file, #8, #10, and #12.</li>
+<li>What may a component do while React runs it, and what goes wrong when it does more?</li>
+</ul>
+<div class="keep-together">
+<h3>React runs our components, sometimes more often than we expect</h3>
+<p>Since Lecture 2, React has called our components, and every component so far only returned JSX built from its props. Lecture 2 also noticed something odd: every <code>console.log</code> inside a component printed twice. So every React developer meets the same question sooner or later: React runs our components, sometimes more often than we expect, so what may a component do while it runs?</p>
+<p>React's answer has a name from mathematics: a component must be <strong>pure</strong>. This chapter follows one idea from the first question to the last: <strong>pure rendering</strong>, which means that each call of a component only calculates its JSX from its inputs. It looks at that idea in three steps: what each call may give back, what each call may change, and how React checks both. The Rules of React, which Lecture 82 explores in detail, begin with this exact requirement.</p>
+<p>This lesson answers three questions:</p>
+<ol><li><strong>My cards number themselves with a counter outside the component. Why do they show #2, #4, #6?</strong></li>
+<li><strong>I want a "See all articles" item at the end of the list. Can I push it into the articles array?</strong></li>
+<li><strong>Every <code>console.log</code> in my component prints twice. Should I remove Strict Mode?</strong></li></ol>
+</div>
+<div class="keep-together">
+<h3>What we build on</h3>
+<ul>
+<li><strong>Lecture 1: What is React</strong>: With <code>npm run dev</code> running, saving a file updates the open page; React calls the components again and changes only what differs.</li>
+<li><strong>Lecture 2: Component anatomy</strong>: React calls a component wherever a tag names it. A new Vite project wraps <code>&lt;App /&gt;</code> in <code>&lt;StrictMode&gt;</code>, a development check, and with it every <code>console.log</code> in a component prints twice; Lecture 2 promised that this lecture would explain why. Code at the <strong>top level of a file</strong> sits outside every function.</li>
+<li><strong>Lecture 4: Curly braces in JSX</strong>: <code>new Date()</code> makes an object for the current moment, and <code>toLocaleDateString()</code> turns it into a date the reader can read. A function called in braces runs during rendering, so it must only compute and return.</li>
+<li><strong>Lecture 6: Props</strong>: A component must not change its props, and the <strong>production build</strong>, made by <code>npm run build</code> and opened by <code>npm run preview</code>, is the version a real server sends.</li>
+<li><strong>Lecture 7: Children</strong>: The spread syntax <code>...</code> copies the items of one array into a new one: <code>[...articles]</code>.</li>
+<li><strong>Lecture 8: Modules</strong>: The top level of a file runs once, the first time any file imports it, so a variable there is shared by everything that uses the file.</li>
+<li><strong>Lecture 9: createRoot</strong>: <code>main.jsx</code> calls <code>createRoot(...).render(...)</code> with <code>&lt;StrictMode&gt;</code> around <code>&lt;App /&gt;</code>.</li>
+<li><strong>Lecture 11: Rendering lists</strong>: <span class="code-line-callout"><code>articles.<span class="fn">map</span>((article, index) =&gt; ...)</code></span> passes each item and its position, and two siblings with the same <code>key</code> make React warn. A key made with <code>Math.random()</code> during a render changes on every render.</li>
+</ul>
+</div>
+<div class="keep-together">
+<h3>A pure function only calculates</h3>
+<p>A formula from school, <code>y = 2x</code>, gives 6 for 3, every time. A JavaScript function can work the same way:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">A pure function</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">double</span>(number) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> <span class="nl">2</span> * number; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 18px;">
+        <span class="text">Double(3) is 6, every time</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+<p><code>double</code> is a <strong>pure function</strong>, and it has two properties. It gives the same result for the same inputs, every time: this is called <strong>idempotence</strong>, from the Latin for "the same power". And it changes nothing that existed before it was called: no outside variable, no object it received, nothing on the page. A change of that kind is called a <strong>side effect</strong>, because it happens on the side of the result.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Two functions that are not pure</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">let</span> total = <span class="nl">0</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">function</span> <span class="fn">addToTotal</span>(number) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  total = total + number; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 18px;">
+        <span class="text">Changes an outside variable</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> total;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">const</span> pick = () =&gt; Math.<span class="fn">random</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Different result on every call</span>
+      </div></div></div></div></div>
+<p><code>addToTotal(3)</code> gives 3, then 6, then 9, because each call changes the variable the next call reads. <code>Math.random()</code> gives a new number every time, by design. A pure function only calculates: the same inputs give the same result, and nothing outside it changes.</p>
+</div>
+<div class="keep-together">
+<h3>Some array methods change the array they are called on</h3>
+<p>Changing an object or an array that already exists is called a <strong>mutation</strong>. Some array methods mutate: <strong><code>push()</code></strong> adds an item at the end of the array it is called on, <strong><code>reverse()</code></strong> turns it around in place, and <strong><code>sort()</code></strong> reorders it in place. Others, such as <code>map()</code> and <code>filter()</code> from Lecture 11, leave the array alone and give back a new one.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Changing an array, and changing a copy</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> titles = [<span class="str">'New Park'</span>, <span class="str">'Rain'</span>];</span></div>
+<div class="row even"><span class="num">2</span><span class="src">titles.<span class="fn">push</span>(<span class="str">'Soups'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Titles itself now has three items</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">const</span> copy = [...titles];</span></div>
+<div class="row even"><span class="num">4</span><span class="src">copy.<span class="fn">reverse</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Copy is reversed, titles is not</span>
+      </div></div></div></div></div>
+<p>The copy is new, so changing it changes nothing anyone else holds. Changing something created a moment ago, inside the same function, is called <strong>local mutation</strong>, and it is harmless. Mutation changes an array that already exists; a copy turns it into local mutation.</p>
+</div>
+<div class="keep-together">
+<h3>Principles of React: Pure Rendering</h3>
+<p>Everything in this lesson comes down to one idea: pure rendering, which means that each call of a component only calculates its JSX from its inputs.</p>
+<p>First, idempotence, which means each call gives the same JSX for the same inputs: what the component shows depends on its props alone, never on how many times it was called.</p>
+<p>Second, no side effects, which means each call changes nothing that existed before it: the component may change only what it created during the same call.</p>
+<p>Third, Strict Mode, which means each component is called twice in development, to catch impure calls: we keep it on, because a pure component shows nothing different on the second call.</p>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="1">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 1</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 1: A counter outside the card numbers it #2, #4, #6';">A counter outside the card numbers it #2, #4, #6</h3>
+</div>
+<p>We want each article card to show its row number: #1, #2, #3. We declare <span class="code-line-callout"><code><span class="kw">let</span> cardNumber = <span class="nl">0</span>;</code></span> at the top of <code>ArticleCard.jsx</code>. Inside the component, we increment <span class="code-line-callout"><code>cardNumber = cardNumber + <span class="nl">1</span>;</code></span> on line 4, and display <code>#{cardNumber}</code> in the markup:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">let</span> cardNumber = <span class="nl">0</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Outside the component: shared by every call</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleCard</span>({ article }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  cardNumber = cardNumber + <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 18px;">
+        <span class="text"><b class="tag">WRONG:</b> mutates outer variable in render</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;p className=<span class="str">"number"</span>&gt;#{cardNumber}&lt;/p&gt;</span></div></div></div></div>
+<p>When we view the three cards in the browser, they display #2, #4, and #6 instead of #1, #2, and #3. When we save a change in <code>App.jsx</code> with the dev server running, the numbers jump to #8, #10, and #12.</p>
+<p><strong>My cards number themselves with a counter outside the component. Why do they show #2, #4, #6?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> Reading and writing a module-level variable during render makes component output depend on how many times the function was called.</p>
+<p>In plain JavaScript, developers often use an outside counter to count how many times a function runs. Because React renders three <code>&lt;ArticleCard /&gt;</code> tags, it is intuitive to expect three function executions. But React does not guarantee that a component executes only once per tag. In development, <code>&lt;StrictMode&gt;</code> deliberately invokes each component function twice to verify purity, and every saved change in Vite triggers a re-render.</p>
+<p>Because <code>cardNumber</code> lives at the top level of the module outside the component function, its value persists across all component calls. When React renders the first card, Strict Mode runs <code>ArticleCard</code> twice. The first execution increments <code>cardNumber</code> from 0 to 1 and discards the result. The second execution increments <code>cardNumber</code> from 1 to 2, rendering <code>#2</code>. The second card runs twice, advancing the counter through 3 and 4 to render <code>#4</code>. The third card advances through 5 and 6 to render <code>#6</code>. When Vite triggers a live reload, <code>cardNumber</code> is already 6, so the next render pass increments it through 7 to 12.</p>
+<p>The component is not idempotent: the JSX it returns depends on how many times React executed the function, rather than on the data passed to it. Calling non-deterministic utilities like <code>Math.random()</code> or <code>new Date()</code> inside the render body fails for the exact same reason: each call computes a different value. Furthermore, components must never communicate with each other through shared outside variables, because React promises no fixed execution order between components (Lecture 5). To change what appears on screen interactively over time, components set state (Lecture 14) instead of mutating shared variables.</p>
+<p>The fix is to pass the item's position as an input prop. In <code>ArticleList</code>, the <code>map()</code> callback receives the array index as its second parameter. Passing <code>number={index + 1}</code> hands each card a deterministic number:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleCard</span>({ article, number }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;p className=<span class="str">"number"</span>&gt;#{number}&lt;/p&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 54px;">
+        <span class="text">The same on every call</span>
+      </div></div></div></div></div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleList.jsx</span></div><div class="code"><div class="row odd"><span class="num">7</span><span class="src">      {articles.<span class="fn">map</span>((article, index) =&gt; (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">        &lt;ArticleCard key={article.id} article={article} number={index + <span class="nl">1</span>} /&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      ))}</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 54px;">
+        <span class="text">Index + 1 as prop</span>
+      </div></div></div></div></div>
+<p>With <code>number={index + 1}</code> passed as a prop, all three cards display #1, #2, and #3 consistently, whether running with Strict Mode, without it, or after fifty live reload saves.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">The calls and the counter, with Strict Mode</div>
+<pre class="ascii-diagram">call                       cardNumber after it   the card shows
+New Park, first call       1                     (thrown away)
+New Park, second call      2                     #2
+Rain, first and second     3, 4                  #4
+Soups, first and second    5, 6                  #6
+a save: three cards again  7 to 12               #8, #10, #12</pre>
+</div>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Idempotence: each call gives the same JSX for the same inputs</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row no-glossary">
+      <div class="principle-definition-card">
+        <p class="principle-statement"><em>A component's JSX depends only on its props: we never read and change a variable outside the component while it runs, and never show a value that changes on every call, such as <code>Math.random()</code> or <code>new Date()</code>; a number that depends on an item's place comes in as a prop.</em></p>
+      <p class="principle-statement">React calls a component whenever it needs its JSX, and it may call it more than once. A variable outside the component is shared by every call, so a component that adds one to it gives a different number on each call: the page then shows how many calls happened, not what the props say. A value that changes by itself, such as <code>Math.random()</code>, does the same. When every value the JSX shows comes from the props, every call gives the same JSX, however many calls there are.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">function</span> <span class="fn">Item</span>({ number }) {</div><div class="case-code-line">  <span class="kw">return</span> &lt;p&gt;#{number}&lt;/p&gt;;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text">the same on every call</span></div><div class="case-code-line">}</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">let</span> count = <span class="nl">0</span>;</div><div class="case-code-line"><span class="kw">function</span> <span class="fn">Item</span>() {</div><div class="case-code-line">  count = count + <span class="nl">1</span>;</div><div class="cmt-bubble" style="--indent-offset: 16px;"><span class="text"><b class="tag">WRONG:</b> mutates outer variable during render</span></div><div class="case-code-line">  <span class="kw">return</span> &lt;p&gt;#{count}&lt;/p&gt;;</div><div class="case-code-line">}</div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="2">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 2</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 2: A pushed item shows up twice';">A pushed item shows up twice</h3>
+</div>
+<p>We want to display a special link at the bottom of our article feed: "See all articles". Inside <code>ArticleList.jsx</code>, right before the <code>return</code> statement, we call <code>articles.push()</code> to append the extra navigation item to the imported array:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleList.jsx</span></div><div class="code"><div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleList</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  articles.<span class="fn">push</span>({ </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 18px;">
+        <span class="text"><b class="tag">WRONG:</b> mutates shared array</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">    id: <span class="str">'all'</span>, title: <span class="str">'See all articles'</span>, author: <span class="str">''</span></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  });</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;main&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      {articles.<span class="fn">map</span>((article, index) =&gt; (</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">        &lt;ArticleCard key={article.id} article={article} number={index + <span class="nl">1</span>} /&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      ))}</span></div></div></div></div>
+<p>When the page loads, the list ends with two identical entries: "#4 See all articles" and "#5 See all articles". In the browser Console panel, React logs a warning: <span class="code-line-callout"><code>Encountered two children with the same key, <span class="str">'all'</span></code></span></p>
+<p><strong>I want a "See all articles" item at the end of the list. Can I push it into the articles array?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> Calling <code>articles.push()</code> mutates an array that existed before the render call, producing a side effect that corrupts data across render passes.</p>
+<p>In standard JavaScript scripts, calling <code>push()</code> appends one item to an array. But in ES modules (Lecture 8), the top level of <code>articles.js</code> runs only once. The <code>articles</code> array exported from that file is a single shared object in memory. Every time React executes <code>ArticleList</code>, the component receives a reference to that exact same array.</p>
+<p>Calling <code>articles.push()</code> inside the component body is an impure mutation of existing data. Because Strict Mode executes <code>ArticleList</code> twice in development, <code>articles.push()</code> executes twice. The shared array now contains two identical "See all articles" objects with <code>id: 'all'</code>. When the JSX maps over the array, both items render to the DOM, triggering React's duplicate key warning. If Strict Mode were turned off, the item would appear once on first load, but saving a file would push a second item on the subsequent render pass.</p>
+<p>A common junior attempt is writing a conditional guard: <span class="code-line-callout"><code><span class="kw">if</span> (!articles.<span class="fn">some</span>(a =&gt; a.id === <span class="str">'all'</span>)) articles.<span class="fn">push</span>(...)</code></span> While this prevents duplicate DOM entries, it still mutates shared application memory during render. Any other component importing <code>articles</code> receives the modified array.</p>
+<p>The solution is <strong>local mutation</strong>. We use spread syntax (Lecture 7) to create a shallow copy of the array inside the render function: <span class="code-line-callout"><code><span class="kw">const</span> items = [...articles];</code></span> Because <code>items</code> is created during the current render execution, it belongs exclusively to this single call:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleList.jsx</span></div><div class="code"><div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> items = [...articles]; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 18px;">
+        <span class="text">A new array on every call</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  items.<span class="fn">push</span>({ id: <span class="str">'all'</span>, title: <span class="str">'See all articles'</span>, author: <span class="str">''</span> });</span></div></div></div></div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleList.jsx</span></div><div class="code"><div class="row odd"><span class="num">9</span><span class="src">      {items.<span class="fn">map</span>((article, index) =&gt; ( </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 54px;">
+        <span class="text">Maps over the copy</span>
+      </div></div></div></div></div>
+<p>Calling <code>items.push()</code> mutates only the newly created local array. The original <code>articles</code> array in <code>articles.js</code> remains untouched. Whether React executes <code>ArticleList</code> once, twice, or ten times, each call creates a clean copy and appends exactly one item.</p>
+<p>Other mutating methods like <code>reverse()</code> and <code>sort()</code> behave identically: calling <code>articles.reverse()</code> directly during render creates bizarre bugs where Strict Mode's second render reverses the array back to its original order. Mutating external targets like browser tabs (<span class="code-line-callout"><code>document.title = article.title</code></span>) or querying the DOM with <code>document.getElementById()</code> inside the render body are also side effects: each card overwrites the tab, leaving only the last card's title. All side effects belong in event handlers (Lecture 13), which execute on user interaction rather than during render.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">What each call changes</div>
+<pre class="ascii-diagram">articles (shared)       items (a copy, new each call)
+before the calls    3 articles              -
+after call 1        3 + See all articles    3 + See all articles
+after call 2        3 + See all x 2         3 + See all articles
+the list shows      See all articles twice  See all articles once</pre>
+</div>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">No side effects: each call changes nothing that existed before it</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row no-glossary">
+      <div class="principle-definition-card">
+        <p class="principle-statement"><em>While a component runs, we change only what that call created: a copy of an array or object is ours to change, while props, imported data, outside variables, and the page itself stay as they were; changes to the outside world belong in event handlers.</em></p>
+      <p class="principle-statement">An array or object that existed before the call, such as a prop or imported data, is shared: every call receives the same one. So a component that pushes into it changes it for every later call and for everyone else who reads it, and a second call pushes again. A copy made inside the call is new each time, so changing it changes nothing outside. The same holds for the page itself: a component that sets the tab's title changes something it did not create.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="kw">const</span> items = [...list];</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">a new array on every call</span></div><div class="case-code-line">items.<span class="fn">push</span>(lastItem);</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">list.<span class="fn">push</span>(lastItem);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text"><b class="tag">WRONG:</b> mutates shared array during render</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="3">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 3</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 3: Removing Strict Mode hides the mistake until the next save';">Removing Strict Mode hides the mistake until the next save</h3>
+</div>
+<p>In <code>ArticleCard.jsx</code>, we insert diagnostic logging: <span class="code-line-callout"><code>console.<span class="fn">log</span>(<span class="str">'ArticleCard runs'</span>);</code></span> For three cards on screen, the Console panel prints six log lines. Annoyed by the doubled output, we remove <code>&lt;StrictMode&gt;</code> from <code>main.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleCard</span>({ article, number }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  console.<span class="fn">log</span>(<span class="str">'ArticleCard runs'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 18px;">
+        <span class="text">Six lines for three cards</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div></div></div></div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">main.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { createRoot } <span class="kw">from</span> <span class="str">'react-dom/client'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> <span class="str">'./index.css'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App.jsx'</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="fn">createRoot</span>(document.<span class="fn">getElementById</span>(<span class="str">'root'</span>)).<span class="fn">render</span>(&lt;App /&gt;);</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">PROBLEMATIC:</b> removes double-run check</span>
+      </div></div></div></div></div>
+<p>If we restore the naive counter from Question 1 (<span class="code-line-callout"><code>cardNumber = cardNumber + <span class="nl">1</span></code></span>), removing Strict Mode makes the cards display #1, #2, and #3 on first load, and each log prints once. But the instant we save a change in <code>App.jsx</code>, the cards jump to #4, #5, and #6.</p>
+<p><strong>Every <code>console.log</code> in my component prints twice. Should I remove Strict Mode?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> Removing <code>&lt;StrictMode&gt;</code> eliminates the diagnostic double-run that exposes impure code, hiding mutations until user interaction or hot reloading triggers the bug in production.</p>
+<p>When developers first notice that component functions execute twice, it is natural to assume that React has a bug or is wasting browser resources. But as promised in Lecture 2, the double execution is an intentional development-only mechanism provided by <code>&lt;StrictMode&gt;</code>.</p>
+<p>In development, <code>&lt;StrictMode&gt;</code> executes every component function twice and keeps the JSX returned by the second run. When a component is pure, both executions return identical JSX trees and produce no side effects. The browser DOM reflects the exact same markup, and the only observable evidence of the second run is the doubled console output. When React DevTools is installed in Chrome, the browser console automatically dims the log entries produced by the second call.</p>
+<p>When a component is impure, however, the second execution produces a different result from the first. The counter from Question 1 exposed this immediately by displaying #2, #4, and #6 on initial mount. Removing <code>&lt;StrictMode&gt;</code> silenced the second execution, temporarily masking the bug by showing #1, #2, and #3. But the underlying defect remained: the next render pass inevitably corrupted the numbers to #4, #5, and #6.</p>
+<p>Removing <code>&lt;StrictMode&gt;</code> does not fix impure components; it merely hides the warning signal. Furthermore, <code>&lt;StrictMode&gt;</code> is strictly a development tool. In the production build (<code>npm run build</code> followed by <code>npm run preview</code>), React never invokes components twice. Production builds execute each component once, printing three log lines for three cards. Strict Mode costs your production users zero performance overhead. Lecture 46 explores additional checks that Strict Mode performs on updaters and ref callbacks.</p>
+<p>Keep <code>&lt;StrictMode&gt;</code> active in <code>main.jsx</code>, and fix impurity inside the component functions.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">The counter card with and without the second call</div>
+<pre class="ascii-diagram">run                                first page      after a save
+development, with Strict Mode      #2, #4, #6      #8, #10, #12
+development, without Strict Mode   #1, #2, #3      #4, #5, #6
+production (npm run preview)       #1, #2, #3      (no saves in production)</pre>
+</div>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Strict Mode: each component is called twice in development, to catch impure calls</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row no-glossary">
+      <div class="principle-definition-card">
+        <p class="principle-statement"><em>We keep <code>&lt;StrictMode&gt;</code> around the app: in development it calls each component twice and keeps one result, so an impure component shows its mistake at once, and the doubled logs disappear in the production build.</em></p>
+      <p class="principle-statement">A function that runs twice looks like a mistake, so removing Strict Mode seems to fix it. But in development, Strict Mode calls each component twice on purpose and keeps one result. A pure component gives the same JSX both times, so the page shows no difference, and only its logs appear twice. An impure component gives a different result on the second call, so its mistake shows on the first page instead of some render later. Removing Strict Mode removes the second call, not the mistake. The production build calls each component once, so the check costs users nothing.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">root.<span class="fn">render</span>(</div><div class="case-code-line">  &lt;StrictMode&gt;</div><div class="case-code-line">    &lt;App /&gt;</div><div class="cmt-bubble" style="--indent-offset: 33px;"><span class="text">called twice in development only</span></div><div class="case-code-line">  &lt;/StrictMode&gt;</div><div class="case-code-line">);</div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line">root.<span class="fn">render</span>(&lt;App /&gt;);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text"><b class="tag">PROBLEMATIC:</b> hides impurity until next save</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><p><strong>Why does React want components that can be called any number of times?</strong></p>
+  <p>A beginner might ask why React insists on pure components that tolerate multiple executions rather than guaranteeing exactly one execution per tag. Because pure components are completely decoupled from call counts, React gains extraordinary operational capabilities. React can pre-render components on a backend server before shipping HTML to the client (Lecture 102). React can skip executing components whose props remain unchanged (Lecture 55). And in <strong>concurrent rendering</strong>, React can pause a long-running background render halfway through, execute an urgent user keystroke, and restart the background render from scratch (Lecture 66). Each of these optimizations relies on one invariant: calling a component produces identical JSX and alters nothing outside itself.</p></div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<p>Each question fixed one impure line on the smallest list that shows it. Now we build the home page at its real size: five articles in the main list, each with its number, and a "Newest first" box above it that lists the same five articles in the other order. The box and the list read the same array, which is exactly where impure code does its damage. Each of the three steps applies one principle of this lesson, in the same order, and ends with what the page shows. Keep the dev server running with Strict Mode on, and the Console panel open.</p>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for article-site - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">article-site - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-header"><div class="component-explorer-label"><span>SiteHeader</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h1" data-elem="[h1]"><div class="ui-elem-content">Latest Articles</div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>NewestArticles</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h2" data-elem="[h2]"><div class="ui-elem-content">Newest first</div></div><div class="ui-elem ui-tag-p" data-elem="[p]"><div class="ui-elem-content">#1 Fresh Bread at Home</div></div><div class="ui-elem ui-tag-p" data-elem="[p]"><div class="ui-elem-content">#2 Library Opens on Sundays</div></div><div class="ui-elem ui-tag-p" data-elem="[p]"><div class="ui-elem-content">#3 Five Soups for Cold Days</div></div><div class="ui-elem ui-tag-p" data-elem="[p]"><div class="ui-elem-content">#4 Rain Expected This Weekend</div></div><div class="ui-elem ui-tag-p" data-elem="[p]"><div class="ui-elem-content">#5 New Park Opens Today</div></div></div></div><div class="component-explorer-node component-kind-branch"><div class="component-explorer-label"><span>ArticleList</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">article, number</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-p" data-elem="[p.number]"><div class="ui-elem-content">#1</div></div><div class="ui-elem ui-tag-h2" data-elem="[h2]"><div class="ui-elem-content">New Park Opens Today</div></div><div class="ui-elem ui-tag-p" data-elem="[p.author]"><div class="ui-elem-content">Mary Jones</div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">article, number</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-p" data-elem="[p.number]"><div class="ui-elem-content">#2</div></div><div class="ui-elem ui-tag-h2" data-elem="[h2]"><div class="ui-elem-content">Rain Expected This Weekend</div></div><div class="ui-elem ui-tag-p" data-elem="[p.author]"><div class="ui-elem-content">Oliver Brooks</div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">article, number</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-p" data-elem="[p.number]"><div class="ui-elem-content">#3</div></div><div class="ui-elem ui-tag-h2" data-elem="[h2]"><div class="ui-elem-content">Five Soups for Cold Days</div></div><div class="ui-elem ui-tag-p" data-elem="[p.author]"><div class="ui-elem-content">Samantha Robinson</div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">article, number</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-p" data-elem="[p.number]"><div class="ui-elem-content">#4</div></div><div class="ui-elem ui-tag-h2" data-elem="[h2]"><div class="ui-elem-content">Library Opens on Sundays</div></div><div class="ui-elem ui-tag-p" data-elem="[p.author]"><div class="ui-elem-content">James Smith</div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">article, number</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-p" data-elem="[p.number]"><div class="ui-elem-content">#5</div></div><div class="ui-elem ui-tag-h2" data-elem="[h2]"><div class="ui-elem-content">Fresh Bread at Home</div></div><div class="ui-elem ui-tag-p" data-elem="[p.author]"><div class="ui-elem-content">Samantha Robinson</div></div></div></div></div></div><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>Footer</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-footer" data-elem="[footer.site-footer]"><div class="ui-elem-content">Latest Articles, 2026</div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="article-site: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">article-site: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-file" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#f1f5f9"/><polyline points="14 2 14 8 20 8"/></svg>
+					</div>
+					<span class="fe-name-text">index.html</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">The page the browser loads, with one empty element for React</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">main.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Renders App inside StrictMode, which stays</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-js" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fef3c7"/><polyline points="14 2 14 8 20 8"/><path d="M10 13v4a1 1 0 0 1-2 0"/><path d="M14 13h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v2"/></svg>
+					</div>
+					<span class="fe-name-text">articles.js</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-state">state</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">The data: five articles, read by the box and the list</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">The root component: the header, the box, the list, and the footer</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">SiteHeader.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">The site&#39;s title</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">NewestArticles.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">The five articles, newest first, from a copy of the array</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ArticleList.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">The five articles in order, each card numbered by its place</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ArticleCard.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">One article: its number, its title, and its author</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">Footer.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">The footer</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-principle {
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 4px;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #b88648; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #e2c4a0; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we number every card from its place</div>
+        <div class="card-principle">Principle 1: Idempotence: each call gives the same JSX for the same inputs</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;ArticleList.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we reverse a copy for the newest-first box</div>
+        <div class="card-principle">Principle 2: No side effects: each call changes nothing that existed before it</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;NewestArticles.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we keep Strict Mode and compare with the production build</div>
+        <div class="card-principle">Principle 3: Strict Mode: each component is called twice in development, to catch impure calls</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;main.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 12.1: Figure 12.1: Three steps, one principle each. Three cards, each with its step title and its principle label: (1) number every card from its place, Idempotence: each call gives the same JSX for the same inputs; (2) reverse a copy for the newest-first box, No side effects: each call changes nothing that existed before it; (3) keep Strict Mode and compare with the production build, Strict Mode: each component is called twice in development, to catch impure calls.</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we number every card from its place';">First, we number every card from its place</div>
+      <div class="card-components"><span class="component-tag">&lt;ArticleList.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>This step applies Principle 1: Idempotence: each call gives the same JSX for the same inputs.</p>
+<p>Our application now contains two numbered feeds: the newest-first summary box and the main article list. Both feeds count items sequentially starting from 1. If we used an outside counter variable, the counter would increment continuously across both components and double under Strict Mode.</p>
+<p>Instead, <code>ArticleList</code> derives each card's number directly from its array position: <code>index + 1</code>. In <code>ArticleList.jsx</code>, lines 7 to 9 map over the articles and pass <code>number</code> as a prop:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleList.jsx</span></div><div class="code"><div class="row odd"><span class="num">7</span><span class="src">      {articles.<span class="fn">map</span>((article, index) =&gt; (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">        &lt;ArticleCard key={article.id} article={article} number={index + <span class="nl">1</span>} /&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      ))}</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 54px;">
+        <span class="text">Number passed from index</span>
+      </div></div></div></div></div>
+<p>What do the five cards render under Strict Mode? They display #1 through #5 on initial load, and retain those exact numbers after saving changes. Each card calculates its output purely from props.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we reverse a copy for the newest-first box';">Next, we reverse a copy for the newest-first box</div>
+      <div class="card-components"><span class="component-tag">&lt;NewestArticles.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>This step applies Principle 2: No side effects: each call changes nothing that existed before it.</p>
+<p>The articles in <code>articles.js</code> are ordered chronologically by publication date, placing the newest story at the end of the array. The summary box needs to display stories in reverse order. However, <code>ArticleList</code> reads the exact same array and must preserve chronological ordering.</p>
+<p>If <code>NewestArticles</code> called <code>articles.reverse()</code>, it would mutate the shared array. Under Strict Mode, the second render would reverse the array a second time, restoring the original order and causing the box to display the oldest stories first. To keep the calculation pure, <code>NewestArticles</code> creates a shallow copy before reversing: <code>[...articles].reverse()</code>.</p>
+<p>In <code>NewestArticles.jsx</code>, lines 3 to 10 build the reversed summary widget:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">NewestArticles.jsx</span></div><div class="code"><div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">NewestArticles</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> newest = [...articles].<span class="fn">reverse</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 18px;">
+        <span class="text">A copy, ours to reverse</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;aside className=<span class="str">"newest"</span>&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;h2&gt;Newest first&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      {newest.<span class="fn">map</span>((article, index) =&gt; (</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">        &lt;p key={article.id}&gt;#{index + <span class="nl">1</span>} {article.title}&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      ))}</span></div></div></div></div>
+<p>The summary box renders "Fresh Bread at Home" as item #1 and "New Park Opens Today" as item #5. Meanwhile, the main <code>ArticleList</code> renders beneath it starting with "New Park Opens Today". Two components safely read the same dataset without cross-contamination.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we keep Strict Mode and compare with the production build';">Finally, we keep Strict Mode and compare with the production build</div>
+      <div class="card-components"><span class="component-tag">&lt;main.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>This step applies Principle 3: Strict Mode: each component is called twice in development, to catch impure calls.</p>
+<p>We verify that <code>main.jsx</code> retains <code>&lt;StrictMode&gt;</code> enclosing <code>&lt;App /&gt;</code>. Rather than fearing the double execution, we treat it as an automated assertion that executes on every file save:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">main.jsx</span></div><div class="code"><div class="row even"><span class="num">6</span><span class="src"><span class="fn">createRoot</span>(document.<span class="fn">getElementById</span>(<span class="str">'root'</span>)).<span class="fn">render</span>(</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  &lt;StrictMode&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 18px;">
+        <span class="text">Kept: the check runs on every save</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;App /&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  &lt;/StrictMode&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">);</span></div></div></div></div>
+<p>We test the build by running <code>npm run build</code> followed by <code>npm run preview</code>. In the preview server, each card logs exactly once, rendering identical markup and numbers. When a page renders identically in development under Strict Mode and in production, we have positive proof that all components are completely pure.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The root component renders the newest articles summary and the article list under Strict Mode. It holds no shared state or counters, letting each child component compute its output purely from its inputs.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>NewestArticles</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The newest-first box reads the shared array from articles.js and turns around a copy of it, never the array itself. Why a copy? Because the main list reads the same array, and a second call under Strict Mode would turn the original back.</p></div></div></div><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ArticleList</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The list maps the same array in its own order and passes each card its number, the place it already knows. It changes nothing it receives, so every call gives the same five cards.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">article, number</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The card shows its number, title, and author from its props alone. It holds no counter and changes nothing outside, so it shows the same JSX on the first call, the second call, and every save.</p></div></div></div></div></div></div></div></div>
+</div>
+<p>A developer who comes from plain JavaScript expects a counter to count cards, <code>push()</code> and <code>reverse()</code> to act once, and the second call of Strict Mode to be a bug worth removing. In React 19, the counter showed how many calls happened, the shared array grew and turned back with every call, and the second call was the check that showed both at once. Each step applied one principle: every card showed a number from its props, the box changed only its own copy, and Strict Mode stayed on while the page looked the same in development and in production.</p>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Numbered rows and rankings</strong>: Leaderboards, search results, and paginated tables calculate item numbers from array index offsets passed as props, never from module-level counter variables.</li>
+<li><strong>Sorting and filtering shared collections</strong>: Specialized views like "recent stories" or "alphabetical directory" clone arrays via <code>[...items].sort()</code> before reordering, protecting shared data from mutating in place.</li>
+<li><strong>Double logging in development</strong>: Every new Vite and Next.js project enables Strict Mode by default; understanding the diagnostic double-run prevents developers from prematurely disabling the check.</li>
+<li><strong>Code reviews and linter gates</strong>: Senior reviewers flag mutations of props, outside variables, and imported datasets during render before code reaches staging environments.</li>
+<li><strong>Updating external browser state</strong>: Modifying document titles, triggering analytics beacons, or manipulating local storage belong exclusively inside event handlers (Lecture 13) or Effects (Lecture 31), never in render bodies.</li></ol>
+</div>
+<div class="keep-together interview-section">
+<h3>For the interview</h3>
+<blockquote><strong>The Interview Question:</strong> What does it mean for a component to be pure, and what breaks when it is not?</blockquote>
+<p><strong>1. The Hidden Signal</strong></p>
+<p>Interviewers ask this question to probe whether a candidate understands React's functional execution model. A junior developer often recites that pure components "have no side effects" without explaining why React cares. A senior engineer explains both pillars of purity: idempotence (same inputs yield identical JSX output) and zero side effects (render executions mutate nothing that existed prior to invocation). They explain that React components can be executed multiple times, out of order, or on worker threads, making purity a mandatory architectural prerequisite.</p>
+<p><strong>2. The Classic Trap</strong></p>
+<p>The classic trap is blaming Strict Mode for rendering bugs and proposing to remove <code>&lt;StrictMode&gt;</code> from <code>main.jsx</code>. Candidates often observe doubled counters or duplicated list items and assume Strict Mode is defective. A strong candidate clarifies that Strict Mode intentionally runs components twice in development to surface existing mutations. Removing Strict Mode merely hides the bug until the application is re-rendered by user state changes or hot module reloading in production.</p>
+<p><strong>3. What is Actually Going On</strong></p>
+<p>When a component alters a variable outside its local scope, that variable acts as shared state across render passes. Because React executes component functions to build virtual DOM trees, any mutation of outside variables makes the resulting JSX dependent on the history of previous executions rather than the current props.</p>
+<p>Similarly, calling mutating array methods like <code>push()</code>, <code>splice()</code>, or <code>reverse()</code> on props or imported arrays alters objects in shared memory. Subsequent render calls receive the mutated array, causing duplicate items, reversed layouts, and corrupted keys. Confining mutations to local variables created within the current render execution keeps the function pure.</p>
+<p><strong>4. Where It Gets Tricky</strong></p>
+<p><em>Is it illegal to mutate any variable during render?</em> No. Mutating variables, arrays, or objects created entirely within the current render call (local mutation) is completely safe because no outside entity holds a reference to them.</p>
+<p><em>Why does calling <code>articles.reverse()</code> appear to do nothing in development?</em> Strict Mode calls the component twice. The first execution reverses the shared array; the second execution reverses it back to its original order, producing a phantom bug where the code appears ignored.</p>
+<p><em>Can a component render <code>Math.random()</code> or <code>new Date()</code>?</em> Not as values computed inline during render. Because each call yields a different value, the component is not idempotent. Generate random IDs or timestamps during user events or pass them as props.</p>
+<p><em>Does Strict Mode double-render in production?</em> No. Production builds execute component functions exactly once.</p>
+<p><em>Where do unavoidable side effects belong?</em> Changes to the outside world belong inside event handlers (Lecture 13), such as click or submit handlers, or, as a last resort, an Effect (Lecture 31).</p>
+<p><em>Why does React require purity?</em> Purity enables server rendering (Lecture 102), skipping renders via memoization (Lecture 55), and concurrent rendering where React pauses and restarts renders to prioritize user input (Lecture 66).</p>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Pure function</strong>: A function that returns identical output for identical inputs and causes zero side effects on entities outside its scope.</li>
+<li><strong>Idempotence</strong>: The mathematical property where multiple identical invocations produce the exact same result as a single invocation.</li>
+<li><strong>Side effect</strong>: Any modification of state or interaction with the outside world that occurs during function execution, such as mutating outside variables, altering the DOM, or writing to storage.</li>
+<li><strong>Local mutation</strong>: Modifying objects, arrays, or variables that were instantiated entirely within the current function execution.</li>
+<li><strong>Strict Mode</strong>: A React development-only wrapper component (<code>&lt;StrictMode&gt;</code>) that invokes component render functions twice to expose impure calculations and side effects.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Keeping Components Pure</strong>: Official React documentation on functional purity, side effects, and local mutation rules (see <a href="https://react.dev/learn/keeping-components-pure">react.dev/learn/keeping-components-pure</a>).</li>
+<li><strong>Rules of React: Components and Hooks Must Be Pure</strong>: Comprehensive specification of React's purity requirements and execution boundaries (see <a href="https://react.dev/reference/rules/components-and-hooks-must-be-pure">react.dev/reference/rules/components-and-hooks-must-be-pure</a>).</li>
+<li><strong>StrictMode API Reference</strong>: Complete reference for Strict Mode behaviors, double rendering mechanics, and development assertions (see <a href="https://react.dev/reference/react/StrictMode">react.dev/reference/react/StrictMode</a>).</li>
+<li><strong>Array Mutating vs. Non-Mutating Methods</strong>: JavaScript array method reference distinguishing in-place mutations from copy-returning methods (see <a href="https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array">developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Pure rendering: each call of a component only calculates its JSX from its inputs</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Idempotence: each call gives the same JSX for the same inputs</span></div>
+<ul>
+<li>ALWAYS build what a component shows from its props, and pass a number that depends on the place as a prop.</li>
+<li>NEVER read and change a variable outside the component while it runs.</li>
+<li>NEVER show a value that changes on every call, such as <code>Math.random()</code> or <code>new Date()</code>, computed while the component runs.</li>
+</ul>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">No side effects: each call changes nothing that existed before it</span></div>
+<ul>
+<li>ALWAYS copy an array or object before you change it, <code>[...items]</code>.</li>
+<li>NEVER call <code>push</code>, <code>sort</code>, or <code>reverse</code> on props or imported data while a component runs.</li>
+<li>IF something outside the page's JSX must change THEN do it in an event handler, never while the component runs.</li>
+</ul>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Strict Mode: each component is called twice in development, to catch impure calls</span></div>
+<ul>
+<li>ALWAYS keep <code>&lt;StrictMode&gt;</code> around the app; the doubled logs are the check at work.</li>
+<li>IF the second call shows a different page THEN fix the component, not <code>main.jsx</code>.</li>
+</ul>
+<p><strong>The same inputs, nothing changed, and a second call to prove it.</strong></p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong></p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleList</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> items = [...articles];</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  items.<span class="fn">push</span>({ id: <span class="str">'all'</span>, title: <span class="str">'See all articles'</span>, author: <span class="str">''</span> });</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      {items.<span class="fn">map</span>((article, index) =&gt; (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">        &lt;ArticleCard key={article.id} article={article} number={index + <span class="nl">1</span>} /&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      ))}</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong></p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">let</span> cardNumber = <span class="nl">0</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleCard</span>({ article }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  cardNumber = cardNumber + <span class="nl">1</span>;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> &lt;h2&gt;#{cardNumber} {article.title}&lt;/h2&gt;;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>IMPURE</strong><br>(changes things while it runs)</th><th><strong>PURE</strong><br>(only calculates)</th></tr></thead><tbody><tr><td><strong>What the card shows</strong></td><td>How many calls happened:<br>#2, #4, #6</td><td>What its props say:<br>#1, #2, #3</td></tr><tr><td><strong>What it changes</strong></td><td>Shared data and outside variables:<br>"See all articles" twice</td><td>Only a copy made in the call:<br>"See all articles" once</td></tr><tr><td><strong>Under Strict Mode</strong></td><td>A different page on the first load</td><td>The same page; only logs double</td></tr><tr><td><strong>After a save</strong></td><td>The numbers and items keep growing</td><td>Nothing changes</td></tr><tr><td><strong>Where changes belong</strong></td><td>Inside the render, where they repeat</td><td>In event handlers (Lecture 13),<br>outside the render</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

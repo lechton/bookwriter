@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 22: Choosing State Structure: Derived State versus Redundant State</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 22: Choosing State Structure: Derived State versus Redundant State</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you decide which values belong in state and which are derived?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Liam builds an article search desk for The National Times.</li>
+<li>Liam stores the story list, search text, and result count in three separate state cells.</li>
+<li>When Liam types a query, the counter reports three results while the list shows five.</li>
+<li>Why does the result counter disagree with the articles displayed on the screen?</li>
+<li>Desynchronized counters confuse readers, display ghost results, and introduce subtle state duplication bugs.</li>
+<li>State setters schedule updates independently, leaving duplicated values out of sync across renders.</li>
+<li>Today you learn how to structure state, eliminate redundant variables, and derive values cleanly.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Five Core Principles of State Architecture</h3>
+<p>When structuring state in React, the central engineering objective is to make state updates resilient and impossible to desynchronize. Inexperienced engineers often treat state as a passive storage bin, creating a new <code>useState</code> hook for every value displayed on the screen. This habit creates <strong>state redundancy</strong>, where multiple pieces of data in memory represent different views of the exact same underlying information.</p>
+<p>To prevent bugs and race conditions, modern React architecture relies on five foundational principles:</p>
+<ul>
+<li><strong>Group related state</strong>: If two state variables always change together in response to the same event, unify them into a single state object.</li>
+<li><strong>Avoid contradictions in state</strong>: When multiple state booleans can disagree, such as <code>isSending</code> and <code>isSent</code> both evaluating to true, replace them with a single status string enum.</li>
+<li><strong>Avoid redundant state</strong>: If a value can be computed directly from component props or existing state variables during rendering, never store that value in state.</li>
+<li><strong>Avoid duplication in state</strong>: When the same data is duplicated across multiple state variables or mirrored from props, keeping them in sync becomes error-prone and brittle.</li>
+<li><strong>Avoid deeply nested state</strong>: Deeply hierarchical state objects require complex immutable copying logic; prefer flat, normalized state structures.</li>
+</ul>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does duplicate state drift out of sync?</strong> Imagine an editorial room with two physical chalkboards on the wall. The first chalkboard lists the raw breaking news dispatches. The second chalkboard lists the stories matching today's search keyword. When a new dispatch arrives by telegraph, the junior assistant writes the story onto the first chalkboard, but forgets to walk over and update the second chalkboard. The two boards now disagree. That is what happens when you store filtered results in a separate state variable. You now have two sources of truth in memory. When raw state changes, you must remember to manually update the duplicate state variable every single time. If you miss one handler or an update runs out of order, the two boards drift apart. You do not need two chalkboards. You only need one master chalkboard, and you read it through magnifying glasses when looking for keywords. Understanding <strong>redundant state</strong> as <strong>chalkboard duplication</strong> clarifies why <strong>render-time calculation</strong> guarantees <strong>state synchronization</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Identifying and Eliminating Redundant State</h3>
+<p>To determine whether a piece of data belongs in React state, apply the <strong>three-question state audit</strong> to every variable in your component:</p>
+<ol><li>Does this value remain unchanged over time? If so, it is not state; declare it as a module constant or a plain variable outside the component.</li>
+<li>Is this value passed into the component from a parent via props? If so, it is not state; use the prop directly.</li>
+<li>Can you compute this value from existing props or state variables? If the answer is yes, it is <strong>derived state</strong> and must never be stored in a <code>useState</code> hook.</li></ol>
+<p>React executes your component function from top to bottom on every single render pass. Any plain JavaScript variable declared inside the component body recalculates synchronously in memory:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Derived Calculation Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> [query, setQuery] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">const</span> filteredStories = stories.<span class="fn">filter</span>(s =&gt; s.title.<span class="fn">includes</span>(query)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Instant render-time <b class="tag">DERIVATION</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">const</span> resultCount = filteredStories.length; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Zero lag with synchronous <b class="tag">CALCULATION</b></span>
+      </div></div></div></div></div>
+<p>Because <code>filteredStories</code> and <code>resultCount</code> are computed during render, they are physically incapable of drifting out of sync. When <code>query</code> updates, React schedules a re-render. During that re-render, JavaScript recalculates <code>filteredStories</code> and <code>resultCount</code> instantly before producing the new JSX descriptor tree. There is no second render cycle, no delayed state queue, and no chance of showing stale numbers.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Can you calculate it during the render pass?</strong> Remember the speedometer in your car. When you step on the accelerator pedal, the needle swings to sixty miles per hour. Does the speedometer need a separate battery and motor to remember your speed while parked? No. It reads the spinning axle directly, in real time, every fraction of a second. Calculating derived state in React works the exact same way. Filtering an array of several hundred news stories in JavaScript takes less than one millisecond, which is thousands of times faster than repainting a single pixel. By computing your filtered list and count directly inside the component body, the values update instantaneously with zero lag. You completely eliminate stale counters because the speedometer is attached directly to the engine. Understanding <strong>derived state</strong> as a <strong>live speedometer</strong> clarifies why <strong>render-time calculation</strong> is fast and completely prevents <strong>state drift</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Article Search Architecture</h3>
+<p>To observe derived state in production, examine the article search screen for The National Times. The parent component <code>ArticleSearchApp.jsx</code> maintains the raw story collection and search query, parenting <code>SearchSummary.jsx</code> and <code>ArticleList.jsx</code>:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>ArticleList.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>ArticleSearchApp.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>SearchSummary.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>ArticleSearchApp</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-input"><span class="surface-ui-input-placeholder">Filter articles...</span></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>SearchSummary</span><span class="component-explorer-props">count={3} words={2670}</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn">3 articles match</span><span class="surface-ui-btn">2670 total words</span></div></div><div class="component-explorer-node component-kind-table"><div class="component-explorer-label"><span>ArticleList</span><span class="component-explorer-props">stories={[...]}</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Port workers vote on harbor agreement</span><span class="surface-render-line">Transit council reviews underground budget</span><span class="surface-render-line">Harbor ferry launches solar power pilot</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above demonstrates component ownership. The parent component <code>ArticleSearchApp.jsx</code> provides the search query filter input, while <code>SearchSummary.jsx</code> and <code>ArticleList.jsx</code> display computed match statistics and active dispatches.</p>
+<p>The search summary <code>SearchSummary.jsx</code> is a pure presentation component receiving computed numbers:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">SearchSummary.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SearchSummary</span>({ count, words }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;aside className=<span class="str">"search-stats"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;span className=<span class="str">"stats-count"</span>&gt;{count} articles match&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;span className=<span class="str">"stats-words"</span>&gt;{words} total words&lt;/span&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/aside&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Pure presentation component receiving derived <b class="tag">NUMBERS</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>The <code>SearchSummary</code> component receives <code>count</code> and <code>words</code> as numeric props. It performs zero calculations and maintains no state. It formats the numbers into accessible span tags.</p>
+<p>Next, the article list component <code>ArticleList.jsx</code> renders the collection:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleList.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleList</span>({ stories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">if</span> (stories.length === <span class="nl">0</span>) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="kw">return</span> &lt;p className=<span class="str">"search-empty"</span>&gt;No matching articles found.&lt;/p&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;ul className=<span class="str">"article-list"</span>&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      {stories.<span class="fn">map</span>(story =&gt; (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">        &lt;li key={story.id} className=<span class="str">"article-item"</span>&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">          &lt;h4&gt;{story.title}&lt;/h4&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">          &lt;small&gt;{story.words} words&lt;/small&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">        &lt;/li&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      ))}</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    &lt;/ul&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Renders filtered collection directly from <b class="tag">PROPS</b></span>
+      </div></div>
+<div class="row odd"><span class="num">15</span><span class="src">}</span></div></div></div></div>
+<p><code>ArticleList</code> checks <code>stories.length === 0</code> to provide an immediate empty state message when no stories match the query. It maps each story to a list item using the stable <code>story.id</code> as a key.</p>
+<p>To construct this search app workflow cleanly, we decompose <code>ArticleSearchApp.jsx</code> across three sequential implementation steps:</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure">
+  <style>
+    .pipeline-card-figure {
+      margin: 1.5rem auto;
+      max-width: 590px;
+      background: #f4f6f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pipeline-card-figure .pipeline-header {
+      background: #344154;
+      padding: 10px 18px;
+    }
+    .pipeline-card-figure .pipeline-header span {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .pipeline-card-figure .pipeline-body {
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pipeline-card-figure .step-node {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #fcfcfb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 20px 14px 26px;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .pipeline-card-figure .step-node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #0e7490;
+    }
+    .pipeline-card-figure .step-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      line-height: 1.35;
+    }
+    .pipeline-card-figure .step-num {
+      color: #0e7490;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-label {
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: #475569;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+    .pipeline-card-figure .step-desc {
+      margin-top: 11px;
+      text-align: center;
+      font-size: 0.77rem;
+      line-height: 1.45;
+      font-style: italic;
+      color: #334155;
+      max-width: 470px;
+    }
+    .pipeline-card-figure .step-desc strong {
+      font-weight: 700;
+      color: #0f172a;
+      font-style: normal;
+    }
+    .pipeline-card-figure .step-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+    }
+    .pipeline-card-figure .step-connector svg {
+      display: block;
+    }
+  </style>
+
+  <div class="pipeline-header">
+    <span>DERIVED STATE CALCULATION PIPELINE</span>
+  </div>
+
+  <div class="pipeline-body">
+    <!-- Step 1 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 1:</span>
+        <span class="step-label">Setting Up Search State</span>
+      </div>
+      <div class="step-code">ArticleSearchApp.jsx // const [query, setQuery] = useState('')</div>
+      <div class="step-desc">
+        Open the parent component and isolate the <strong>raw input query as the sole state hook</strong>, avoiding redundant mirrors.
+      </div>
+    </div>
+
+    <!-- Connector 1 -> 2 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 2:</span>
+        <span class="step-label">Synchronous Derived State Calculations</span>
+      </div>
+      <div class="step-code">stories.filter(...) // Real-time calculation during render</div>
+      <div class="step-desc">
+        Calculate <strong>filtered articles and aggregated word totals</strong> directly in the component body with zero asynchronous lag.
+      </div>
+    </div>
+
+    <!-- Connector 2 -> 3 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 3:</span>
+        <span class="step-label">Rendering the Search Results</span>
+      </div>
+      <div class="step-code">&lt;SearchSummary count={totalStories} /&gt; &lt;ArticleList stories={filtered} /&gt;</div>
+      <div class="step-desc">
+        Pass <strong>computed derived values directly to presentation children</strong>, guaranteeing flawless visual synchronization with zero state drift.
+      </div>
+    </div>
+  </div>
+</div>
+<figcaption>Fig 22.1: Step-by-step code assembly pipeline for derived state search architecture</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: Setting Up Search State';">Setting Up Search State</div>
+      
+    </div>
+  </div>
+</div>
+<p>We open <code>ArticleSearchApp.jsx</code>, define our baseline news collection, and declare the minimal essential state:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleSearchApp.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> ArticleList <span class="kw">from</span> <span class="str">'./ArticleList.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">import</span> SearchSummary <span class="kw">from</span> <span class="str">'./SearchSummary.jsx'</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="kw">const</span> initialStories = [</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  { id: <span class="str">'s1'</span>, title: <span class="str">'Port workers vote on harbor agreement'</span>, words: <span class="nl">820</span> },</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  { id: <span class="str">'s2'</span>, title: <span class="str">'Transit council reviews underground budget'</span>, words: <span class="nl">1240</span> },</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  { id: <span class="str">'s3'</span>, title: <span class="str">'Harbor ferry launches solar power pilot'</span>, words: <span class="nl">610</span> }</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">];</span></div>
+<div class="row even"><span class="num">10</span><span class="src"></span></div>
+<div class="row odd"><span class="num">11</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleSearchApp</span>() {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  <span class="kw">const</span> [stories, setStories] = <span class="hook">useState</span>(initialStories);</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  <span class="kw">const</span> [query, setQuery] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div></div></div></div>
+<p>The parent component holds only two state variables: the raw source collection <code>stories</code> and the current filter string <code>query</code>. Everything else can be computed dynamically. Continuing inside the component body, we derive our query results:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Synchronous Derived State Calculations';">Synchronous Derived State Calculations</div>
+      
+    </div>
+  </div>
+</div>
+<p>Next, we compute filtered results and metric totals directly inside the component render pass:</p>
+<div class="editor continues-both has-sticky-note"><div class="sticky-note"><span class="note-filename">ArticleSearchApp.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">15</span><span class="src">  <span class="kw">const</span> filteredStories = stories.<span class="fn">filter</span>(story =&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Derived synchronously during <b class="tag">RENDER</b></span>
+      </div></div>
+<div class="row even"><span class="num">16</span><span class="src">    story.title.<span class="fn">toLowerCase</span>().<span class="fn">includes</span>(query.<span class="fn">toLowerCase</span>())</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">18</span><span class="src">  <span class="kw">const</span> totalStories = filteredStories.length;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  <span class="kw">const</span> totalWords = filteredStories.<span class="fn">reduce</span>((sum, s) =&gt; sum + s.words, <span class="nl">0</span>);</span></div></div></div></div>
+<p>Notice that <code>filteredStories</code>, <code>totalStories</code>, and <code>totalWords</code> require zero <code>useState</code> and zero <code>useEffect</code> calls. When a user types into the search input, <code>setQuery</code> triggers a render. React re-runs <code>ArticleSearchApp</code>, computing the filtered array and word totals in microseconds with zero possibility of state drift. With metrics calculated, we assemble the layout:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Rendering the Search Results';">Rendering the Search Results</div>
+      
+    </div>
+  </div>
+</div>
+<p>Finally, we connect the input and derived constants into the JSX layout and complete the parent container:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">ArticleSearchApp.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row even"><span class="num">22</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">    &lt;main className=<span class="str">"search-desk"</span>&gt;</span></div>
+<div class="row even"><span class="num">24</span><span class="src">      &lt;input</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">        type=<span class="str">"search"</span></span></div>
+<div class="row even"><span class="num">26</span><span class="src">        placeholder=<span class="str">"Filter articles..."</span></span></div>
+<div class="row odd"><span class="num">27</span><span class="src">        value={query} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Drives search input with active query <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row even"><span class="num">28</span><span class="src">        onChange={e =&gt; <span class="fn">setQuery</span>(e.target.value)} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Synchronizes filter text on every <b class="tag">KEYSTROKE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">29</span><span class="src">      /&gt;</span></div>
+<div class="row even"><span class="num">30</span><span class="src">      &lt;SearchSummary count={totalStories} words={totalWords} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Passes derived match counts as <b class="tag">PROPS</b></span>
+      </div></div>
+<div class="row odd"><span class="num">31</span><span class="src">      &lt;ArticleList stories={filteredStories} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Forwards computed subset down to list <b class="tag">COMPONENT</b></span>
+      </div></div>
+<div class="row even"><span class="num">32</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">33</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">34</span><span class="src">}</span></div></div></div></div>
+<p>The template passes the freshly computed values straight down into <code>&lt;SearchSummary&gt;</code> and <code>&lt;ArticleList&gt;</code>. The child components receive clean, synchronous props on every render pass.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — Derived State vs Redundant State</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Search Desk</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            ArticleSearchApp.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            SearchSummary.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            ArticleList.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            const filtered = stories.filter(...)
+            <span class="rce-node-props">✓ DERIVED STATE</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Single Source of Truth: <span class="ref-tag ref-green">[query, setQuery]</span></div>
+            <div style="margin-top:0.3rem;">2. Render-Time Calculation: stories.filter() runs synchronously</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Guaranteed Sync: summary count and story list match 100%!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            React re-executes component functions on every state change.<br>
+            Deriving values during render guarantees counters and lists never drift apart.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            const [filtered, setFiltered] = useState(...)
+            <span class="rce-node-props">✕ REDUNDANT STATE</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Competing Sources: <span class="ref-tag ref-red">filteredStories in separate state cell</span></div>
+            <div style="margin-top:0.3rem;">2. Missed Setter Sync: new dispatch arrives without updating filtered</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">State Desync: summary reports "3 stories" while list renders 5!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Storing computable data in state forces manual synchronization across handlers.<br>
+            A single missed update creates contradictory and broken UI states.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 22.2: The National Times: Redundant State Desynchronization vs Instant Derived Calculation</figcaption>
+</figure>
+<p>The figure above illustrates the mechanical contrast between these two architectural patterns. On the right, redundant state variables introduce asynchronous race conditions and stale counter bugs. On the left, deriving values directly on the render pass guarantees that counts and list items match with mathematical certainty.</p>
+</div>
+<div class="keep-together">
+<h3>The Prop-Mirroring Anti-Pattern and Cache Synchronization</h3>
+<p>Another frequent architectural mistake is <strong>prop mirroring</strong>, where a developer copies a prop directly into a local state variable:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Prop Mirroring Trap</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">StoryEditor</span>({ initialTitle }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [title, setTitle] = <span class="hook">useState</span>(initialTitle); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> ignores future prop changes from <b class="tag">PARENT</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+<p>When you pass <code>initialTitle</code> to <code>useState</code>, React only reads that value on the initial mount. If the parent component later re-renders with a different <code>initialTitle</code>, the child component's <code>title</code> state variable will completely ignore the new prop and retain its old value. The local state variable acts as an accidental, stale cache.</p>
+<p>Only mirror props into state when you explicitly intend for the child to fork the data into an independent, editable draft that deliberately ignores parent changes. In that scenario, rename the prop to <code>initialTitle</code> or <code>defaultTitle</code> to clearly communicate that incoming updates will not propagate.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how to handle expensive calculations during render, explain the exact performance threshold for <code>useMemo</code>. Computing simple array filters, mappings, or sums over a few thousand items takes less than one millisecond in modern JavaScript engines. Adding <code>useMemo</code> incurs memory overhead and dependency array comparisons. Only wrap derived calculations in <code>useMemo</code> when profiling reveals measurable frame drops, or when the derived object reference is passed to an effect or memoized child component.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Newsroom article search: Filtering hundreds of breaking editorial dispatches by reporter name or topic tag without state desync.</li>
+<li>E-commerce checkout totals: Calculating order subtotal, delivery fees, taxes, and item count from a single cart array during render.</li>
+<li>Form validation indicators: Computing whether a submit button should be enabled without maintaining a separate <code>isFormValid</code> boolean.</li>
+<li>Paginated data tables: Deriving current page slice, total page count, and active row index from raw server records and page state.</li>
+<li>Filtered contact directories: Deriving active, archived, and flagged contact subsets from a single master contacts array.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Derived State</strong>: Values computed dynamically from existing state or props during the component render phase without being stored in React memory cells.</li>
+<li><strong>Redundant State</strong>: Information stored in a state variable that could have been calculated directly from existing state or props during render, introducing the risk of state drift.</li>
+<li><strong>Single Source of Truth</strong>: The architectural practice of storing each piece of data in exactly one authoritative location in memory, deriving all secondary representations from it.</li>
+<li><strong>State Normalization</strong>: Structuring state data to be flat and free of duplicated records, mimicking relational database schemas to simplify updates.</li>
+<li><strong>Prop Mirroring</strong>: The anti-pattern of copying a prop into a local useState variable, causing the local state to ignore future prop updates from the parent.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>State Structure Optimization: Derived Render Computations vs Redundant State Variables</strong></p>
+<p>Eliminating redundant state variables is the single most effective way to eliminate UI synchronization bugs in React applications. By auditing your state and keeping only raw, minimal inputs in memory, you guarantee that all derived UI representations remain synchronized automatically.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">The Core Takeaways of State Structure</span></div>
+<ol><li>Never store in state what you can compute during render.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Formatted strings, filtered lists, and numeric aggregations belong in plain variables inside the component body.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Render-time computations execute synchronously on every render pass, eliminating asynchronous update lag.</li>
+<li>Establish a single source of truth for every piece of data.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) When data exists in two state cells, one will eventually fail to update, causing visual contradictions.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Keep raw records in state; compute filtered and transformed views on the fly.</li>
+<li>Beware the prop-mirroring trap.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Initializing state with a prop freezes the value at mount time and ignores subsequent parent updates.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Only mirror props when intentionally forking an independent draft, and prefix the prop name with <code>initial</code> or <code>default</code>.
+➔ ALWAYS derive lists and counts during the render pass instead of synchronizing multiple useState hooks.<br>
+➔ NEVER copy incoming props into local state unless intentionally creating an isolated, unlinked draft.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Store redundant filtered lists and counters in separate state cells.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Redundant State Anti-Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">BadSearchDesk</span>({ rawStories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [query, setQuery] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [filtered, setFiltered] = <span class="hook">useState</span>(rawStories);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [count, setCount] = <span class="hook">useState</span>(rawStories.length);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">handleQueryChange</span>(e) {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="kw">const</span> nextQuery = e.target.value;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="fn">setQuery</span>(nextQuery);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="kw">const</span> nextList = rawStories.<span class="fn">filter</span>(s =&gt; s.title.<span class="fn">includes</span>(nextQuery));</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="fn">setFiltered</span>(nextList);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="fn">setCount</span>(nextList.length);</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Keep only the minimal raw input in state and compute everything else during render.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Derived State Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">GoodSearchDesk</span>({ rawStories }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [query, setQuery] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> filtered = rawStories.<span class="fn">filter</span>(s =&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    s.title.<span class="fn">toLowerCase</span>().<span class="fn">includes</span>(query.<span class="fn">toLowerCase</span>())</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> count = filtered.length;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>REDUNDANT STATE</strong><br>(anti-pattern)</th><th><strong>DERIVED COMPUTATION</strong><br>(idiomatic)</th></tr></thead><tbody><tr><td><strong>Data Ownership</strong></td><td>Fragmented across multiple<br><code>useState</code> memory cells</td><td>Single authoritative<br>source of truth</td></tr><tr><td><strong>Synchronization</strong></td><td>Manual synchronization<br>required across handlers</td><td>Synchronous, automatic<br>calculation on every render</td></tr><tr><td><strong>State Drift Risk</strong></td><td>High; setters can run<br>out of order or be missed</td><td>Zero; physically impossible<br>to show stale counters</td></tr><tr><td><strong>Memory Cost</strong></td><td>Multiple state hooks<br>and update queues in RAM</td><td>Lightweight local variables<br>garbage collected each cycle</td></tr><tr><td><strong>Engine Overhead</strong></td><td>Extra render triggers<br>from cascading setters</td><td>Single render pass<br>evaluating pure JavaScript</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

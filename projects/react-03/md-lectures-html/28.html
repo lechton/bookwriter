@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 28: Combining Reducer with Context: Scalable App-Wide State</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 28: Combining Reducer with Context: Scalable App-Wide State</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you combine a reducer with context for app-wide state?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Chloe builds the task assignment hub for The National Times.</li>
+<li>The hub manages tasks and dispatch actions needed across many different screen sections.</li>
+<li>Chloe passes task state and six handler functions down through four levels of components.</li>
+<li>Why must developers pass both state data and callback functions through every layer?</li>
+<li>Drilling multiple callbacks clutters every component layer and triggers widespread re-renders across the tree.</li>
+<li>State data changes on every update, but dispatch functions remain stable across all renders.</li>
+<li>Today you learn how to combine reducers with context for scalable app-wide state.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Reducer and Context Synergy</h3>
+<p>In large applications, managing complex state transitions and distributing that state across the component tree are two separate architectural challenges. React addresses each with a specialized primitive:</p>
+<ul>
+<li><strong>useReducer manages state transitions</strong>: It consolidates complex state rules into a single, pure reducer function outside the component hierarchy, replacing scattered state mutations with deterministic action dispatches.</li>
+<li><strong>Context manages state distribution</strong>: It creates an ambient broadcast pipeline that teleports data directly to leaf consumers, eliminating the maintenance burden of prop drilling through intermediate layout components.</li>
+</ul>
+<p>When used in isolation, each tool has limitations. A reducer alone still forces you to manually pass <code>state</code> and <code>dispatch</code> down through props. Context alone often leads developers to pass multiple fragmented <code>useState</code> setters across the tree.</p>
+<p>By pairing <code>useReducer</code> with Context, you unlock a powerful, Redux-like state management architecture natively in React: the reducer acts as the single source of truth for business logic, while Context provides the distribution pipeline that gives every component direct access to state or dispatch.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why pair a reducer with context?</strong> Imagine a busy shipping warehouse with a centralized dispatch office and dozens of loading docks. If the office uses a master ledger but has no telephone system, runners must physically carry ledger slips to every dock across the building. That is useReducer without Context: you have a clean state machine, but you must manually drill props across every layer. Conversely, if you install intercom phones at every dock but have no master ledger, dockworkers shout conflicting orders at each other and lose inventory. That is Context with multiple useState setters: you have broadcast wires, but no central logic. Combining them gives you a master ledger connected to direct intercoms. The reducer manages state transitions deterministically, while context broadcasts state and dispatch directly to any loading dock. Understanding <strong>prop drilling</strong> as <strong>warehouse runners</strong> and <strong>state chaos</strong> as <strong>conflicting shouts</strong> clarifies why <strong>combining useReducer with context</strong> creates <strong>scalable app-wide state</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Split-Context Pattern: State versus Dispatch</h3>
+<p>When combining a reducer with context, a common beginner mistake is bundling state and dispatch into a single context value:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Bundled Context Anti-Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">&lt;CartContext value={{ cart, dispatch }}&gt;</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  {children}</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">&lt;/CartContext&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Bundles state and dispatch into an unmemoized <b class="tag">OBJECT</b></span>
+      </div></div></div></div></div>
+<p>Every time the cart state changes (such as adding an item or modifying a quantity), the provider component re-renders. This creates a brand-new object literal <code>{ cart, dispatch }</code>. Because React compares context values using <code>Object.is()</code>, every component that consumes <code>CartContext</code> will re-render, even components like "Add to Cart" buttons that only care about <code>dispatch</code> and never read <code>cart</code> items!</p>
+<p>To solve this re-render cascade, production React architecture splits state and dispatch into two separate contexts:</p>
+<ol><li><strong><code>CartStateContext</code></strong>: Holds the dynamic <code>cart</code> state array. Only components that read and display cart data subscribe to this context.</li>
+<li><strong><code>CartDispatchContext</code></strong>: Holds the stable <code>dispatch</code> function. Components that only trigger actions subscribe exclusively to this context.</li></ol>
+<p>Because React guarantees that the <code>dispatch</code> function identity returned by <code>useReducer</code> is permanently stable across re-renders, components subscribed only to <code>CartDispatchContext</code> will never re-render when the cart state updates!</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why separate state context from dispatch context?</strong> Imagine a municipal radio station with two separate channels: a news announcement broadcast channel and a studio telephone hotline. Hundreds of residents listen to the news channel on their radios. When a breaking bulletin airs, every radio speaker vibrates and plays the sound. Now imagine a reporter in the field who only needs to phone in a story. If the station forced the reporter to connect their telephone directly through the radio broadcast speaker, the reporter's phone would vibrate and blast noise every time someone else spoke on the air! That is what happens when you combine state and dispatch into a single context. An "Add to Cart" button only needs to phone in an action, but because it is plugged into the state speaker, it re-renders every time any item in the cart updates. Splitting them into two channels lets the button hold a quiet dispatch phone while the cart summary listens to the state speaker. Understanding <strong>unified context</strong> as a <strong>blasting radio speaker</strong> clarifies why <strong>splitting state and dispatch</strong> provides <strong>quiet dispatch channels</strong> and <strong>re-render isolation</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Subscription Cart Architecture</h3>
+<p>To observe the split-context reducer pattern in production, inspect the reader subscription store for The National Times. The application wraps its component tree in a custom <code>CartProvider</code>. The header renders <code>CartSummary.jsx</code> (which reads cart state), while the product catalog renders <code>AddToCartButton.jsx</code> (which only dispatches actions):</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>AddToCartButton.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>CartContext.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>CartItem.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>CartItemList.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>CartSummary.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>SubscriptionCartApp.jsx</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>state</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9.5 13c-.8 1-1.5 1.7-1.5 2.5s.7 1.5 1.5 2.5"/><path d="M14.5 13c.8 1 1.5 1.7 1.5 2.5s-.7 1.5-1.5 2.5"/></svg><span>cartReducer.js</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>SubscriptionCartApp</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>CartContext</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>CartSummary</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn">2 Subscriptions</span></div></div><div class="component-explorer-node component-kind-table"><div class="component-explorer-label"><span>CartItemList</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>CartItem</span><span class="component-explorer-props">item=&quot;...&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Digital Morning Edition (x1)</span><span class="surface-render-line">Sunday Magazine Archive (x1) [button: Remove]</span></div></div></div></div><div class="component-explorer-node component-kind-button"><div class="component-explorer-label"><span>AddToCartButton</span><span class="component-explorer-props">product=&quot;...&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn">Subscribe ($12/mo)</span></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above displays the complete architecture. On the left, <code>SubscriptionCartApp.jsx</code> mounts <code>CartContext.jsx</code>, which encapsulates <code>cartReducer.js</code> and provides state and dispatch downwards. On the right, the rendered view shows the active cart summary tallying subscriptions, while product cards and cart items interact directly with dispatch.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure">
+  <style>
+    .pipeline-card-figure {
+      margin: 1.5rem auto;
+      max-width: 590px;
+      background: #f4f6f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pipeline-card-figure .pipeline-header {
+      background: #344154;
+      padding: 10px 18px;
+    }
+    .pipeline-card-figure .pipeline-header span {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .pipeline-card-figure .pipeline-body {
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pipeline-card-figure .step-node {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #fcfcfb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 20px 14px 26px;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .pipeline-card-figure .step-node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #0e7490;
+    }
+    .pipeline-card-figure .step-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      line-height: 1.35;
+    }
+    .pipeline-card-figure .step-num {
+      color: #0e7490;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-label {
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: #475569;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+    .pipeline-card-figure .step-desc {
+      margin-top: 11px;
+      text-align: center;
+      font-size: 0.77rem;
+      line-height: 1.45;
+      font-style: italic;
+      color: #334155;
+      max-width: 470px;
+    }
+    .pipeline-card-figure .step-desc strong {
+      font-weight: 700;
+      color: #0f172a;
+      font-style: normal;
+    }
+    .pipeline-card-figure .step-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+    }
+    .pipeline-card-figure .step-connector svg {
+      display: block;
+    }
+  </style>
+
+  <div class="pipeline-header">
+    <span>REDUCER + CONTEXT ARCHITECTURE — 5-STAGE PIPELINE</span>
+  </div>
+
+  <div class="pipeline-body">
+    <!-- Step 1 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 1:</span>
+        <span class="step-label">Isolating Business Rules in Pure Reducer</span>
+      </div>
+      <div class="step-code">cartReducer(cart, action) // Pure state transitions</div>
+      <div class="step-desc">
+        First, author the <strong>pure cart reducer</strong> to handle <strong>adding, removing, and clearing items</strong> with mathematical immutability.
+      </div>
+    </div>
+
+    <!-- Connector 1 -> 2 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 2:</span>
+        <span class="step-label">Nesting Split Providers for Re-render Isolation</span>
+      </div>
+      <div class="step-code">&lt;CartStateContext&gt; &lt;CartDispatchContext&gt;</div>
+      <div class="step-desc">
+        Next, nest the <strong>state and dispatch providers</strong> inside <strong>CartProvider</strong> to separate dynamic data from stable callbacks.
+      </div>
+    </div>
+
+    <!-- Connector 2 -> 3 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 3:</span>
+        <span class="step-label">Authoring Guarded Custom Consumer Hooks</span>
+      </div>
+      <div class="step-code">useCart() &amp; useCartDispatch() // React 19 use() API</div>
+      <div class="step-desc">
+        Then, author <strong>dedicated consumer hooks</strong> with <strong>fail-fast assertions</strong> to prevent orphaned consumption outside providers.
+      </div>
+    </div>
+
+    <!-- Connector 3 -> 4 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 4:</span>
+        <span class="step-label">Connecting Decoupled Consumers to Context</span>
+      </div>
+      <div class="step-code">CartSummary &amp; AddToCartButton</div>
+      <div class="step-desc">
+        Connect <strong>leaf components</strong> to their respective channels: state listeners re-render on data changes while <strong>action buttons stay dormant</strong>.
+      </div>
+    </div>
+
+    <!-- Connector 4 -> 5 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 5:</span>
+        <span class="step-label">Mounting the Parent Cart Component</span>
+      </div>
+      <div class="step-code">SubscriptionCartApp.jsx // &lt;CartProvider&gt; wrapping tree</div>
+      <div class="step-desc">
+        Finally, mount the <strong>CartProvider wrapper</strong> in the <strong>parent component App</strong> to establish ambient state distribution without prop drilling.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 28.1: Step-by-step code assembly pipeline for the split reducer context architecture</figcaption>
+</figure>
+<p>To construct this subscription store cleanly, we decompose <code>cartReducer.js</code>, <code>CartContext.jsx</code>, <code>CartSummary.jsx</code>, <code>AddToCartButton.jsx</code>, and <code>SubscriptionCartApp.jsx</code> across five sequential implementation steps:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: Isolating Business Rules in Pure Reducer';">Isolating Business Rules in Pure Reducer</div>
+      
+    </div>
+  </div>
+</div>
+<p>First, we author the pure reducer function <code>cartReducer.js</code> to isolate all cart mutation rules outside the component tree:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">cartReducer.js</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">const</span> initialCart = [];</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">cartReducer</span>(cart, action) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">switch</span> (action.type) {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="kw">case</span> <span class="str">'ADDED'</span>: {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      <span class="kw">const</span> existing = cart.<span class="fn">find</span>(item =&gt; item.id === action.product.id);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      <span class="kw">if</span> (existing) {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">        <span class="kw">return</span> cart.<span class="fn">map</span>(item =&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">          item.id === action.product.id ? { ...item, quantity: item.quantity + <span class="nl">1</span> } : item</span></div>
+<div class="row even"><span class="num">10</span><span class="src">        );</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      }</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      <span class="kw">return</span> [...cart, { ...action.product, quantity: <span class="nl">1</span> }];</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    }</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    <span class="kw">case</span> <span class="str">'REMOVED'</span>: {</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      <span class="kw">return</span> cart.<span class="fn">filter</span>(item =&gt; item.id !== action.id);</span></div>
+<div class="row even"><span class="num">16</span><span class="src">    }</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    <span class="kw">case</span> <span class="str">'CLEARED'</span>: {</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      <span class="kw">return</span> [];</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">    }</span></div>
+<div class="row even"><span class="num">20</span><span class="src">    <span class="kw">default</span>: {</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">      <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">`Unhandled action type: ${action.type}`</span>);</span></div>
+<div class="row even"><span class="num">22</span><span class="src">    }</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">  } </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Pure reducer handles cart mutations with deterministic <b class="tag">IMMUTABILITY</b></span>
+      </div></div>
+<div class="row even"><span class="num">24</span><span class="src">}</span></div></div></div></div>
+<p>The reducer is completely isolated from React. It receives the current <code>cart</code> array and an <code>action</code> object, and immutably returns the next cart array using <code>map</code>, <code>filter</code>, and array spread syntax.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Nesting Split Providers for Re-render Isolation';">Nesting Split Providers for Re-render Isolation</div>
+      
+    </div>
+  </div>
+</div>
+<p>Next, we declare two distinct contexts for state and dispatch, and author <code>CartProvider</code> to nest the dispatch provider inside the state provider:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CartContext.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { createContext, use, <span class="hook">useReducer</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> { cartReducer, initialCart } <span class="kw">from</span> <span class="str">'./cartReducer.js'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">const</span> CartStateContext = <span class="fn">createContext</span>(<span class="kw">null</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="kw">const</span> CartDispatchContext = <span class="fn">createContext</span>(<span class="kw">null</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">CartProvider</span>({ children }) {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">const</span> [cart, dispatch] = <span class="hook">useReducer</span>(cartReducer, initialCart);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src"></span></div>
+<div class="row even"><span class="num">10</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &lt;CartStateContext value={cart}&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;CartDispatchContext value={dispatch}&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">        {children}</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      &lt;/CartDispatchContext&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    &lt;/CartStateContext&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Nested direct providers split state and dispatch for re-render <b class="tag">ISOLATION</b></span>
+      </div></div>
+<div class="row odd"><span class="num">17</span><span class="src">}</span></div></div></div></div>
+<p>In <code>CartContext.jsx</code>, notice how <code>CartProvider</code> nests <span class="code-line-callout"><code>&lt;CartDispatchContext value={dispatch}&gt;</code></span> inside <span class="code-line-callout"><code>&lt;CartStateContext value={cart}&gt;</code></span> Descendant components wrapped inside <code>children</code> gain access to both channels independently.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Authoring Guarded Custom Consumer Hooks';">Authoring Guarded Custom Consumer Hooks</div>
+      
+    </div>
+  </div>
+</div>
+<p>Third, we expose guarded custom hooks that consume the split contexts with explicit validation:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">CartContext.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">19</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="hook">useCart</span>() {</span></div>
+<div class="row even"><span class="num">20</span><span class="src">  <span class="kw">const</span> context = <span class="fn">use</span>(CartStateContext);</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">  <span class="kw">if</span> (context === <span class="kw">null</span>) {</span></div>
+<div class="row even"><span class="num">22</span><span class="src">    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'useCart must be used within a CartProvider'</span>);</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">24</span><span class="src">  <span class="kw">return</span> context; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Fail-fast guard ensures consumer renders inside <b class="tag">PROVIDER</b></span>
+      </div></div>
+<div class="row odd"><span class="num">25</span><span class="src">}</span></div>
+<div class="row even"><span class="num">26</span><span class="src"></span></div>
+<div class="row odd"><span class="num">27</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="hook">useCartDispatch</span>() {</span></div>
+<div class="row even"><span class="num">28</span><span class="src">  <span class="kw">const</span> context = <span class="fn">use</span>(CartDispatchContext);</span></div>
+<div class="row odd"><span class="num">29</span><span class="src">  <span class="kw">if</span> (context === <span class="kw">null</span>) {</span></div>
+<div class="row even"><span class="num">30</span><span class="src">    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'useCartDispatch must be used within a CartProvider'</span>);</span></div>
+<div class="row odd"><span class="num">31</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">32</span><span class="src">  <span class="kw">return</span> context; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Stable dispatch hook guarded against orphaned <b class="tag">CONSUMPTION</b></span>
+      </div></div>
+<div class="row odd"><span class="num">33</span><span class="src">}</span></div></div></div></div>
+<p>By wrapping React 19's <code>use()</code> API inside dedicated helper functions with <span class="code-line-callout"><code><span class="kw">if</span> (context === <span class="kw">null</span>)</code></span> guard checks, we guarantee that any component mistakenly rendered outside <code>CartProvider</code> throws an immediate, self-documenting error.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Connecting Decoupled Consumers to Context';">Connecting Decoupled Consumers to Context</div>
+      
+    </div>
+  </div>
+</div>
+<p>Now examine the leaf reader component <code>CartSummary.jsx</code>, which reads cart state without prop drilling:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CartSummary.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useCart</span> } <span class="kw">from</span> <span class="str">'./CartContext.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">CartSummary</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> cart = <span class="hook">useCart</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> totalItems = cart.<span class="fn">reduce</span>((sum, item) =&gt; sum + item.quantity, <span class="nl">0</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;div className=<span class="str">"cart-summary"</span>&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;span&gt;Subscribed Editions: &lt;strong&gt;{totalItems}&lt;/strong&gt;&lt;/span&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Consumer re-renders only when cart state array <b class="tag">UPDATES</b></span>
+      </div></div>
+<div class="row even"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+<p><code>CartSummary</code> calls <code>useCart()</code>. It reads the cart array directly, calculates the total quantity of subscribed editions on the fly, and re-renders whenever the cart changes. It requires zero props from the navigation bar.</p>
+<p>In contrast, examine the action-triggering button <code>AddToCartButton.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">AddToCartButton.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useCartDispatch</span> } <span class="kw">from</span> <span class="str">'./CartContext.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">AddToCartButton</span>({ product }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> dispatch = <span class="hook">useCartDispatch</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">function</span> <span class="fn">handleAdd</span>() {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="fn">dispatch</span>({ type: <span class="str">'ADDED'</span>, product });</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">9</span><span class="src"></span></div>
+<div class="row even"><span class="num">10</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &lt;button onClick={handleAdd} className=<span class="str">"btn-add-cart"</span>&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      Subscribe to {product.name}</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Subscribes only to dispatch without triggering re-renders on cart <b class="tag">UPDATES</b></span>
+      </div></div>
+<div class="row odd"><span class="num">15</span><span class="src">}</span></div></div></div></div>
+<p>Here lies the architectural victory of the split-context pattern: <code>AddToCartButton</code> calls <code>useCartDispatch()</code>. It does not read <code>cart</code> state. Because React's <code>dispatch</code> identity never changes, this button will <strong>never re-render</strong> when items are added, removed, or updated in the cart.</p>
+<p>Next, inspect the item component and list:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CartItem.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useCartDispatch</span> } <span class="kw">from</span> <span class="str">'./CartContext.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">CartItem</span>({ item }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> dispatch = <span class="hook">useCartDispatch</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;li className=<span class="str">"cart-item"</span>&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      &lt;span&gt;{item.name} (x{item.quantity})&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;button onClick={() =&gt; <span class="fn">dispatch</span>({ type: <span class="str">'REMOVED'</span>, id: item.id })}&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">        Remove</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    &lt;/li&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Item accesses dispatch directly without callback <b class="tag">DRILLING</b></span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">}</span></div></div></div></div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CartItemList.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useCart</span> } <span class="kw">from</span> <span class="str">'./CartContext.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> CartItem <span class="kw">from</span> <span class="str">'./CartItem.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">CartItemList</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> cart = <span class="hook">useCart</span>();</span></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">if</span> (cart.length === <span class="nl">0</span>) {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="kw">return</span> &lt;p className=<span class="str">"cart-empty"</span>&gt;Your subscription cart is empty.&lt;/p&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">10</span><span class="src"></span></div>
+<div class="row odd"><span class="num">11</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    &lt;ul className=<span class="str">"cart-item-list"</span>&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      {cart.<span class="fn">map</span>(item =&gt; (</span></div>
+<div class="row even"><span class="num">14</span><span class="src">        &lt;CartItem key={item.id} item={item} /&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      ))}</span></div>
+<div class="row even"><span class="num">16</span><span class="src">    &lt;/ul&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">18</span><span class="src">}</span></div></div></div></div>
+<p>Notice how clean <code>CartItemList</code> and <code>CartItem</code> are. In a traditional prop-drilled architecture, <code>CartItemList</code> would need to accept an <code>onRemoveItem</code> callback prop and pass it down to every <code>CartItem</code>. With split context, <code>CartItem</code> calls <code>useCartDispatch()</code> directly to remove items without polluting <code>CartItemList</code>.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-5">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">5</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 5: Mounting the Parent Cart Component';">Mounting the Parent Cart Component</div>
+      
+    </div>
+  </div>
+</div>
+<p>Finally, examine the root application component <code>SubscriptionCartApp.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">SubscriptionCartApp.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { CartProvider } <span class="kw">from</span> <span class="str">'./CartContext.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> CartSummary <span class="kw">from</span> <span class="str">'./CartSummary.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">import</span> AddToCartButton <span class="kw">from</span> <span class="str">'./AddToCartButton.jsx'</span>;</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">import</span> CartItemList <span class="kw">from</span> <span class="str">'./CartItemList.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">const</span> SAMPLE_PRODUCTS = [</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  { id: <span class="str">'p1'</span>, name: <span class="str">'Digital Morning Edition'</span>, price: <span class="nl">12</span> },</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  { id: <span class="str">'p2'</span>, name: <span class="str">'Sunday Magazine Archive'</span>, price: <span class="nl">8</span> },</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">];</span></div>
+<div class="row even"><span class="num">10</span><span class="src"></span></div>
+<div class="row odd"><span class="num">11</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SubscriptionCartApp</span>() {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    &lt;CartProvider&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      &lt;header className=<span class="str">"store-header"</span>&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">        &lt;h1&gt;The National Times Subscription Store&lt;/h1&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">        &lt;CartSummary /&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      &lt;/header&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      &lt;main className=<span class="str">"store-body"</span>&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">        &lt;section className=<span class="str">"product-shelf"</span>&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">          {SAMPLE_PRODUCTS.<span class="fn">map</span>(product =&gt; (</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">            &lt;div key={product.id} className=<span class="str">"product-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">              &lt;h3&gt;{product.name}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">              &lt;AddToCartButton product={product} /&gt;</span></div>
+<div class="row even"><span class="num">24</span><span class="src">            &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">          ))}</span></div>
+<div class="row even"><span class="num">26</span><span class="src">        &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">        &lt;CartItemList /&gt;</span></div>
+<div class="row even"><span class="num">28</span><span class="src">      &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">29</span><span class="src">    &lt;/CartProvider&gt;</span></div>
+<div class="row even"><span class="num">30</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">CartProvider supplies ambient context with zero prop <b class="tag">DRILLING</b></span>
+      </div></div>
+<div class="row odd"><span class="num">31</span><span class="src">}</span></div></div></div></div>
+<p>In <code>SubscriptionCartApp</code>, <code>CartProvider</code> wraps the entire visual tree. <code>CartSummary</code> lives inside the <code>&lt;header&gt;</code>, while <code>AddToCartButton</code> and <code>CartItemList</code> lives inside the <code>&lt;main&gt;</code> content body. Neither <code>header</code>, <code>main</code>, nor <code>section</code> know that cart data exists. Context provides an ambient state pipeline directly to the leaf nodes.</p>
+</div>
+<div class="keep-together">
+<h3>Fail-Fast Defensive Hooks</h3>
+<p>In real-world production codebases, developers may accidentally call <code>useCart()</code> or <code>useCartDispatch()</code> outside of a <code>&lt;CartProvider&gt;</code> wrapper. Without defensive checks, React returns <code>null</code>, causing cryptic runtime errors like <span class="code-line-callout"><code>Cannot destructure property <span class="str">'cart'</span> <span class="kw">of</span> <span class="str">'use(...)'</span> as it is <span class="kw">null</span></code></span></p>
+<p>We prevent this by adding fail-fast guard clauses inside our custom hooks:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CartContext.jsx (Defensive Guard Pattern)</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="hook">useCart</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> context = <span class="fn">use</span>(CartStateContext);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">if</span> (!context) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'useCart must be used within a CartProvider'</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> context;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div>
+<div class="row even"><span class="num">8</span><span class="src"></span></div>
+<div class="row odd"><span class="num">9</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="hook">useCartDispatch</span>() {</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  <span class="kw">const</span> context = <span class="fn">use</span>(CartDispatchContext);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">  <span class="kw">if</span> (!context) {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">Error</span>(<span class="str">'useCartDispatch must be used within a CartProvider'</span>);</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  <span class="kw">return</span> context;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how to architect app-wide state in React without third-party libraries, deliver this structured response: "1. Pair useReducer with Context: useReducer consolidates complex state transitions into a pure testable function, while Context handles ambient data distribution. 2. Implement the Split-Context pattern: Provide state and dispatch through two separate context providers. Because React guarantees dispatch function identity is permanently stable, action-triggering buttons that only read dispatch will never re-render when state changes. 3. Encapsulate in custom hooks: Export guarded hooks like useCart and useCartDispatch with explicit null-check errors to provide fail-fast developer ergonomics."</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>E-commerce cart systems: Managing cart additions, quantity updates, promo codes, and checkout validation across headers, sidebars, and modals.</li>
+<li>Collaborative document editors: Managing undo and redo stacks, active selections, and block operations across toolbars, canvases, and inspector panels.</li>
+<li>Multi-step customer onboarding wizards: Coordinating step validation, draft persistence, and step transitions without prop drilling across layout containers.</li>
+<li>Interactive dashboard filter engines: Coordinating date range pickers, category filters, and search queries across data visualization dashboards.</li>
+<li>User permission and role matrices: Broadcasting fine-grained feature toggles and authorization dispatchers across enterprise admin panels.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Reducer and Context Synergy</strong>: The architectural pattern of combining useReducer for state transition logic with Context for ambient distribution.</li>
+<li><strong>Split-Context Pattern</strong>: Creating two distinct contexts for state and dispatch to prevent action-dispatching components from re-rendering on state updates.</li>
+<li><strong>CartProvider</strong>: A custom wrapper component that executes useReducer and renders nested context providers to supply state and dispatch to its children.</li>
+<li><strong>Stable Dispatch</strong>: React's guarantee that the dispatch function returned by useReducer maintains reference equality across all re-renders.</li>
+<li><strong>Fail-Fast Context Guard</strong>: A defensive check inside a custom hook that throws an informative descriptive error if the hook is called outside its provider.</li>
+<li><strong>Ambient State Pipeline</strong>: The non-intrusive data channel created by Context that allows deeply nested components to subscribe to data without prop drilling.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Combining useReducer with React 19 Context: Scalable App-Wide State</strong></p>
+<p>Pairing useReducer with React Context provides a scalable, library-free state management architecture. Consolidating state transitions into a pure reducer eliminates scattered logic, while splitting state and dispatch into separate contexts shields action-dispatching components from re-render cascades.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Takeaways of Reducer Context Architecture</span></div>
+<ol><li>Unify state transitions in a pure reducer.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Write a pure reducer function handling descriptive action types immutably.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Keep all business rules and validation logic inside the reducer rather than event handlers.</li>
+<li>Separate state context from dispatch context.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Create distinct contexts for dynamic state and the stable dispatch function.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Nest providers inside a dedicated provider component that wraps its children.</li>
+<li>Provide guarded custom consumer hooks.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Export custom hooks that read context using React 19 use().<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Throw descriptive errors when hooks are consumed outside their provider.
+➔ ALWAYS split state and dispatch into separate contexts to prevent action buttons from re-rendering on state updates.<br>
+➔ NEVER bundle state and dispatch in a single unmemoized object literal in high-frequency applications.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Bundle state and dispatch into a single unmemoized context object.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BundledCartProvider</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">BadCartProvider</span>({ children }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [cart, dispatch] = <span class="hook">useReducer</span>(cartReducer, []);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;CartContext value={{ cart, dispatch }}&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      {children}</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/CartContext&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Split state and dispatch into separate contexts to isolate re-renders.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">SplitCartProvider</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> CartStateContext = <span class="fn">createContext</span>(<span class="kw">null</span>);</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">const</span> CartDispatchContext = <span class="fn">createContext</span>(<span class="kw">null</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">GoodCartProvider</span>({ children }) {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [cart, dispatch] = <span class="hook">useReducer</span>(cartReducer, []);</span></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;CartStateContext value={cart}&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;CartDispatchContext value={dispatch}&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">        {children}</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;/CartDispatchContext&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    &lt;/CartStateContext&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">14</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>MONOLITHIC CONTEXT</strong><br>(prop drilling / single store)</th><th><strong>SPLIT REDUCER CONTEXT</strong><br>(idiomatic React 19)</th></tr></thead><tbody><tr><td><strong>State Distribution</strong></td><td>Bundled in single object<br><code>{ state, dispatch }</code></td><td>Split into two distinct<br>state and dispatch contexts</td></tr><tr><td><strong>Re-render Profile</strong></td><td>All consumers re-render<br>whenever state changes</td><td>Dispatch-only consumers<br>never re-render on updates</td></tr><tr><td><strong>Dispatch Stability</strong></td><td>Lost when bundled inside<br>an unmemoized object</td><td>Permanently stable across<br>all application re-renders</td></tr><tr><td><strong>Consumer Ergonomics</strong></td><td>Generic context consumption<br>without usage validation</td><td>Dedicated custom hooks<br>with fail-fast error guards</td></tr><tr><td><strong>Architecture Scale</strong></td><td>Fragile in complex apps;<br>triggers widespread re-renders</td><td>Highly scalable; powers<br>complex app-wide state logic</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

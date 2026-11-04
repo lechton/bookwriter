@@ -1,0 +1,1653 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 38: Optimizing Images and Cumulative Layout Shift</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 38: Optimizing Images and Cumulative Layout Shift</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you optimize images and prevent them from causing layout shifts?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Leo browses the morning investigative lead on his phone while riding the subway train.</li>
+<li>He taps to open an interactive transit map embedded halfway down the article page.</li>
+<li>Just before his thumb makes physical contact, the hero photo above loads and shoves the layout downward.</li>
+<li>Why did the entire page violently jump, causing Leo to click a paid advertisement by mistake?</li>
+<li>The developer omitted width and height attributes on the image, providing zero initial aspect ratio space.</li>
+<li>Unsized images trigger unexpected layout shifts that disorient readers and destroy Core Web Vitals.</li>
+<li>Today we declare explicit dimensions, reserve aspect ratio boxes, and eliminate Cumulative Layout Shift.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Zero-Dimension Collapse: Unsized Images Versus Reserved Aspect Ratio</h3>
+<p>Leo attempts to interact with an investigative infographic during his morning commute. When an HTML document includes an <code>&lt;img&gt;</code> tag without explicit width and height attributes, the browser's layout engine has no knowledge of the image's physical proportions. Initially, the layout assigns the image container an intrinsic height of zero pixels. When the network eventually streams the image bytes into memory, the browser re-evaluates the layout tree, violently shoving all subsequent text and buttons down the screen:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">image-dimensions.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;img src=<span class="str">"/photos/bridge.jpg"</span> <span class="kw">class</span>=<span class="str">"hero"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-wrong">WRONG:</b> Zero initial height forces layout reflow</span>
+      </div></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;img src=<span class="str">"/photos/bridge.jpg"</span> width=<span class="str">"800"</span> height=<span class="str">"450"</span></span></div>
+<div class="row"><span class="num">4</span><span class="src">     <span class="kw">class</span>=<span class="str">"hero"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 56px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> Reserves 16:9 box before image downloads</span>
+      </div></div></div></div></div>
+<style>:root {
+    --meta-landmark: #ea580c;
+    --meta-landmark-bg: #fff7ed;
+    --meta-focus: #0284c7;
+    --meta-sr: #7c3aed;
+    --meta-sr-bg: #f5f3ff;
+    --meta-wrong: #e11d48;
+    --meta-right: #059669;
+    
+    --font-ui: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-serif: 'Lora', Georgia, serif;
+    --font-meta: 'JetBrains Mono', Menlo, monospace;
+}
+
+/* Base Canvas Container */
+.a11y-canvas {
+    font-family: var(--font-ui);
+    color: #0f172a;
+    margin: 2rem 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+/* Width Modifiers */
+.a11y-canvas.w-half .browser-window {
+    max-width: 480px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-2-3 .browser-window {
+    max-width: 660px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-full .browser-window {
+    max-width: 100%;
+}
+
+/* The Browser Chrome */
+.browser-window {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+.browser-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #cbd5e1;
+}
+.browser-dots { display: flex; gap: 5px; }
+.browser-dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; }
+.browser-dot.red { background: #fca5a5; }
+.browser-dot.yellow { background: #fde047; }
+.browser-dot.green { background: #86efac; }
+.browser-title {
+    flex: 1;
+    font-family: var(--font-meta);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.browser-url { flex: 1; max-width: 400px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; color: #64748b; }
+
+/* The UI Layer (The actual mocked page) */
+.mock-page {
+    position: relative;
+    padding: 24px 28px;
+    background: #f8fafc;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* Minimal 2-Element Comparison Layout */
+.mock-page.layout-compare {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    padding: 24px 20px;
+    flex-wrap: wrap;
+}
+.mock-page.layout-compare .meta-validity-outline {
+    display: none;
+}
+.mock-page.layout-compare .ui-element {
+    margin-bottom: 0;
+    flex: 1 1 200px;
+    max-width: 270px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 16px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    position: relative;
+}
+.mock-page.layout-compare .meta-validity-tag {
+    top: -11px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 3px 12px;
+    border-radius: 99px;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+/* In compare mode, suppress the numbered tab-stop circle (1) as it makes no sense in a 2-element comparison */
+.mock-page.layout-compare .meta-focus-badge {
+    display: none !important;
+}
+/* In compare mode, suppress outer landmark boxes and tags that clash with top validity tags */
+.mock-page.layout-compare .meta-landmark-box,
+.mock-page.layout-compare .meta-landmark-tag {
+    display: none !important;
+}
+/* In compare mode, let screen reader tooltips flow naturally above note chips to eliminate text overlap */
+.mock-page.layout-compare .meta-sr-tooltip {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin-top: 12px;
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 10;
+}
+.mock-page.layout-compare .meta-sr-tooltip::before {
+    left: 50%;
+    margin-left: -4px;
+}
+.mock-page.layout-compare .ui-element.has-sr {
+    margin-bottom: 0;
+    padding-bottom: 16px;
+}
+.mock-page.layout-compare .has-sr .meta-note-chip {
+    margin-top: 10px;
+}
+
+/* UI Control Wrapper */
+.ui-control-wrapper {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+.ui-control-wrapper.is-input {
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Ghost Outline for Invisible Focus */
+.meta-ghost-outline {
+    position: absolute;
+    inset: -5px;
+    border: 2px dashed #f43f5e;
+    border-radius: 8px;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.15);
+}
+.meta-ghost-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    background: #f43f5e;
+    color: white;
+    font-family: var(--font-meta);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 99px;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    white-space: nowrap;
+    z-index: 60;
+}
+
+/* Status Note Chips */
+.meta-note-chip {
+    margin-top: 14px;
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.02em;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.has-sr .meta-note-chip {
+    margin-top: 48px;
+}
+.meta-note-chip.note-wrong {
+    background: #ffe4e6;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+}
+.meta-note-chip.note-right {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+.meta-note-chip.note-info {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
+.ui-element {
+    position: relative;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+}
+
+/* Selectively add space ONLY for elements that have a Screen Reader tooltip */
+.ui-element.has-sr { margin-bottom: 72px; }
+.ui-form-group.has-sr { margin-bottom: 72px; }
+
+/* Dynamically tint the SR tooltip based on validity */
+.is-right .meta-sr-tooltip, .is-right .meta-sr-tooltip::before {
+    background: var(--meta-right);
+    box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.3);
+}
+.is-wrong .meta-sr-tooltip, .is-wrong .meta-sr-tooltip::before {
+    background: var(--meta-wrong);
+    box-shadow: 0 10px 15px -3px rgba(225, 29, 72, 0.3);
+}
+
+.ui-masthead { font-family: var(--font-serif); font-size: 2rem; font-weight: 700; text-align: center; border-bottom: 4px double #0f172a; padding-bottom: 8px; color: #0f172a; }
+.ui-nav { font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; font-weight: 600; color: #334155; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: center; gap: 24px; }
+.ui-h1 { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 700; color: #0f172a; margin-top: 16px; margin-bottom: 4px;}
+.ui-text { font-size: 0.95rem; color: #475569; margin-bottom: 16px; }
+
+.ui-form-group { margin-bottom: 24px; }
+.ui-label { font-size: 0.85rem; font-weight: 600; color: #334155; display: block; margin-bottom: 6px; }
+.ui-input { width: 100%; max-width: 300px; border: 1px solid #94a3b8; border-radius: 6px; padding: 10px 14px; font-size: 0.95rem; color: #64748b; background: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); outline: none; min-height: 20px; box-sizing: content-box; }
+.ui-input.is-broken { border-color: #cbd5e1; color: #94a3b8; }
+
+.ui-button { display: inline-block; background: #2563eb; color: #fff; font-size: 0.95rem; font-weight: 600; padding: 10px 28px; border-radius: 6px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2); cursor: pointer; border: none; }
+.ac-inline-link { color: #2563eb; text-decoration: underline; font-weight: 600; font-size: 0.95rem; display: inline-block; }
+.ac-card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 18px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.ac-card-headline { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+.ac-card i { display: block; height: 8px; background: #f1f5f9; border-radius: 4px; margin-bottom: 6px; width: 90%; }
+.ac-card i:last-child { width: 65%; margin-bottom: 0; }
+.ui-footer { margin-top: 48px; padding: 24px; background: #1e293b; color: #f8fafc; font-size: 0.85rem; border-radius: 8px; text-align: center; }
+
+/* Modal Dialog Pattern */
+.ui-modal-scene {
+    position: relative;
+    width: 236px;
+    height: 142px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    background: #f1f5f9;
+}
+.ui-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 8px;
+}
+.ui-modal-backdrop.is-inert {
+    background: rgba(15, 23, 42, 0.6);
+    filter: grayscale(0.8);
+}
+.ui-modal-bg-doc {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.ui-modal-bg-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.ui-modal-bg-tag {
+    font-family: var(--font-meta);
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: #94a3b8;
+}
+.ui-modal-leak-badge {
+    font-family: var(--font-meta);
+    font-size: 0.52rem;
+    font-weight: 800;
+    color: #f43f5e;
+    background: #ffe4e6;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.ui-modal-inert-badge {
+    font-family: var(--font-meta);
+    font-size: 0.52rem;
+    font-weight: 700;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.ui-modal-bg-link {
+    font-size: 0.65rem;
+    color: #bae6fd;
+    text-decoration: underline;
+    display: inline-block;
+    width: fit-content;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+.ui-modal-bg-link.has-leaked-focus {
+    outline: 2px solid #38bdf8;
+    outline-offset: 1px;
+    background: rgba(56, 189, 248, 0.3);
+    color: #ffffff;
+    font-weight: 700;
+}
+.ui-modal-dialog {
+    position: absolute;
+    top: 36px;
+    left: 8px;
+    right: 8px;
+    bottom: 6px;
+    z-index: 10;
+    background: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    border: 1px solid #cbd5e1;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.ui-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.ui-modal-dialog-tag {
+    font-family: var(--font-meta);
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: #0284c7;
+    background: #e0f2fe;
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+.ui-modal-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ui-modal-body {
+    font-size: 0.6rem;
+    color: #64748b;
+    line-height: 1.2;
+    margin: 2px 0 4px;
+}
+.ui-modal-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+    align-items: center;
+}
+.ui-modal-btn {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #0f172a;
+    color: #ffffff;
+    cursor: pointer;
+}
+.ui-modal-btn.has-trapped-focus {
+    outline: 2px solid #0284c7;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 1px #ffffff;
+}
+.ui-modal-btn-ghost {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+/* Switch & Badge Components */
+.ui-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.ui-switch-track {
+    width: 36px;
+    height: 20px;
+    background: #cbd5e1;
+    border-radius: 99px;
+    position: relative;
+    transition: background 0.2s ease;
+}
+.ui-switch.is-checked .ui-switch-track {
+    background: #059669;
+}
+.ui-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease;
+}
+.ui-switch.is-checked .ui-switch-thumb {
+    transform: translateX(16px);
+}
+.ui-switch-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.ui-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 99px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+/* Tablist Pattern */
+.ui-tablist {
+    display: flex;
+    gap: 4px;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+}
+.ui-tab-item {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 6px;
+    color: #64748b;
+    background: transparent;
+    border: 1px solid transparent;
+}
+.ui-tab-item.is-active {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-color: #e2e8f0;
+}
+
+/* Menu Dropdown Pattern */
+.ui-menu-dropdown {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 4px;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.ui-menu-item {
+    font-size: 0.74rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    color: #1e293b;
+    font-weight: 500;
+}
+.ui-menu-item.is-active {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+/* Combobox Pattern */
+.ui-combobox {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+}
+.ui-combobox-input {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.76rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #0f172a;
+}
+.ui-combobox-caret {
+    font-size: 0.65rem;
+    color: #64748b;
+}
+.ui-combobox-listbox {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.ui-combobox-option {
+    font-size: 0.72rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #334155;
+}
+.ui-combobox-option.is-active {
+    background: #0284c7;
+    color: #ffffff;
+    font-weight: 600;
+}
+.ui-h2 {
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* Meta-Layer Annotations */
+.meta-layer {
+    position: absolute;
+    font-family: var(--font-meta);
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* Landmarks */
+.meta-landmark-box {
+    inset: -8px;
+    border: 2px dashed var(--meta-landmark);
+    border-radius: 8px;
+    background: rgba(255, 247, 237, 0.3);
+}
+.meta-landmark-tag {
+    top: -12px;
+    left: 12px;
+    color: var(--meta-landmark);
+    background: var(--meta-landmark-bg);
+    border: 1px solid var(--meta-landmark);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.1);
+}
+
+/* Screen Reader Tooltips */
+.meta-sr-tooltip {
+    top: 100%;
+    left: 0;
+    margin-top: 12px;
+    background: var(--meta-sr);
+    color: white;
+    font-size: 0.7rem;
+    padding: 5px 8px;
+    border-radius: 6px;
+    white-space: normal;
+    max-width: 210px;
+    box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.meta-sr-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 16px;
+    width: 8px; height: 8px;
+    background: var(--meta-sr);
+    transform: rotate(45deg);
+}
+.meta-sr-badge {
+    background: rgba(255,255,255,0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+/* Focus Order */
+.meta-focus-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--meta-focus);
+    color: white;
+    border: 2px solid white;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    box-shadow: 0 0 0 2px var(--meta-focus), 0 3px 5px rgba(0,0,0,0.2);
+    z-index: 60;
+}
+.meta-focus-outline {
+    position: absolute;
+    inset: -5px;
+    border: 3px solid var(--meta-focus);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+/* Surface Dark mode for dark containers/footers */
+.mock-page.surface-dark {
+    background: #090d16;
+    background-image: radial-gradient(#1e293b 1px, transparent 1px);
+}
+.mock-page.surface-dark.layout-compare .ui-element {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.mock-page.surface-dark .meta-note-chip.note-wrong {
+    background: #450a0a;
+    color: #fca5a5;
+    border-color: #7f1d1d;
+}
+.mock-page.surface-dark .meta-note-chip.note-right {
+    background: #082f49;
+    color: #7dd3fc;
+    border-color: #0369a1;
+}
+
+/* Validity */
+.meta-validity-outline {
+    inset: -6px;
+    border: 2px solid transparent;
+    border-left-width: 6px;
+    border-radius: 8px;
+}
+.meta-validity-tag {
+    top: -12px;
+    left: 10px;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+}
+
+.is-wrong .meta-validity-outline { border-color: var(--meta-wrong); background: linear-gradient(90deg, rgba(225, 29, 72, 0.05) 0%, transparent 100%); }
+.is-right .meta-validity-outline { border-color: var(--meta-right); background: linear-gradient(90deg, rgba(5, 150, 105, 0.05) 0%, transparent 100%); }
+.is-wrong .meta-validity-tag { background: var(--meta-wrong); }
+.is-right .meta-validity-tag { background: var(--meta-right); }
+
+.relative-wrapper { position: relative; display: inline-block; width: 100%; max-width: 300px; }
+.relative-wrapper .ui-button { max-width: none; width: auto; }
+
+/* Image element */
+.ac-image {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 14px 18px;
+    color: #475569;
+    font-size: 0.85rem;
+    font-family: var(--font-meta);
+}
+.ac-picture {
+    width: 24px;
+    height: 24px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+.ac-image-file {
+    font-weight: 600;
+}
+.ac-chip-row {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+.ac-chip {
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.ac-chip.pass { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.ac-chip.fail { background: #ffe4e6; color: #be123c; border: 1px solid #fca5a5; }</style>
+<div class="a11y-canvas w-2-3">
+
+<div class="browser-window">
+	<div class="browser-chrome">
+		<div class="browser-dots">
+			<div class="browser-dot red"></div>
+			<div class="browser-dot yellow"></div>
+			<div class="browser-dot green"></div>
+		</div>
+		<div class="browser-title">
+			<svg class="w-3 h-3" style="width:11px;height:11px;margin-right:6px;color:#059669;display:inline-block;vertical-align:-1px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+			Hero Image Loading: Unsized Jolt vs Reserved Aspect Ratio
+		</div>
+		<div style="width:40px;"></div>
+	</div>
+	<div class="mock-page show-landmarks show-sr show-focus show-validity layout-compare ">
+		<div class="ui-element ac-image is-wrong has-validity" style="z-index: 100;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">WRONG: UNSIZED IMAGE COLLAPSE</div><div class="ac-image"><svg class="ac-picture" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8.5" r="1.8"/><path d="M3.5 18.5 9 12.5l3.5 4 3-3 5 5"/><rect x="2.5" y="4" width="19" height="16" rx="2"/></svg><span class="ac-image-file">/photos/bridge.jpg</span></div><div class="meta-note-chip note-wrong">✕ 0px initial height · High CLS score</div></div>
+<div class="ui-element ac-image is-right has-validity" style="z-index: 99;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">RIGHT: EXPLICIT WIDTH AND HEIGHT</div><div class="ac-image"><svg class="ac-picture" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8.5" r="1.8"/><path d="M3.5 18.5 9 12.5l3.5 4 3-3 5 5"/><rect x="2.5" y="4" width="19" height="16" rx="2"/></svg><span class="ac-image-file">/photos/bridge.jpg</span></div><div class="meta-note-chip note-right">✓ 16:9 space reserved · Zero layout shift</div></div>
+	</div>
+</div>
+</div>
+<p>The contrast illustrates the root cause of high Cumulative Layout Shift (CLS). On the left, omitting dimensional attributes causes the browser to collapse the hero image container completely during initial paint. As Leo reaches out to tap the interactive map, the photo finishes downloading and expands to its natural dimensions, shifting the map four hundred pixels down and causing a mis-click. On the right, declaring <code>width="800"</code> and <code>height="450"</code> allows the browser's CSS engine to calculate an internal <code>aspect-ratio: 800 / 450</code>. The browser reserves the exact vertical rectangle on screen before downloading a single byte of image data, ensuring the page remains rock-solid.</p>
+</div>
+<div class="keep-together">
+<h3>Next-Gen Compression: Serving Modern Formats with the Picture Element</h3>
+<p>Preventing layout shifts ensures visual stability, but maximizing loading speed requires optimizing byte payload weight. Shipping legacy PNG and uncompressed JPEG files to mobile viewports consumes precious cellular data and delays Largest Contentful Paint (LCP). Modern image codecs like AVIF and WebP offer superior compression algorithms that reduce file size by up to eighty percent without visible quality loss. Wrapping multiple format sources in a semantic <code>&lt;picture&gt;</code> element allows user agents to select the most efficient codec supported by the client:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">responsive-images.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;img src=<span class="str">"/photos/hero-raw.png"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-wrong">WRONG:</b> 3.4MB uncompressed desktop PNG sent to mobile</span>
+      </div></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;picture&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;source srcset=<span class="str">"/photos/hero.avif"</span> type=<span class="str">"image/avif"</span> /&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;source srcset=<span class="str">"/photos/hero.webp"</span> type=<span class="str">"image/webp"</span> /&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  &lt;img src=<span class="str">"/photos/hero.jpg"</span> width=<span class="str">"800"</span> height=<span class="str">"450"</span> alt=<span class="str">"Bridge trusses"</span> /&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;/picture&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> Next-gen formats reduce byte weight 80%</span>
+      </div></div></div></div></div>
+<style>:root {
+    --meta-landmark: #ea580c;
+    --meta-landmark-bg: #fff7ed;
+    --meta-focus: #0284c7;
+    --meta-sr: #7c3aed;
+    --meta-sr-bg: #f5f3ff;
+    --meta-wrong: #e11d48;
+    --meta-right: #059669;
+    
+    --font-ui: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-serif: 'Lora', Georgia, serif;
+    --font-meta: 'JetBrains Mono', Menlo, monospace;
+}
+
+/* Base Canvas Container */
+.a11y-canvas {
+    font-family: var(--font-ui);
+    color: #0f172a;
+    margin: 2rem 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+/* Width Modifiers */
+.a11y-canvas.w-half .browser-window {
+    max-width: 480px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-2-3 .browser-window {
+    max-width: 660px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-full .browser-window {
+    max-width: 100%;
+}
+
+/* The Browser Chrome */
+.browser-window {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+.browser-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #cbd5e1;
+}
+.browser-dots { display: flex; gap: 5px; }
+.browser-dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; }
+.browser-dot.red { background: #fca5a5; }
+.browser-dot.yellow { background: #fde047; }
+.browser-dot.green { background: #86efac; }
+.browser-title {
+    flex: 1;
+    font-family: var(--font-meta);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.browser-url { flex: 1; max-width: 400px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; color: #64748b; }
+
+/* The UI Layer (The actual mocked page) */
+.mock-page {
+    position: relative;
+    padding: 24px 28px;
+    background: #f8fafc;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* Minimal 2-Element Comparison Layout */
+.mock-page.layout-compare {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    padding: 24px 20px;
+    flex-wrap: wrap;
+}
+.mock-page.layout-compare .meta-validity-outline {
+    display: none;
+}
+.mock-page.layout-compare .ui-element {
+    margin-bottom: 0;
+    flex: 1 1 200px;
+    max-width: 270px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 16px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    position: relative;
+}
+.mock-page.layout-compare .meta-validity-tag {
+    top: -11px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 3px 12px;
+    border-radius: 99px;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+/* In compare mode, suppress the numbered tab-stop circle (1) as it makes no sense in a 2-element comparison */
+.mock-page.layout-compare .meta-focus-badge {
+    display: none !important;
+}
+/* In compare mode, suppress outer landmark boxes and tags that clash with top validity tags */
+.mock-page.layout-compare .meta-landmark-box,
+.mock-page.layout-compare .meta-landmark-tag {
+    display: none !important;
+}
+/* In compare mode, let screen reader tooltips flow naturally above note chips to eliminate text overlap */
+.mock-page.layout-compare .meta-sr-tooltip {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin-top: 12px;
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 10;
+}
+.mock-page.layout-compare .meta-sr-tooltip::before {
+    left: 50%;
+    margin-left: -4px;
+}
+.mock-page.layout-compare .ui-element.has-sr {
+    margin-bottom: 0;
+    padding-bottom: 16px;
+}
+.mock-page.layout-compare .has-sr .meta-note-chip {
+    margin-top: 10px;
+}
+
+/* UI Control Wrapper */
+.ui-control-wrapper {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+.ui-control-wrapper.is-input {
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Ghost Outline for Invisible Focus */
+.meta-ghost-outline {
+    position: absolute;
+    inset: -5px;
+    border: 2px dashed #f43f5e;
+    border-radius: 8px;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.15);
+}
+.meta-ghost-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    background: #f43f5e;
+    color: white;
+    font-family: var(--font-meta);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 99px;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    white-space: nowrap;
+    z-index: 60;
+}
+
+/* Status Note Chips */
+.meta-note-chip {
+    margin-top: 14px;
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.02em;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.has-sr .meta-note-chip {
+    margin-top: 48px;
+}
+.meta-note-chip.note-wrong {
+    background: #ffe4e6;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+}
+.meta-note-chip.note-right {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+.meta-note-chip.note-info {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
+.ui-element {
+    position: relative;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+}
+
+/* Selectively add space ONLY for elements that have a Screen Reader tooltip */
+.ui-element.has-sr { margin-bottom: 72px; }
+.ui-form-group.has-sr { margin-bottom: 72px; }
+
+/* Dynamically tint the SR tooltip based on validity */
+.is-right .meta-sr-tooltip, .is-right .meta-sr-tooltip::before {
+    background: var(--meta-right);
+    box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.3);
+}
+.is-wrong .meta-sr-tooltip, .is-wrong .meta-sr-tooltip::before {
+    background: var(--meta-wrong);
+    box-shadow: 0 10px 15px -3px rgba(225, 29, 72, 0.3);
+}
+
+.ui-masthead { font-family: var(--font-serif); font-size: 2rem; font-weight: 700; text-align: center; border-bottom: 4px double #0f172a; padding-bottom: 8px; color: #0f172a; }
+.ui-nav { font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; font-weight: 600; color: #334155; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: center; gap: 24px; }
+.ui-h1 { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 700; color: #0f172a; margin-top: 16px; margin-bottom: 4px;}
+.ui-text { font-size: 0.95rem; color: #475569; margin-bottom: 16px; }
+
+.ui-form-group { margin-bottom: 24px; }
+.ui-label { font-size: 0.85rem; font-weight: 600; color: #334155; display: block; margin-bottom: 6px; }
+.ui-input { width: 100%; max-width: 300px; border: 1px solid #94a3b8; border-radius: 6px; padding: 10px 14px; font-size: 0.95rem; color: #64748b; background: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); outline: none; min-height: 20px; box-sizing: content-box; }
+.ui-input.is-broken { border-color: #cbd5e1; color: #94a3b8; }
+
+.ui-button { display: inline-block; background: #2563eb; color: #fff; font-size: 0.95rem; font-weight: 600; padding: 10px 28px; border-radius: 6px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2); cursor: pointer; border: none; }
+.ac-inline-link { color: #2563eb; text-decoration: underline; font-weight: 600; font-size: 0.95rem; display: inline-block; }
+.ac-card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 18px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.ac-card-headline { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+.ac-card i { display: block; height: 8px; background: #f1f5f9; border-radius: 4px; margin-bottom: 6px; width: 90%; }
+.ac-card i:last-child { width: 65%; margin-bottom: 0; }
+.ui-footer { margin-top: 48px; padding: 24px; background: #1e293b; color: #f8fafc; font-size: 0.85rem; border-radius: 8px; text-align: center; }
+
+/* Modal Dialog Pattern */
+.ui-modal-scene {
+    position: relative;
+    width: 236px;
+    height: 142px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    background: #f1f5f9;
+}
+.ui-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 8px;
+}
+.ui-modal-backdrop.is-inert {
+    background: rgba(15, 23, 42, 0.6);
+    filter: grayscale(0.8);
+}
+.ui-modal-bg-doc {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.ui-modal-bg-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.ui-modal-bg-tag {
+    font-family: var(--font-meta);
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: #94a3b8;
+}
+.ui-modal-leak-badge {
+    font-family: var(--font-meta);
+    font-size: 0.52rem;
+    font-weight: 800;
+    color: #f43f5e;
+    background: #ffe4e6;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.ui-modal-inert-badge {
+    font-family: var(--font-meta);
+    font-size: 0.52rem;
+    font-weight: 700;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.ui-modal-bg-link {
+    font-size: 0.65rem;
+    color: #bae6fd;
+    text-decoration: underline;
+    display: inline-block;
+    width: fit-content;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+.ui-modal-bg-link.has-leaked-focus {
+    outline: 2px solid #38bdf8;
+    outline-offset: 1px;
+    background: rgba(56, 189, 248, 0.3);
+    color: #ffffff;
+    font-weight: 700;
+}
+.ui-modal-dialog {
+    position: absolute;
+    top: 36px;
+    left: 8px;
+    right: 8px;
+    bottom: 6px;
+    z-index: 10;
+    background: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    border: 1px solid #cbd5e1;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.ui-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.ui-modal-dialog-tag {
+    font-family: var(--font-meta);
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: #0284c7;
+    background: #e0f2fe;
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+.ui-modal-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ui-modal-body {
+    font-size: 0.6rem;
+    color: #64748b;
+    line-height: 1.2;
+    margin: 2px 0 4px;
+}
+.ui-modal-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+    align-items: center;
+}
+.ui-modal-btn {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #0f172a;
+    color: #ffffff;
+    cursor: pointer;
+}
+.ui-modal-btn.has-trapped-focus {
+    outline: 2px solid #0284c7;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 1px #ffffff;
+}
+.ui-modal-btn-ghost {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+/* Switch & Badge Components */
+.ui-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.ui-switch-track {
+    width: 36px;
+    height: 20px;
+    background: #cbd5e1;
+    border-radius: 99px;
+    position: relative;
+    transition: background 0.2s ease;
+}
+.ui-switch.is-checked .ui-switch-track {
+    background: #059669;
+}
+.ui-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease;
+}
+.ui-switch.is-checked .ui-switch-thumb {
+    transform: translateX(16px);
+}
+.ui-switch-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.ui-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 99px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+/* Tablist Pattern */
+.ui-tablist {
+    display: flex;
+    gap: 4px;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+}
+.ui-tab-item {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 6px;
+    color: #64748b;
+    background: transparent;
+    border: 1px solid transparent;
+}
+.ui-tab-item.is-active {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-color: #e2e8f0;
+}
+
+/* Menu Dropdown Pattern */
+.ui-menu-dropdown {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 4px;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.ui-menu-item {
+    font-size: 0.74rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    color: #1e293b;
+    font-weight: 500;
+}
+.ui-menu-item.is-active {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+/* Combobox Pattern */
+.ui-combobox {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+}
+.ui-combobox-input {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.76rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #0f172a;
+}
+.ui-combobox-caret {
+    font-size: 0.65rem;
+    color: #64748b;
+}
+.ui-combobox-listbox {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.ui-combobox-option {
+    font-size: 0.72rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #334155;
+}
+.ui-combobox-option.is-active {
+    background: #0284c7;
+    color: #ffffff;
+    font-weight: 600;
+}
+.ui-h2 {
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* Meta-Layer Annotations */
+.meta-layer {
+    position: absolute;
+    font-family: var(--font-meta);
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* Landmarks */
+.meta-landmark-box {
+    inset: -8px;
+    border: 2px dashed var(--meta-landmark);
+    border-radius: 8px;
+    background: rgba(255, 247, 237, 0.3);
+}
+.meta-landmark-tag {
+    top: -12px;
+    left: 12px;
+    color: var(--meta-landmark);
+    background: var(--meta-landmark-bg);
+    border: 1px solid var(--meta-landmark);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.1);
+}
+
+/* Screen Reader Tooltips */
+.meta-sr-tooltip {
+    top: 100%;
+    left: 0;
+    margin-top: 12px;
+    background: var(--meta-sr);
+    color: white;
+    font-size: 0.7rem;
+    padding: 5px 8px;
+    border-radius: 6px;
+    white-space: normal;
+    max-width: 210px;
+    box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.meta-sr-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 16px;
+    width: 8px; height: 8px;
+    background: var(--meta-sr);
+    transform: rotate(45deg);
+}
+.meta-sr-badge {
+    background: rgba(255,255,255,0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+/* Focus Order */
+.meta-focus-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--meta-focus);
+    color: white;
+    border: 2px solid white;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    box-shadow: 0 0 0 2px var(--meta-focus), 0 3px 5px rgba(0,0,0,0.2);
+    z-index: 60;
+}
+.meta-focus-outline {
+    position: absolute;
+    inset: -5px;
+    border: 3px solid var(--meta-focus);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+/* Surface Dark mode for dark containers/footers */
+.mock-page.surface-dark {
+    background: #090d16;
+    background-image: radial-gradient(#1e293b 1px, transparent 1px);
+}
+.mock-page.surface-dark.layout-compare .ui-element {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.mock-page.surface-dark .meta-note-chip.note-wrong {
+    background: #450a0a;
+    color: #fca5a5;
+    border-color: #7f1d1d;
+}
+.mock-page.surface-dark .meta-note-chip.note-right {
+    background: #082f49;
+    color: #7dd3fc;
+    border-color: #0369a1;
+}
+
+/* Validity */
+.meta-validity-outline {
+    inset: -6px;
+    border: 2px solid transparent;
+    border-left-width: 6px;
+    border-radius: 8px;
+}
+.meta-validity-tag {
+    top: -12px;
+    left: 10px;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+}
+
+.is-wrong .meta-validity-outline { border-color: var(--meta-wrong); background: linear-gradient(90deg, rgba(225, 29, 72, 0.05) 0%, transparent 100%); }
+.is-right .meta-validity-outline { border-color: var(--meta-right); background: linear-gradient(90deg, rgba(5, 150, 105, 0.05) 0%, transparent 100%); }
+.is-wrong .meta-validity-tag { background: var(--meta-wrong); }
+.is-right .meta-validity-tag { background: var(--meta-right); }
+
+.relative-wrapper { position: relative; display: inline-block; width: 100%; max-width: 300px; }
+.relative-wrapper .ui-button { max-width: none; width: auto; }
+
+/* Image element */
+.ac-image {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 14px 18px;
+    color: #475569;
+    font-size: 0.85rem;
+    font-family: var(--font-meta);
+}
+.ac-picture {
+    width: 24px;
+    height: 24px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+.ac-image-file {
+    font-weight: 600;
+}
+.ac-chip-row {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+.ac-chip {
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.ac-chip.pass { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.ac-chip.fail { background: #ffe4e6; color: #be123c; border: 1px solid #fca5a5; }</style>
+<div class="a11y-canvas w-2-3">
+
+<div class="browser-window">
+	<div class="browser-chrome">
+		<div class="browser-dots">
+			<div class="browser-dot red"></div>
+			<div class="browser-dot yellow"></div>
+			<div class="browser-dot green"></div>
+		</div>
+		<div class="browser-title">
+			<svg class="w-3 h-3" style="width:11px;height:11px;margin-right:6px;color:#059669;display:inline-block;vertical-align:-1px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+			Image Formats: Legacy Heavy PNG vs Modern AVIF Picture
+		</div>
+		<div style="width:40px;"></div>
+	</div>
+	<div class="mock-page show-landmarks show-sr show-focus show-validity layout-compare ">
+		<div class="ui-element ac-image is-wrong has-validity" style="z-index: 100;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">WRONG: 3.4MB LEGACY PNG</div><div class="ac-image"><svg class="ac-picture" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8.5" r="1.8"/><path d="M3.5 18.5 9 12.5l3.5 4 3-3 5 5"/><rect x="2.5" y="4" width="19" height="16" rx="2"/></svg><span class="ac-image-file">/photos/hero-raw.png</span></div><div class="meta-note-chip note-wrong">✕ Stalls network on 4G cellular</div></div>
+<div class="ui-element ac-image is-right has-validity" style="z-index: 99;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">RIGHT: 120KB MODERN AVIF</div><div class="ac-image"><svg class="ac-picture" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8.5" r="1.8"/><path d="M3.5 18.5 9 12.5l3.5 4 3-3 5 5"/><rect x="2.5" y="4" width="19" height="16" rx="2"/></svg><span class="ac-image-file">/photos/hero.avif</span></div><div class="meta-note-chip note-right">✓ 85% byte savings · Sub-second LCP</div></div>
+	</div>
+</div>
+</div>
+<p>The <code>&lt;picture&gt;</code> tag provides progressive enhancement across browser platforms. Browsers that support the cutting-edge AVIF format download the smallest payload possible, cutting transfer sizes down to a fraction of traditional JPEGs. Older browsers gracefully ignore modern <code>&lt;source&gt;</code> elements and fall back to the standard <code>&lt;img&gt;</code> fallback. Crucially, the fallback <code>&lt;img&gt;</code> carries the mandatory <code>width</code>, <code>height</code>, and <code>alt</code> attributes, ensuring accessibility and aspect-ratio reservation are preserved across all formats.</p>
+<p>Web performance engineer Philip Walton defines Cumulative Layout Shift in the official Web Vitals specification:</p>
+<blockquote>Cumulative Layout Shift (CLS) is a stable Core Web Vital metric. It is an important, user-centric metric for measuring visual stability because it helps quantify how often users experience unexpected layout shifts.</blockquote>
+<p><em>Philip Walton, Cumulative Layout Shift (CLS), resources/web-performance/web-dev/src/site/content/en/metrics/cls/index.md</em></p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Always set explicit width and height attributes on images so browsers calculate aspect-ratio and reserve layout space before downloading.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> explain how modern browsers resolved the historical conflict between HTML dimensions and responsive CSS (<code>max-width: 100%; height: auto;</code>). In the past, responsive CSS overrode HTML attributes, collapsing containers to 0px until download. Modern browser engines now map HTML <code>width</code> and <code>height</code> attributes to the internal user-agent style <code>aspect-ratio: attr(width) / attr(height)</code>, preserving aspect-ratio boxes even under responsive fluid layouts.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Breaking news hero packages: reserving container boxes so article text does not leap when photo assets stream in.</li>
+<li>E-commerce catalog grids: stabilizing product thumbnail grids to prevent accidental taps on neighboring purchase buttons.</li>
+<li>Content syndication feeds: serving AVIF images to modern Chrome and Safari users while maintaining JPEG fallbacks.</li>
+<li>Editorial ad slot containers: enforcing fixed aspect ratios on programmatic ad blocks to eliminate layout shifts when banners load.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Cumulative Layout Shift (CLS)</strong>: The Core Web Vital metric measuring the total score of all unexpected layout movements during a page lifecycle.</li>
+<li><strong>Aspect Ratio</strong>: The proportional relationship between an image's width and height, used to reserve layout space before download.</li>
+<li><strong>AVIF (AV1 Image File Format)</strong>: A modern image compression standard delivering dramatic byte reductions over JPEG and WebP.</li>
+<li><strong>WebP</strong>: An efficient image format developed by Google offering lossy and lossless compression for the web.</li>
+<li><strong>Picture Element</strong>: An HTML wrapper allowing developers to declare multiple image sources tailored to format support and screen widths.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Visual Stability Architecture and Next-Gen Media Delivery</strong></p>
+<p>Unexpected layout shifts frustrate readers, cause accidental taps, and penalize search engine rankings. Always provide the browser with the dimensional information it needs to construct a stable layout box before network assets arrive. Couple explicit aspect ratios with modern, lightweight image formats to deliver rock-solid visual stability. Here is your streetwise review.</p>
+<p>❒ The Visual Stability Checklist</p>
+<ol><li>Dimensional Reservation
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Always declare explicit <code>width</code> and <code>height</code> numeric attributes on <code>&lt;img&gt;</code>.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Pair with responsive CSS: <code>img { max-width: 100%; height: auto; }</code>.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(c) The browser computes <code>aspect-ratio</code> automatically, preventing layout reflow.</li>
+<li>Modern Codec Delivery
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Wrap multiple codecs inside a semantic <code>&lt;picture&gt;</code> container.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Provide high-efficiency AVIF and WebP sources in priority order.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(c) Keep standard JPEG/PNG on the inner <code>&lt;img&gt;</code> for universal fallback.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Omit width and height on images, causing pages to jump when photos load.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;div <span class="kw">class</span>=<span class="str">"hero-container"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;img src=<span class="str">"/photos/breaking-flood.jpg"</span> <span class="kw">class</span>=<span class="str">"responsive-banner"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;/div&gt;</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;">&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Provide explicit dimensions and serve modern compressed formats.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;picture&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;source srcset=<span class="str">"/photos/flood.avif"</span> type=<span class="str">"image/avif"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;img src=<span class="str">"/photos/flood.jpg"</span> width=<span class="str">"1200"</span> height=<span class="str">"675"</span></span></div>
+<div class="row"><span class="num">4</span><span class="src">       <span class="kw">class</span>=<span class="str">"responsive-banner"</span> alt=<span class="str">"Flooded river"</span>&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;/picture&gt;</span></div></div></div></div>
+</div>
+<p>➔ NEVER ship an <code>&lt;img&gt;</code> tag without explicit <code>width</code> and <code>height</code> attributes.</p>
+<p>➔ ALWAYS wrap modern image formats in <code>&lt;picture&gt;</code> with an accessible <code>&lt;img&gt;</code> fallback.</p>
+<p>➔ IF rendering hero images above the fold THEN do not use <code>loading="lazy"</code>.</p>
+<table><thead><tr><th></th><th><strong>UNSIZED LEGACY IMAGE</strong><br>(zero dimension)</th><th><strong>OPTIMIZED PICTURE</strong><br>(reserved aspect-ratio)</th></tr></thead><tbody><tr><td><strong>Initial layout state</strong></td><td>0px height; text collapses<br>to top of viewport</td><td>Exact 16:9 box reserved;<br>zero layout movement</td></tr><tr><td><strong>Cumulative Layout Shift</strong></td><td>Severe failure;<br>CLS score above 0.25</td><td>Flawless pass;<br>CLS score exactly 0.00</td></tr><tr><td><strong>Compression codec</strong></td><td>Heavy legacy PNG/JPEG;<br>megabytes of data</td><td>Next-gen AVIF/WebP;<br>80% byte reduction</td></tr><tr><td><strong>Largest Contentful Paint</strong></td><td>Stalled by network weight<br>and layout recalculation</td><td>Fast delivery;<br>sub-second LCP paint</td></tr><tr><td><strong>User interaction safety</strong></td><td>Dangerous mis-clicks<br>on shifting buttons</td><td>Safe, stable, and<br>predictable tap targets</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

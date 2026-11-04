@@ -1,0 +1,1192 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 13: Keeping Components Pure — Edition v6.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v6.0";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 13: Keeping Components Pure</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">What does it mean for a component to be pure, and what breaks when it is not?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Sophia designs the editorial byline for The National Times investigative desk.</li>
+<li>The byline displays author credentials, reading time estimates, and publication timestamps.</li>
+<li>To track how many times a story is viewed, Sophia increments an external counter directly inside the byline function.</li>
+<li>In development under StrictMode, the counter suddenly jumps by two on every single page load!</li>
+<li>Why did the view counter double, and why does React execute component functions more than once?</li>
+<li>React components must be pure functions: given the same inputs, they must produce the same JSX without side effects.</li>
+<li>Today, you will master the purity contract, eliminate render mutations, and write idempotent React components.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Purity Contract and the StrictMode Double-Render</h3>
+<p>In computer science, a pure function is a mathematical formula: given the same inputs, it always returns the exact same result, and it changes nothing outside of its own function body. React is designed entirely around this concept. Every React component you write must be a pure function. When React calls your component, the component should only calculate and return JSX describing what the screen should look like. It must never reach outside its own boundaries to mutate pre-existing variables, modify incoming props, or trigger side effects during the render pass.</p>
+<p>When developers violate the purity contract by mutating external variables, silent bugs explode across their application.</p>
+<p>Look at the naive attempt below, where an engineer increments a global counter inside the component body:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Naive Impure Component and External Mutation</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">let</span> guestViewCount = <span class="nl">0</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">DANGER:</b> shared external variable outside <b class="tag">COMPONENT</b></span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryByline</span>({ author }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  guestViewCount = guestViewCount + <span class="nl">1</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> mutates external state during <b class="tag">RENDER</b></span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;div className=<span class="str">"byline"</span>&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;span&gt;By {author}&lt;/span&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      &lt;small&gt;Views: {guestViewCount}&lt;/small&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+<p>In development, React wraps your application in <code>&lt;StrictMode&gt;</code>. One of StrictMode's primary duties is to verify component purity by calling every component function twice! For a pure component, running the function twice produces the exact same JSX with zero side effects. But for our impure <code>StoryByline</code>, running the function twice increments <code>guestViewCount</code> from 0 to 1, and then immediately from 1 to 2. The counter doubles on every single page load! In production, concurrent rendering, server component streaming, and background pre-rendering can pause, abort, and restart rendering at any moment. If your component is not pure, these pauses and restarts corrupt application data.</p>
+<figure class="react-figure rce-figure css-figure">
+
+
+
+
+<style>
+  .eval-window-fig {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .ew-stage {
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    box-sizing: border-box;
+  }
+  .ew-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.76rem;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .ew-columns {
+    display: flex;
+    gap: 1rem;
+    position: relative;
+  }
+  .ew-col {
+    flex: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .ew-col-trap {
+    background: #fef2f2;
+    border: 1.5px solid #fca5a5;
+  }
+  .ew-col-declarative {
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    box-shadow: 0 2px 6px rgba(22, 101, 52, 0.08);
+  }
+  .ew-col-title {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ew-col-trap .ew-col-title {
+    background: #fee2e2;
+    color: #991b1b;
+    border-bottom: 1px solid #fca5a5;
+  }
+  .ew-col-declarative .ew-col-title {
+    background: #dcfce7;
+    color: #166534;
+    border-bottom: 1px solid #86efac;
+  }
+  .ew-col-body {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .ew-card {
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid #e2e8f0;
+  }
+  .ew-col-trap .ew-card {
+    border-color: #fecaca;
+  }
+  .ew-col-declarative .ew-card {
+    border-color: #bbf7d0;
+  }
+  .ew-card-label {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+  }
+  .ew-col-trap .ew-card-label {
+    color: #b91c1c;
+  }
+  .ew-col-declarative .ew-card-label {
+    color: #15803d;
+  }
+  .ew-code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: #1e293b;
+    background: #f8fafc;
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+  }
+  .ew-col-trap .ew-code {
+    background: #fff5f5;
+    border-color: #fed7d7;
+  }
+  .ew-col-declarative .ew-code {
+    background: #f0fdf4;
+    border-color: #dcfce7;
+  }
+  .ew-verdict {
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: #475569;
+  }
+  .ew-badge {
+    display: inline-block;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .badge-danger {
+    background: #ef4444;
+    color: #ffffff;
+  }
+  .badge-success {
+    background: #16a34a;
+    color: #ffffff;
+  }
+</style>
+
+
+<div class="eval-window-fig">
+  <div class="ew-stage">
+    <div class="ew-header">
+      <span>COMPONENT PURITY: THE RENDER CONTRACT</span>
+      <span>REACT 19 IDEMPOTENCE GUARANTEE</span>
+    </div>
+    <div class="ew-columns">
+      <div class="ew-col ew-col-trap">
+        <div class="ew-col-title">
+          <span>IMPURE RENDER MUTATIONS</span>
+          <span class="ew-badge badge-danger">DEFECTIVE</span>
+        </div>
+        <div class="ew-col-body">
+          <div class="ew-card">
+            <div class="ew-card-label">1. External Variable Mutation</div>
+            <div class="ew-code">let count = 0; function Card() { count++; }</div>
+            <div class="ew-verdict">Mutates external binding during render; breaks isolation and causes unpredictable state.</div>
+          </div>
+          <div class="ew-card">
+            <div class="ew-card-label">2. StrictMode Double-Render</div>
+            <div class="ew-code">Render 1: count=1 | Render 2: count=2</div>
+            <div class="ew-verdict">React executes render functions twice in dev; external counts jump by +2 per render pass!</div>
+          </div>
+          <div class="ew-card">
+            <div class="ew-card-label">3. Architectural Outcome</div>
+            <div class="ew-verdict"><strong>State Corruption:</strong> Concurrent renders and server streaming produce corrupted counts.</div>
+          </div>
+        </div>
+      </div>
+      <div class="ew-col ew-col-declarative">
+        <div class="ew-col-title">
+          <span>PURE MATHEMATICAL FORMULA</span>
+          <span class="ew-badge badge-success">RECOMMENDED</span>
+        </div>
+        <div class="ew-col-body">
+          <div class="ew-card">
+            <div class="ew-card-label">1. Mathematical Function: y = f(x)</div>
+            <div class="ew-code">function Card({ author }) { return &lt;span&gt;...&lt;/span&gt;; }</div>
+            <div class="ew-verdict">Given identical props, the component always returns identical JSX descriptors.</div>
+          </div>
+          <div class="ew-card">
+            <div class="ew-card-label">2. Safe Idempotence</div>
+            <div class="ew-code">Executed 10 times &rarr; Zero side effects</div>
+            <div class="ew-verdict">React can pause, abort, and restart rendering safely without corrupting application state.</div>
+          </div>
+          <div class="ew-card">
+            <div class="ew-card-label">3. Architectural Outcome</div>
+            <div class="ew-verdict"><strong>100% Predictable:</strong> Zero mutations outside render; bulletproof concurrent performance.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<figcaption>Fig 13.1: The Purity Contract: contrasting impure external mutations against pure mathematical functions.</figcaption>
+</figure>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does StrictMode render your component twice?</strong> When developers first see <code>console.log()</code> or counters firing twice in development, they often assume React has a bug. In reality, React's <code>&lt;StrictMode&gt;</code> intentionally calls your component functions, initializers, and reducers twice in development. Why? Because React is testing your code for purity! If a component is pure, calling it twice produces no observable side effects; the output is identical. But if a component mutates an external variable or modifies a prop array, the second run produces different results, exposing the bug immediately in development before it causes corrupted state in production.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked what component purity means, state that React components must be <strong>idempotent</strong>: given the same inputs (props, state, and context), they must always return the exact same JSX, producing zero mutations outside their render phase. Emphasize that StrictMode double-rendering exists specifically to detect side effects during the render phase, and explain that side effects belong exclusively in event handlers or lifecycle effects.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Side Effects, Idempotence, and Local Mutation</h3>
+<p>To maintain purity, developers must understand what is forbidden and what is permitted. Mutating pre-existing variables, modifying incoming props, or directly changing the DOM during render is strictly forbidden. However, <strong>local mutation</strong> is 100% legal: you can freely create new variables, arrays, and objects inside the component function and mutate them as much as you want before returning JSX.</p>
+<p>When preparing or sorting data for display, developers face an architectural crossroad between in-place array mutation and pure array derivation:</p>
+<ul class="options-list">
+<li class="option-item"><strong>Option 1 (The foundational trap / mutation)</strong>: Mutate the incoming prop array in place using mutating methods like <code>tags.push('Live')</code> or <code>tags.sort()</code>.</li>
+<li class="option-item"><strong>Option 2 (The modern idiomatic way / pure derivation)</strong>: Create a new array or shallow copy using the spread operator <code>[...tags, 'Live']</code> or non-mutating methods before rendering.</li>
+</ul>
+<p>First, examine Option 1 with illegal prop mutation:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Option 1: The Foundational Trap (In-Place Prop Mutation)</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">TagList</span>({ tags }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  tags.<span class="fn">push</span>(<span class="str">'Breaking'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> mutates incoming <b class="tag">PROP ARRAY</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  tags.<span class="fn">sort</span>();           </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> sorts parent array in <b class="tag">PLACE</b></span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> &lt;div className=<span class="str">"tags"</span>&gt;{tags.<span class="fn">join</span>(<span class="str">', '</span>)}&lt;/div&gt;;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<p>In Option 1, <code>tags.push('Breaking')</code> mutates the array owned by the parent component. Every time <code>TagList</code> renders, a new 'Breaking' item is pushed into the parent's array! Furthermore, any sibling component reading <code>tags</code> sees this mutated data, creating bizarre data corruption across the application.</p>
+<p>Next, examine Option 2 with pure array derivation:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Option 2: The Modern Idiomatic Way (Pure Array Derivation)</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">TagList</span>({ tags }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> displayTags = [...tags, <span class="str">'Breaking'</span>]; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Creates local copy via <b class="tag">SPREAD OPERATOR</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  displayTags.<span class="fn">sort</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Safe: mutates only <b class="tag">LOCAL VARIABLE</b></span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> &lt;div className=<span class="str">"tags"</span>&gt;{displayTags.<span class="fn">join</span>(<span class="str">', '</span>)}&lt;/div&gt;;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<p>In Option 2, the component creates a new array <code>displayTags</code> using the spread operator. Mutating <code>displayTags</code> is completely safe because it was created during the current render pass; no other component in the application has a reference to it. The parent's original <code>tags</code> array remains 100% pure and untouched.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">The golden rule of purity: <strong>never mutate objects or variables that existed before the render started</strong>. Render logic must act as a read-only calculation.</div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for story-byline - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">story-byline - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>ArticleView</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-profile"><div class="component-explorer-label"><span>StoryByline</span><span class="component-explorer-props">author=&quot;Elena Rostova&quot; wordCount={1250}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-span" data-elem="[span.byline-author]"><div class="ui-elem-content">By Elena Rostova</div></div><div class="ui-elem ui-tag-span" data-elem="[span.byline-reading]"><div class="ui-elem-content">5 min read</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-badge"><div class="component-explorer-label"><span>TagList</span><span class="component-explorer-props">tags={[&#39;Investigative&#39;, &#39;Energy&#39;]}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-span" data-elem="[span.tag-pill]"><div class="ui-elem-content">Energy</div></div><div class="ui-elem ui-tag-span" data-elem="[span.tag-pill]"><div class="ui-elem-content">Investigative</div></div><div class="ui-elem ui-tag-span" data-elem="[span.tag-pill]"><div class="ui-elem-content">Verified</div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="story-byline: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">story-byline: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Application entry point providing story metadata</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ArticleView.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Newsroom container managing article data and mounting byline</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryByline.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Pure component deriving reading time from props without side effects</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">TagList.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Terminal UI control demonstrating safe local array mutation</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Orange / Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #e09f67; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #eac4a1; }
+
+    /* Step 4 Colors (Green) */
+    .assembly-steps-figure .step-4 .card-edge { background: #74ad68; }
+    .assembly-steps-figure .step-4 .card-main { background: #d2ebc9; }
+    .assembly-steps-figure .step-4 .card-divider { background: #b2d5a5; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the parent container</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;ArticleView.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the pure byline component</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;StoryByline.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Then, we declare the tag list control</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;TagList.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card step-4">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">4</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we mount the article view inside</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 13.2: The progressive assembly pipeline: building pure, idempotent React components.</figcaption>
+</figure>
+<p>To master component purity and understand how to perform safe local derivations, we will construct the editorial byline for The National Times. We will progress across four sequential steps: constructing the article view in <span class="code-line-callout"><code>src/components/ArticleView.jsx</code></span> building the pure byline in <span class="code-line-callout"><code>src/components/StoryByline.jsx</code></span> declaring the tag list in <code>src/components/TagList.jsx</code>, and mounting the application inside <code>src/App.jsx</code>.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the parent container';">First, we construct the parent container</div>
+      <div class="card-components"><span class="component-tag">&lt;ArticleView.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>We begin by constructing <span class="code-line-callout"><code>src/components/ArticleView.jsx</code></span> This component acts as the data provider, defining article metadata and mounting <code>StoryByline</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/ArticleView.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> StoryByline <span class="kw">from</span> <span class="str">'./StoryByline.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleView</span>({ article }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> { author, wordCount, tags } = article;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> &lt;article className=<span class="str">"article-container"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;h1&gt;{article.title}&lt;/h1&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;StoryByline author={author} wordCount={wordCount} tags={tags} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Passes immutable <b class="tag">PROPS</b></span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">  &lt;/article&gt;;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>Notice how <code>ArticleView</code> passes <code>tags</code> downward as a prop. The parent expects that passing this array to child components will not alter the array's contents. Component purity guarantees that this contract is respected.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the pure byline component';">Next, we build the pure byline component</div>
+      <div class="card-components"><span class="component-tag">&lt;StoryByline.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Now we create <span class="code-line-callout"><code>src/components/StoryByline.jsx</code></span> This component calculates estimated reading time and formats the publication date locally without touching external variables:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/StoryByline.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> TagList <span class="kw">from</span> <span class="str">'./TagList.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryByline</span>({ author, wordCount, tags }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> readMinutes = Math.<span class="fn">ceil</span>(wordCount / <span class="nl">250</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Calculates reading time <b class="tag">LOCALLY</b></span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;section className=<span class="str">"byline-section"</span>&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;div className=<span class="str">"byline-meta"</span>&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">        &lt;span className=<span class="str">"byline-author"</span>&gt;By {author}&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">        &lt;span className=<span class="str">"byline-reading"</span>&gt;{readMinutes} min read&lt;/span&gt;</span></div></div></div></div>
+<p>Look at line 4: <code>readMinutes</code> is computed strictly from incoming props. There are zero global counters, zero outside mutations, and zero side effects. If React calls <code>StoryByline</code> ten times, it produces the exact same calculation ten times with zero side effects.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Then, we declare the tag list control';">Then, we declare the tag list control</div>
+      <div class="card-components"><span class="component-tag">&lt;TagList.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Next, we complete <span class="code-line-callout"><code>src/components/StoryByline.jsx</code></span> by mounting <code>TagList</code>:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">src/components/StoryByline.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">9</span><span class="src">      &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      &lt;TagList tags={tags} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Passes tags array to <b class="tag">CHILD CONTROL</b></span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">}</span></div></div></div></div>
+<p>Now we construct <code>src/components/TagList.jsx</code>. This component demonstrates safe local mutation: it creates a shallow copy of the incoming <code>tags</code> array using the spread operator, adds a verified status badge, sorts the tags alphabetically, and renders the result:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/TagList.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">TagList</span>({ tags }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> safeTags = [...tags, <span class="str">'Verified'</span>]; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">(1) Creates local copy via <b class="tag">SPREAD</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  safeTags.<span class="fn">sort</span>();                       </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">(2) Safe: mutates only <b class="tag">LOCAL ARRAY</b></span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> &lt;div className=<span class="str">"tag-container"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    {safeTags.<span class="fn">map</span>((tag) =&gt; (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;span key={tag} className=<span class="str">"tag-pill"</span>&gt;{tag}&lt;/span&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">(3) Renders sorted <b class="tag">TAG PILL</b></span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    ))}</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  &lt;/div&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice lines 2 and 3: <code>safeTags</code> is a brand-new array created inside <code>TagList</code>. Calling <code>safeTags.sort()</code> mutates <code>safeTags</code>, but this mutation is completely local. The parent component's <code>tags</code> array remains pristine and untouched. This is the definition of safe local mutation!</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Finally, we mount the article view inside';">Finally, we mount the article view inside</div>
+      <div class="card-components"><span class="component-tag">&lt;App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Finally, we complete our scenario in <code>src/App.jsx</code>. We define a mock article object and mount <code>ArticleView</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> ArticleView <span class="kw">from</span> <span class="str">'./components/ArticleView.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">const</span> CURRENT_ARTICLE = {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  title: <span class="str">'Power Grid Vulnerabilities'</span>,</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  author: <span class="str">'Elena Rostova'</span>,</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  wordCount: <span class="nl">1450</span>,</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  tags: [<span class="str">'Investigative'</span>, <span class="str">'Energy'</span>],</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">};</span></div>
+<div class="row even"><span class="num">8</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">return</span> &lt;ArticleView article={CURRENT_ARTICLE} /&gt;; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Mounts root <b class="tag">FEATURE CONTAINER</b></span>
+      </div></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Because our entire component tree is pure, running this application in development under StrictMode produces zero bugs, zero duplicated tags, and zero jumping counters. Every component behaves as a predictable mathematical function.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ArticleView</span><span class="component-explorer-props">article={...}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>feature container</strong> provides article data to the tree. It owns the <code>CURRENT_ARTICLE</code> object and passes immutable props downward. Notice it performs zero mutations on incoming objects. Why? To maintain a clean, read-only data contract with the rest of the application.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-profile"><div class="component-explorer-label"><span>StoryByline</span><span class="component-explorer-props">author={...} wordCount={...} tags={...}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>pure coordinator component</strong> derives metadata from props. It calculates estimated reading time locally from <code>wordCount</code>. Notice it touches zero external variables outside its body. This guarantees that rendering twice in StrictMode produces identical output without state drift.</p></div></div></div><div class="component-explorer-node component-kind-badge"><div class="component-explorer-label"><span>TagList</span><span class="component-explorer-props">tags={...}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>terminal tag control</strong> demonstrates safe local mutation. It creates a local copy of <code>tags</code> using the spread operator before sorting. When does React allow mutations? Only on newly created objects within the same render pass, ensuring the parent&#39;s array remains 100% untouched.</p></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      vertical-align: top !important;
+      background: #ffffff;
+      color: #334155 !important;
+    }
+    .architecture-audit-figure .audit-table td:first-child,
+    main .architecture-audit-figure .audit-table td:first-child {
+      width: 22% !important;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table td:nth-child(2) {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table td:nth-child(3),
+    .architecture-audit-figure .reality-cell {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .layer-num {
+      display: block;
+      font-weight: 800;
+      color: #0f172a;
+      font-size: 0.92rem;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-weight: 600;
+      color: #64748b;
+      font-size: 0.80rem;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .item-title {
+      display: block;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 4px;
+      font-size: 0.92rem;
+    }
+    .architecture-audit-figure .text-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .item-desc {
+      display: block;
+      color: #475569;
+      line-height: 1.45;
+      font-size: 0.86rem;
+    }
+    .architecture-audit-figure .reality-cell .item-desc {
+      color: #334155;
+    }
+    .architecture-audit-figure code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.80rem;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .reality-cell code {
+      background: #eef7f9;
+      border-color: rgba(14, 116, 144, 0.25);
+      color: #0e7490;
+    }
+    .architecture-audit-figure .verdict-row td,
+    main .architecture-audit-figure .verdict-row td {
+      border-top: 1.5px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 8px 12px !important;
+    }
+    .architecture-audit-figure .verdict-label {
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .verdict-tag {
+      display: block;
+      font-size: 0.80rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .verdict-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .verdict-teal {
+      color: #0e7490;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Lessons from the Code</div>
+    <div class="audit-title">The Pure Editorial Byline Challenge</div>
+    <p class="audit-subtitle">An architectural comparison evaluating how pure functional components behave under React 19 concurrent and StrictMode rendering.</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Component Layer</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-main">Naive Expectation</span>
+          <span class="th-sub sub-danger">(Impure Render Mutations)</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-main">What Happened</span>
+          <span class="th-sub sub-teal">(Mathematical Purity)</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <span class="layer-num">1. The Container</span>
+          <span class="layer-role">(Article View)</span>
+        </td>
+        <td>
+          <span class="item-title">Mutable Shared Scope</span>
+          <span class="item-desc">Developers pass mutable arrays or rely on module-scoped variables that components mutate during render passes, breaking component isolation.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Immutable Data Provider</span>
+          <span class="item-desc">The container owns data and passes immutable props downward. Render passes remain strictly read-only, ensuring idempotence across all renders.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">2. The Pure Coordinator</span>
+          <span class="layer-role">(Story Byline)</span>
+        </td>
+        <td>
+          <span class="item-title">External Variable Increment</span>
+          <span class="item-desc">Incrementing an external <code>guestCount++</code> variable during render causes counters to jump unpredictably on re-renders and StrictMode development checks.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Local Mathematical Derivation</span>
+          <span class="item-desc">The byline derives reading time and author credentials purely from props without modifying any external variables or bindings.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">3. The Terminal UI Control</span>
+          <span class="layer-role">(Tag List)</span>
+        </td>
+        <td>
+          <span class="item-title">In-Place Prop Mutation</span>
+          <span class="item-desc">Calling <code>props.tags.push('Live')</code> or <code>tags.sort()</code> mutates parent data in place, corrupting data for all other sibling components.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Pure Spread Derivation</span>
+          <span class="item-desc">Creates a local copy using <code>[...tags, 'Live']</code> or non-mutating array methods, keeping parent data completely untouched.</span>
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td>
+          <span class="verdict-label">Final Verdict</span>
+        </td>
+        <td>
+          <span class="verdict-tag verdict-danger">Corrupted Application State</span>
+          <span class="item-desc">Double renders and concurrent aborts leave mutated arrays and bloated counters.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="verdict-tag verdict-teal">Idempotent Render Integrity</span>
+          <span class="item-desc">Components render with 100% predictability across development, production, and server rendering.</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 13.3: Architecture Audit: Contrasting impure render mutations against mathematical purity.</figcaption>
+</figure>
+<p>In our experiment, we replaced external variable mutations and in-place prop modifications with pure mathematical derivations and safe local array copies. By respecting the purity contract, we guaranteed that our components remain completely idempotent, eliminating StrictMode glitches and ensuring flawless concurrent rendering.</p>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Server-Side Rendering &amp; Streaming</strong>: Ensuring that rendering components on a Node.js server produces zero cross-request memory leaks or shared state contamination.</li>
+<li><strong>Concurrent Suspense Boundaries</strong>: Allowing React to pause rendering during slow network requests and restart without leaving half-mutated data behind.</li>
+<li><strong>Data Sorting &amp; Filtering</strong>: Displaying table data in sorted or filtered orders by creating shallow copies (<code>[...items].sort()</code>) instead of mutating raw state arrays.</li>
+<li><strong>Optimistic UI Updates</strong>: Rendering predictive UI changes safely, knowing that if an action fails, rolling back requires no cleanup of corrupted render-time mutations.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Pure Component</strong>: A component that behaves as a mathematical function: given the same inputs, it always returns the same JSX without side effects.</li>
+<li><strong>Idempotence</strong>: The property of an operation where executing it multiple times produces the exact same result as executing it once.</li>
+<li><strong>Side Effect</strong>: Any observable change outside the current function execution, such as mutating global variables, timers, or DOM mutations.</li>
+<li><strong>Render Phase</strong>: The phase where React executes component functions to calculate the new JSX descriptor tree; must be 100% pure.</li>
+<li><strong>Local Mutation</strong>: Mutating objects, arrays, or variables that were freshly created inside the component body during the current render pass.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Keeping components pure</strong>: The official React documentation details the purity contract, why purity matters, and how to avoid bugs (see <a href="https://react.dev/learn/keeping-components-pure">react.dev/learn/keeping-components-pure</a>).</li>
+<li><strong>Detecting impure calculations with StrictMode</strong>: How React uses StrictMode double-rendering in development to find impure side effects (see <a href="https://react.dev/learn/keeping-components-pure#detecting-impure-calculations-with-strictmode">react.dev/learn/keeping-components-pure#detecting-impure-calculations-with-strictmode</a>).</li>
+<li><strong>Local mutation in React</strong>: Why mutating variables created inside the same render pass is completely allowed and safe (see <a href="https://react.dev/learn/keeping-components-pure#local-mutation-your-components-little-secret">react.dev/learn/keeping-components-pure#local-mutation-your-components-little-secret</a>).</li>
+<li><strong>Where you can cause side effects</strong>: Why side effects belong in event handlers and effects rather than the render pass (see <a href="https://react.dev/learn/keeping-components-pure#where-you-_can_-cause-side-effects">react.dev/learn/keeping-components-pure#where-you-_can_-cause-side-effects</a>).</li>
+<li><strong>Why React cares about purity</strong>: How pure components enable concurrent rendering, memoization, and server streaming (see <a href="https://react.dev/learn/keeping-components-pure#why-does-react-care-about-purity">react.dev/learn/keeping-components-pure#why-does-react-care-about-purity</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">The Purity Contract</span></div>
+<p class="summary-principle">➔ ALWAYS write components as pure mathematical functions: identical inputs must return identical JSX.</p>
+<p class="summary-principle">➔ NEVER mutate variables, arrays, or objects that existed before the component render started.</p>
+<p class="summary-principle">➔ NEVER perform side effects (such as network requests, DOM mutations, or timers) inside the component render body.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Safe Local Mutation &amp; Arrays</span></div>
+<p class="summary-principle">➔ ALWAYS create shallow copies of arrays (<code>[...tags]</code>) or objects before sorting, pushing, or mutating them.</p>
+<p class="summary-principle">➔ IF you need to perform side effects THEN quarantine them strictly inside event handlers or lifecycle effects.</p>
+<p class="summary-principle">➔ IF a component behaves unpredictably in StrictMode THEN search immediately for render-phase mutations.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> derive data purely by creating local copies before mutating</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">TagList</span>({ tags }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> sortedTags = [...tags].<span class="fn">sort</span>();</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> &lt;div&gt;{sortedTags.<span class="fn">join</span>(<span class="str">', '</span>)}&lt;/div&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> mutate incoming prop arrays directly in place</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">TagList</span>({ tags }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  tags.<span class="fn">sort</span>();</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> &lt;div&gt;{tags.<span class="fn">join</span>(<span class="str">', '</span>)}&lt;/div&gt;;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>PURE COMPONENT</strong><br>(Mathematical Function)</th><th><strong>IMPURE COMPONENT</strong><br>(Side Effects &amp; Mutation)</th></tr></thead><tbody><tr><td><strong>Formula</strong></td><td><code>y = f(x)</code>: predictable, idempotent</td><td>Unpredictable, dependent on outside time/state</td></tr><tr><td><strong>External Memory</strong></td><td>Zero reads or mutations outside render</td><td>Mutates module variables or global state</td></tr><tr><td><strong>Prop Handling</strong></td><td>Treats props as strictly read-only</td><td>Mutates incoming prop arrays or objects in place</td></tr><tr><td><strong>StrictMode Dev</strong></td><td>Renders twice with zero bugs or drift</td><td>Counter doubles; arrays accumulate duplicate items</td></tr><tr><td><strong>Concurrent Safe</strong></td><td>React can safely pause, abort, and restart</td><td>Paused renders corrupt application state permanently</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

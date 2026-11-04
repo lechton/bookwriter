@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 5: The First Rule of ARIA and When to Use It</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 5: The First Rule of ARIA and When to Use It</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">What does the first rule of ARIA actually say, and when is ARIA the right tool?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Tariq, a web developer, updates the archive search category filters for the National Times.</li>
+<li>Hoping to improve accessibility, he sprinkles tab roles and state labels across the existing buttons.</li>
+<li>A blind reader tests the filter bar and attempts to switch categories using the arrow keys.</li>
+<li>Why does the screen reader announce a tab that completely ignores standard keyboard navigation?</li>
+<li>Sighted readers click normally, but assistive tech users are trapped by promises the code never keeps.</li>
+<li>Adding accessibility labels by hand actually degraded the experience instead of improving it.</li>
+<li>Today you learn the primary rule of ARIA, and when custom attributes are truly required.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Decoration That Broke the Page</h3>
+<p>Tariq set out to improve the National Times search archive page after reviewing an automated audit report. The audit had suggested improving interface structure, so Tariq decided to add Accessible Rich Internet Applications attributes to the category filter bar. He wrapped the category buttons in a container marked with <code>role="tablist"</code>, designated each button with <code>role="tab"</code>, and marked the active category with <code>aria-selected="true"</code>. To a sighted developer inspecting the Document Object Model in the browser elements inspector, the markup looked modern, intentional, and thoroughly accessible. But when a blind subscriber navigated the archive using a screen reader, the interface collapsed into chaos. The screen reader announced the active filter as: Politics, selected, tab, 1 of 4. Following standard screen reader navigation conventions for tabs, the reader pressed the Right Arrow key to move to the next category. Nothing happened. Tariq had added the ARIA role, but he had not implemented the complex JavaScript keyboard management required to make a tablist function. The subscriber was stranded, unable to discover or access the remaining news categories.</p>
+<p>Tariq made the single most common mistake in digital accessibility: treating ARIA attributes like visual CSS classes that magically grant accessibility to an element. ARIA does not grant behavior. It does not create keyboard event listeners, it does not manage focus, and it does not make an element interactive. ARIA merely changes what assistive technologies announce to the user. When you assign an ARIA role without providing the corresponding keyboard and behavioral mechanics, you misrepresent the interface, creating severe confusion for users who depend on assistive tools.</p>
+<p>The official MDN documentation summarizes the governing principle of all ARIA implementation in one clear directive.</p>
+<blockquote>If you can use a native HTML element or attribute with the semantics and behavior you require already built in, instead of re-purposing an element and adding an ARIA role, state or property to make it accessible, then do so.</blockquote>
+<p><em>MDN Web Docs, ARIA: Accessible Rich Internet Applications, <code>resources/web-performance/mdn/files/en-us/web/accessibility/aria/index.md</code></em></p>
+<p>Before analyzing the code, inspect the archive category filter bar through the dual perspective of visual design and assistive technology readout.</p>
+<style>:root {
+    --meta-landmark: #ea580c;
+    --meta-landmark-bg: #fff7ed;
+    --meta-focus: #0284c7;
+    --meta-sr: #7c3aed;
+    --meta-sr-bg: #f5f3ff;
+    --meta-wrong: #e11d48;
+    --meta-right: #059669;
+    
+    --font-ui: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-serif: 'Lora', Georgia, serif;
+    --font-meta: 'JetBrains Mono', Menlo, monospace;
+}
+
+/* Base Canvas Container */
+.a11y-canvas {
+    font-family: var(--font-ui);
+    color: #0f172a;
+    margin: 2rem 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+/* Width Modifiers */
+.a11y-canvas.w-half .browser-window {
+    max-width: 480px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-2-3 .browser-window {
+    max-width: 660px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-full .browser-window {
+    max-width: 100%;
+}
+
+/* The Browser Chrome */
+.browser-window {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+.browser-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #cbd5e1;
+}
+.browser-dots { display: flex; gap: 5px; }
+.browser-dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; }
+.browser-dot.red { background: #fca5a5; }
+.browser-dot.yellow { background: #fde047; }
+.browser-dot.green { background: #86efac; }
+.browser-title {
+    flex: 1;
+    font-family: var(--font-meta);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.browser-url { flex: 1; max-width: 400px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; color: #64748b; }
+
+/* The UI Layer (The actual mocked page) */
+.mock-page {
+    position: relative;
+    padding: 24px 28px;
+    background: #f8fafc;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* Minimal 2-Element Comparison Layout */
+.mock-page.layout-compare {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    padding: 24px 20px;
+    flex-wrap: wrap;
+}
+.mock-page.layout-compare .meta-validity-outline {
+    display: none;
+}
+.mock-page.layout-compare .ui-element {
+    margin-bottom: 0;
+    flex: 1 1 200px;
+    max-width: 270px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 16px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    position: relative;
+}
+.mock-page.layout-compare .meta-validity-tag {
+    top: -11px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 3px 12px;
+    border-radius: 99px;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+.mock-page.layout-compare .ui-element.has-sr {
+    margin-bottom: 0;
+    padding-bottom: 44px;
+}
+
+/* UI Control Wrapper */
+.ui-control-wrapper {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+.ui-control-wrapper.is-input {
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Ghost Outline for Invisible Focus */
+.meta-ghost-outline {
+    position: absolute;
+    inset: -5px;
+    border: 2px dashed #f43f5e;
+    border-radius: 8px;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.15);
+}
+.meta-ghost-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    background: #f43f5e;
+    color: white;
+    font-family: var(--font-meta);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 99px;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    white-space: nowrap;
+    z-index: 60;
+}
+
+/* Status Note Chips */
+.meta-note-chip {
+    margin-top: 14px;
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.02em;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.meta-note-chip.note-wrong {
+    background: #ffe4e6;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+}
+.meta-note-chip.note-right {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+.meta-note-chip.note-info {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
+.ui-element {
+    position: relative;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+}
+
+/* Selectively add space ONLY for elements that have a Screen Reader tooltip */
+.ui-element.has-sr { margin-bottom: 72px; }
+.ui-form-group.has-sr { margin-bottom: 72px; }
+
+/* Dynamically tint the SR tooltip based on validity */
+.is-right .meta-sr-tooltip, .is-right .meta-sr-tooltip::before {
+    background: var(--meta-right);
+    box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.3);
+}
+.is-wrong .meta-sr-tooltip, .is-wrong .meta-sr-tooltip::before {
+    background: var(--meta-wrong);
+    box-shadow: 0 10px 15px -3px rgba(225, 29, 72, 0.3);
+}
+
+.ui-masthead { font-family: var(--font-serif); font-size: 2rem; font-weight: 700; text-align: center; border-bottom: 4px double #0f172a; padding-bottom: 8px; color: #0f172a; }
+.ui-nav { font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; font-weight: 600; color: #334155; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: center; gap: 24px; }
+.ui-h1 { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 700; color: #0f172a; margin-top: 16px; margin-bottom: 4px;}
+.ui-text { font-size: 0.95rem; color: #475569; margin-bottom: 16px; }
+
+.ui-form-group { margin-bottom: 24px; }
+.ui-label { font-size: 0.85rem; font-weight: 600; color: #334155; display: block; margin-bottom: 6px; }
+.ui-input { width: 100%; max-width: 300px; border: 1px solid #94a3b8; border-radius: 6px; padding: 10px 14px; font-size: 0.95rem; color: #64748b; background: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); outline: none; min-height: 20px; box-sizing: content-box; }
+.ui-input.is-broken { border-color: #cbd5e1; color: #94a3b8; }
+
+.ui-button { display: inline-block; background: #2563eb; color: #fff; font-size: 0.95rem; font-weight: 600; padding: 10px 28px; border-radius: 6px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2); cursor: pointer; border: none; }
+.ac-card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 18px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.ac-card-headline { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+.ac-card i { display: block; height: 8px; background: #f1f5f9; border-radius: 4px; margin-bottom: 6px; width: 90%; }
+.ac-card i:last-child { width: 65%; margin-bottom: 0; }
+.ui-footer { margin-top: 48px; padding: 24px; background: #1e293b; color: #f8fafc; font-size: 0.85rem; border-radius: 8px; text-align: center; }
+
+/* Meta-Layer Annotations */
+.meta-layer {
+    position: absolute;
+    font-family: var(--font-meta);
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* Landmarks */
+.meta-landmark-box {
+    inset: -8px;
+    border: 2px dashed var(--meta-landmark);
+    border-radius: 8px;
+    background: rgba(255, 247, 237, 0.3);
+}
+.meta-landmark-tag {
+    top: -12px;
+    left: 12px;
+    color: var(--meta-landmark);
+    background: var(--meta-landmark-bg);
+    border: 1px solid var(--meta-landmark);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.1);
+}
+
+/* Screen Reader Tooltips */
+.meta-sr-tooltip {
+    top: 100%;
+    left: 0;
+    margin-top: 12px;
+    background: var(--meta-sr);
+    color: white;
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.meta-sr-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 16px;
+    width: 8px; height: 8px;
+    background: var(--meta-sr);
+    transform: rotate(45deg);
+}
+.meta-sr-badge {
+    background: rgba(255,255,255,0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+/* Focus Order */
+.meta-focus-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--meta-focus);
+    color: white;
+    border: 2px solid white;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    box-shadow: 0 0 0 2px var(--meta-focus), 0 3px 5px rgba(0,0,0,0.2);
+    z-index: 60;
+}
+.meta-focus-outline {
+    position: absolute;
+    inset: -5px;
+    border: 3px solid var(--meta-focus);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+/* Surface Dark mode for dark containers/footers */
+.mock-page.surface-dark {
+    background: #090d16;
+    background-image: radial-gradient(#1e293b 1px, transparent 1px);
+}
+.mock-page.surface-dark.layout-compare .ui-element {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.mock-page.surface-dark .meta-note-chip.note-wrong {
+    background: #450a0a;
+    color: #fca5a5;
+    border-color: #7f1d1d;
+}
+.mock-page.surface-dark .meta-note-chip.note-right {
+    background: #082f49;
+    color: #7dd3fc;
+    border-color: #0369a1;
+}
+
+/* Validity */
+.meta-validity-outline {
+    inset: -6px;
+    border: 2px solid transparent;
+    border-left-width: 6px;
+    border-radius: 8px;
+}
+.meta-validity-tag {
+    top: -12px;
+    left: 10px;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+}
+
+.is-wrong .meta-validity-outline { border-color: var(--meta-wrong); background: linear-gradient(90deg, rgba(225, 29, 72, 0.05) 0%, transparent 100%); }
+.is-right .meta-validity-outline { border-color: var(--meta-right); background: linear-gradient(90deg, rgba(5, 150, 105, 0.05) 0%, transparent 100%); }
+.is-wrong .meta-validity-tag { background: var(--meta-wrong); }
+.is-right .meta-validity-tag { background: var(--meta-right); }
+
+.relative-wrapper { position: relative; display: inline-block; width: 100%; max-width: 300px; }
+.relative-wrapper .ui-button { max-width: none; width: auto; }
+
+/* Image element */
+.ac-image {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 14px 18px;
+    color: #475569;
+    font-size: 0.85rem;
+    font-family: var(--font-meta);
+}
+.ac-picture {
+    width: 24px;
+    height: 24px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+.ac-image-file {
+    font-weight: 600;
+}
+.ac-chip-row {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+.ac-chip {
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.ac-chip.pass { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.ac-chip.fail { background: #ffe4e6; color: #be123c; border: 1px solid #fca5a5; }</style>
+<div class="a11y-canvas w-2-3">
+
+<div class="browser-window">
+	<div class="browser-chrome">
+		<div class="browser-dots">
+			<div class="browser-dot red"></div>
+			<div class="browser-dot yellow"></div>
+			<div class="browser-dot green"></div>
+		</div>
+		<div class="browser-title">
+			<svg class="w-3 h-3" style="width:11px;height:11px;margin-right:6px;color:#059669;display:inline-block;vertical-align:-1px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+			national-times category filter, the aria audit
+		</div>
+		<div style="width:40px;"></div>
+	</div>
+	<div class="mock-page show-landmarks show-sr show-focus show-validity  ">
+		<div class="ui-element ac-masthead has-landmark" style="z-index: 100;"><div class="meta-layer meta-landmark-box"></div><div class="meta-layer meta-landmark-tag">&lt;banner&gt;</div><div class="ui-masthead">The National Times</div></div>
+<div class="ui-element ac-nav has-landmark" style="z-index: 99;"><div class="meta-layer meta-landmark-box"></div><div class="meta-layer meta-landmark-tag">&lt;navigation&gt;</div><nav class="ui-nav"><span>Investigations</span><span>Politics</span><span>Culture</span></nav></div>
+<div class="ui-element ac-h1" style="z-index: 98;"><div class="ui-h1">Search Archive: National News Desk</div></div>
+<div class="ui-element ac-text" style="z-index: 97;"><p class="ui-text">Filter published reports by editorial category and investigative beat.</p></div>
+<div class="ui-element ac-button is-right has-validity has-focus has-sr" style="z-index: 96;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">RIGHT: NATIVE BUTTON</div><div class="ui-control-wrapper"><div class="meta-layer meta-focus-outline"></div><div class="meta-layer meta-focus-badge">1</div><div class="meta-layer meta-sr-tooltip"><span class="meta-sr-badge">Screen Reader</span><span>All Stories, button</span></div><div class="ui-button">All Stories</div></div></div>
+<div class="ui-element ac-button is-wrong has-validity has-sr" style="z-index: 95;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">WRONG: SPAMMED ROLE=TAB WITHOUT ARROW KEYS</div><div class="ui-control-wrapper"><div class="meta-layer meta-sr-tooltip"><span class="meta-sr-badge">Screen Reader</span><span>Politics, tab, 2 of 4</span></div><div class="ui-button">Politics</div></div></div>
+<div class="ui-element ac-button has-sr" style="z-index: 94;"><div class="ui-control-wrapper"><div class="meta-layer meta-sr-tooltip"><span class="meta-sr-badge">Screen Reader</span><span>Metro Transit, button</span></div><div class="ui-button">Metro Transit</div></div></div>
+<div class="ui-element ac-button has-sr" style="z-index: 93;"><div class="ui-control-wrapper"><div class="meta-layer meta-sr-tooltip"><span class="meta-sr-badge">Screen Reader</span><span>Investigations, button</span></div><div class="ui-button">Investigations</div></div></div>
+<div class="ui-element ac-footer has-landmark" style="z-index: 92;"><div class="meta-layer meta-landmark-box"></div><div class="meta-layer meta-landmark-tag">&lt;contentinfo&gt;</div><div class="ui-footer">The National Times, 2026</div></div>
+	</div>
+</div>
+</div>
+<p>The canvas demonstrates the friction caused by inappropriate ARIA usage. The buttons across the filter bar are already native HTML buttons. By forcing <code>role="tab"</code> onto the Politics button, the developer overrode the native button semantics in the accessibility tree. Screen reader users expect a tab control to support arrow key navigation within a single tab stop, but because this behavior was never scripted, the control breaks standard expectations. Clean, native buttons without decorative ARIA would have performed flawlessly.</p>
+</div>
+<div class="keep-together">
+<h3>The Broken Markup and the Disciplined Correction</h3>
+<p>Here is the fragile markup that broke the filter bar:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">filter-tabs-broken.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;div role=<span class="str">"tablist"</span> <span class="kw">class</span>=<span class="str">"filter-bar"</span>&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag">WRONG:</b> declaring tablist without arrow key <b class="tag">NAVIGATION</b></span>
+      </div></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;button role=<span class="str">"tab"</span> aria-selected=<span class="str">"true"</span> <span class="kw">class</span>=<span class="str">"tab-btn"</span>&gt;Politics&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 27px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag">WRONG:</b> overrides native button role without tab <b class="tag">BEHAVIOR</b></span>
+      </div></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;button role=<span class="str">"tab"</span> aria-selected=<span class="str">"false"</span> <span class="kw">class</span>=<span class="str">"tab-btn"</span>&gt;Transit&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 27px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag">WRONG:</b> promises composite widget without managing <b class="tag">TABINDEX</b></span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">&lt;/div&gt;</span></div></div></div></div>
+<p>By slapping tab roles onto native buttons, Tariq took an interface pattern that was already operable and corrupted its semantics. The fix removes the redundant and broken ARIA entirely, returning to clean semantic HTML:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">filter-buttons.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;nav <span class="kw">class</span>=<span class="str">"filter-bar"</span> aria-label=<span class="str">"Archive categories"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;button type=<span class="str">"button"</span> <span class="kw">class</span>=<span class="str">"filter-btn active"</span> aria-current=<span class="str">"page"</span>&gt;Politics&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 27px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag">RIGHT:</b> communicates active category with <b class="tag">ARIA-CURRENT</b></span>
+      </div></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;button type=<span class="str">"button"</span> <span class="kw">class</span>=<span class="str">"filter-btn"</span>&gt;Transit&lt;/button&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 27px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag">RIGHT:</b> clean native button needs no redundant <b class="tag">ROLE</b></span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">&lt;/nav&gt;</span></div></div></div></div>
+<p>Notice the elegance of the correction. Wrapping the buttons in a semantic <code>&lt;nav&gt;</code> landmark gives screen reader users a designated category region. The native buttons maintain standard Tab key navigation. To communicate which category is currently displayed, we use the single targeted attribute <code>aria-current="page"</code>. The interface is now completely accessible, predictable, and robust.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">ARIA adjusts the accessibility tree for assistive software, but it never modifies DOM behavior, styling, or keyboard operation; a role is a promise that your JavaScript must manually fulfill.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Strongest Naive Alternative: Why Not Sprinkle ARIA Everywhere?</h3>
+<p>A pervasive misconception among developers is that adding explicit ARIA roles to every HTML tag makes a website "more accessible." Authors often add <code>role="button"</code> to native <code>&lt;button&gt;</code> elements, <code>role="navigation"</code> to <code>&lt;nav&gt;</code> elements, and custom landmark roles to every section. They assume that more ARIA equates to better compliance scores.</p>
+<p>The empirical data reveals the opposite reality. In WebAIM\'s annual analysis of the top one million website homepages, pages containing ARIA attributes consistently averaged 41% more detected accessibility errors than pages without any ARIA. Why? Because developers routinely introduce conflicting semantics, create broken keyboard promises, or accidentally hide content from assistive software.</p>
+<p>The W3C Authoring Practices Guide explains the hazard directly:</p>
+<blockquote>Functionally, ARIA roles, states, and properties are analogous to a CSS for assistive technologies. For screen reader users, ARIA controls the rendering of their non-visual experience. Incorrect ARIA misrepresents visual experiences, with potentially devastating effects on their corresponding non-visual experiences.</blockquote>
+<p><em>W3C, ARIA Authoring Practices Guide (APG), <code>resources/accessibility/aria-practices/content/practices/read-me-first/read-me-first-practice.html</code></em></p>
+<p>The APG codifies this with a fundamental law: <strong>A role is a promise.</strong> When you write <code>role="tab"</code>, you promise the user that your component implements the full ARIA Tab Pattern: arrow keys move focus between tabs, Home and End jump to the first and last tabs, and unselected tabs have <code>tabindex="-1"</code>. When you write <code>role="button"</code> on a division, you promise that you have implemented Space and Enter activation and focus management <code>(see Lecture 4)</code>. If you fail to fulfill that promise with code, your ARIA is an active barrier rather than a benefit.</p>
+</div>
+<div class="keep-together">
+<h3>The Five Rules of ARIA</h3>
+<p>The W3C outlines five essential rules that govern all ARIA authoring:</p>
+<ol><li><strong>Rule 1: Use native HTML elements first.</strong> If a native HTML element or attribute already possesses the semantics and behavior you require, use it instead of repurposing an element and patching it with ARIA. In Lecture 1, Alma needed a real <code>&lt;label&gt;</code> element tied to the payment field <code>(see Lecture 1)</code>. Reaching for native elements first prevents synthetic failures.</li>
+<li><strong>Rule 2: Do not change native semantics unless you really have to.</strong> Never override the innate meaning of an element by assigning a conflicting role. Do not place <code>role="button"</code> on a heading or <code>role="navigation"</code> on a table cell. If you must change semantics, restructure the container or wrap the element properly.</li>
+<li><strong>Rule 3: All interactive ARIA controls must be usable with a keyboard.</strong> ARIA provides zero keyboard functionality. If you build a custom widget with ARIA roles, you must manually script keyboard navigation, focus movement, and keypress activation. Under the POUR taxonomy, a role without keyboard support violates the Operable pillar <code>(see Lecture 2)</code>.</li>
+<li><strong>Rule 4: Do not use <code>role="presentation"</code> or <code>aria-hidden="true"</code> on focusable elements.</strong> These attributes instruct assistive technologies to ignore the element. If the element remains in the keyboard tab sequence, keyboard users will land on an interactive control that is completely silent to their screen reader, creating an invisible ghost focus stop.</li>
+<li><strong>Rule 5: All interactive elements must have an accessible name.</strong> Every control, whether native or custom, must expose an accessible name calculated from its text content, an associated <code>&lt;label&gt;</code>, or an explicit <code>aria-label</code> or <code>aria-labelledby</code> attribute.</li></ol>
+</div>
+<div class="keep-together">
+<h3>When ARIA Is the Right Tool</h3>
+<p>If the first rule of ARIA says to avoid ARIA whenever native HTML suffices, when is ARIA actually appropriate? ARIA is the right tool when native HTML lacks the semantic vocabulary to describe complex, dynamic user interface patterns.</p>
+<p>Here are the primary scenarios where ARIA is indispensable:</p>
+<ol><li><strong>Dynamic State Management.</strong> Native HTML has no built-in way to indicate whether a custom panel is expanded or collapsed. Use <code>aria-expanded="true|false"</code> on disclosure buttons:
+<div class="mini-code">
+  <div class="mini-code-content"><code><div>&lt;button type=<span class="str">"button"</span> aria-expanded=<span class="str">"false"</span> aria-controls=<span class="str">"filter-panel"</span> onclick=<span class="str">"toggleFilterPanel()"</span>&gt;</div><div>  Filter Settings &lt;!-- **RIGHT:** communicates expansion state dynamically to assistive **TECH** --&gt;</div><div>&lt;/button&gt;</div><div>&lt;div id=<span class="str">"filter-panel"</span> hidden&gt;</div><div>  &lt;p&gt;Select date ranges and reporting bureaus.&lt;/p&gt;</div><div>&lt;/div&gt;</div></code></div>
+</div></li>
+<li><strong>Toggle Button States.</strong> When a button acts as an on/off toggle (such as a Mute Audio button or Dark Mode switch), standard HTML has no toggle state. Use <code>aria-pressed="true|false"</code> to expose this binary state to screen readers.</li>
+<li><strong>Live Asynchronous Updates.</strong> When news dispatches update in real time or search result counts change without a full page refresh, sighted users see the text change on screen. Blind users have no way of knowing new content arrived unless you designate the container with <code>aria-live="polite"</code>, which prompts screen readers to speak the update during the next pause.</li>
+<li><strong>Contextual Descriptions and Labels.</strong> When an icon button has no visible text (such as a search magnifying glass), use <code>aria-label="Search articles"</code>. When an input requires formatting instructions or error notifications, link the message using <code>aria-describedby</code>.</li></ol>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> recite the First Rule of ARIA verbatim, then cite the WebAIM Million empirical finding: home pages with ARIA contain 41% more detected accessibility errors than those without it. Explain that ARIA is analogous to CSS for the accessibility tree: it changes how assistive technology perceives an element, but it does not change how the element behaves. Finally, provide the exact checklist for when ARIA is genuinely needed: dynamic states like aria-expanded or aria-pressed, asynchronous announcements via aria-live, descriptions using aria-describedby, and custom widgets with no native HTML equivalent.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Accordion sections and mobile drawers: adding <code>aria-expanded</code> and <code>aria-controls</code> to native buttons so screen readers announce whether content is open or closed.</li>
+<li>Real-time sports tickers and breaking news alerts: using <code>aria-live="polite"</code> to announce live score updates without forcing a full page reload.</li>
+<li>Audio and video player mute toggles: binding <code>aria-pressed="true"</code> to toggle buttons so assistive software reports whether sound is active.</li>
+<li>Password input fields: linking hint text and password complexity rules to the input using <code>aria-describedby</code> so the screen reader speaks requirements upon focus.</li>
+<li>Icon-only navigation actions: supplying an <code>aria-label="Close dialog"</code> on an SVG button that lacks visible text.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>ARIA (Accessible Rich Internet Applications)</strong>: A W3C specification providing attributes that define ways to make web content and applications more accessible to people with disabilities.</li>
+<li><strong>First Rule of ARIA</strong>: The foundational guideline stating that if an existing native HTML element or attribute can fulfill the semantic and behavioral need, you should use it instead of ARIA.</li>
+<li><strong>Ghost Focus Stop</strong>: An accessibility defect where an interactive element remains in the keyboard tab sequence but is silenced from assistive technologies using aria-hidden or role="presentation".</li>
+<li><strong>Live Region</strong>: A DOM element designated with aria-live that notifies screen readers to announce dynamic asynchronous content changes without shifting page focus.</li>
+<li><strong>aria-expanded</strong>: A state attribute applied to disclosure triggers indicating whether the associated controlled widget or panel is currently open or collapsed.</li>
+<li><strong>aria-describedby</strong>: An attribute that references one or more element IDs to associate supplementary descriptive text or error instructions with a form control.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>The First Rule of ARIA and Strategic Accessibility Layering</strong></p>
+<p>In production engineering, ARIA is not a substitute for semantic HTML; it is a specialized bridge designed to describe dynamic state changes and complex custom components that the native web platform cannot express. Misapplying ARIA creates deceptive interfaces that misinform assistive technologies while failing to deliver necessary keyboard behaviors. Follow the principle that no ARIA is far better than bad ARIA. Here is your streetwise review.</p>
+<p>❒ The Five Rules of ARIA</p>
+<ol><li>Use native HTML elements first.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Always verify whether a standard element like a button, link, or input can achieve your goal.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Native elements arrive with built-in accessibility roles, states, and keyboard event pipelines.</li>
+<li>Never override native semantics without cause.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Do not assign conflicting roles to elements that already have defined structural meanings.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Keep landmark and interactive roles pure to preserve document hierarchy.</li>
+<li>Fulfill the behavioral promise of every role.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) A role is a promise that you have implemented all expected keyboard shortcuts and focus rules.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) ARIA does not supply keyboard listeners; you must write the JavaScript handlers manually.</li></ol>
+<p>❒ The Developer\'s Levers</p>
+<ol><li>Never apply custom widget roles to native elements without implementing their keyboard contract.</li></ol>
+<p><strong>DO NOT DO THIS:</strong> Add tab roles to buttons without scripting arrow key navigation.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;button role=<span class="str">"tab"</span> aria-selected=<span class="str">"true"</span>&gt;Politics&lt;/button&gt;</span></div></div></div></div>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Use semantic buttons with current state attributes.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;button type=<span class="str">"button"</span> aria-current=<span class="str">"page"</span>&gt;Politics&lt;/button&gt;</span></div></div></div></div>
+<ol><li>Never use ARIA to hide elements that receive keyboard focus.</li></ol>
+<p><strong>DO NOT DO THIS:</strong> Hide interactive controls from assistive tools using aria-hidden.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;button aria-hidden=<span class="str">"true"</span>&gt;Close Modal&lt;/button&gt;</span></div></div></div></div>
+<p>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Use the native hidden attribute or CSS display none to remove elements from both trees.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;button hidden&gt;Close Modal&lt;/button&gt;</span></div></div></div></div>
+<p>➔ NEVER use ARIA as a cosmetic badge or visual styling shortcut.</p>
+<p>➔ ALWAYS ensure every interactive control fulfills the keyboard navigation contract expected for its role.</p>
+<p>➔ IF a native HTML element can represent the interaction THEN ARIA is the wrong architectural choice.</p>
+<table><thead><tr><th></th><th><strong>MISAPPLIED ARIA</strong><br>(anti-pattern)</th><th><strong>SEMANTIC / DISCIPLINED ARIA</strong><br>(correct practice)</th></tr></thead><tbody><tr><td><strong>Category filter</strong></td><td>Redundant <code>role="tab"</code><br>without arrow key script</td><td>Clean <code>&lt;button&gt;</code> tags<br>or <code>aria-current</code> link</td></tr><tr><td><strong>Keyboard contract</strong></td><td>Role declared but keys unhandled; broken promise</td><td>Full APG keyboard model<br>or native HTML</td></tr><tr><td><strong>Dynamic state</strong></td><td>Class names like <code>.open</code><br>invisible to screen readers</td><td><code>aria-expanded=</code><br><code>"false"</code> on button</td></tr><tr><td><strong>Live news dispatch</strong></td><td>Polling DOM silently without notifying user</td><td><code>aria-live=</code><br><code>"polite"</code> for alerts</td></tr><tr><td><strong>Auditing reality</strong></td><td>Pages with ARIA have 41% more detected errors</td><td>Semantic HTML first;<br>ARIA only as a bridge</td></tr><tr><td><strong>National Times case</strong></td><td>Broken filter tabs that stranded keyboard readers</td><td>Accessible button row<br>with zero excess markup</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

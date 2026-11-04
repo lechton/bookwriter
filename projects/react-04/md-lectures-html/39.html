@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 39: Extracting and Reusing Stateful Logic with Custom Hooks</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 39: Extracting and Reusing Stateful Logic with Custom Hooks</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you extract and reuse stateful logic between components?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Marcus builds an editorial newsroom workspace for The National Times website.</li>
+<li>Two separate components need network status: a status bar displaying connection health, and a draft button that disables saving when offline.</li>
+<li>Marcus copy-pastes identical useState and useEffect blocks into both components, but updating event cleanup in one file leaves the other out of sync.</li>
+<li>How do you extract and reuse stateful logic between components?</li>
+<li>If you duplicate logic across components, bug fixes drift apart and maintenance costs multiply. If you assume custom hooks share state, you introduce severe data bugs.</li>
+<li>Both components call the exact same hook function, yet updating the state in one component never modifies the state of the other.</li>
+<li>Today you learn how to extract custom hooks, how React allocates hook memory to individual fiber nodes, and how to share logic cleanly without sharing state.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Component Architecture and the Logic Extraction Divide</h3>
+<p>In earlier lessons, we learned that React components maintain local state using <code>useState</code> and synchronize with external browser APIs using <code>useEffect</code> (see Lecture 1 and Lecture 28). In an editorial desk, components often need to observe the same external browser condition, such as whether the device is currently online or offline. Developers often assume that because two components need the exact same reactive behavior, they must either copy-paste the code or lift state to a distant parent container.</p>
+<p>In plain JavaScript, when two functions need the same calculation, you extract a shared helper function. In React, however, a standard helper function cannot call <code>useState</code> or <code>useEffect</code>. If you copy-paste the hook calls directly into both <code>NetworkStatusBar</code> and <code>SaveDraftButton</code>, both files maintain identical lines of setup, subscription, and cleanup code. Duplicating stateful logic creates state drift: fixing a missing event listener or correcting an event type in one file leaves the second file broken.</p>
+<p>Here is the legacy copy-paste duplication pattern showing identical hook boilerplate repeated across components:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Copy-Paste Duplication Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> [isOnline, setIsOnline] = <span class="hook">useState</span>(<span class="kw">true</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">STATE:</b><br>Tracks connectivity locally in component 1</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> handle = () =&gt; <span class="fn">setIsOnline</span>(navigator.onLine); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">EFFECT:</b><br>Registers online/offline browser listeners</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  window.<span class="fn">addEventListener</span>(<span class="str">'online'</span>, handle);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  window.<span class="fn">addEventListener</span>(<span class="str">'offline'</span>, handle);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    window.<span class="fn">removeEventListener</span>(<span class="str">'online'</span>, handle);</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    window.<span class="fn">removeEventListener</span>(<span class="str">'offline'</span>, handle);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  };</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}, []);</span></div></div></div></div>
+<p>Look at the code above: to give <code>NetworkStatusBar</code> access to the browser's online status, we had to declare a local state variable and write an effect with two event listeners and two cleanup calls. If another component, such as <code>SaveDraftButton</code>, needs that exact same network status, a developer following this pattern copy-pastes those exact nine lines into the second file. Now your project has eighteen lines of low-level subscription boilerplate across two files. If you ever update the event handler or add a reconnection ping, you must remember to edit both files by hand.</p>
+<p>What is a <strong>custom hook</strong>? In standard JavaScript, an ordinary utility function can compute values, format dates, or transform arrays, but it has no memory and cannot participate in React's component lifecycle. When you write an ordinary function, it executes once and discards all local variables when it returns. A <strong>custom hook</strong> takes that standard JavaScript function and authorizes it to call other React hooks inside its body. You write a function whose name starts with <code>use</code>, such as <span class="code-line-callout"><code><span class="kw">function</span> <span class="hook">useOnlineStatus</span>()</code></span> and place <code>useState</code> and <code>useEffect</code> inside it. The custom hook encapsulates the stateful recipe: it tells React how to declare state, how to subscribe to external browser events, and what value to return to the caller. The law of custom hooks is absolute: a custom hook shares the stateful logic and lifecycle recipe, but it never shares state itself; each component calling the hook receives its own completely isolated state cell in memory.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Does a custom hook share state between components?</strong> Imagine two pastry chefs in two separate kitchens baking sourdough bread. They both open the exact same cookbook to page forty and follow the exact same recipe. Does that mean they share the same loaf of bread? Of course not. Chef Elena mixes her own flour, water, and yeast in her kitchen bowl. Chef Marcus mixes his own flour, water, and yeast in his kitchen bowl. If Marcus burns his loaf in the oven, Elena's loaf is completely unharmed. This is the difference between sharing a recipe and sharing the food. A <strong>custom hook</strong> is a recipe for <strong>stateful logic</strong>. When <code>NetworkStatusBar</code> calls <code>useOnlineStatus()</code>, it bakes its own private <strong>component state</strong>. When <code>SaveDraftButton</code> calls <code>useOnlineStatus()</code>, it bakes its own private <strong>component state</strong>. They share the recipe for subscribing to the browser, but their state remains completely independent.</div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example NetworkStatusBar SaveDraftButton';">Let's Design a Practical Example NetworkStatusBar SaveDraftButton</div>
+      
+    </div>
+  </div>
+</div>
+<p>To experience how custom hooks extract stateful logic cleanly while maintaining complete state isolation between components, consider the editorial newsroom workspace on The National Times. The layout <code>EditorialDesk.jsx</code> hosts two distinct user interface widgets:</p>
+<ol><li>A live status bar (<code>NetworkStatusBar.jsx</code>) that displays current network connectivity with a colored badge.</li>
+<li>A draft saving button (<code>SaveDraftButton.jsx</code>) that disables itself to prevent data loss whenever the internet connection drops.</li></ol>
+<p>Before writing any code, examine the final rendered interface we are building. Notice that this visual panel represents the authentic rendered user interface on screen, without code distractions:</p>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for national-times - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>EditorialDesk</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-badge"><div class="component-explorer-label"><span>NetworkStatusBar</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-badge">Online</span><span class="surface-ui-badge">Network Active</span></div></div><div class="component-explorer-node component-kind-button"><div class="component-explorer-label"><span>SaveDraftButton</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn">Save Draft</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The rendered canvas displays the visual destination of our application. The parent container <code>EditorialDesk.jsx</code> hosts both widgets. In the top corner sits the network status bar showing active connectivity. Below it sits the editorial draft button, ready to save the reporter's work when online and disable itself when disconnected.</p>
+<p>Here is the file layout on disk:</p>
+
+<section class="file-explorer" aria-label="national-times: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">national-times: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">EditorialDesk.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Top-level container mounting status bar and save draft actions</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">hooks/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-line"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-js" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fef3c7"/><polyline points="14 2 14 8 20 8"/><path d="M10 13v4a1 1 0 0 1-2 0"/><path d="M14 13h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-2v2"/></svg>
+					</div>
+					<span class="fe-name-text">useOnlineStatus.js</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-consumer">hook</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Custom hook encapsulating network event listeners and reactive state</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">NetworkStatusBar.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Visual indicator displaying current network connection health</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">SaveDraftButton.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Action button that disables save operations when offline</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<p>To construct this architecture, we follow a top-down assembly pipeline: we start with the parent workspace container, extract the custom hook, and then build each consumer component:</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Orange / Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #e09f67; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #eac4a1; }
+
+    /* Step 4 Colors (Green) */
+    .assembly-steps-figure .step-4 .card-edge { background: #74ad68; }
+    .assembly-steps-figure .step-4 .card-main { background: #d2ebc9; }
+    .assembly-steps-figure .step-4 .card-divider { background: #b2d5a5; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the parent container EditorialDesk.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;EditorialDesk /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we extract the custom hook useOnlineStatus.js</div>
+        <div class="card-components">
+          <span class="component-tag">useOnlineStatus()</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Then, we build the status indicator NetworkStatusBar.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;NetworkStatusBar /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card step-4">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">4</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we build the action control SaveDraftButton.jsx</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;SaveDraftButton /&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 39.1: Progressive code assembly pipeline: starting from the parent desk, extracting the custom hook, and assembling consumer components.</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the parent container EditorialDesk.jsx';">First, we construct the parent container EditorialDesk.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>We start our implementation at the top: the parent container <code>EditorialDesk.jsx</code>.</p>
+<p>We begin here because the parent establishes the layout of the newsroom desk. Notice that it mounts both child components without passing any network-related state or callbacks:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">EditorialDesk.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">EditorialDesk</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> handleSave = () =&gt; console.<span class="fn">log</span>(<span class="str">'Draft saved'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">ACTION:</b><br>Persists current newsroom article draft</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;main className=<span class="str">"desk-layout"</span>&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;NetworkStatusBar /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">MOUNT:</b><br>Displays live network connectivity badge</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;SaveDraftButton onSave={handleSave} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">MOUNT:</b><br>Disables save action when network drops</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Look at line 2: <span class="code-line-callout"><code><span class="kw">const</span> handleSave = () =&gt; console.<span class="fn">log</span>(<span class="str">'Draft saved'</span>)</code></span> The parent declares the action handler that persists the reporter's article draft.</p>
+<p>Now look at lines 5 and 6: <code>&lt;NetworkStatusBar /&gt;</code> and <span class="code-line-callout"><code>&lt;SaveDraftButton onSave={handleSave} /&gt;</code></span> Notice what is deliberately absent: there is no <code>isOnline</code> state declared in this parent container, and zero network props passed downward.</p>
+<p>We could have declared <span class="code-line-callout"><code><span class="kw">const</span> [isOnline, setIsOnline] = <span class="hook">useState</span>(<span class="kw">true</span>)</code></span> right here in <code>EditorialDesk</code> and passed <code>isOnline</code> down to both children. But lifting state to this parent would be a serious architectural flaw. Why? Because every time the device's internet connection flickered, this entire parent container and all its unrelated child views would re-render. By leaving the parent lean, we keep its rendering cost at zero. Each child will subscribe to the network on its own terms.</p>
+<p>To recap this first step: the parent provides the structural layout, leaving network synchronization entirely to the child boundaries.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we extract the custom hook useOnlineStatus.js';">Next, we extract the custom hook useOnlineStatus.js</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 2, we extract the reusable stateful logic into our custom hook: <code>useOnlineStatus.js</code>.</p>
+<p>Notice the function name begins with the mandatory lowercase prefix <code>use</code>. This prefix authorizes the function to call React's built-in hooks:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">useOnlineStatus.js</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span>, <span class="hook">useEffect</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="hook">useOnlineStatus</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [isOnline, setIsOnline] = <span class="hook">useState</span>(navigator.onLine); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">STATE:</b><br>Local state initialized from browser navigator</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="kw">function</span> <span class="fn">updateStatus</span>() {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      <span class="fn">setIsOnline</span>(navigator.onLine); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">EVENT:</b><br>Synchronizes state with native browser network state</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    }</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    window.<span class="fn">addEventListener</span>(<span class="str">'online'</span>, updateStatus);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    window.<span class="fn">addEventListener</span>(<span class="str">'offline'</span>, updateStatus);</span></div></div></div></div>
+<p>Look at line 3: <span class="code-line-callout"><code><span class="kw">const</span> [isOnline, setIsOnline] = <span class="hook">useState</span>(navigator.onLine)</code></span> We read the browser's native <code>navigator.onLine</code> property to establish our starting state. If the device is connected when the component mounts, <code>isOnline</code> starts as <code>true</code>.</p>
+<p>Now examine the <code>useEffect</code> call starting on line 4. Inside the effect, we define a small helper function <code>updateStatus</code> that reads <code>navigator.onLine</code> and passes the fresh boolean to <code>setIsOnline</code>. We attach this helper to two native window events: <code>online</code> and <code>offline</code>. Whenever the operating system detects a network change, the browser dispatches one of these events, and our helper synchronizes our state variable immediately.</p>
+<p>Now let us complete the custom hook by adding its cleanup function and returning the boolean state:</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">11</span><span class="src">    <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      window.<span class="fn">removeEventListener</span>(<span class="str">'online'</span>, updateStatus); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">CLEANUP:</b><br>Detaches listeners on unmount to prevent leaks</span>
+      </div></div>
+<div class="row odd"><span class="num">13</span><span class="src">      window.<span class="fn">removeEventListener</span>(<span class="str">'offline'</span>, updateStatus);</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    };</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  }, []);</span></div>
+<div class="row even"><span class="num">16</span><span class="src">  <span class="kw">return</span> isOnline; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RETURN:</b><br>Exposes current boolean status to calling component</span>
+      </div></div>
+<div class="row odd"><span class="num">17</span><span class="src">}</span></div></div></div></div>
+<p>Look at lines 11 to 14: the effect returns a cleanup callback that removes both event listeners from the window object. This cleanup callback is essential. Without it, every time a component calling this hook unmounted, its event listeners would remain attached to the global window, leaking memory and executing stale setters in the background.</p>
+<p>Finally, look at line 16: <span class="code-line-callout"><code><span class="kw">return</span> isOnline</code></span> Notice that we return only the boolean value, not the setter <code>setIsOnline</code>. The custom hook manages its own state updates internally in response to browser events. Components that consume this hook need to know whether the network is active, but they have no business manually overriding that status.</p>
+<p>To recap this step: the custom hook encapsulates state declaration, event subscription, and cleanup into a single reusable function returning a clean boolean.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Then, we build the status indicator NetworkStatusBar.jsx';">Then, we build the status indicator NetworkStatusBar.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 3, we build our first consumer component: <code>NetworkStatusBar.jsx</code>.</p>
+<p>This child component renders a visual badge in the newsroom header, displaying a green indicator when online and a red warning when disconnected:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">NetworkStatusBar.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useOnlineStatus</span> } <span class="kw">from</span> <span class="str">'../hooks/useOnlineStatus.js'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">NetworkStatusBar</span>() {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> isOnline = <span class="hook">useOnlineStatus</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">HOOK:</b><br>Subscribes to network status using custom hook</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;aside className={isOnline ? <span class="str">'status-online'</span> : <span class="str">'status-offline'</span>}&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;span className=<span class="str">"indicator-dot"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">UI:</b><br>Visual colored dot reflecting connectivity</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">      {isOnline ? <span class="str">'Online'</span> : <span class="str">'Disconnected'</span>}</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/aside&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Look at line 3: <span class="code-line-callout"><code><span class="kw">const</span> isOnline = <span class="hook">useOnlineStatus</span>()</code></span> With this single line, <code>NetworkStatusBar</code> gains full access to live network connectivity.</p>
+<p>Notice what is missing from this file: there is no <code>useState</code> declaration, no <code>useEffect</code> hook, no <code>window.addEventListener</code> calls, and no cleanup logic. All of that low-level subscription plumbing is neatly tucked away inside <code>useOnlineStatus</code>.</p>
+<p>When <code>NetworkStatusBar</code> mounts, React executes <code>useOnlineStatus()</code> and assigns a private state cell to this component. If the network drops, the hook calls its internal setter, and React re-renders only <code>NetworkStatusBar</code>. The badge updates its CSS class and text immediately.</p>
+<p>To recap this step: calling a custom hook lets a component consume complex stateful logic in a single, readable line of code.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Finally, we build the action control SaveDraftButton.jsx';">Finally, we build the action control SaveDraftButton.jsx</div>
+      
+    </div>
+  </div>
+</div>
+<p>In step 4, we build our second consumer component: <code>SaveDraftButton.jsx</code>.</p>
+<p>This component renders the button editors click to save their news articles. When the internet connection drops, the button must disable itself so reporters do not submit work into a void:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">SaveDraftButton.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useOnlineStatus</span> } <span class="kw">from</span> <span class="str">'../hooks/useOnlineStatus.js'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SaveDraftButton</span>({ onSave }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> isOnline = <span class="hook">useOnlineStatus</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">HOOK:</b><br>Allocates independent hook cell on this component's fiber</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;button onClick={onSave} disabled={!isOnline} className=<span class="str">"save-btn"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      {isOnline ? <span class="str">'Save Draft'</span> : <span class="str">'Reconnecting...'</span>} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 57px;">
+        <span class="text"><b class="tag">UI:</b><br>Dynamic label and disabled state when offline</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Look at line 3: <span class="code-line-callout"><code><span class="kw">const</span> isOnline = <span class="hook">useOnlineStatus</span>()</code></span> Notice that <code>SaveDraftButton</code> calls the exact same custom hook that <code>NetworkStatusBar</code> called in step 3.</p>
+<p>Now look at line 5: <code>disabled={!isOnline}</code>. When <code>isOnline</code> is false, the browser natively disables the button, preventing click events and showing a dimmed visual style. The button text also switches dynamically from "Save Draft" to "Reconnecting...".</p>
+<p>Look at the button click handler on line 5: <code>onClick={onSave}</code>.</p>
+<p>Where does <code>onSave</code> come from? Look back at Step 1 in <code>EditorialDesk.jsx</code>. The parent declared <span class="code-line-callout"><code><span class="kw">const</span> handleSave = () =&gt; console.<span class="fn">log</span>(<span class="str">'Draft saved'</span>)</code></span> and then rendered: <span class="code-line-callout"><code>&lt;SaveDraftButton onSave={handleSave} /&gt;</code></span></p>
+<p>Notice what happened: the parent handed its private handler function <code>handleSave</code> to the child under the prop name <code>onSave</code>. <code>SaveDraftButton</code> does not own the saving logic or article content, and it does not know where the draft is stored. It only holds a telephone line called <code>onSave</code>.</p>
+<p>When the reporter clicks the button, the native browser <code>onClick</code> fires and calls <code>onSave()</code>. Because <code>onSave</code> points directly to <code>handleSave</code>, that call immediately executes <code>handleSave()</code> back in <code>EditorialDesk</code>.</p>
+<p>This is standard <strong>inverse data flow</strong>: data flows down through props (<code>disabled={!isOnline}</code>), and user actions flow up through callbacks (<code>onSave</code>).</p>
+<p>Here is the central lesson: even though <code>SaveDraftButton</code> and <code>NetworkStatusBar</code> call the exact same hook, their state is completely independent. Calling <code>useOnlineStatus()</code> twice creates two separate state variables in React's memory. If you unmount <code>NetworkStatusBar</code>, <code>SaveDraftButton</code> continues to function with zero disruption.</p>
+<p>To recap this step: multiple components can call the same custom hook to reuse its logic, while each component retains its own isolated state.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Lessons from the Experiment: Naive Expectation vs Reality</h3>
+<p>When developers first encounter custom hooks, their naive expectation is that calling a custom hook acts like a global store or shared singleton, connecting all calling components to a single shared state variable. This naive expectation leads to deep confusion when an update in one component fails to trigger re-renders in other components calling the same hook.</p>
+<p>In our newsroom experiment, both <code>NetworkStatusBar</code> and <code>SaveDraftButton</code> called <code>useOnlineStatus()</code>. When the browser fired an <code>online</code> event, both components updated simultaneously. However, they did not update because they shared state. They updated because each component had its own independent <code>isOnline</code> state variable, and both happened to receive the same external browser event at the exact same millisecond. Conflating shared logic with shared state causes developers to create buggy custom hooks when managing user-driven state like form inputs or modal toggles.</p>
+<p>To inspect how responsibilities divide across files, examine the component relationship architecture:</p>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>EditorialDesk</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>parent container</strong> defines the newsroom workspace layout. Notice it passes <strong>zero network props</strong> downward to either child. Why? Because lifting network state into the parent would cause the entire container to re-render on every connection flicker, churning child components unnecessarily.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-badge"><div class="component-explorer-label"><span>NetworkStatusBar</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>first consumer component</strong>. It calls <strong><code>useOnlineStatus()</code></strong> to allocate its own private reactive state cell. When the network drops, React re-renders only this component, updating the status badge from green to red without touching the rest of the page.</p></div></div></div><div class="component-explorer-node component-kind-button"><div class="component-explorer-label"><span>SaveDraftButton</span><span class="component-explorer-props">onSave={handleSave}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>second consumer component</strong>. It calls the exact same <strong><code>useOnlineStatus()</code></strong> hook. React allocates a second, completely separate state cell on this button&#39;s fiber node. It disables itself when offline to protect editors from lost drafts.</p></div></div></div></div></div></div>
+</div>
+<p>Now review the architecture audit table comparing the copy-paste approach against custom hook extraction:</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: #64748b;
+      margin-top: 1px;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      vertical-align: top !important;
+      font-size: 0.78rem;
+      line-height: 1.35;
+      color: #1e293b;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .audit-table td.td-layer,
+    .architecture-audit-figure .td-layer {
+      font-weight: 700;
+      color: #0f172a;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .audit-table td.td-naive,
+    .architecture-audit-figure .td-naive {
+      background: #ffffff;
+      color: #334155;
+    }
+    .architecture-audit-figure .audit-table td.td-reality,
+    .architecture-audit-figure .td-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .layer-badge {
+      display: inline-block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .layer-desc {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 500;
+      color: #64748b;
+      margin-top: 1px;
+    }
+    .architecture-audit-figure .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .status-pill.pill-flawed {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+    .architecture-audit-figure .status-pill.pill-sound {
+      background: #f0fdf4;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    .architecture-audit-figure .audit-table tr.verdict-row td,
+    main .architecture-audit-figure .audit-table tr.verdict-row td {
+      border-top: 2px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 10px 12px !important;
+      background: #ffffff;
+    }
+    .architecture-audit-figure .audit-table tr.verdict-row td.td-reality,
+    main .architecture-audit-figure .audit-table tr.verdict-row td.td-reality {
+      background: #f0fdf4 !important;
+      border-left: 1px solid #bbf7d0 !important;
+    }
+    .architecture-audit-figure .verdict-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0f172a;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .verdict-body {
+      font-size: 0.74rem;
+      line-height: 1.35;
+      color: #334155;
+      margin: 0;
+    }
+    .architecture-audit-figure .td-reality .verdict-body {
+      color: #14532d;
+      font-weight: 600;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">LESSONS FROM THE CODE</div>
+    <div class="audit-title">The Custom Hook Extraction Audit</div>
+    <p class="audit-subtitle">Evaluating stateful logic reuse versus state sharing across component boundaries.</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">LAYER</span>
+          <span class="th-main">Component</span>
+          <span class="th-sub">Architecture level</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">NAIVE EXPECTATION</span>
+          <span class="th-main">Copy-Paste Logic</span>
+          <span class="th-sub">Duplicated stateful blocks</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">WHAT HAPPENED</span>
+          <span class="th-main">Custom Hook</span>
+          <span class="th-sub">Extracted stateful recipe</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- ROW 1: PARENT CONTAINER -->
+      <tr>
+        <td class="td-layer">
+          <span class="layer-badge">&lt;EditorialDesk /&gt;</span>
+          <span class="layer-role">Parent Container</span>
+          <span class="layer-desc">Workspace layout</span>
+        </td>
+        <td class="td-naive">
+          <span class="status-pill pill-flawed">PROP-DRILLED</span><br>
+          Lifts network state to the top-level parent and prop-drills `isOnline` down to all children. The parent manages window listeners and forces the entire view to re-render on every connection flicker.
+        </td>
+        <td class="td-reality">
+          <span class="status-pill pill-sound">ISOLATED MOUNT</span><br>
+          Passes zero network props to children. The parent remains completely decoupled and never re-renders when connection status toggles.
+        </td>
+      </tr>
+
+      <!-- ROW 2: CUSTOM HOOK -->
+      <tr>
+        <td class="td-layer">
+          <span class="layer-badge">useOnlineStatus()</span>
+          <span class="layer-role">Custom Hook</span>
+          <span class="layer-desc">Encapsulated logic</span>
+        </td>
+        <td class="td-naive">
+          <span class="status-pill pill-flawed">SHARED SINGLETON</span><br>
+          Assumes custom hooks behave like global singletons or shared stores, where calling the hook in multiple components binds them to a single shared state variable in memory.
+        </td>
+        <td class="td-reality">
+          <span class="status-pill pill-sound">FIBER RECIPE</span><br>
+          Encapsulates the stateful subscription recipe. Each component invocation allocates an independent hook cell on that component's fiber node, sharing logic with zero state sharing.
+        </td>
+      </tr>
+
+      <!-- ROW 3: CONSUMER WIDGETS -->
+      <tr>
+        <td class="td-layer">
+          <span class="layer-badge">&lt;Widgets /&gt;</span>
+          <span class="layer-role">Consumers</span>
+          <span class="layer-desc">Status bar &amp; button</span>
+        </td>
+        <td class="td-naive">
+          <span class="status-pill pill-flawed">COPY-PASTE DRIFT</span><br>
+          Copy-pastes identical useState and useEffect blocks into every file. Bug fixes or cleanup improvements drift apart, creating silent production defects.
+        </td>
+        <td class="td-reality">
+          <span class="status-pill pill-sound">SINGLE-LINE HOOK</span><br>
+          Invokes `useOnlineStatus()` in a single line. Both components receive clean boolean values and re-render independently with zero boilerplate.
+        </td>
+      </tr>
+
+      <!-- VERDICT ROW -->
+      <tr class="verdict-row">
+        <td class="td-layer">
+          <span class="verdict-title">VERDICT</span>
+        </td>
+        <td class="td-naive">
+          <p class="verdict-body"><strong>FRAGILE LOGIC DUPLICATION:</strong> Copy-pasting hook blocks creates maintenance drift and binds component files to low-level DOM event listeners.</p>
+        </td>
+        <td class="td-reality">
+          <p class="verdict-body"><strong>BULLETPROOF LOGIC REUSE:</strong> Custom hooks encapsulate stateful recipes, allocating independent fiber state per component with zero shared state bugs.</p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 39.2: Architecture audit: evaluating copy-pasted hook logic versus custom hook extraction across component layers.</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>The Fiber Node Memory Model: Why Custom Hooks Do Not Share State</h3>
+<p>To truly understand why custom hooks do not share state, you must look at where React stores state in memory. In plain JavaScript, if two modules import a shared variable from a file, both modules read and write to that exact same variable in memory. Developers often assume that because a custom hook is declared in a single file (<code>useOnlineStatus.js</code>), the state inside that file behaves like a module-level variable.</p>
+<p>In React, a custom hook owns zero memory of its own. A custom hook is not a component, not a class, and not an actor. It is simply a JavaScript function that executes inside the context of whichever component called it. When a component calls <code>useOnlineStatus()</code>, React looks at the fiber node currently being processed on the work loop. Calling <code>useState</code> inside a custom hook tells React: "allocate a new state cell on the currently executing fiber node." If two components call the hook, React creates two separate state cells on two separate fiber nodes.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Where does custom hook state actually live?</strong> Imagine a carpenter who owns a set of measuring tools. When the carpenter works on house number one, they use their ruler to measure a wooden door. When the carpenter works on house number two, they use the exact same ruler to measure a wooden window. Does house number two have a door because the carpenter used the same ruler? No. The ruler does not own the wood; the house owns the wood. The ruler is simply the tool used to shape it. A <strong>custom hook</strong> is like that ruler. The hook does not own any <strong>component state</strong>. When <code>NetworkStatusBar</code> calls the hook, React allocates the state inside <code>NetworkStatusBar</code>'s <strong>fiber node</strong>. When <code>SaveDraftButton</code> calls the hook, React allocates the state inside <code>SaveDraftButton</code>'s <strong>fiber node</strong>. The state lives inside the component, never inside the hook.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The use Prefix Convention and Linter Contract</h3>
+<p>In standard JavaScript, you can name a function anything you want: <code>getOnlineStatus</code>, <code>calculateTotal</code>, or <code>syncNetwork</code>. In React, however, any function that calls other React hooks must start with the lowercase prefix <code>use</code>, written in camelCase (such as <code>useOnlineStatus</code> or <code>useWindowSize</code>). Developers who name a custom hook with a standard prefix like <code>getOnlineStatus</code> encounter linter errors or mysterious runtime bugs.</p>
+<p>React hooks rely on an internal invariant: hooks must be called in the exact same order on every single render. You cannot call hooks inside loops, conditions, or nested functions. Because React cannot inspect the internal body of every third-party function at compile time, it relies on the <code>use</code> prefix as an explicit syntactic contract. The <code>use</code> prefix signals to the React linter that this function contains hook calls and must obey the Rules of Hooks. If you name it <code>getOnlineStatus</code>, the linter assumes it is an ordinary function, allowing developers to call it inside an <code>if</code> statement and corrupting React's internal hook linked list.</p>
+<p>When should a function be a custom hook versus an ordinary utility function? The rule is straightforward: (a) if the function calls at least one React hook (<code>useState</code>, <code>useEffect</code>, <code>useContext</code>, <code>useRef</code>), it must be named with the <code>use</code> prefix and treated as a custom hook; (b) if the function performs pure data transformation, string formatting, or mathematical calculation without calling any React hooks, it should be an ordinary utility function without the <code>use</code> prefix. Naming a pure function with <code>use</code> restricts it unnecessarily, preventing it from being called conditionally or inside loops.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer</strong>: When asked how custom hooks work under the hood, never say "they share state between components." State clearly that custom hooks share stateful logic, not state. Explain that hooks are pure syntactic composition: calling a custom hook executes its internal <code>useState</code> and <code>useEffect</code> calls directly against the calling component's current fiber node. Each component gets its own independent state cell in the fiber linked list. If you need to share state itself, you must either lift state to a common ancestor or use React Context.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li><strong>Network connectivity monitoring (<code>useOnlineStatus</code>)</strong>: Subscribing to browser online and offline events to display status banners and disable mutation buttons in offline-resilient applications.</li>
+<li><strong>Window dimensions and responsive breakpoints (<code>useWindowSize</code>)</strong>: Listening to browser resize events to dynamically switch between mobile drawer navigation and desktop sidebar layouts.</li>
+<li><strong>Form input controllers and validation (<code>useFormField</code>)</strong>: Encapsulating value state, change handlers, validation rules, and error messages across recurring input fields.</li>
+<li><strong>LocalStorage synchronization (<code>useLocalStorage</code>)</strong>: Syncing a reactive state variable with browser storage so user preferences like dark mode or collapsed sidebars persist across page reloads.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Custom Hook</strong>: A JavaScript function whose name starts with <code>use</code> that can call other React hooks, encapsulating reusable stateful logic and lifecycle synchronization for components.</li>
+<li><strong>Stateful Logic</strong>: The instructions, event subscriptions, and effect lifecycles that govern how state is declared, updated, and synchronized over time.</li>
+<li><strong>Fiber Hook Cell</strong>: An internal JavaScript object within a component fiber's linked list that stores the state value, memoized calculation, or effect cleanup for a specific hook call.</li>
+<li><strong>Rules of Hooks</strong>: The fundamental constraints governing hook execution: hooks must only be called at the top level of React function components or custom hooks, and never inside loops, conditions, or nested functions.</li>
+<li><strong>State Isolation</strong>: The core React guarantee that state declared by a hook belongs exclusively to the component instance that invoked it, remaining completely independent of other components calling the same hook.</li>
+<li><strong>Lifecycle Synchronization</strong>: The process of keeping React component state aligned with an external system, such as browser window events, network sockets, or hardware sensors, using effects.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Extracting and Reusing Stateful Logic with Custom Hooks</strong></p>
+<p>In production React applications, custom hooks allow developers to extract complex stateful logic and lifecycle subscriptions into clean, reusable modules without sharing state. Here is your streetwise review.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Principles of Custom Hook Architecture</span></div>
+<ol><li>Custom hooks share <strong>stateful logic</strong>, never state itself.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Each component that calls a custom hook receives its own independent state storage on its private fiber node.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Two components calling the same hook update independently unless both subscribe to the exact same external browser event.</li>
+<li>Hook names must always begin with the lowercase prefix <strong><code>use</code></strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) The <code>use</code> prefix informs React and linting tools that the function contains hook calls and must follow the Rules of Hooks.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Functions that do not call React hooks must not use the <code>use</code> prefix, allowing them to be called conditionally.</li>
+<li>Use custom hooks to eliminate <strong>copy-pasted effect boilerplate</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Encapsulate browser event subscriptions, timers, and storage listeners inside a single custom hook.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Keep component files focused on visual presentation rather than low-level event listener wiring.</li></ol>
+<p class="summary-principle">➔ NEVER assume that calling a custom hook in two components shares a single state variable between them.</p>
+<p class="summary-principle">➔ ALWAYS name custom hooks starting with <code>use</code> so the linter can enforce the Rules of Hooks.</p>
+<p class="summary-principle">➔ IF a function does not call any React hooks THEN <strong>name it as a standard utility function without the <code>use</code> prefix</strong>.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Extract stateful logic into a custom hook and let each component call it independently.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">useOnlineStatus.js</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="hook">useOnlineStatus</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [isOnline, setIsOnline] = <span class="hook">useState</span>(navigator.onLine);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="kw">const</span> handle = () =&gt; <span class="fn">setIsOnline</span>(navigator.onLine);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    window.<span class="fn">addEventListener</span>(<span class="str">'online'</span>, handle);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    window.<span class="fn">addEventListener</span>(<span class="str">'offline'</span>, handle);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      window.<span class="fn">removeEventListener</span>(<span class="str">'online'</span>, handle);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      window.<span class="fn">removeEventListener</span>(<span class="str">'offline'</span>, handle);</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    };</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">  }, []);</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  <span class="kw">return</span> isOnline;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Never copy-paste identical useState and useEffect subscription blocks across multiple components.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Copy-Pasted Hook Anti-Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">StatusBar</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [isOnline, setIsOnline] = <span class="hook">useState</span>(<span class="kw">true</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="kw">const</span> handle = () =&gt; <span class="fn">setIsOnline</span>(navigator.onLine);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    window.<span class="fn">addEventListener</span>(<span class="str">'online'</span>, handle);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="kw">return</span> () =&gt; window.<span class="fn">removeEventListener</span>(<span class="str">'online'</span>, handle);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  }, []);</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> &lt;span&gt;{isOnline ? <span class="str">'Online'</span> : <span class="str">'Offline'</span>}&lt;/span&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>CUSTOM HOOK EXTRACTION</strong><br>(<code>useOnlineStatus</code>)</th><th><strong>COPY-PASTED HOOKS</strong><br>(duplicate <code>useState</code> + <code>useEffect</code>)</th></tr></thead><tbody><tr><td><strong>Code Reusability</strong></td><td>Single source of truth for logic;<br>shared across entire application</td><td>Logic duplicated in every file;<br>prone to divergent bug fixes</td></tr><tr><td><strong>State Storage</strong></td><td>Allocated independently on each<br>calling component's fiber node</td><td>Allocated independently on each<br>calling component's fiber node</td></tr><tr><td><strong>Maintenance Cost</strong></td><td>Bug fixes and cleanup updates<br>made in one central hook file</td><td>Every component must be updated<br>manually when listeners change</td></tr><tr><td><strong>Component Simplicity</strong></td><td>Components consume logic in a<br>single clean, readable line</td><td>Components cluttered with ten<br>lines of low-level subscription code</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

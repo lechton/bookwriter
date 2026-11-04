@@ -1,0 +1,1485 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 5: UI as a Tree and Component Hierarchy — Edition v6.2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v6.2";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 5: UI as a Tree and Component Hierarchy</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How does React organize nested components into a tree, and why does hierarchy dictate data flow?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Marcus joins The National Times digital newsroom as a junior frontend engineer.</li>
+<li>Marcus views the codebase as a loose folder of JavaScript files and HTML fragments.</li>
+<li>When a ticker in the header updates, an unrelated video player in the footer restarts its playback buffer!</li>
+<li>Why did changing one corner of the page trigger an avalanche across unrelated components?</li>
+<li>React does not view your application as disconnected files; it sees a living, branching tree.</li>
+<li>Three distinct trees govern your app: the module dependency tree, the component tree, and the live render tree.</li>
+<li>Today, you will master React's three tree models, trace component hierarchies, and understand render tree lifecycles.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Flat File Illusion and the Branching Reality</h3>
+<p>When developers look at their code editor, they see a flat list of files in a directory: <code>HeaderBar.jsx</code>, <code>ArticleGrid.jsx</code>, and <code>NewsLayout.jsx</code>. It is tempting to think of components as independent, disconnected islands that happen to share a page. In reality, React never sees a flat collection of files. React models user interfaces as hierarchical tree structures with strict parent, child, ancestor, and descendant relationships. Understanding this mental model is essential, because every major React mechanism—bundling, component composition, state scoping, and re-rendering—flows along the branches of these trees.</p>
+<p>Treating components as isolated files leads to severe architectural defects.</p>
+<p>Look at the naive attempt below, where a developer places a heavy third-party charting library and global state wrappers randomly inside a leaf component:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Naive Component Isolation and Scattered Imports</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { HeavyAnalyticsChart } <span class="kw">from</span> <span class="str">'heavy-chart-lib'</span>; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">BLATANT:</b> imported in every <b class="tag">LEAF COMPONENT</b></span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleCard</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h3&gt;Editorial Analysis&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;HeavyAnalyticsChart /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Bloats bundle across <b class="tag">ALL BRANCHES</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>In the naive code, importing <code>HeavyAnalyticsChart</code> directly into <code>ArticleCard</code> pollutes the module dependency tree. Bundlers like Vite and Rollup crawl import statements starting from the entry point. Because <code>ArticleCard</code> imports the heavy library, that library is bundled into the primary critical chunk downloaded by every single mobile reader, even if the user never scrolls down to view analytics! Furthermore, when parent components re-render, all child components down the tree branch re-render too. Without a clear tree model, performance optimizations and bundle boundaries remain impossible to debug.</p>
+<figure class="react-figure rce-figure css-figure">
+
+
+
+
+<style>
+  .trees-fig {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .tf-stage {
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    box-sizing: border-box;
+  }
+  .tf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.76rem;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .tf-columns {
+    display: flex;
+    gap: 0.75rem;
+    position: relative;
+  }
+  .tf-col {
+    flex: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .tf-col-module {
+    border-color: #93c5fd;
+  }
+  .tf-col-component {
+    border-color: #cbd5e1;
+  }
+  .tf-col-render {
+    border-color: #86efac;
+  }
+  .tf-col-title {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .tf-col-module .tf-col-title {
+    background: #eff6ff;
+    color: #1e40af;
+    border-bottom: 1px solid #bfdbfe;
+  }
+  .tf-col-component .tf-col-title {
+    background: #f1f5f9;
+    color: #334155;
+    border-bottom: 1px solid #cbd5e1;
+  }
+  .tf-col-render .tf-col-title {
+    background: #f0fdf4;
+    color: #166534;
+    border-bottom: 1px solid #bbf7d0;
+  }
+  .tf-col-body {
+    padding: 0.65rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .tf-card {
+    background: #f8fafc;
+    border-radius: 5px;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid #e2e8f0;
+  }
+  .tf-card-label {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+  }
+  .tf-card-desc {
+    font-size: 0.70rem;
+    line-height: 1.35;
+    color: #334155;
+  }
+  .tf-code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.68rem;
+    color: #0f172a;
+    background: #ffffff;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    border: 1px solid #cbd5e1;
+    display: inline-block;
+    margin-top: 0.2rem;
+  }
+  .tf-badge {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.58rem;
+    font-weight: 800;
+    padding: 0.08rem 0.35rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-slate { background: #e2e8f0; color: #334155; }
+  .badge-green { background: #dcfce7; color: #166534; }
+</style>
+
+
+<div class="trees-fig">
+  <div class="tf-stage">
+    <div class="tf-header">
+      <span>THE THREE TREES OF REACT</span>
+      <span>STRUCTURAL ARCHITECTURE IN DEPTH</span>
+    </div>
+    <div class="tf-columns">
+      <div class="tf-col tf-col-module">
+        <div class="tf-col-title">
+          <span>1. Module Tree</span>
+          <span class="tf-badge badge-blue">Bundler</span>
+        </div>
+        <div class="tf-col-body">
+          <div class="tf-card">
+            <div class="tf-card-label">Nodes &amp; Edges</div>
+            <div class="tf-card-desc">Nodes are JavaScript files on disk. Edges are static <code>import</code> statements.</div>
+            <div class="tf-code">App.jsx &rarr; NewsLayout.jsx</div>
+          </div>
+          <div class="tf-card">
+            <div class="tf-card-label">Primary Role</div>
+            <div class="tf-card-desc">Analyzed at build time by Vite/Rollup for bundle splitting and dead-code elimination.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tf-col tf-col-component">
+        <div class="tf-col-title">
+          <span>2. Component Tree</span>
+          <span class="tf-badge badge-slate">Structure</span>
+        </div>
+        <div class="tf-col-body">
+          <div class="tf-card">
+            <div class="tf-card-label">Nodes &amp; Edges</div>
+            <div class="tf-card-desc">Nodes are component definitions. Edges represent parent-child JSX nesting.</div>
+            <div class="tf-code">&lt;NewsLayout&gt;&lt;HeaderBar/&gt;&lt;/NewsLayout&gt;</div>
+          </div>
+          <div class="tf-card">
+            <div class="tf-card-label">Primary Role</div>
+            <div class="tf-card-desc">Defines structural hierarchy, top-down prop paths, and component boundaries.</div>
+          </div>
+        </div>
+      </div>
+      <div class="tf-col tf-col-render">
+        <div class="tf-col-title">
+          <span>3. Render Tree</span>
+          <span class="tf-badge badge-green">Runtime</span>
+        </div>
+        <div class="tf-col-body">
+          <div class="tf-card">
+            <div class="tf-card-label">Nodes &amp; Edges</div>
+            <div class="tf-card-desc">Nodes are live React elements and host DOM tags for the currently rendered frame.</div>
+            <div class="tf-code">div.layout &rarr; header &rarr; h1</div>
+          </div>
+          <div class="tf-card">
+            <div class="tf-card-label">Primary Role</div>
+            <div class="tf-card-desc">Governs reconciliation, top-down re-renders, and automatic subtree unmounting.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<figcaption>Fig 05.1: The Three Trees of React: module dependency tree, component tree, and live render tree.</figcaption>
+</figure>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does unmounting a parent destroy child state?</strong> When a parent component unmounts or conditionally returns <code>null</code>, its entire branch vanishes from the render tree. Many developers are shocked when an input field or video player inside a child component resets its state completely when the parent momentarily unmounts. In React, component state does not live in your component file; it lives inside React's internal nodes attached to specific positions in the render tree. When a parent branch is pruned from the render tree, React destroys all associated DOM nodes and discards state for every child and grandchild on that branch!</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked why React views UI as a tree, explain that three distinct trees govern an application: (1) the <strong>Module Dependency Tree</strong> evaluated by bundlers to split code and manage chunk sizes, (2) the <strong>Component Tree</strong> representing parent-child JSX relationships and top-down component nesting, and (3) the <strong>Render Tree</strong> representing the live element hierarchy of the current frame that governs reconciliation and subtree pruning.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Principles of React: The Core Laws of the UI Tree</h3>
+<p>To prepare for any technical interview, we must separate static file directories from runtime component execution and establish the fundamental laws governing how React structures user interfaces as trees. In React, a screen is never a flat collection of files: it is a living, branching hierarchy where position determines state, hierarchy dictates data flow, and updates cascade through subtrees. We formalize these rules into five standalone principles.</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Compose Layouts as Hierarchical Component Branches Rather Than Flat Monoliths</h4>
+  </div>
+  <div class="principle-body">
+        <div class="principle-marginalia-glossary">
+      <div class="gloss-entry">
+        <span class="gloss-term">dedicated component branches</span>
+        <span class="gloss-def">modular components that represent distinct subtrees in the UI hierarchy</span>
+      </div>
+      <div class="gloss-entry">
+        <span class="gloss-term">monolithic single-function layouts</span>
+        <span class="gloss-def">giant single-file functions that inline all page HTML markup into one return</span>
+      </div>
+    </div>
+    <div class="principle-definition-card">
+      <p class="principle-statement">You must decompose user interfaces into <strong>dedicated component branches</strong> (so subtrees can be tested, memoized, and reasoned about independently), strictly avoiding monolithic single-function layouts.</p>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">return</span> (</code></span>
+<code>  &lt;main&gt;</code>
+<code>    &lt;HeaderBar /&gt;</code>
+<code>    &lt;ArticleGrid /&gt;</code>
+<code>  &lt;/main&gt;</code>
+<code>);</code></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">return</span> (</code></span>
+<code>  &lt;main&gt;</code>
+<span class="code-line-callout"><code>    &lt;header&gt;&lt;h1&gt;News&lt;/h1&gt;&lt;/header&gt;</code></span>
+<span class="code-line-callout"><code>    &lt;section&gt;&lt;div&gt;Story&lt;/div&gt;&lt;/section&gt;</code></span>
+<code>  &lt;/main&gt;</code>
+<code>);</code></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>In senior engineering interviews, component architecture begins with layout decomposition:</p>
+<ol><li><strong>Monolithic Flat Layouts (Anti-Pattern):</strong> Inlining all HTML markup inside a single root function produces a massive file where header navigation, article feeds, and sidebars are tangled together. The browser receives the same DOM, but developers lose the ability to isolate render cycles, unit-test UI units, or share common visual headers across multiple pages.</li>
+<li><strong>Decomposed Component Branches (Idiomatic):</strong> Decomposing a page into <code>&lt;HeaderBar /&gt;</code> and <code>&lt;ArticleGrid /&gt;</code> establishes clean branch nodes in React's component tree. Each branch owns its localized markup and parameters. When requirements change, engineers can refactor or replace an entire subtree without modifying unrelated peer branches.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Principle 1: Branch Composition</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">NewsLayout</span>() {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Decomposed layout establishes clear component tree branches</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"page-shell"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;HeaderBar /&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;ArticleGrid /&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Distinguish Static Module Trees from Dynamic Render Trees</h4>
+  </div>
+  <div class="principle-body">
+        <div class="principle-marginalia-glossary">
+      <div class="gloss-entry">
+        <span class="gloss-term">module import trees</span>
+        <span class="gloss-def">static file dependency graph created by ES module import statements on disk</span>
+      </div>
+      <div class="gloss-entry">
+        <span class="gloss-term">runtime render trees</span>
+        <span class="gloss-def">dynamic hierarchy of live React element descriptors rendered in the current frame</span>
+      </div>
+    </div>
+    <div class="principle-definition-card">
+      <p class="principle-statement">You must distinguish <strong>module import trees</strong> evaluated at build time from <strong>runtime render trees</strong> evaluated on each render pass (so heavy libraries are imported only where needed rather than polluting global bundles).</p>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">import</span> { Chart } <span class="kw">from</span> <span class="str">'chart-lib'</span>;</code></span></div>
+        <div class="case-note">Import heavy tools only in the leaf</div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">import</span> { Chart } <span class="kw">from</span> <span class="str">'chart-lib'</span>;</code></span></div>
+        <div class="case-note">Top-level import bloats initial bundle<br>...in root App.jsx layout</div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>Understanding how bundlers and the React runtime interpret code requires separating build time from render time:</p>
+<ol><li><strong>Module Dependency Tree (Build Time):</strong> When Vite or Rollup bundles your application, it analyzes ES module <code>import</code> and <code>export</code> statements. Every file is a module node, and imports form static dependency edges. If a root component imports a 500KB chart library, that library is bundled into the critical JavaScript payload downloaded on initial page load, even if the chart component is hidden behind a user click.</li>
+<li><strong>Render Tree (Runtime):</strong> The render tree is constructed dynamically during execution. It contains only the React elements and host DOM nodes currently rendered on screen for the active state. If a conditional branch returns <code>null</code>, that branch is absent from the render tree, but its code remains present in the module tree.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Principle 2: Leaf-Level Imports</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">HeaderBar</span>() {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Dedicated leaf component keeps dependencies isolated</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;header className=<span class="str">"masthead"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;h1&gt;The National Times&lt;/h1&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;span&gt;Morning Edition&lt;/span&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/header&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Flow Data Strictly Downward Along Tree Branches</h4>
+  </div>
+  <div class="principle-body">
+        <div class="principle-marginalia-glossary">
+      <div class="gloss-entry">
+        <span class="gloss-term">downward from parent to child</span>
+        <span class="gloss-def">passing data from an ancestor component directly to its immediate descendant</span>
+      </div>
+      <div class="gloss-entry">
+        <span class="gloss-term">lateral peer-to-peer data passing</span>
+        <span class="gloss-def">attempting to share data directly between sibling nodes without a common parent</span>
+      </div>
+    </div>
+    <div class="principle-definition-card">
+      <p class="principle-statement">You must pass state and configuration <strong>downward from parent to child</strong> via props following the tree hierarchy, strictly avoiding lateral peer-to-peer data passing.</p>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code>&lt;ArticleGrid stories={stories} /&gt;</code></span></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code>&lt;Sidebar readFrom={ArticleGrid} /&gt;</code></span></div>
+        <div class="case-note">Siblings reading each other directly</div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>In technical interviews, explaining unidirectional data flow requires anchoring props to tree geometry:</p>
+<ol><li><strong>Top-Down Propagation:</strong> Data flows in one direction: from parent nodes downward to child nodes through props. A parent passes props to its direct children, who in turn pass data down to their own descendants. This creates a deterministic, traceable pipeline where data origins are unmistakable.</li>
+<li><strong>Lateral Isolation:</strong> Sibling nodes on separate branches cannot directly pass data sideways. If <code>&lt;Sidebar /&gt;</code> needs data calculated inside <code>&lt;ArticleGrid /&gt;</code>, developers must lift that state up to their nearest common ancestor node (such as <code>&lt;NewsLayout /&gt;</code>), which then distributes the data downward to both branches.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Principle 3: Downward Prop Flow</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleGrid</span>({ stories }) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Ancestor distributes data downward to child branches</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;section className=<span class="str">"grid"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;StoryCard title={stories[<span class="nl">0</span>].title} /&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;StoryCard title={stories[<span class="nl">1</span>].title} /&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">Position in the Render Tree Governs Component State Preservation</h4>
+  </div>
+  <div class="principle-body">
+        <div class="principle-marginalia-glossary">
+      <div class="gloss-entry">
+        <span class="gloss-term">same position in the render tree</span>
+        <span class="gloss-def">maintaining identical component type and slot location between renders</span>
+      </div>
+      <div class="gloss-entry">
+        <span class="gloss-term">unmounts the subtree</span>
+        <span class="gloss-def">destroying live DOM nodes and wiping internal state clean</span>
+      </div>
+    </div>
+    <div class="principle-definition-card">
+      <p class="principle-statement">You must maintain a component at the <strong>same position in the render tree</strong> to preserve its internal state across re-renders (because changing component position or type unmounts the subtree and resets all state).</p>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">return</span> (</code></span>
+<code>  &lt;div&gt;</code>
+<code>    {isFeatured</code>
+<code>      ? &lt;LeadCard /&gt;</code>
+<code>      : &lt;Card /&gt;}</code>
+<code>  &lt;/div&gt;</code>
+<code>);</code></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">Page</span>() {</code></span>
+<span class="code-line-callout"><code>  <span class="kw">const</span> SubCard = () =&gt; &lt;div /&gt;;</code></span>
+<span class="code-line-callout"><code>  <span class="kw">return</span> &lt;SubCard /&gt;;</code></span>
+<code>}</code></div>
+        <div class="case-note">Redefining component inside render pass</div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>Interviewers test whether candidates understand where React stores component state during reconciliation:</p>
+<ol><li><strong>State Keyed to Tree Position:</strong> Component state is not stored inside the component's JavaScript function closure. State is stored inside internal React fiber nodes mapped directly to the component's position in the render tree. As long as a component of the same type remains at the same slot in the tree, React preserves its state between renders.</li>
+<li><strong>Subtree Pruning and Destruction:</strong> If a parent conditionally removes a child branch or renders a different component type at that position, React unmounts the existing subtree. All underlying DOM nodes are destroyed, and all internal state across that entire branch is permanently discarded.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Principle 4: Stable Tree Position</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ContentArea</span>({ showSpecial }) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Stable component slot preserves state across render passes</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"content-slot"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;ArticleGrid /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Position remains stable, state preserved</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-principle" data-principle="5">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 5</span></div>
+    <h4 class="principle-title">Component Re-Renders Cascade Automatically to All Subtree Descendants</h4>
+  </div>
+  <div class="principle-body">
+        <div class="principle-marginalia-glossary">
+      <div class="gloss-entry">
+        <span class="gloss-term">re-evaluates all child descendants</span>
+        <span class="gloss-def">recursively calling render functions of every nested child in the subtree</span>
+      </div>
+      <div class="gloss-entry">
+        <span class="gloss-term">keep state local to leaf nodes</span>
+        <span class="gloss-def">storing state as low in the tree hierarchy as possible</span>
+      </div>
+    </div>
+    <div class="principle-definition-card">
+      <p class="principle-statement">You must recognize that updating a parent component <strong>re-evaluates all child descendants</strong> on that branch (unless memoized), keeping state local to leaf nodes to prevent unnecessary cascading renders.</p>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">SearchBox</span>() {</code></span>
+<span class="code-line-callout"><code>  <span class="kw">const</span> [query, setQuery] = ...;</code></span>
+<code>}</code></div>
+        <div class="case-note">Search state lives in SearchBox leaf</div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">NewsLayout</span>() {</code></span>
+<span class="code-line-callout"><code>  <span class="kw">const</span> [query, setQuery] = ...;</code></span>
+<code>}</code></div>
+        <div class="case-note">State hoisted to layout re-renders all</div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>Understanding re-render mechanics prevents severe performance bottlenecks in complex applications:</p>
+<ol><li><strong>Subtree Re-Render Cascade:</strong> By default, whenever a component's state or props change, React re-renders that component and recursively re-executes the render functions of every descendant down that branch. If root layout state changes on every keystroke, every navigation link, card, and footer on the page re-renders unnecessarily.</li>
+<li><strong>State Localization:</strong> To keep applications fast, push state down to the lowest leaf component that actually requires it. When state is localized to a leaf, only that leaf component re-renders when data updates, leaving parent containers and sibling subtrees completely undisturbed.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Principle 5: Subtree Localization</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryCard</span>({ title }) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> StoryCard receives targeted inputs, keeping render scope local</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;article className=<span class="str">"card"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;h3 className=<span class="str">"story-title"</span>&gt;{title}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Always think in trees: nesting establishes the <strong>Component Tree</strong>, component lifecycles are bound to <strong>tree position</strong>, and bundlers package code according to the <strong>module dependency tree</strong>.</div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for news-layout - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">news-layout - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>NewsLayout</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-header"><div class="component-explorer-label"><span>HeaderBar</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h1" data-elem="[h1.masthead-title]"><div class="ui-elem-content">The National Times</div></div><div class="ui-elem ui-tag-span" data-elem="[span.edition-date]"><div class="ui-elem-content">Morning Edition</div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleGrid</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-section" data-elem="[section.grid-title]"><div class="ui-elem-content">Top Stories</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryCard</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h3" data-elem="[h3.story-title]"><div class="ui-elem-content">Diplomatic Accord Finalized</div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryCard</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h3" data-elem="[h3.story-title]"><div class="ui-elem-content">Tech Stocks Rebound</div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="news-layout: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">news-layout: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Application entry point mounting the root layout of the newsroom</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">NewsLayout.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Tree trunk orchestrating navigation and content branches</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">HeaderBar.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Navigation branch rendering masthead title and publication date</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">ArticleGrid.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Content branch nesting individual story cards</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryCard.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Terminal UI control displaying headline and category badge</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+      opacity: 0.8;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 20px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Orange / Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #e09f67; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #eac4a1; }
+
+    /* Step 4 Colors (Green) */
+    .assembly-steps-figure .step-4 .card-edge { background: #74ad68; }
+    .assembly-steps-figure .step-4 .card-main { background: #d2ebc9; }
+    .assembly-steps-figure .step-4 .card-divider { background: #b2d5a5; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the parent layout container</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;NewsLayout.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the navigation branch</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;HeaderBar.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Then, we declare the content grid branch</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;ArticleGrid.jsx&gt;</span>
+          <span class="component-tag">&lt;StoryCard.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card step-4">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">4</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we mount the layout tree inside</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 05.2: The progressive assembly pipeline: structuring UI hierarchy across tree branches.</figcaption>
+</figure>
+<p>To master React's tree architecture, we will construct the hierarchical newsroom layout for The National Times. We will progress across four sequential steps: constructing the layout orchestrator in <code>src/components/NewsLayout.jsx</code>, building the navigation branch in <code>src/components/HeaderBar.jsx</code>, declaring the content grid in <code>src/components/ArticleGrid.jsx</code> with nested <code>StoryCard</code> terminals, and mounting the tree inside <code>src/App.jsx</code>.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the parent layout container';">First, we construct the parent layout container</div>
+      <div class="card-components"><span class="component-tag">&lt;NewsLayout.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>We begin by constructing <code>src/components/NewsLayout.jsx</code>. This component acts as the trunk of our feature tree. It branches the UI into <code>HeaderBar</code> and <code>ArticleGrid</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/NewsLayout.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> HeaderBar <span class="kw">from</span> <span class="str">'./HeaderBar.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> ArticleGrid <span class="kw">from</span> <span class="str">'./ArticleGrid.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">NewsLayout</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;div className=<span class="str">"layout-shell"</span>&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;HeaderBar /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Mounts <b class="tag">NAVIGATION BRANCH</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">      &lt;ArticleGrid /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Mounts <b class="tag">GRID BRANCH</b></span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+<p>Notice how <code>NewsLayout</code> establishes two distinct branches. It does not mix masthead markup with article cards. Instead, it delegates responsibilities down to dedicated child components, ensuring that concerns remain cleanly isolated along designated tree paths.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the navigation branch';">Next, we build the navigation branch</div>
+      <div class="card-components"><span class="component-tag">&lt;HeaderBar.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Now we construct <code>src/components/HeaderBar.jsx</code>. This component forms the first major branch of the tree, rendering the newspaper masthead and publication date:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/HeaderBar.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">HeaderBar</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;header className=<span class="str">"masthead-header"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;h1 className=<span class="str">"masthead-title"</span>&gt;The National Times&lt;/h1&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;span className=<span class="str">"edition-date"</span>&gt;Morning Edition&lt;/span&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Renders on <b class="tag">HEADER BRANCH</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/header&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>Notice that <code>HeaderBar</code> knows nothing about article cards or the content feed. It is an isolated branch of the tree. If <code>ArticleGrid</code> updates or re-renders, <code>HeaderBar</code> remains completely unaffected in structure.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Then, we declare the content grid branch';">Then, we declare the content grid branch</div>
+      <div class="card-components"><span class="component-tag">&lt;ArticleGrid.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Next, we construct <code>src/components/ArticleGrid.jsx</code> and its terminal child <code>StoryCard.jsx</code>. <code>ArticleGrid</code> forms the second major branch, composing multiple <code>StoryCard</code> components:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/ArticleGrid.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> StoryCard <span class="kw">from</span> <span class="str">'./StoryCard.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ArticleGrid</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"content-grid"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h2 className=<span class="str">"grid-heading"</span>&gt;Top Dispatches&lt;/h2&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;StoryCard /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Branches downward to <b class="tag">TERMINAL CARDS</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Now we create <code>src/components/StoryCard.jsx</code>. This component acts as the terminal UI control (leaf node) of the content branch:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/StoryCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryCard</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;article className=<span class="str">"dispatch-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;span className=<span class="str">"dispatch-category"</span>&gt;World&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h3 className=<span class="str">"dispatch-title"</span>&gt;Diplomatic Accord Finalized&lt;/h3&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Terminal node renders <b class="tag">LEAF MARKUP</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>Notice the structural hierarchy: <code>NewsLayout</code> → <code>ArticleGrid</code> → <code>StoryCard</code>. Nesting establishes a clean relationship from parent to child to grandchild. If the parent unmounts <code>ArticleGrid</code>, React automatically prunes all <code>StoryCard</code> instances from the render tree.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Finally, we mount the layout tree inside';">Finally, we mount the layout tree inside</div>
+      <div class="card-components"><span class="component-tag">&lt;App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Finally, we complete our application in <code>src/App.jsx</code>. We mount the root of the tree:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> NewsLayout <span class="kw">from</span> <span class="str">'./components/NewsLayout.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;NewsLayout /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Mounts <b class="tag">TREE TRUNK</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>Look at the complete tree structure: <code>App</code> serves as the root container, mounting <code>NewsLayout</code> as the trunk, which branches into <code>HeaderBar</code> and <code>ArticleGrid</code>, with <code>ArticleGrid</code> terminating at <code>StoryCard</code> elements. Every component has a precise, deterministic address within the tree.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>NewsLayout</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>layout orchestrator</strong> acts as the trunk of the feature tree. It branches cleanly into <code>HeaderBar</code> and <code>ArticleGrid</code>. Notice it renders zero article cards directly. Why? To maintain structural separation between top-level layout coordination and branch-specific presentation.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-header"><div class="component-explorer-label"><span>HeaderBar</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>navigation branch</strong> encapsulates the newspaper masthead and publication date. Notice it knows nothing about the article collection. This guarantees that navigation styling and logic remain completely decoupled from content updates.</p></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleGrid</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>content branch</strong> manages the collection of dispatches. It mounts child <code>StoryCard</code> components. When does React unmount this branch? Whenever <code>NewsLayout</code> removes the grid, React automatically prunes all child cards from the live render tree.</p></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 8px 12px !important;
+      vertical-align: top !important;
+      background: #ffffff;
+      color: #334155 !important;
+    }
+    .architecture-audit-figure .audit-table td:first-child,
+    main .architecture-audit-figure .audit-table td:first-child {
+      width: 22% !important;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table td:nth-child(2) {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table td:nth-child(3),
+    .architecture-audit-figure .reality-cell {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .layer-num {
+      display: block;
+      font-weight: 800;
+      color: #0f172a;
+      font-size: 0.92rem;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-weight: 600;
+      color: #64748b;
+      font-size: 0.80rem;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .item-title {
+      display: block;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 4px;
+      font-size: 0.92rem;
+    }
+    .architecture-audit-figure .text-teal {
+      color: #0e7490;
+    }
+    .architecture-audit-figure .item-desc {
+      display: block;
+      color: #475569;
+      line-height: 1.45;
+      font-size: 0.86rem;
+    }
+    .architecture-audit-figure .reality-cell .item-desc {
+      color: #334155;
+    }
+    .architecture-audit-figure code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.80rem;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .reality-cell code {
+      background: #eef7f9;
+      border-color: rgba(14, 116, 144, 0.25);
+      color: #0e7490;
+    }
+    .architecture-audit-figure .verdict-row td,
+    main .architecture-audit-figure .verdict-row td {
+      border-top: 1.5px solid #0f172a !important;
+      border-bottom: 3px solid #0f172a !important;
+      padding: 8px 12px !important;
+    }
+    .architecture-audit-figure .verdict-label {
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .verdict-tag {
+      display: block;
+      font-size: 0.80rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .verdict-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .verdict-teal {
+      color: #0e7490;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Lessons from the Code</div>
+    <div class="audit-title">The Hierarchical Newsroom Layout Challenge</div>
+    <p class="audit-subtitle">An architectural comparison evaluating how React traverses trees versus assuming components operate as isolated files.</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Component Layer</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-main">Naive Expectation</span>
+          <span class="th-sub sub-danger">(Flat File Isolation)</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-main">What Happened</span>
+          <span class="th-sub sub-teal">(Hierarchical Tree Structure)</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <span class="layer-num">1. The Tree Trunk</span>
+          <span class="layer-role">(Layout Orchestrator)</span>
+        </td>
+        <td>
+          <span class="item-title">Disconnected Component Islands</span>
+          <span class="item-desc">Developers treat components as flat files with independent execution lifecycles, failing to realize that parent renders cascade directly down to child branches.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Top-Down Trunk Orchestration</span>
+          <span class="item-desc">React models the layout as the root of the feature tree. Data flows strictly downward along branches, establishing deterministic scoping and predictable update paths.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">2. The Intermediate Branch</span>
+          <span class="layer-role">(Content Grid)</span>
+        </td>
+        <td>
+          <span class="item-title">Scattered Global Imports</span>
+          <span class="item-desc">Importing heavy third-party libraries across arbitrary files bloats bundle sizes because developers ignore how bundlers crawl the module dependency tree.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Subtree Encapsulation &amp; Pruning</span>
+          <span class="item-desc">The branch receives curated props from the trunk and encapsulates its children. When the branch unmounts, React automatically prunes its entire subtree from the DOM.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">3. The Terminal UI Control</span>
+          <span class="layer-role">(Story Card)</span>
+        </td>
+        <td>
+          <span class="item-title">Unanchored UI Terminals</span>
+          <span class="item-desc">Restructuring parent wrappers unintentionally destroys terminal DOM state because developers overlook that component lifecycle is bound to tree position.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Tree-Position Anchored Lifecycle</span>
+          <span class="item-desc">React maintains component state and DOM elements based strictly on their structural position within the render tree from one frame to the next.</span>
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td>
+          <span class="verdict-label">Final Verdict</span>
+        </td>
+        <td>
+          <span class="verdict-tag verdict-danger">Uncoordinated Cascade</span>
+          <span class="item-desc">Inability to trace bundle size, re-renders, or unmounting due to flat-file thinking.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="verdict-tag verdict-teal">Deterministic Tree Flow</span>
+          <span class="item-desc">Predictable bundling, structured prop paths, and automated subtree lifecycle management.</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 05.3: Architecture Audit: Contrasting flat-file thinking against hierarchical tree structures.</figcaption>
+</figure>
+<p>In our experiment, we replaced the illusion of flat files with a disciplined tree architecture. By establishing <code>NewsLayout</code> as the trunk branching into <code>HeaderBar</code> and <code>ArticleGrid</code>, we demonstrated how branches isolate concerns and how React's render tree manages component lifecycles.</p>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Application Shell Layouts</strong>: Organizing top-level navigation, sidebar drawers, and main content areas into distinct branches that re-render independently.</li>
+<li><strong>Modal Dialog Portals</strong>: Understanding that even when a modal renders into a different physical DOM container via portals, it remains an integral child in the React component tree for event bubbling.</li>
+<li><strong>Bundle Optimization</strong>: Auditing the module dependency tree to identify heavy charting or animation libraries and moving them into dynamic import boundaries.</li>
+<li><strong>Subtree Pruning &amp; Tab Navigation</strong>: Recognizing that switching tabs unmounts the inactive tab's branch from the render tree, discarding its internal DOM and state unless hoisted.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>UI Tree</strong>: The hierarchical model React uses to represent component relationships, top-down structure, and render lifecycles.</li>
+<li><strong>Module Dependency Tree</strong>: The static tree of JavaScript files and import statements evaluated at build time by bundlers like Vite and Rollup.</li>
+<li><strong>Component Tree</strong>: The logical hierarchy of components defined by parent-child JSX nesting in your source code.</li>
+<li><strong>Render Tree</strong>: The live runtime hierarchy of React element objects and DOM tags evaluated for the currently rendered frame.</li>
+<li><strong>Tree Pruning</strong>: The automatic cleanup process where React unmounts and destroys all child and grandchild DOM nodes when a parent branch is removed.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Understanding your UI as a tree</strong>: The official React documentation explains how React models applications as trees and why this model matters for performance (see <a href="https://react.dev/learn/understanding-your-ui-as-a-tree">react.dev/learn/understanding-your-ui-as-a-tree</a>).</li>
+<li><strong>The module dependency tree</strong>: Deep dive into how bundlers crawl import statements to construct build chunks and eliminate unused code (see <a href="https://react.dev/learn/understanding-your-ui-as-a-tree#the-module-dependency-tree">react.dev/learn/understanding-your-ui-as-a-tree#the-module-dependency-tree</a>).</li>
+<li><strong>The render tree in detail</strong>: How React evaluates element descriptors from root to leaf to determine what appears on the screen (see <a href="https://react.dev/learn/understanding-your-ui-as-a-tree#the-render-tree">react.dev/learn/understanding-your-ui-as-a-tree#the-render-tree</a>).</li>
+<li><strong>Preserving and resetting state across tree positions</strong>: How a component's position in the render tree determines whether its state persists or resets (see <a href="https://react.dev/learn/preserving-and-resetting-state">react.dev/learn/preserving-and-resetting-state</a>).</li>
+<li><strong>Passing data deeply with context</strong>: How tree-wide context bypasses intermediate branches to deliver data directly from root to distant leaves (see <a href="https://react.dev/learn/passing-data-deeply-with-context">react.dev/learn/passing-data-deeply-with-context</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Tree Architecture &amp; Structure</span></div>
+<p class="summary-principle">➔ ALWAYS model your application as a hierarchical tree with clear parent, child, and sibling boundaries.</p>
+<p class="summary-principle">➔ ALWAYS organize UI components into logical trunk, branch, and leaf levels.</p>
+<p class="summary-principle">➔ NEVER treat components as isolated flat files with random global dependencies.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Bundling &amp; Lifecycle Scoping</span></div>
+<p class="summary-principle">➔ ALWAYS audit your module dependency tree to keep heavy third-party imports confined to the branches that actually use them.</p>
+<p class="summary-principle">➔ IF a parent component unmounts THEN expect all child and grandchild state on that branch to be destroyed (tree pruning).</p>
+<p class="summary-principle">➔ IF state must survive branch unmounting THEN lift the state to an ancestor above the unmounting branch.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> decompose layouts into structured tree branches</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">PageLayout</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"layout"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;HeaderBranch /&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;ContentBranch /&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> inline disparate concerns into monolithic flat components</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">PageLayout</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"layout"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;header&gt;&lt;h1&gt;The National Times&lt;/h1&gt;&lt;/header&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;main&gt;&lt;p&gt;Diplomatic Accord&lt;/p&gt;&lt;/main&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>HIERARCHICAL TREE</strong><br>(React Model)</th><th><strong>FLAT FILE ILLUSION</strong><br>(Anti-Pattern)</th></tr></thead><tbody><tr><td><strong>Mental Model</strong></td><td>Directed branching hierarchy (trunk → leaves)</td><td>Disconnected component files on disk</td></tr><tr><td><strong>Data Distribution</strong></td><td>Structured top-down flow along branches</td><td>Scattered global variables or arbitrary imports</td></tr><tr><td><strong>Bundle Scoping</strong></td><td>Heavy libraries isolated to specific branches</td><td>Heavy libraries leak into critical bundle chunk</td></tr><tr><td><strong>Subtree Lifecycles</strong></td><td>Predictable cleanup via tree pruning</td><td>Surprising state loss when parent unmounts</td></tr><tr><td><strong>Re-render Flow</strong></td><td>Cascades deterministically down affected branches</td><td>Unpredictable avalanche across unrelated views</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

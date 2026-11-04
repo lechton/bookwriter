@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 27: The Kinetic Scroll Physics</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 27: The Kinetic Scroll Physics</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">How do CSS scroll snapping and overscroll-behavior create native app-like scroll interactions?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>The National Times multimedia desk builds a horizontal photo essay chronicling an international climate summit.</li>
+<li>The initial implementation relies on standard overflow scrolling: when readers swipe on mobile, momentum decays freely and stops halfway between two photos.</li>
+<li>Readers must delicately nudge each photo with their thumb to align the caption and image boundaries with the viewport.</li>
+<li>When readers swipe aggressively to the final photo, the horizontal gesture unexpectedly chains to the parent document, causing the whole newspaper article to lurch vertically.</li>
+<li>The team considers pulling in a 45KB JavaScript touch slider library that binds passive wheel and touchmove event listeners.</li>
+<li>A senior engineer replaces the JavaScript library with four native CSS declarations: <code>scroll-snap-type</code>, <code>scroll-snap-align</code>, <code>scroll-snap-stop</code>, and <code>overscroll-behavior</code>.</li>
+<li>Master Rule: CSS scroll snapping locks kinetic scroll momentum to predefined target points on the GPU compositor thread, while <code>overscroll-behavior: contain</code> severs scroll chaining to parent viewports.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Snap Container and Snap Targets: The Axis Contract</h3>
+<p>To understand how native CSS scroll interactions achieve the buttery smoothness of mobile applications, one must examine the dual-actor architecture of the CSS Scroll Snap specification. Scroll snapping is not a single property applied to an isolated element. Instead, it is an explicit geometric contract negotiated between two distinct entities in the DOM tree: the <strong>Snap Container</strong> (the scrollable parent viewport) and the <strong>Snap Targets</strong> (the children arranged inside that scroll container).</p>
+<p>The parent container establishes the coordinate system, defining an invisible alignment baseline known as the <strong>snapport line</strong>. In turn, each child element declares where its physical box must align relative to that baseline.</p>
+<p>The official MDN Web Docs reference defines the core container property:</p>
+<blockquote>"The scroll-snap-type CSS property sets how strictly snap points are enforced on the scroll container in case there is one. It specifies the axis on which snapping occurs (x, y, block, inline, or both) and the strictness of the snapping (mandatory or proximity)."<br><br><em>MDN Web Docs, CSS scroll snap (<code>resources/web-performance/mdn/files/en-us/web/css/reference/properties/scroll-snap-type/index.md</code>)</em></blockquote>
+</div>
+<h4>Actor 1: The Snap Container (<code>scroll-snap-type</code>)</h4>
+<p>The snap container establishes the coordinate physics for the entire scrollable area. By applying <code>scroll-snap-type: x mandatory;</code> to an element with <code>overflow-x: auto;</code>, you instruct the browser engine to monitor kinetic scrolling along the horizontal axis.</p>
+<p>The container creates an internal coordinate frame. When the user finishes a scroll gesture, the browser checks the final position of all children relative to the container boundaries.</p>
+<h4>Actor 2: The Snap Target (<code>scroll-snap-align</code>)</h4>
+<p>The snap targets are the child elements resting inside the scroll track. Each child must explicitly declare where its bounding box should align relative to the parent snapport line using the <strong><code>scroll-snap-align</code></strong> property.</p>
+<p>The property accepts three primary alignment positions:</p>
+<ul><li><code>start</code>: Aligns the leading edge of the child with the leading edge of the scroll container.</li>
+<li><code>center</code>: Aligns the geometric center of the child with the center of the scroll container.</li>
+<li><code>end</code>: Aligns the trailing edge of the child with the trailing edge of the scroll container.</li></ul>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">photo-gallery.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;section <span class="kw">class</span>=<span class="str">"gallery-viewport"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"gallery-slide"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">    &lt;img src=<span class="str">"summit-01.jpg"</span> alt=<span class="str">"Delegates entering the assembly hall"</span>&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;p <span class="kw">class</span>=<span class="str">"slide-caption"</span>&gt;Opening plenary <span class="kw">in</span> Geneva.&lt;/p&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;/article&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"gallery-slide"</span>&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">    &lt;img src=<span class="str">"summit-02.jpg"</span> alt=<span class="str">"Protesters outside the conference center"</span>&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">    &lt;p <span class="kw">class</span>=<span class="str">"slide-caption"</span>&gt;Demonstrations along the riverbank.&lt;/p&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">  &lt;/article&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">&lt;/section&gt;</span></div></div></div></div>
+<p>Now examine the CSS rules that bind the container and its targets together:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">photo-gallery.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.gallery-viewport </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">display</span>: <span class="kw">flex</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Arranges child slides horizontally in a row</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">overflow-x</span>: <span class="kw">auto</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Enables native horizontal scrolling</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">scroll-snap-type</span>: x mandatory; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Actor 1: enforces strict horizontal snapping</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">overscroll-behavior-x</span>: contain; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Severs scroll chaining to parent document</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">gap</span>: <span class="nl">16px</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Consistent spacing between photo slides</span></div></div></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">padding</span>: <span class="nl">16px</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Breathing room around inner viewport edge</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div>
+<div class="row"><span class="num">9</span><span class="src"></span></div>
+<div class="row"><span class="num">10</span><span class="src"><span class="sel">.gallery-slide </span>{</span></div>
+<div class="row"><span class="num">11</span><span class="src">  <span class="prop">flex</span>: <span class="nl">0</span> <span class="nl">0</span> <span class="nl">85%</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Each slide occupies 85% of viewport width</span></div></div></div>
+<div class="row"><span class="num">12</span><span class="src">  <span class="prop">scroll-snap-align</span>: <span class="kw">center</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Actor 2: locks slide center to container center</span></div></div></div>
+<div class="row"><span class="num">13</span><span class="src">  <span class="prop">scroll-snap-stop</span>: always; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Captures momentum on the very next slide</span></div></div></div>
+<div class="row"><span class="num">14</span><span class="src">}</span></div></div></div></div>
+<figure class="css-figure">
+<style>
+  .fig-snap-geometry {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-snap-geometry .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-snap-geometry .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-snap-geometry .pill-wrong {
+    background: #fde8e8;
+    border: 1px solid #f9b4b4;
+    color: #b91c1c;
+  }
+  .fig-snap-geometry .pill-right {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-snap-geometry .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-snap-geometry .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-snap-geometry .card-wrong {
+    border: 1px solid #f9b4b4;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .fig-snap-geometry .card-right {
+    border: 1.5px solid #84e1bc;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-snap-geometry .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+  }
+
+  .fig-snap-geometry .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .fig-snap-geometry .canvas-area {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px;
+    box-sizing: border-box;
+    height: 195px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+  }
+
+  /* Gallery Track Simulation */
+  .fig-snap-geometry .gallery-viewport {
+    width: 100%;
+    height: 120px;
+    background: #f1f5f9;
+    border: 2px solid #64748b;
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
+  .fig-snap-geometry .viewport-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 20px;
+    width: 2px;
+    background: #ef4444;
+    z-index: 10;
+  }
+  .fig-snap-geometry .line-tag {
+    position: absolute;
+    top: 4px;
+    left: 24px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 7.5px;
+    font-weight: 700;
+    color: #b91c1c;
+    background: #fee2e2;
+    padding: 1px 4px;
+    border-radius: 2px;
+    z-index: 10;
+  }
+
+  .fig-snap-geometry .photo-card {
+    width: 140px;
+    height: 90px;
+    border-radius: 4px;
+    margin-left: 8px;
+    padding: 8px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .fig-snap-geometry .card-drift {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    transform: translateX(-40px); /* stopped halfway */
+  }
+  .fig-snap-geometry .card-locked {
+    background: #ecfdf5;
+    border: 1.5px solid #10b981;
+    color: #065f46;
+    transform: translateX(12px); /* aligned to start */
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+  }
+
+  .fig-snap-geometry .status-strip {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .fig-snap-geometry .status-wrong {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+  .fig-snap-geometry .status-right {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  .fig-snap-geometry .card-footer {
+    padding: 10px 14px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-snap-geometry">
+  <div class="compare-header">
+    <div class="compare-pill pill-wrong">FREE DRIFT (NO SCROLL SNAPPING)</div>
+    <div class="compare-pill pill-right">MANDATORY SNAP (scroll-snap-type: x mandatory)</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Left: Free Drift -->
+    <div class="preview-card card-wrong">
+      <div class="card-body">
+        <span class="stage-label">INERTIA DECAY RESTS ARBITRARILY</span>
+        <div class="canvas-area">
+          <div class="gallery-viewport">
+            <div class="viewport-line"></div>
+            <span class="line-tag">Snap Line (start)</span>
+            <div class="photo-card card-drift">
+              <span>Photo #1</span>
+              <span style="color: #ef4444; font-size: 8px;">&times; Cut off at 50%</span>
+            </div>
+            <div class="photo-card card-drift">
+              <span>Photo #2</span>
+              <span style="color: #ef4444; font-size: 8px;">&times; Partial view</span>
+            </div>
+          </div>
+          <div class="status-strip status-wrong">
+            Drifts to rest halfway; user must manually nudge
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        Standard scrolling decays freely via momentum, leaving photos bisected and requiring awkward manual repositioning.
+      </div>
+    </div>
+
+    <!-- Right: Mandatory Snap -->
+    <div class="preview-card card-right">
+      <div class="card-body">
+        <span class="stage-label">COMPOSITOR SNAPS TO TARGET AXIS</span>
+        <div class="canvas-area">
+          <div class="gallery-viewport">
+            <div class="viewport-line" style="background: #10b981;"></div>
+            <span class="line-tag" style="background: #dcfce7; color: #15803d;">Snap Line (Locked)</span>
+            <div class="photo-card card-locked">
+              <span>Photo #1</span>
+              <span style="color: #059669; font-size: 8px;">&#10003; 100% Locked View</span>
+            </div>
+            <div class="photo-card" style="background: #ffffff; border: 1px solid #cbd5e1; color: #475569; transform: translateX(12px);">
+              <span>Photo #2</span>
+              <span style="color: #64748b; font-size: 8px;">Next Snap Target</span>
+            </div>
+          </div>
+          <div class="status-strip status-right">
+            Automatically magnetic; locks perfectly to alignment line
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <code>scroll-snap-type: x mandatory</code> forces the browser engine to snap cleanly to the nearest target on gesture completion.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 27.1: The Snap Alignment Geometry: Free drift decays arbitrarily via momentum, bisecting images. Mandatory scroll snapping forces the compositor to lock the target element's snap point directly onto the container's snapport line.</figcaption>
+</figure>
+<p>In Figure 27.1, examine the physical difference between free momentum drift and mandatory scroll snapping. On the left, standard scrolling allows momentum to decay arbitrarily. The carousel stops at a fractional offset, cutting off the photo halfway across the screen and forcing the user to manually nudge the card.</p>
+<p>On the right, <code>scroll-snap-type: x mandatory</code> is active. When the reader releases their finger, the browser compositor evaluates the slide positions. It instantly snaps the target element onto the container green snapport line, guaranteeing a perfectly framed presentation.</p>
+<h4>Why CSS Snapping Outperforms JavaScript Carousel Libraries</h4>
+<p>For more than a decade, web developers relied on heavyweight JavaScript touch carousels. These libraries attached <code>touchstart</code>, <code>touchmove</code>, and <code>touchend</code> listeners to DOM nodes, manually calculated finger velocity vectors, and updated element positions using <code>requestAnimationFrame</code> or CSS transforms.</p>
+<p>This legacy JavaScript approach introduces three severe performance bottlenecks:</p>
+<ol><li><strong>Main Thread Contention</strong>: If the browser is busy parsing JSON, hydrating a framework component, or executing analytics scripts, JavaScript touch listeners drop frames, causing visible stutter.</li>
+<li><strong>Passive Listener Friction</strong>: Touch event listeners can block native compositor scrolling unless explicitly marked as <code>{ passive: true }</code>, triggering browser warnings and touch latency.</li>
+<li><strong>Hardware Mismatch</strong>: A JavaScript script cannot replicate the exact native momentum physics, spring coefficients, and friction curves of iOS or Android devices.</li></ol>
+<p>In sharp contrast, CSS scroll snapping is implemented directly inside the browser native C++ compositor pipeline. When a user swipes their finger on an iPhone or trackpad, the touch gesture is processed entirely on the <strong>GPU compositor thread</strong>.</p>
+<p>The main thread can be completely frozen by heavy JavaScript execution, and the photo carousel will still snap with flawless sixty or one hundred and twenty frames per second precision.</p>
+<div class="keep-together">
+<h3>Strictness Dynamics: Mandatory Versus Proximity Snap Dynamics</h3>
+<p>When configuring <code>scroll-snap-type</code>, developers must choose between two fundamentally different behavioral keywords: <strong><code>mandatory</code></strong> and <strong><code>proximity</code></strong>. Selecting the wrong keyword damages the intended user experience.</p>
+</div>
+<h4>Mandatory Snapping: The Strict Carousel Contract</h4>
+<p>Under <code>scroll-snap-type: x mandatory</code>, the browser is under a strict legal obligation: whenever the user finishes a scroll interaction, the scroll container <strong>must</strong> come to rest precisely on a snap point.</p>
+<p>If the user drags the photo gallery thirty pixels and releases their finger, the container will not stay there. The compositor engine evaluates the velocity and displacement, detects that the current position does not satisfy a snap target, and animates the scroll offset to lock onto the nearest item.</p>
+<p>It is mathematically impossible for a mandatory scroll view to come to rest at an arbitrary fractional offset between slides.</p>
+<p>Mandatory snapping is the industry standard for:</p>
+<ul><li>Full-bleed photo essays and editorial carousels.</li>
+<li>Paginated onboarding card flows and tutorials.</li>
+<li>Full-screen vertical story presentations such as short-form video feeds.</li></ul>
+<h4>Proximity Snapping: The Gentle Magnetic Guide</h4>
+<p>Under <code>scroll-snap-type: x proximity</code>, snapping is treated as an optional suggestion rather than an absolute rule.</p>
+<p>The browser physics engine calculates where the scroll momentum would naturally decay. If that natural stopping position happens to land near a snap point (within an internal browser-defined threshold), the engine gently pulls the scroll position into alignment. However, if the user scrolls with moderate force and releases their finger far from any snap point, the view simply rests where momentum naturally stops.</p>
+<p>Proximity snapping is the ideal standard for:</p>
+<ul><li>Horizontal product catalogs where users want to scan dozens of items quickly.</li>
+<li>Multi-column tables or horizontal news category ribbons where items have varying widths and strict pagination would feel rigid and frustrating.</li></ul>
+<div class="keep-together">
+<h3>Scroll Chaining and overscroll-behavior: Isolating Component Gestures</h3>
+<p>One of the most disruptive defects in modern responsive web design is <strong>Scroll Chaining</strong>. Scroll chaining occurs when a user scrolls inside a nested scrollable element (such as a horizontal photo gallery, an embedded code snippet, a comment drawer, or a modal dialog) and reaches the boundary of that container.</p>
+<p>The official MDN Web Docs reference defines the mechanism:</p>
+<blockquote>"The overscroll-behavior CSS property sets what a browser does when reaching the boundary of a scrolling area. It's a shorthand for overscroll-behavior-x and overscroll-behavior-y. By default, mobile browsers tend to provide a bounce effect or even a page refresh when the top or bottom of a page is reached... overscroll-behavior allows you to override this behavior."<br><br><em>MDN Web Docs, overscroll-behavior (<code>resources/web-performance/mdn/files/en-us/web/css/reference/properties/overscroll-behavior/index.md</code>)</em></blockquote>
+</div>
+<h4>The Chaining Catastrophe</h4>
+<p>By default, every scroll container has <code>overscroll-behavior: auto</code>. Under this default setting, when a reader swipes to the final photo in a horizontal gallery and continues swiping, the horizontal container has exhausted its scrollable range.</p>
+<p>The browser does not discard the remaining kinetic momentum. Instead, it "chains" that momentum up the DOM tree to the nearest scrollable ancestor, typically <code>&lt;body&gt;</code> or <code>&lt;html&gt;</code>.</p>
+<p>On mobile touch devices, this produces jarring defects:</p>
+<ul><li>An aggressive horizontal swipe suddenly jerks the entire article vertically.</li>
+<li>Swiping down inside a comment drawer reaches the top and accidentally triggers a full-page reload via the browser native pull-to-refresh mechanism.</li>
+<li>Scrolling a modal dialog reaches the bottom and starts scrolling the background webpage underneath the modal backdrop.</li></ul>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">gesture-isolation.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.gallery-viewport </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">overflow-x</span>: <span class="kw">auto</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Enables horizontal scroll overflow</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">scroll-snap-type</span>: x mandatory; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Locks slides to snap points</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">overscroll-behavior-x</span>: contain; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Traps horizontal momentum inside this gallery</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">.modal-content-scroll </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">overflow-y</span>: <span class="kw">auto</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Enables vertical modal dialog scroll</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="prop">overscroll-behavior-y</span>: contain; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Prevents modal scroll from moving background page</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<figure class="css-figure">
+<style>
+  .fig-chain-compare {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-chain-compare .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-chain-compare .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-chain-compare .pill-chain {
+    background: #fde8e8;
+    border: 1px solid #f9b4b4;
+    color: #b91c1c;
+  }
+  .fig-chain-compare .pill-contain {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-chain-compare .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-chain-compare .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-chain-compare .card-chain {
+    border: 1px solid #f9b4b4;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .fig-chain-compare .card-contain {
+    border: 1.5px solid #84e1bc;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-chain-compare .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+  }
+
+  .fig-chain-compare .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .fig-chain-compare .canvas-area {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px;
+    box-sizing: border-box;
+    height: 195px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+  }
+
+  /* Page layout representation */
+  .fig-chain-compare .parent-page {
+    width: 100%;
+    height: 125px;
+    border: 1.5px solid #94a3b8;
+    border-radius: 4px;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    background: #f8fafc;
+  }
+
+  .fig-chain-compare .carousel-box {
+    height: 50px;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    font-size: 8.5px;
+    font-weight: 700;
+    position: relative;
+  }
+
+  /* Chaining arrow */
+  .fig-chain-compare .chain-arrow {
+    position: absolute;
+    right: 12px;
+    top: 52px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+    font-weight: 800;
+    color: #b91c1c;
+    background: #fee2e2;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #fca5a5;
+    z-index: 10;
+  }
+
+  /* Contained boundary */
+  .fig-chain-compare .contain-wall {
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    bottom: 4px;
+    width: 4px;
+    background: #10b981;
+    border-radius: 2px;
+  }
+  .fig-chain-compare .contain-tag {
+    position: absolute;
+    right: 12px;
+    top: 52px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+    font-weight: 800;
+    color: #065f46;
+    background: #dcfce7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #86efac;
+    z-index: 10;
+  }
+
+  .fig-chain-compare .status-strip {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .fig-chain-compare .status-chain {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+  .fig-chain-compare .status-contain {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  .fig-chain-compare .card-footer {
+    padding: 10px 14px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-chain-compare">
+  <div class="compare-header">
+    <div class="compare-pill pill-chain">DEFAULT SCROLL CHAINING (overscroll: auto)</div>
+    <div class="compare-pill pill-contain">GESTURE CONTAINMENT (overscroll: contain)</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Left: Scroll Chaining -->
+    <div class="preview-card card-chain">
+      <div class="card-body">
+        <span class="stage-label">MOMENTUM BUBBLES TO PARENT PAGE</span>
+        <div class="canvas-area">
+          <div class="parent-page">
+            <span style="font-size: 8px; font-weight: 700; color: #64748b;">Parent Document Scroll Area</span>
+            <div class="carousel-box">
+              <span>Photo Carousel [End Reached]</span>
+              <span style="color: #ef4444;">Swipe &rarr;</span>
+            </div>
+            <div class="chain-arrow">&uarr; Momentum chains to Root! Page Jumps!</div>
+          </div>
+          <div class="status-strip status-chain">
+            &times; Reaching gallery end scrolls whole article or triggers pull-to-refresh
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        With <code>overscroll-behavior: auto</code>, scrolling past the end boundary bubbles momentum up to the parent page, causing disorienting layout jumps.
+      </div>
+    </div>
+
+    <!-- Right: Contained Gesture -->
+    <div class="preview-card card-contain">
+      <div class="card-body">
+        <span class="stage-label">GESTURE TRAPPED IN COMPONENT</span>
+        <div class="canvas-area">
+          <div class="parent-page">
+            <span style="font-size: 8px; font-weight: 700; color: #64748b;">Parent Document Scroll Area</span>
+            <div class="carousel-box" style="border-color: #84e1bc;">
+              <span>Photo Carousel [End Reached]</span>
+              <div class="contain-wall"></div>
+            </div>
+            <div class="contain-tag">&#10003; Momentum isolated; Page remains rock steady</div>
+          </div>
+          <div class="status-strip status-contain">
+            &#10003; Boundary absorbs momentum; parent page never scrolls
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <code>overscroll-behavior: contain</code> prevents scroll chaining, trapping swipe momentum inside the widget and preserving main page scroll stability.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 27.2: Scroll Chaining vs Gesture Containment: Default overscroll-behavior: auto bubbles kinetic momentum up to the document root, causing page jumps. Declaring contain traps momentum at the boundary, isolating component gestures.</figcaption>
+</figure>
+<p>In Figure 27.2, compare the two overscroll behaviors. On the left, with the default <code>overscroll-behavior: auto</code>, reaching the end of the carousel triggers an upward arrow of kinetic momentum. The momentum chains directly to the root document, causing the whole article to jump or pull-to-refresh.</p>
+<p>On the right, <code>overscroll-behavior-x: contain</code> erects a green containment boundary. The remaining swipe energy is absorbed locally at the end of the carousel. The parent document stays perfectly stationary.</p>
+<h4>The Power of contain Versus none</h4>
+<p>The <code>overscroll-behavior</code> property provides three distinct keywords:</p>
+<ol><li><code>auto</code>: The default behavior. Momentum chains upward to parent scroll containers, and native boundary effects (such as rubber-banding or pull-to-refresh) are triggered.</li>
+<li><code>contain</code>: <strong>The recommended standard.</strong> Eliminates scroll chaining to parent elements. When the boundary is reached, momentum terminates immediately. Local boundary effects (such as the subtle rubber-band stretch inside the container on iOS) are preserved, giving the user tactile feedback that the end was reached without disturbing the rest of the page.</li>
+<li><code>none</code>: Eliminates both scroll chaining and local rubber-band bounce effects entirely. The scroll view hits an absolute hard stop at the boundary.</li></ol>
+<p>By setting <code>overscroll-behavior-x: contain</code> on horizontal galleries and <code>overscroll-behavior-y: contain</code> on modal dialogs, you create self-contained interactive components that never disturb the reader main page position.</p>
+<div class="keep-together">
+<h3>Single-Item Pagination: scroll-snap-stop and High-Velocity Swipes</h3>
+<p>Even with <code>scroll-snap-type: x mandatory</code> active, developers testing mobile photo essays frequently encounter a secondary frustration: high-velocity flicks.</p>
+<p>If a reader performs a fast, aggressive swipe gesture, the touch physics engine imparts significant kinetic energy to the scroll view. By default, the browser engine treats snap points like rumble strips on a highway: it acknowledges them, but if the momentum is high enough, it happily blows right past three, four, or five slides before friction brings it to rest on slide number six!</p>
+<p>For a photo gallery where each slide contains critical editorial context, allowing users to accidentally skip four slides with a single swipe is unacceptable.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">snap-stop.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.gallery-slide </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">scroll-snap-align</span>: <span class="kw">center</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Centers slide on the snapport line</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">scroll-snap-stop</span>: always; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Forces momentum to capture at the very next snap point</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+<figure class="css-figure">
+<style>
+  .fig-snap-stop {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-snap-stop .header-pill {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    margin-bottom: 12px;
+  }
+
+  .fig-snap-stop .preview-card {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .fig-snap-stop .card-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    background: #f8fafc;
+  }
+
+  .fig-snap-stop .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  /* Compare strip */
+  .fig-snap-stop .behavior-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .fig-snap-stop .behavior-row {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .fig-snap-stop .row-info {
+    width: 170px;
+    flex-shrink: 0;
+  }
+  .fig-snap-stop .prop-tag {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+  .fig-snap-stop .tag-normal { background: #fee2e2; color: #991b1b; }
+  .fig-snap-stop .tag-always { background: #dcfce7; color: #166534; }
+
+  .fig-snap-stop .prop-desc {
+    font-size: 9px;
+    color: #475569;
+    line-height: 1.35;
+  }
+
+  .fig-snap-stop .track-demo {
+    flex-grow: 1;
+    height: 52px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fig-snap-stop .mini-card {
+    width: 60px;
+    height: 36px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 7.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .fig-snap-stop .card-skipped {
+    background: #f1f5f9;
+    border: 1px dashed #94a3b8;
+    color: #94a3b8;
+  }
+  .fig-snap-stop .card-hit {
+    background: #ecfdf5;
+    border: 1.5px solid #10b981;
+    color: #065f46;
+  }
+
+  .fig-snap-stop .skip-arrow {
+    position: absolute;
+    top: 4px;
+    left: 40px;
+    right: 30px;
+    height: 2px;
+    background: #ef4444;
+  }
+  .fig-snap-stop .arrow-label {
+    position: absolute;
+    top: 6px;
+    left: 80px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 7px;
+    font-weight: 800;
+    color: #b91c1c;
+    background: #fee2e2;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+
+  .fig-snap-stop .card-footer {
+    padding: 10px 16px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-snap-stop">
+  <div class="header-pill">
+    FLICK PHYSICS: SCROLL-SNAP-STOP CONTROLS INERTIA CAPTURE
+  </div>
+
+  <div class="preview-card">
+    <div class="card-body">
+      <span class="stage-label">CONTROLLING MULTI-ITEM SKIP VS ONE-BY-ONE PAGINATION</span>
+
+      <div class="behavior-grid">
+        <!-- Normal -->
+        <div class="behavior-row">
+          <div class="row-info">
+            <span class="prop-tag tag-normal">scroll-snap-stop: normal</span>
+            <p class="prop-desc">High-velocity swipe skips past snap points, landing arbitrarily several items ahead.</p>
+          </div>
+          <div class="track-demo">
+            <div class="skip-arrow"></div>
+            <span class="arrow-label">Fast flick skips 3 items &rarr;</span>
+            <div class="mini-card card-skipped">#1</div>
+            <div class="mini-card card-skipped">#2</div>
+            <div class="mini-card card-skipped">#3</div>
+            <div class="mini-card card-hit">#4 (Stop)</div>
+          </div>
+        </div>
+
+        <!-- Always -->
+        <div class="behavior-row">
+          <div class="row-info">
+            <span class="prop-tag tag-always">scroll-snap-stop: always</span>
+            <p class="prop-desc">Forces the scroll container to trap momentum at the very next snap point, like a native mobile app.</p>
+          </div>
+          <div class="track-demo">
+            <div class="mini-card card-skipped">#1</div>
+            <div class="mini-card card-hit" style="box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);">#2 (LOCKED)</div>
+            <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 7.5px; font-weight: 700; color: #059669; margin-left: 8px;">
+              &#10003; Traps momentum at next item
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      For image carousels and paginated card decks, <code>scroll-snap-stop: always</code> guarantees that a single flick advances exactly one item, preventing accidental skipping.
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 27.3: Flick Physics and Inertia Capture: Under scroll-snap-stop: normal, high-velocity flicks skip past multiple items. Declaring scroll-snap-stop: always forces the compositor to trap momentum at the very next item, creating a true single-item carousel.</figcaption>
+</figure>
+<p>In Figure 27.3, observe how flick velocity interacts with snap points. Under the default <code>scroll-snap-stop: normal</code>, a high-velocity swipe skips across multiple slides, coming to rest unpredictably far down the track.</p>
+<p>Under <code>scroll-snap-stop: always</code>, the compositor thread arrests the scroll momentum at the very next slide boundary, creating a rock-solid single-item paging experience.</p>
+</div>
+<h4>The Mechanism of scroll-snap-stop: always</h4>
+<p>The <strong><code>scroll-snap-stop</code></strong> property is declared on the <strong>child snap targets</strong>, not the parent container. It accepts two values:</p>
+<ul><li><code>normal</code> (default): The scroll container is permitted to pass over this snap target if the velocity of the scroll gesture is sufficient.</li>
+<li><code>always</code>: The scroll container is strictly forbidden from skipping this snap point. The engine must trap the scroll momentum at this exact element, regardless of how fast or violently the user flicked the screen.</li></ul>
+<p>When you pair <code>scroll-snap-type: x mandatory</code> on the parent with <code>scroll-snap-stop: always</code> on every slide, you transform a plain HTML <code>&lt;div&gt;</code> into a bulletproof, native-feeling pagination slider:</p>
+<ul><li>A gentle swipe advances one slide.</li>
+<li>A furious, fast flick advances exactly one slide and locks into place.</li>
+<li>Zero lines of JavaScript are required.</li>
+<li>Memory consumption and CPU load remain virtually zero.</li></ul>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p><strong>Keyboard and Screen Reader Accessibility in Native Carousels:</strong> While CSS scroll snapping delivers native touch physics, accessible carousels must also serve keyboard and screen reader users. Always ensure that the scroll container or individual slides can receive keyboard focus by adding <code>tabindex="0"</code>. When a keyboard user tabs into a slide, browsers automatically scroll the container to reveal the focused element, which triggers CSS scroll snapping to align the item cleanly. Furthermore, pairing native scroll snapping with semantic buttons labeled with accessible names ("Previous Photo", "Next Photo") ensures complete compliance with WCAG standards.</p>
+  </div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>The Senior Engineer Interview Formulation:</strong> When asked: <em>"How do CSS scroll snapping and overscroll-behavior create native app-like scroll interactions?"</em> deliver your response in four crisp architectural phases:</p>
+  <ol>
+    <li><strong>The Dual-Actor Model</strong>: Explain that scroll snapping requires configuring both the parent snap container (<code>scroll-snap-type: x mandatory</code>) and the child snap targets (<code>scroll-snap-align: start | center | end</code>) to establish snapport baselines and target anchors.</li>
+    <li><strong>Compositor Thread Execution</strong>: Emphasize that CSS scroll snapping executes on the browser GPU compositor thread. This eliminates main-thread JavaScript execution, passive touch event listener lag, and frame drops during user scrolling.</li>
+    <li><strong>Eliminating Scroll Chaining</strong>: Detail how <code>overscroll-behavior: contain</code> severs momentum propagation from nested scroll areas to the parent document, preventing accidental page jumps and mobile pull-to-refresh triggers.</li>
+    <li><strong>Flick Physics Control</strong>: Highlight <code>scroll-snap-stop: always</code> on child items, explaining how it forces the browser to capture high-velocity swipes on the very next item, transforming a basic scroll track into a paginated carousel without third-party libraries.</li>
+  </ol>
+  </div>
+</aside>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Full-screen mobile carousels: paginating high-resolution photo essays and editorial storytelling galleries.</li>
+<li>Modal dialog drawers: locking internal comment lists so scrolling never moves the background page.</li>
+<li>Horizontal category chips: allowing users to smoothly flick through news topics without awkward half-pill cutoffs.</li>
+<li>Data dashboard tables: pinning wide financial charts while isolating scroll interactions from the main page.</li>
+<li>Onboarding walkthrough cards: providing step-by-step product tutorials that advance one card per swipe.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Snap Container</strong>: The scrollable parent element that establishes the scroll-snap coordinate system using <code>scroll-snap-type</code>.</li>
+<li><strong>Snap Target</strong>: A child element within a snap container that declares its alignment point using <code>scroll-snap-align</code>.</li>
+<li><strong>Snapport Line</strong>: The reference baseline inside the snap container where target points align.</li>
+<li><strong>scroll-snap-type: mandatory</strong>: A strict strictness mode where the scroll view must always come to rest on a snap point upon gesture completion.</li>
+<li><strong>scroll-snap-type: proximity</strong>: A relaxed strictness mode where the scroll view only snaps if momentum naturally brings it close to a target.</li>
+<li><strong>Scroll Chaining</strong>: The default browser behavior where scroll momentum reaching the edge of a nested container bubbles up to scroll the parent page.</li>
+<li><strong>overscroll-behavior: contain</strong>: A CSS declaration that traps kinetic momentum within the current scroll container, preventing parent page jumps.</li>
+<li><strong>scroll-snap-stop: always</strong>: A child property that forces the browser to arrest high-velocity flick momentum at the very next snap point.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>The Kinetic Scroll Physics</strong></p>
+<p>Building horizontal photo galleries and interactive carousels with JavaScript touch libraries is a legacy anti-pattern that bloats bundles, blocks the main thread, and degrades mobile scrolling performance. Modern CSS provides native, hardware-accelerated scroll physics that run directly on the browser compositor thread with zero JavaScript overhead.</p>
+<p>By declaring <code>scroll-snap-type: x mandatory</code> on the container and <code>scroll-snap-align: center</code> on the children, developers guarantee that the scroll view always locks cleanly onto slide boundaries. Adding <code>scroll-snap-stop: always</code> prevents aggressive flicks from skipping multiple slides, while <code>overscroll-behavior-x: contain</code> eliminates scroll chaining to the parent document. Together, these four declarations deliver native mobile application smoothness using purely declarative web standards. Here is your streetwise review.</p>
+<p>❒ Core Snapping Principles</p>
+<ol><li>The container-target relationship.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) The parent declares the axis and strictness via <code>scroll-snap-type</code>.<code><br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Each child declares its alignment target point via </code>scroll-snap-align`.</li>
+<li>Hardware compositor execution.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Snapping runs on the GPU compositor thread independently of main-thread JavaScript.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Guaranteed 60 FPS to 120 FPS performance with zero touch event listener overhead.</li>
+<li>Gesture isolation.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) <code>overscroll-behavior: contain</code> traps kinetic momentum inside the active scrollable area.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Prevents accidental parent page scrolling, rubber-banding, and pull-to-refresh reloads.</li></ol>
+<p>❒ Snapping Best Practices</p>
+<ol><li>Never import large JavaScript touch libraries for standard horizontal carousels or image sliders.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Rely on heavy JavaScript libraries to calculate touch coordinates and animate carousels.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.photo-gallery </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">display</span>: <span class="kw">flex</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">overflow-x</span>: <span class="kw">scroll</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use declarative CSS scroll snapping and overscroll containment for 60 FPS hardware performance.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.photo-gallery </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">display</span>: <span class="kw">flex</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">overflow-x</span>: <span class="kw">auto</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">scroll-snap-type</span>: x mandatory;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">overscroll-behavior-x</span>: contain;</span></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">.photo-slide </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">scroll-snap-align</span>: <span class="kw">center</span>;</span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="prop">scroll-snap-stop</span>: always;</span></div>
+<div class="row"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+</div>
+<p>➔ NEVER leave nested scroll containers with <code>overscroll-behavior: auto</code> if chaining disrupts main layout.</p>
+<p>➔ ALWAYS set <code>scroll-snap-stop: always</code> on gallery slides to prevent fast flicks from skipping items.</p>
+<p>➔ IF building flexible product lists THEN use <code>proximity</code> snapping instead of <code>mandatory</code> pagination.</p>
+<table><thead><tr><th></th><th><strong>CSS SCROLL SNAPPING</strong><br>(native compositor)</th><th><strong>JAVASCRIPT CAROUSEL</strong><br>(scripted momentum)</th></tr></thead><tbody><tr><td><strong>Execution Thread</strong></td><td>GPU Compositor Thread;<br>runs off the main thread</td><td>CPU Main Thread;<br>competes with app scripts</td></tr><tr><td><strong>Frame Rate</strong></td><td>Locked 60 FPS to 120 FPS;<br>immune to JS lag</td><td>Prone to dropped frames<br>during heavy CPU work</td></tr><tr><td><strong>Script Footprint</strong></td><td>0 KB added payload;<br>pure declarative CSS</td><td>30 KB to 60 KB minified<br>external library script</td></tr><tr><td><strong>Touch Listeners</strong></td><td>Zero touch listeners;<br>native OS touch handling</td><td>Passive touchstart and<br>touchmove listeners</td></tr><tr><td><strong>Momentum Physics</strong></td><td>Authentic native OS<br>inertia and spring curves</td><td>Simulated mathematical<br>friction calculations</td></tr><tr><td><strong>Gesture Chaining</strong></td><td>Controlled cleanly via<br><code>overscroll-behavior</code></td><td>Requires <code>e.preventDefault</code><br>inside event handlers</td></tr><tr><td><strong>Multi-Item Skip</strong></td><td>Controlled via child<br><code>scroll-snap-stop</code></td><td>Custom velocity checks<br>in touch end handler</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

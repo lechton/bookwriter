@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 34: Catching Type and Lint Errors with svelte-check</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 34: Catching Type and Lint Errors with svelte-check</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you check your Svelte project for type and lint errors before shipping?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A web developer prepares to send tonight's new National Times edition to the production web servers.</li>
+<li>The article card now requires a numeric identification number, because the database rejects text identifiers.</li>
+<li>The developer updates the front page, but an untouched archive page still passes text identifiers to the card.</li>
+<li>Why did it pass?</li>
+<li>The local development server compiles without complaint, but the archive page crashes when readers click old stories.</li>
+<li>Your code editor, the program, only verifies tabs open on your screen, leaving closed components completely uninspected.</li>
+<li>Today your workflow gains one command that audits every component, script, and stylesheet across your entire project.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Trap of the Clean Screen</h3>
+<p>During local development, your application feels completely solid. When you run your local development server with Vite, Svelte transforms files on the fly as your browser navigates the site (see Lecture 2). Vite optimizes aggressively for speed, so it compiles only the components needed to render the exact page open in your browser window. If you spend the afternoon polishing the home page, an archive page located three directories away is never compiled, never evaluated, and never checked.</p>
+<p>At the same time, your code editor, the program running on your computer such as Visual Studio Code, provides real-time diagnostics through the Svelte extension. As we saw when adding TypeScript to a component with the <code>lang="ts"</code> attribute (see Lecture 22), the editor highlights typos and mismatched types with immediate red squiggles. But code editors face strict memory limits. To keep your computer fast, language tools prioritize active tabs. They thoroughly inspect the files currently visible on your screen, but they do not continuously scan every unopened file across a project containing hundreds of components.</p>
+<p>This creates a dangerous blind spot. Suppose you refactor the newsroom's article card component. You convert its properties to TypeScript, requiring every story to provide a numeric identification code for database queries. You update the home page to pass numbers, and your editor shows zero errors. But an old archive page, closed and untouched for months, still passes a string. The local development server does not crash because you never visited the archive route today. The editor does not complain because the archive tab is closed. If you bundle the code and deploy it to production servers, the archive page crashes the moment a reader opens it tonight.</p>
+<p>Before inspecting the solution, examine the two components that create this conflict. <code>ArchiveGrid.svelte</code> serves as the container shell that renders historical news dispatches, while <code>ArticleCard.svelte</code> renders an individual story card on the screen.</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-svelte" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8a4 4 0 1 1 -8 0"/><path d="M15 16a4 4 0 1 1 -8 0"/><path d="M15 8v8"/><path d="M11 8v8"/></svg><span>ArchiveGrid.svelte</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-svelte" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8a4 4 0 1 1 -8 0"/><path d="M15 16a4 4 0 1 1 -8 0"/><path d="M15 8v8"/><path d="M11 8v8"/></svg><span>ArticleCard.svelte</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>ArchiveGrid</span><span class="component-explorer-props">renders historical news dispatches</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>ArticleCard</span><span class="component-explorer-props">displays single dispatch card</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Story #<strong>104</strong></span><span class="surface-render-line">Harbor Strike</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>Here is <code>ArticleCard.svelte</code>. It defines a strict TypeScript interface for its incoming properties using <code>$props()</code>, Svelte's rune for receiving data from parent components (see Lecture 9 and Lecture 22). Notice also that its style block contains a leftover <code>.author-tag</code> rule from an earlier revision, an unused selector, meaning a CSS rule whose corresponding HTML class was removed from the markup (see Lecture 17).</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArticleCard.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script lang=<span class="str">"ts"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  interface Props {</span></div>
+<div class="row"><span class="num">3</span><span class="src">    id: number; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> Strictly typed <b class="tag">NUMERIC</b> identifier for database queries.</span>
+      </div></div>
+<div class="row"><span class="num">4</span><span class="src">    title: string;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="kw">let</span> { id, title }: Props = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">8</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src"></span></div>
+<div class="row"><span class="num">10</span><span class="src">&lt;article <span class="kw">class</span>=<span class="str">"card"</span>&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src">  &lt;h3&gt;Story #{id}&lt;/h3&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">  &lt;p&gt;{title}&lt;/p&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">&lt;/article&gt;</span></div>
+<div class="row"><span class="num">14</span><span class="src"></span></div>
+<div class="row"><span class="num">15</span><span class="src">&lt;style&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">  .card {</span></div>
+<div class="row"><span class="num">17</span><span class="src">    border: <span class="nl">1</span>px solid #e2e8f0;</span></div>
+<div class="row"><span class="num">18</span><span class="src">    padding: <span class="nl">1</span>rem;</span></div>
+<div class="row"><span class="num">19</span><span class="src">  }</span></div>
+<div class="row"><span class="num">20</span><span class="src">  .author-tag { </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> Leftover <b class="tag">UNUSED</b> selector; Svelte compiler flags this warning.</span>
+      </div></div>
+<div class="row"><span class="num">21</span><span class="src">    color: #<span class="nl">64748</span>b;</span></div>
+<div class="row"><span class="num">22</span><span class="src">  }</span></div>
+<div class="row"><span class="num">23</span><span class="src">&lt;/style&gt;</span></div></div></div>
+<p>Next, look at <code>ArchiveGrid.svelte</code>. It imports <code>ArticleCard.svelte</code> to display past reporting. The first story passes a valid number, but the second story passes a string, directly violating the component contract.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ArchiveGrid.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script lang=<span class="str">"ts"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">import</span> ArticleCard <span class="kw">from</span> <span class="str">'./ArticleCard.svelte'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;section <span class="kw">class</span>=<span class="str">"archive-grid"</span>&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  &lt;h2&gt;Historical Dispatches&lt;/h2&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  &lt;ArticleCard id={<span class="nl">104</span>} title=<span class="str">"Harbor Strike"</span> /&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  &lt;ArticleCard id=<span class="str">"old-88"</span> title=<span class="str">"City Hall Protest"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> Passing text <b class="tag">VIOLATES</b> the numeric prop contract.</span>
+      </div></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;/section&gt;</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>Why the TypeScript Compiler Cannot Save You</h3>
+<p>When developers realize that closed tabs hide type errors, their first instinct is to reach for the standard TypeScript compiler by running <code>tsc --noEmit</code> on the command line. But running the standard TypeScript compiler on a Svelte codebase immediately hits a structural wall: TypeScript does not understand <code>.svelte</code> files. The standard compiler knows how to parse plain <code>.ts</code> and <code>.js</code> files, but it has no parser for Svelte's single-file components. If you point <code>tsc</code> at your project, it completely ignores the template markup, knows nothing about <code>$props()</code> or <code>$state()</code>, and cannot verify whether a parent component passed the correct properties to a child.</p>
+<p>To bridge this divide, the Svelte core team created a dedicated command-line tool: <code>svelte-check</code>. This tool acts as a headless diagnostics engine, meaning a program that inspects code from the terminal without opening a graphical window, tailored specifically to Svelte architecture. Under the hood, <code>svelte-check</code> loads the Svelte compiler alongside TypeScript's language services. It converts every <code>.svelte</code> component into a virtual TypeScript representation, analyzing the script logic, the template markup expressions, the component properties, and even the CSS stylesheet rules in a single comprehensive pass across your entire repository.</p>
+<p>You run <code>svelte-check</code> directly from your project root using the Node package executor.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Terminal</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">npx svelte-check --tsconfig ./tsconfig.json </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Audits <b class="tag">ALL</b> components across the entire repository.</span>
+      </div></div></div></div>
+<p>When you execute this command against our newsroom project, <code>svelte-check</code> scours every folder and prints precise diagnostics directly to the terminal console. It does not matter whether <code>ArchiveGrid.svelte</code> was open in your editor or whether you visited its route in your browser. The tool scans every file on disk and catches both flaws immediately:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Terminal</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">ArchiveGrid.svelte:<span class="nl">8</span>:<span class="nl">16</span></span></div>
+<div class="row"><span class="num">2</span><span class="src">Error: Type <span class="str">'string'</span> is not assignable to type <span class="str">'number'</span>. (ts)</span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;ArticleCard id=<span class="str">"old-88"</span> title=<span class="str">"City Hall Protest"</span> /&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src">ArticleCard.svelte:<span class="nl">17</span>:<span class="nl">3</span></span></div>
+<div class="row"><span class="num">6</span><span class="src">Warning: Unused CSS selector <span class="str">".author-tag"</span> (svelte)</span></div>
+<div class="row"><span class="num">7</span><span class="src">.author-tag {</span></div></div></div>
+<p>Look at what <code>svelte-check</code> accomplished. First, it identified the type mismatch on line 8 of <code>ArchiveGrid.svelte</code>, catching the broken contract before any human user could trigger it in production. Second, it acted as a linter, a software tool that inspects code for stylistic flaws and dead rules, by catching the dead <code>.author-tag</code> rule in <code>ArticleCard.svelte</code>. Svelte's scoped CSS compiler flags unused selectors as warnings (see Lecture 17), and <code>svelte-check</code> surfaces those compiler warnings straight to your terminal output, preventing dead styling bloat from lingering in your shipped CSS bundles.</p>
+</div>
+<div class="keep-together">
+<h3>Automating Verification with npm run check</h3>
+<p>Running a command manually is useful, but human memory is fallible. A developer rushing to meet an evening deadline might forget to run the check before pushing their Git commit. The professional standard is to embed project verification directly into your team's automated build and deployment pipelines.</p>
+<p>When you scaffold a new Svelte or SvelteKit application using <code>sv create</code> (see Lecture 2), the project generator automatically configures a <code>check</code> script inside your <code>package.json</code> file.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">package.json</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="str">"scripts"</span>: {</span></div>
+<div class="row"><span class="num">3</span><span class="src">    <span class="str">"dev"</span>: <span class="str">"vite dev"</span>,</span></div>
+<div class="row"><span class="num">4</span><span class="src">    <span class="str">"build"</span>: <span class="str">"vite build"</span>,</span></div>
+<div class="row"><span class="num">5</span><span class="src">    <span class="str">"check"</span>: <span class="str">"svelte-kit sync &amp;&amp; svelte-check --tsconfig ./tsconfig.json"</span> </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> Prepares route types and <b class="tag">AUDITS</b> the codebase.</span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row"><span class="num">7</span><span class="src">}</span></div></div></div>
+<p>Notice the prefix command: <code>svelte-kit sync</code>. In SvelteKit applications, routing and server load functions rely on generated TypeScript definitions, such as <code>PageData</code> and route parameter types. Running <code>svelte-kit sync</code> generates these auxiliary type files inside the <code>.svelte-kit</code> directory before <code>svelte-check</code> begins its inspection, ensuring that all route-level contracts are completely up to date. In a standalone Svelte project without SvelteKit, the command simply runs <code>svelte-check --tsconfig ./tsconfig.json</code>.</p>
+<p>The true power of <code>svelte-check</code> lies in its operating system exit codes. An exit code is a numeric status returned by a terminal program when it completes, telling the operating system whether the command succeeded. When <code>svelte-check</code> finishes with zero errors, it exits with status code 0, signaling total success. But if it discovers even one type mismatch or syntax defect, it exits with a non-zero status code, typically code 1.</p>
+<p>Continuous Integration, an automated server pipeline that builds and tests code on every Git push, monitors these exit codes. By adding <code>npm run check</code> as a mandatory gate before <code>npm run build</code> in your deployment workflow, any branch containing a broken component contract automatically fails the build. The deployment halts instantly, the team receives an alert, and broken code is physically blocked from reaching your production servers.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> Explain that <code>tsc</code> cannot inspect Svelte components directly because it does not understand single-file component syntax or Svelte template expressions. Emphasize that <code>svelte-check</code> bridges this gap by leveraging the Svelte compiler and TypeScript language server to evaluate virtual representations of components, catching both type mismatches and compiler warnings like unused CSS selectors or accessibility violations. In SvelteKit environments, always highlight that running <code>svelte-kit sync</code> prior to <code>svelte-check</code> is essential to synchronize generated route types before running project-wide diagnostics.</div>
+</aside>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Code editors only verify the files currently open on your screen, but svelte-check audits every component contract, script, and stylesheet across your entire repository in a single automated pass.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Tuning the Auditor: Strict Hygiene and Watch Mode</h3>
+<p>As your project grows, you can customize <code>svelte-check</code> with command-line flags to enforce stricter quality standards across your engineering team. By default, <code>svelte-check</code> reports warnings, such as unused CSS selectors or accessibility warnings like missing image alternative text, but does not cause the command to fail if only warnings are present. If you want zero tolerance for sloppy code, you pass the <code>--fail-on-warnings</code> flag.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Terminal</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">npx svelte-check --tsconfig ./tsconfig.json --fail-on-warnings </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Treats compiler warnings as fatal <b class="tag">ERRORS</b>.</span>
+      </div></div></div></div>
+<p>With <code>--fail-on-warnings</code> enabled, the leftover <code>.author-tag</code> rule in <code>ArticleCard.svelte</code> causes the command to exit with status code 1. This forces developers to clean up orphaned style rules and fix accessibility tags before their pull requests can merge, keeping the application clean and accessible for all users.</p>
+<p>Another powerful option during active development is the <code>--watch</code> flag. Instead of running once and exiting, <code>svelte-check --watch</code> remains active in your terminal, continuously monitoring the file system. Whenever you save a file in any folder, it re-runs its diagnostic pass in seconds. Keeping a dedicated terminal pane open with watch mode gives you the global safety of whole-project checking alongside the blazing local speed of Vite.</p>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>The National Times deployment pipeline runs <code>npm run check</code> before bundling assets, preventing unvisited archive pages from crashing in front of evening readers.</li>
+<li>An e-commerce team refactors a product checkout callback prop, and <code>svelte-check</code> immediately flags four secondary promotional pages that still pass outdated arguments.</li>
+<li>A design systems team runs <code>svelte-check --fail-on-warnings</code> in continuous integration to eliminate dead CSS rules whenever shared button or card styles are restructured.</li>
+<li>An accessibility audit uses <code>svelte-check</code> to catch missing image alternative text attributes and improper button roles across hundreds of government portal forms.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><code>svelte-check</code> is the essential command-line diagnostic tool that brings project-wide type checking and compiler linting to Svelte applications. While local development tools and editor extensions prioritize active tabs for speed, <code>svelte-check</code> audits every <code>.svelte</code>, <code>.ts</code>, and <code>.js</code> file across your entire codebase in a single headless pass. By integrating <code>npm run check</code> into Continuous Integration pipelines, engineering teams catch broken component contracts, unused CSS selectors, and accessibility defects before code reaches production servers.</p>
+<ul><li>Your code editor and development server only check active tabs and visited pages, leaving closed files unverified.</li>
+<li>The standard TypeScript compiler <code>tsc</code> cannot parse <code>.svelte</code> template syntax, single-file components, or Svelte runes.</li>
+<li><code>svelte-check</code> analyzes all components, TypeScript files, and stylesheets across the entire repository from the command line.</li>
+<li>The tool reports both hard TypeScript type errors and Svelte compiler warnings, including unused CSS and accessibility issues.</li>
+<li>Adding <code>--fail-on-warnings</code> turns compiler warnings into fatal errors, enforcing strict quality standards in CI pipelines.</li>
+<li>Standard projects run <code>npm run check</code>, while SvelteKit projects use <code>svelte-kit sync &amp;&amp; svelte-check</code> to synchronize route types first.</li></ul>
+<table><thead><tr><th></th><th><strong>SVELTE-CHECK</strong><br>(cli)</th><th><strong>EDITOR EXTENSION</strong><br>(ide)</th></tr></thead><tbody><tr><td><strong>Analysis scope</strong></td><td>Every file across the entire repository</td><td>Only files currently opened in editor tabs</td></tr><tr><td><strong>Execution mode</strong></td><td>Headless command line and CI/CD pipelines</td><td>Interactive graphical desktop code editor</td></tr><tr><td><strong>Svelte template support</strong></td><td>Full parsing of markup, props, and runes</td><td>Full parsing via Svelte Language Server</td></tr><tr><td><strong>Compiler lint warnings</strong></td><td>Detects unused CSS and accessibility flaws</td><td>Shows warnings inside active editor tabs</td></tr><tr><td><strong>Pipeline automation</strong></td><td>Emits standard process exit codes 0 or 1</td><td>Cannot run in headless automated build servers</td></tr><tr><td><strong>Standard invocation</strong></td><td><code>npx svelte-check</code><br><code>--tsconfig ./tsconfig.json</code></td><td>Background daemon managed by desktop editor</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

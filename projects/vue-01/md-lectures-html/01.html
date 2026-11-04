@@ -1,0 +1,1356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 01: The Script Setup Macro</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 01: The Script Setup Macro</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">What does the <code>&lt;script setup&gt;</code> block actually do during SFC compilation?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Maya arrives at <em>The National Times</em> to modernize the breaking news alert component.</li>
+<li>She opens a clean file, types <code>&lt;script setup&gt;</code>, and declares a simple alert message variable.</li>
+<li>In the template below, she prints that variable directly inside a bold red banner tag.</li>
+<li>She searches the file for an export statement or a return dictionary, but finds none.</li>
+<li>Why does the HTML template receive every variable declared at the top of the script?</li>
+<li>If developers mistake this file for standard runtime JavaScript, their mental model breaks during debugging.</li>
+<li>Today you learn how Vue transforms authoring syntax into an optimized runtime render function during build time.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Invisible Bridge Between Script and Template</h3>
+<p>When you open a Single-File Component in Vue 3, you see a script block and an HTML template sitting side by side.</p>
+<p>In standard JavaScript, variables declared inside a file remain trapped inside that file's module scope. If function A wants to share data with function B, you must explicitly export that data or return it inside an object. Yet inside a Vue component, you declare a variable with <code>const</code>, and the template below immediately paints it on the screen. There is no <code>export default</code> statement, no component registration object, and no manual <code>return</code> dictionary.</p>
+<p>This seamless connection feels like language magic, but production software cannot run on magic. The browser engine running on a reader's phone has no idea what <code>&lt;script setup&gt;</code> means. If you served this raw file directly to Google Chrome or Safari, the browser would throw a syntax error and halt execution.</p>
+<p>To see the difference between raw authoring syntax and what the browser actually executes, look at this component:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BreakingAlert.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> message = <span class="hook">ref</span>(<span class="str">'Flash Flood Warning'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Top-level binding accessible to template</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">const</span> isUrgent = <span class="hook">ref</span>(<span class="kw">true</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Reactive boolean controlling banner visibility</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">  &lt;div v-<span class="kw">if</span>=<span class="str">"isUrgent"</span> <span class="kw">class</span>=<span class="str">"alert-banner"</span>&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">    {{ message }}</span></div>
+<div class="row"><span class="num">11</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>In the component above, <code>message</code> and <code>isUrgent</code> are declared at the very top of the script block.</p>
+<p>Notice that neither variable is passed into an export object. There is no boilerplate wrapping them, and no return statement listing their names. Yet when the component renders in the browser, the banner displays "Flash Flood Warning" without any runtime configuration errors.</p>
+<p>How does this happen? The answer lies in the build pipeline. The code you write in your editor never reaches the user's browser in its original form. Instead, a specialized build tool running on your development server intercepts the file and rewrites it completely before bundling.</p>
+<figure class="vue-figure css-figure">
+<div class="component-explorer vce-theme">
+  <style>
+    .component-explorer.vce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .vce-theme .vce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .vce-theme .vce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .vce-theme .vce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .vce-theme .vce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .vce-theme .vce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .vce-theme .vce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .vce-theme .vce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .vce-theme .vce-window {
+      display: flex;
+      min-height: 290px;
+      background: #ffffff;
+    }
+    .vce-theme .vce-sidebar {
+      flex: 0 0 31%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .vce-theme .vce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      border-bottom: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+    .vce-theme .vce-tree,
+    .vce-theme .vce-tree ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .vce-theme .vce-tree ul {
+      padding-left: 1.25rem;
+    }
+    .vce-theme .vce-tree li {
+      position: relative;
+      margin: 0;
+      padding: 2px 0;
+    }
+    .vce-theme .vce-tree li::before,
+    .vce-theme .vce-tree li::after {
+      position: absolute;
+      left: -0.62rem;
+      content: "";
+    }
+    .vce-theme .vce-tree li::before {
+      top: 0.95rem;
+      width: 0.62rem;
+      border-top: 1px solid #cbd5e1;
+    }
+    .vce-theme .vce-tree li::after {
+      top: 0;
+      width: 0;
+      height: 100%;
+      border-left: 1px solid #cbd5e1;
+    }
+    .vce-theme .vce-sidebar > .vce-tree > li::before,
+    .vce-theme .vce-sidebar > .vce-tree > li::after {
+      display: none;
+    }
+    .vce-theme .vce-tree li:last-child::after {
+      height: 0.95rem;
+    }
+    .vce-theme .vce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.28rem 0.38rem;
+      border-radius: 5px;
+      color: #0f172a;
+      font-weight: 500;
+      white-space: nowrap;
+      user-select: none;
+      font-size: 0.8rem;
+    }
+    .vce-theme .vce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .vce-theme .vce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .vce-theme .vce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.6rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .vce-theme .vce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .vce-theme .vce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.85rem 1rem 0.95rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .vce-theme .vce-node:first-child { margin-top: 0; }
+    .vce-theme .vce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.32rem 0.7rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .vce-theme .vce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 400;
+      font-style: italic;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .vce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .vce-theme .kind-wrong > .vce-node-label { background: #dc2626; }
+    .vce-theme .kind-counter { border-color: #059669; background: #ecfdf5; }
+    .vce-theme .kind-counter > .vce-node-label { background: #059669; }
+
+    .vce-theme .alert-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.75rem 0.85rem;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+    }
+    .vce-theme .alert-content {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .vce-theme .urgent-pill {
+      font-size: 0.68rem;
+      font-weight: 800;
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 3px 6px;
+      border-radius: 4px;
+      border: 1px solid #fca5a5;
+    }
+    .vce-theme .alert-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .vce-theme .alert-btn {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .vce-theme .unwired-box {
+      border: 1px dashed #f87171;
+      background: #fff;
+      padding: 6px 10px;
+      border-radius: 5px;
+      font-size: 0.75rem;
+      color: #dc2626;
+      font-style: italic;
+    }
+  </style>
+
+  <div class="vce-bar">
+    <div class="vce-dots"><i></i><i></i><i></i></div>
+    <span class="vce-title">BreakingAlert.vue — Component Explorer (Symmetrical Comparison)</span>
+  </div>
+
+  <div class="vce-window">
+    <aside class="vce-sidebar">
+      <div class="vce-sidebar-title">Project Files</div>
+      <ul class="vce-tree">
+        <li>
+          <div class="vce-tree-label">
+            <svg class="vce-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#fde047" stroke="#ca8a04" stroke-width="1.5" d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg>
+            <span>components</span>
+          </div>
+          <ul class="vce-tree">
+            <li>
+              <div class="vce-tree-label">
+                <svg class="vce-icon" viewBox="0 0 256 221" aria-hidden="true"><path fill="#42b883" d="M204.8 0H256L128 220.8L0 0h97.92L128 51.2L157.44 0h47.36z"/><path fill="#35495e" d="M0 0l128 220.8L256 0h-51.2L128 132.48L49.92 0H0z"/></svg>
+                <span>AlertUnwired.vue</span>
+              </div>
+            </li>
+            <li>
+              <div class="vce-tree-label active">
+                <svg class="vce-icon" viewBox="0 0 256 221" aria-hidden="true"><path fill="#42b883" d="M204.8 0H256L128 220.8L0 0h97.92L128 51.2L157.44 0h47.36z"/><path fill="#35495e" d="M0 0l128 220.8L256 0h-51.2L128 132.48L49.92 0H0z"/></svg>
+                <span>BreakingAlert.vue</span>
+              </div>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </aside>
+
+    <div class="vce-stage">
+      <div class="vce-canvas">
+        <div class="vce-children" style="gap: 1rem; margin-top: 0;">
+          <!-- Unwired Component -->
+          <div class="vce-node kind-wrong">
+            <div class="vce-node-label">
+              <span>AlertUnwired.vue</span>
+              <span class="vce-node-props">✕ UNWIRED</span>
+            </div>
+            <div class="alert-card">
+              <div class="unwired-box">
+                Missing return: message variable is trapped in setup()
+              </div>
+              <button class="alert-btn" disabled>Dismiss</button>
+            </div>
+          </div>
+
+          <!-- Compiled Macro Component -->
+          <div class="vce-node kind-counter">
+            <div class="vce-node-label">
+              <span>BreakingAlert.vue</span>
+              <span class="vce-node-props">✓ COMPILED MACRO</span>
+            </div>
+            <div class="alert-card">
+              <div class="alert-content">
+                <span class="urgent-pill">● URGENT</span>
+                <span class="alert-title">Flash Flood Warning</span>
+              </div>
+              <button class="alert-btn">Dismiss</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<figcaption>Fig 01.1: Compilation pipeline showing how the Vue SFC compiler transforms top-level script declarations into an inlined render function closure inside setup().</figcaption>
+</figure>
+<p>In the figure above, observe how the transformation rewrites the component architecture:</p>
+<p>On the left side, the author writes clean, declarative JavaScript statements at the top level. The developer focuses entirely on state variables and reactive logic.</p>
+<p>On the right side, the compiler transforms those declarations into an underlying <code>setup()</code> function. Crucially, the template is compiled into a render function that sits directly inside the lexical scope of <code>setup()</code>. Because both the state variables and the render function share the exact same enclosing closure, the render function can read <code>message</code> and <code>isUrgent</code> directly from local memory.</p>
+<p>This eliminates an entire layer of runtime overhead. The browser does not need to look up variables on a proxy object. It reads them directly from JavaScript closure scope at native engine speed.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">
+  <p><code>&lt;script setup&gt;</code> is not a runtime feature of the browser; it is a compile-time macro that rewrites your Single-File Component into an optimized JavaScript module before execution.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Historical Pain: Options API and Manual Setup</h3>
+<p>To appreciate why Vue introduced this compiler transformation, we must examine the architectural pain that came before it.</p>
+<p>In Vue 2, components were authored using the <strong>Options API</strong>. Developers described their components by exporting a single JavaScript object divided into rigid configuration options: <code>data</code>, <code>methods</code>, <code>computed</code>, and <code>watch</code>.</p>
+<p>Look at how a news ticker component was structured under the legacy Options API:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LegacyTicker.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="fn">data</span>() { </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Separates state declaration from related behavior logic</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">    <span class="kw">return</span> {</span></div>
+<div class="row"><span class="num">4</span><span class="src">      headline: <span class="str">'Markets Rally'</span>,</span></div>
+<div class="row"><span class="num">5</span><span class="src">      secondsLeft: <span class="nl">30</span>,</span></div>
+<div class="row"><span class="num">6</span><span class="src">    };</span></div>
+<div class="row"><span class="num">7</span><span class="src">  },</span></div>
+<div class="row"><span class="num">8</span><span class="src">  methods: { </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Requires 'this' context to access reactive state properties</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">    <span class="fn">tick</span>() {</span></div>
+<div class="row"><span class="num">10</span><span class="src">      <span class="kw">this</span>.secondsLeft--;</span></div>
+<div class="row"><span class="num">11</span><span class="src">    },</span></div>
+<div class="row"><span class="num">12</span><span class="src">  },</span></div>
+<div class="row"><span class="num">13</span><span class="src">};</span></div></div></div></div>
+<p>While this structure seemed organized for small toys, it broke down severely in production enterprise applications.</p>
+<p>At <em>The National Times</em>, a live newsroom dashboard component might manage four distinct physical features: an editorial live-wire feed, an auto-refresh timer, a user permission check, and an audio notification system.</p>
+<p>Under the Options API, the code for the auto-refresh timer had to be sliced into pieces. Its initial seconds counter lived in <code>data</code>, its countdown calculation lived in <code>computed</code>, its interval tick function lived in <code>methods</code>, and its interval cleanup lived in <code>beforeDestroy</code>. When a developer needed to fix a timer bug, they had to constantly scroll across hundreds of lines of code, jumping between disconnected option blocks.</p>
+<p>Furthermore, every method relied heavily on the JavaScript <code>this</code> keyword. Accessing <code>this.headline</code> required the Vue engine to bind the component instance context to every function. This made refactoring dangerous, broke standard JavaScript minification, and made TypeScript type inference nearly impossible to achieve without complex helper wrappers.</p>
+<p>To solve this fragmentation, Vue 3 introduced the <strong>Composition API</strong> and the explicit <code>setup()</code> function.</p>
+<p>Look at that same component rewritten using the explicit <code>setup()</code> function:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ExplicitSetup.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> {</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="fn">setup</span>() {</span></div>
+<div class="row"><span class="num">5</span><span class="src">    <span class="kw">const</span> headline = <span class="hook">ref</span>(<span class="str">'Markets Rally'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Groups state and logic together</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src">    <span class="kw">const</span> secondsLeft = <span class="hook">ref</span>(<span class="nl">30</span>);</span></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src">    <span class="kw">function</span> <span class="fn">tick</span>() {</span></div>
+<div class="row"><span class="num">9</span><span class="src">      secondsLeft.value--;</span></div>
+<div class="row"><span class="num">10</span><span class="src">    }</span></div>
+<div class="row"><span class="num">11</span><span class="src"></span></div>
+<div class="row"><span class="num">12</span><span class="src">    <span class="kw">return</span> { headline, secondsLeft, tick }; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Demands repetitive return boilerplate</span></div></div></div>
+<div class="row"><span class="num">13</span><span class="src">  },</span></div>
+<div class="row"><span class="num">14</span><span class="src">};</span></div></div></div></div>
+<p>The explicit <code>setup()</code> function successfully solved the logic organization problem.</p>
+<p>Now, developers could write related state and functions side by side, packaging features into reusable functions called composables. The confusing <code>this</code> context was completely eliminated; variables were accessed through standard JavaScript closures and <code>.value</code> properties.</p>
+<p>However, the explicit <code>setup()</code> function created a frustrating new chore: the <strong>return boilerplate</strong>.</p>
+<p>Because <code>setup()</code> is a standard JavaScript function, any variable declared inside it is trapped in its local function scope. If the template needs to access <code>headline</code>, <code>secondsLeft</code>, and <code>tick</code>, you had to manually return them inside an object at the bottom of the function.</p>
+<p>In large production components, this return dictionary routinely stretched across 30 to 50 lines of repetitive names. If an engineer declared a helper function but forgot to add its name to the return object, the template failed silently at runtime. You were forced to type every identifier twice: once when defining it, and once when returning it.</p>
+</div>
+<div class="keep-together">
+<h3>The Four Pillars of the Script Setup Macro</h3>
+<p>To eliminate this manual wiring, the Vue core team created <code>&lt;script setup&gt;</code>.</p>
+<p>We will break down this load-bearing architecture across four fundamental engineering pillars:</p>
+</div>
+<h4>1. Technical Nomenclature &amp; Syntax Decoding</h4>
+<p>The tag <code>&lt;script setup&gt;</code> literally tells the Single-File Component compiler to treat the entire script block as the body of the component's <code>setup()</code> function. The word <code>setup</code> refers to the lifecycle stage where reactive state, computed properties, and watchers are initialized before the component mounts to the DOM.</p>
+<h4>2. Tactile Physical Analogy</h4>
+<p>Think of the legacy Options API like a rigid pill organizer with labeled compartments for morning, noon, and night. You are forced to separate your medicines into arbitrary boxes even if three pills belong to the same treatment. The explicit <code>setup()</code> function gave you a single open desk to assemble your medicines together, but forced you to pack them into an export carton with an itemized manifest before anyone could use them. The <code>&lt;script setup&gt;</code> macro is like an automated courier scanner: whatever you place on the desk is instantly registered and immediately available to the room next door, without writing a manifest.</p>
+<h4>3. The "Why We Suffered Before" Contrast</h4>
+<p>Before <code>&lt;script setup&gt;</code>, every variable binding crossed a runtime boundary. The <code>setup()</code> function returned an object, Vue wrapped that object in an internal instance proxy, and the template render function evaluated expressions by looking up keys on that proxy at runtime. This meant every property access carried a minor performance penalty, and TypeScript could not verify template bindings without heavy build-time type checkers like <code>vue-tsc</code>.</p>
+<h4>4. The Physical Engine Routine</h4>
+<p>Under the hood, <code>@vue/compiler-sfc</code> parses the <code>.vue</code> file into an Abstract Syntax Tree (an in-memory tree representing the code structure). When it encounters <code>&lt;script setup&gt;</code>, it wraps all statements inside an internal <code>setup()</code> execution block. It then compiles the <code>&lt;template&gt;</code> into a JavaScript render function and places that render function <em>inside the exact same lexical scope</em>. Because the render function lives inside the closure of <code>setup()</code>, it accesses local variables directly without needing a return object or a runtime proxy lookup.</p>
+<p>Here is how the official Vue documentation articulates this exact performance gain:</p>
+<blockquote><code>&lt;script setup&gt;</code> is a compile-time syntactic sugar for using Composition API inside Single-File Components (SFCs). It provides better runtime performance (the template is compiled into a render function in the same scope, without an intermediate proxy), and better IDE type-inference performance. <em>Vue 3 Official Documentation, <code>documentation official/vue/resources/core/docs/src/api/sfc-script-setup.md</code></em></blockquote>
+<p>Notice the critical phrase: <em>without an intermediate proxy</em>.</p>
+<p>In standard components, every time your template reads a property like <code>{{ count }}</code>, the JavaScript runtime must query an internal component proxy instance (<code>_ctx.count</code>). With <code>&lt;script setup&gt;</code>, the compiled render function accesses <code>count.value</code> directly through a native JavaScript lexical closure. This results in faster component execution, lower memory consumption, and superior runtime speed.</p>
+<div class="keep-together">
+<h3>Component Instances and Runtime Memory Isolation</h3>
+<p>A common question junior developers ask in interviews is: "If variables are declared at the top level of the file, are they shared between multiple component instances like global variables?"</p>
+<p>The answer is an emphatic <strong>no</strong>.</p>
+<p>To understand why, we must distinguish between <strong>module evaluation</strong> and <strong>component instantiation</strong>.</p>
+<p>When your application boots up, the browser imports the compiled JavaScript file once. If you import an external utility or declare a variable outside the component, that variable is evaluated once per module.</p>
+<p>However, because the compiler wraps the contents of <code>&lt;script setup&gt;</code> inside a <code>setup()</code> function, those statements are executed freshly every single time a new component instance mounts to the screen.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LiveTicker.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span>, <span class="hook">onMounted</span>, <span class="hook">onUnmounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> count = <span class="hook">ref</span>(<span class="nl">0</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Independent reactive box allocated per component instance</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">let</span> timer = <span class="kw">null</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Local timer identifier bound to instance lifecycle</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">8</span><span class="src">  timer = <span class="fn">setInterval</span>(() =&gt; { count.value++; }, <span class="nl">1000</span>);</span></div>
+<div class="row"><span class="num">9</span><span class="src">});</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src"><span class="hook">onUnmounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">12</span><span class="src">  <span class="fn">clearInterval</span>(timer);</span></div>
+<div class="row"><span class="num">13</span><span class="src">});</span></div>
+<div class="row"><span class="num">14</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src"></span></div>
+<div class="row"><span class="num">16</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">17</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"ticker-box"</span>&gt;Updates: {{ count }}&lt;/div&gt;</span></div>
+<div class="row"><span class="num">18</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>In the newsroom ticker component above, <code>count</code> and <code>timer</code> look like global script variables because they sit at the top of the block.</p>
+<p>However, if you place two <code>&lt;LiveTicker /&gt;</code> components on the same page, each ticker maintains its own independent state.</p>
+<p>The diagram below illustrates how the browser manages these instances in heap memory:</p>
+<figure class="vue-figure css-figure">
+<div class="component-explorer vce-theme">
+  <style>
+    .component-explorer.vce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .vce-theme .vce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .vce-theme .vce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .vce-theme .vce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .vce-theme .vce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .vce-theme .vce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .vce-theme .vce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .vce-theme .vce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .vce-theme .vce-window {
+      display: flex;
+      min-height: 290px;
+      background: #ffffff;
+    }
+    .vce-theme .vce-sidebar {
+      flex: 0 0 31%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .vce-theme .vce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      border-bottom: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+    .vce-theme .vce-tree,
+    .vce-theme .vce-tree ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .vce-theme .vce-tree ul {
+      padding-left: 1.25rem;
+    }
+    .vce-theme .vce-tree li {
+      position: relative;
+      margin: 0;
+      padding: 2px 0;
+    }
+    .vce-theme .vce-tree li::before,
+    .vce-theme .vce-tree li::after {
+      position: absolute;
+      left: -0.62rem;
+      content: "";
+    }
+    .vce-theme .vce-tree li::before {
+      top: 0.95rem;
+      width: 0.62rem;
+      border-top: 1px solid #cbd5e1;
+    }
+    .vce-theme .vce-tree li::after {
+      top: 0;
+      width: 0;
+      height: 100%;
+      border-left: 1px solid #cbd5e1;
+    }
+    .vce-theme .vce-sidebar > .vce-tree > li::before,
+    .vce-theme .vce-sidebar > .vce-tree > li::after {
+      display: none;
+    }
+    .vce-theme .vce-tree li:last-child::after {
+      height: 0.95rem;
+    }
+    .vce-theme .vce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.28rem 0.38rem;
+      border-radius: 5px;
+      color: #0f172a;
+      font-weight: 500;
+      white-space: nowrap;
+      user-select: none;
+      font-size: 0.8rem;
+    }
+    .vce-theme .vce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .vce-theme .vce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .vce-theme .vce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.6rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .vce-theme .vce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .vce-theme .vce-node {
+      position: relative;
+      padding: 1.85rem 1rem 0.95rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .vce-theme .vce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.32rem 0.7rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .vce-theme .vce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 400;
+      font-style: italic;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .vce-theme .kind-shell { border-color: #475569; background: #f8fafc; }
+    .vce-theme .kind-shell > .vce-node-label { background: #475569; }
+    .vce-theme .kind-counter { border-color: #059669; background: #ecfdf5; }
+    .vce-theme .kind-counter > .vce-node-label { background: #059669; }
+
+    .vce-theme .vce-children {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 0.2rem;
+    }
+    .vce-theme .ticker-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 0.85rem;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+    }
+    .vce-theme .ticker-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .vce-theme .dot-active {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      display: inline-block;
+    }
+    .vce-theme .ticker-channel {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #334155;
+    }
+    .vce-theme .ticker-val {
+      font-size: 0.85rem;
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 800;
+      color: #0369a1;
+    }
+    .vce-theme .ticker-btn {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+
+  <div class="vce-bar">
+    <div class="vce-dots"><i></i><i></i><i></i></div>
+    <span class="vce-title">NewsDashboard.vue — Component Explorer (Instance Isolation)</span>
+  </div>
+
+  <div class="vce-window">
+    <aside class="vce-sidebar">
+      <div class="vce-sidebar-title">Project Files</div>
+      <ul class="vce-tree">
+        <li>
+          <div class="vce-tree-label">
+            <svg class="vce-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#fde047" stroke="#ca8a04" stroke-width="1.5" d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg>
+            <span>components</span>
+          </div>
+          <ul class="vce-tree">
+            <li>
+              <div class="vce-tree-label">
+                <svg class="vce-icon" viewBox="0 0 256 221" aria-hidden="true"><path fill="#42b883" d="M204.8 0H256L128 220.8L0 0h97.92L128 51.2L157.44 0h47.36z"/><path fill="#35495e" d="M0 0l128 220.8L256 0h-51.2L128 132.48L49.92 0H0z"/></svg>
+                <span>NewsDashboard.vue</span>
+              </div>
+            </li>
+            <li>
+              <div class="vce-tree-label active">
+                <svg class="vce-icon" viewBox="0 0 256 221" aria-hidden="true"><path fill="#42b883" d="M204.8 0H256L128 220.8L0 0h97.92L128 51.2L157.44 0h47.36z"/><path fill="#35495e" d="M0 0l128 220.8L256 0h-51.2L128 132.48L49.92 0H0z"/></svg>
+                <span>LiveTicker.vue</span>
+              </div>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </aside>
+
+    <div class="vce-stage">
+      <div class="vce-canvas">
+        <div class="vce-node kind-shell">
+          <div class="vce-node-label">
+            <span>NewsDashboard.vue</span>
+            <span class="vce-node-props">#root</span>
+          </div>
+
+          <div class="vce-children">
+            <!-- Instance 1 -->
+            <div class="vce-node kind-counter" style="margin-top: 0;">
+              <div class="vce-node-label">
+                <span>LiveTicker.vue</span>
+                <span class="vce-node-props">:id="markets"</span>
+              </div>
+              <div class="ticker-row">
+                <div class="ticker-meta">
+                  <span class="dot-active"></span>
+                  <span class="ticker-channel">Market Feed</span>
+                </div>
+                <span class="ticker-val">16,240.50</span>
+                <button class="ticker-btn">+ Step</button>
+              </div>
+            </div>
+
+            <!-- Instance 2 -->
+            <div class="vce-node kind-counter">
+              <div class="vce-node-label">
+                <span>LiveTicker.vue</span>
+                <span class="vce-node-props">:id="weather"</span>
+              </div>
+              <div class="ticker-row">
+                <div class="ticker-meta">
+                  <span class="dot-active" style="background: #0284c7;"></span>
+                  <span class="ticker-channel">City Weather</span>
+                </div>
+                <span class="ticker-val" style="color: #059669;">22°C</span>
+                <button class="ticker-btn">+ Step</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<figcaption>Fig 01.2: Memory allocation model showing how multiple component instances execute independent setup() closures, creating isolated reactive state in heap memory.</figcaption>
+</figure>
+<p>Trace the execution path shown in the figure:</p>
+<p>When <em>The National Times</em> renders Instance A (the Stock Feed) and Instance B (the Weather Alert), the Vue runtime calls the compiled <code>setup()</code> function twice.</p>
+<p>Each invocation of <code>setup()</code> creates a brand new execution context in memory. The first call allocates a <code>RefImpl</code> object for Instance A with its own memory address. The second call allocates a completely separate <code>RefImpl</code> object for Instance B.</p>
+<p>When the timer in Instance A increments its count, it modifies only its own closure variable. Instance B remains completely untouched.</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p><strong>Top-Level Declarations Are Instance-Scoped:</strong> Never fear that declaring variables at the top level of <code>&lt;script setup&gt;</code> creates global state. Every variable, function, and reactive ref declared inside <code>&lt;script setup&gt;</code> is local to that specific component instance.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Compiler Macros: Features That Do Not Exist at Runtime</h3>
+<p>One of the most profound innovations of <code>&lt;script setup&gt;</code> is the introduction of <strong>compiler macros</strong>.</p>
+<p>When building complex component hierarchies, child components must receive data from parents and emit events back up. In standard JavaScript, you would expect to import functions from the <code>vue</code> package to handle this communication.</p>
+<p>Look at how you declare props and emits inside <code>&lt;script setup&gt;</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">AlertBanner.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">const</span> props = <span class="hook">defineProps</span>({ </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Compiler macros do not need to be imported from 'vue'</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  headline: { type: String, required: <span class="kw">true</span> },</span></div>
+<div class="row"><span class="num">4</span><span class="src">  urgent: { type: Boolean, <span class="kw">default</span>: <span class="kw">false</span> }</span></div>
+<div class="row"><span class="num">5</span><span class="src">});</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="kw">const</span> emit = <span class="hook">defineEmits</span>([<span class="str">'dismiss'</span>]);</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="kw">function</span> <span class="fn">handleClose</span>() {</span></div>
+<div class="row"><span class="num">10</span><span class="src">  <span class="fn">emit</span>(<span class="str">'dismiss'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Emits custom event to parent component</span></div></div></div>
+<div class="row"><span class="num">11</span><span class="src">}</span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src"></span></div>
+<div class="row"><span class="num">14</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"banner"</span> :<span class="kw">class</span>=<span class="str">"{ urgent: props.urgent }"</span>&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">    &lt;span&gt;{{ props.headline }}&lt;/span&gt;</span></div>
+<div class="row"><span class="num">17</span><span class="src">    &lt;button @click=<span class="str">"handleClose"</span>&gt;Dismiss&lt;/button&gt;</span></div>
+<div class="row"><span class="num">18</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">19</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>Look closely at the first lines of script: <code>defineProps</code> and <code>defineEmits</code> are called without an <code>import</code> statement.</p>
+<p>If a developer does not understand compilation, this looks like an error. In standard JavaScript, invoking a function that was never declared or imported throws a fatal <code>ReferenceError: defineProps is not defined</code>.</p>
+<p>Why does this code run without error?</p>
+<p>Because <code>defineProps</code> and <code>defineEmits</code> are <strong>compiler macros</strong>. They are not real functions in JavaScript runtime memory.</p>
+<p>When the Vue compiler parses your Single-File Component, it scans specifically for macro calls. When it sees <code>defineProps({...})</code>, it plucks the argument out of the script and hoists it into the component's formal <code>props</code> option:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">CompiledMacroResult.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  props: { </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Hoisted out of script setup into formal component options</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">    headline: { type: String, required: <span class="kw">true</span> },</span></div>
+<div class="row"><span class="num">4</span><span class="src">    urgent: { type: Boolean, <span class="kw">default</span>: <span class="kw">false</span> }</span></div>
+<div class="row"><span class="num">5</span><span class="src">  },</span></div>
+<div class="row"><span class="num">6</span><span class="src">  emits: [<span class="str">'dismiss'</span>],</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="fn">setup</span>(__props, { emit }) {</span></div>
+<div class="row"><span class="num">8</span><span class="src">    <span class="kw">return</span> () =&gt; {}; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Compiled setup function scope</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">  }</span></div>
+<div class="row"><span class="num">10</span><span class="src">};</span></div></div></div></div>
+<p>The call to <code>defineProps</code> never executes in the browser. The compiler strips the macro call away and replaces it with native component metadata.</p>
+<p>If you attempt to import <code>defineProps</code> manually by writing <code>import { defineProps } from 'vue'</code>, modern build tools like Vite will emit a compiler warning. The build tool explicitly warns you that <code>defineProps</code> is a compiler macro that requires no import.</p>
+<p>Here is the complete roster of core compiler macros provided by Vue 3:</p>
+<ol><li><strong><code>defineProps()</code></strong>: Declares component input parameters, supporting runtime object validation or pure TypeScript interface types.</li>
+<li><strong><code>defineEmits()</code></strong>: Declares custom events that the component can emit to its parent, enabling strict payload validation.</li>
+<li><strong><code>defineExpose()</code></strong>: Explicitly selects which internal variables and methods are accessible to parent components through template references.</li>
+<li><strong><code>defineOptions()</code></strong>: Declares component metadata (such as <code>name</code> or <code>inheritAttrs</code>) directly inside <code>&lt;script setup&gt;</code> without requiring a separate script tag.</li>
+<li><strong><code>defineSlots()</code></strong>: Provides strict TypeScript type hints for programmatic slot validation.</li>
+<li><strong><code>defineModel()</code></strong>: Introduced in Vue 3.4 to simplify two-way <code>v-model</code> component bindings into an ergonomic reactive ref.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Encapsulation and Component Boundaries: Closed by Default</h3>
+<p>In legacy Vue 2, parent components could inspect child components with total freedom.</p>
+<p>If a parent attached a template reference to a child component (<code>&lt;Child ref="childRef" /&gt;</code>), the parent could reach into <code>childRef.value</code> and read any data property, call any method, or mutate internal state.</p>
+<p>While convenient for quick hacks, this open access destroyed component encapsulation. Child components had no private boundaries. A parent could bypass the child's public API, creating brittle couplings that broke whenever an engineer refactored internal variable names.</p>
+<p>To fix this architectural flaw, <code>&lt;script setup&gt;</code> components are <strong>closed by default</strong>.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">PrivateEditor.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> draftText = <span class="hook">ref</span>(<span class="str">'Breaking headline draft'</span>);</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">const</span> wordCount = <span class="hook">ref</span>(<span class="nl">3</span>);</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="kw">function</span> <span class="fn">clearDraft</span>() {</span></div>
+<div class="row"><span class="num">8</span><span class="src">  draftText.value = <span class="str">''</span>;</span></div>
+<div class="row"><span class="num">9</span><span class="src">}</span></div>
+<div class="row"><span class="num">10</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src"></span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">  &lt;textarea v-model=<span class="str">"draftText"</span>&gt;&lt;/textarea&gt;</span></div>
+<div class="row"><span class="num">14</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>If a parent component attaches a template ref to the <code>PrivateEditor</code> above and inspects <code>editorRef.value</code>, what does the parent see?</p>
+<p>The parent receives an empty object <code>{}</code>.</p>
+<p>Even though <code>draftText</code>, <code>wordCount</code>, and <code>clearDraft</code> exist inside the child component, they are strictly private closure variables. The parent cannot access them, inspect them, or call <code>clearDraft()</code>.</p>
+<p>To open a specific method or property to the outside world, the child must explicitly declare a public contract using the <code>defineExpose</code> compiler macro.</p>
+<p>Look at how you expose a controlled public interface:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">PublicEditor.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> draftText = <span class="hook">ref</span>(<span class="str">'Breaking headline draft'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Remains private to child</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">const</span> wordCount = <span class="hook">ref</span>(<span class="nl">3</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Exposed for parent dashboard metrics</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="kw">function</span> <span class="fn">clearDraft</span>() { </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Explicitly exposed for parent reset action</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">  draftText.value = <span class="str">''</span>;</span></div>
+<div class="row"><span class="num">9</span><span class="src">}</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src"><span class="hook">defineExpose</span>({ </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Explicit whitelist of exposed properties</span></div></div></div>
+<div class="row"><span class="num">12</span><span class="src">  clearDraft,</span></div>
+<div class="row"><span class="num">13</span><span class="src">  wordCount</span></div>
+<div class="row"><span class="num">14</span><span class="src">});</span></div>
+<div class="row"><span class="num">15</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+<p>In the component above, <code>draftText</code> remains completely private and protected.</p>
+<p>However, <code>clearDraft</code> and <code>wordCount</code> are explicitly published through <code>defineExpose</code>.</p>
+<p>The architectural boundary diagram below illustrates this contrast:</p>
+<figure class="vue-figure css-figure">
+<div class="component-explorer vce-theme">
+  <style>
+    .component-explorer.vce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .vce-theme .vce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .vce-theme .vce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .vce-theme .vce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .vce-theme .vce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .vce-theme .vce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .vce-theme .vce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .vce-theme .vce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .vce-theme .vce-window {
+      display: flex;
+      min-height: 290px;
+      background: #ffffff;
+    }
+    .vce-theme .vce-sidebar {
+      flex: 0 0 31%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .vce-theme .vce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      border-bottom: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+    .vce-theme .vce-tree,
+    .vce-theme .vce-tree ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .vce-theme .vce-tree ul {
+      padding-left: 1.25rem;
+    }
+    .vce-theme .vce-tree li {
+      position: relative;
+      margin: 0;
+      padding: 2px 0;
+    }
+    .vce-theme .vce-tree li::before,
+    .vce-theme .vce-tree li::after {
+      position: absolute;
+      left: -0.62rem;
+      content: "";
+    }
+    .vce-theme .vce-tree li::before {
+      top: 0.95rem;
+      width: 0.62rem;
+      border-top: 1px solid #cbd5e1;
+    }
+    .vce-theme .vce-tree li::after {
+      top: 0;
+      width: 0;
+      height: 100%;
+      border-left: 1px solid #cbd5e1;
+    }
+    .vce-theme .vce-sidebar > .vce-tree > li::before,
+    .vce-theme .vce-sidebar > .vce-tree > li::after {
+      display: none;
+    }
+    .vce-theme .vce-tree li:last-child::after {
+      height: 0.95rem;
+    }
+    .vce-theme .vce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.28rem 0.38rem;
+      border-radius: 5px;
+      color: #0f172a;
+      font-weight: 500;
+      white-space: nowrap;
+      user-select: none;
+      font-size: 0.8rem;
+    }
+    .vce-theme .vce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .vce-theme .vce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .vce-theme .vce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.6rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .vce-theme .vce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .vce-theme .vce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.85rem 1rem 0.95rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .vce-theme .vce-node:first-child { margin-top: 0; }
+    .vce-theme .vce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.32rem 0.7rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .vce-theme .vce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 400;
+      font-style: italic;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .vce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .vce-theme .kind-wrong > .vce-node-label { background: #dc2626; }
+    .vce-theme .kind-counter { border-color: #059669; background: #ecfdf5; }
+    .vce-theme .kind-counter > .vce-node-label { background: #059669; }
+
+    .vce-theme .editor-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      padding: 0.75rem 0.85rem;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+    }
+    .vce-theme .editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #334155;
+    }
+    .vce-theme .editor-box {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      padding: 6px 8px;
+      font-size: 0.75rem;
+      color: #0f172a;
+      box-sizing: border-box;
+    }
+    .vce-theme .parent-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .vce-theme .btn-action {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .vce-theme .btn-action.disabled {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #94a3b8;
+    }
+    .vce-theme .btn-action.active {
+      background: #059669;
+      border: 1px solid #047857;
+      color: #ffffff;
+    }
+    .vce-theme .status-chip {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .vce-theme .status-chip.err {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .vce-theme .status-chip.ok {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+  </style>
+
+  <div class="vce-bar">
+    <div class="vce-dots"><i></i><i></i><i></i></div>
+    <span class="vce-title">PublicEditor.vue — Component Explorer (Encapsulation Boundary)</span>
+  </div>
+
+  <div class="vce-window">
+    <aside class="vce-sidebar">
+      <div class="vce-sidebar-title">Project Files</div>
+      <ul class="vce-tree">
+        <li>
+          <div class="vce-tree-label">
+            <svg class="vce-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#fde047" stroke="#ca8a04" stroke-width="1.5" d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg>
+            <span>components</span>
+          </div>
+          <ul class="vce-tree">
+            <li>
+              <div class="vce-tree-label">
+                <svg class="vce-icon" viewBox="0 0 256 221" aria-hidden="true"><path fill="#42b883" d="M204.8 0H256L128 220.8L0 0h97.92L128 51.2L157.44 0h47.36z"/><path fill="#35495e" d="M0 0l128 220.8L256 0h-51.2L128 132.48L49.92 0H0z"/></svg>
+                <span>PrivateEditor.vue</span>
+              </div>
+            </li>
+            <li>
+              <div class="vce-tree-label active">
+                <svg class="vce-icon" viewBox="0 0 256 221" aria-hidden="true"><path fill="#42b883" d="M204.8 0H256L128 220.8L0 0h97.92L128 51.2L157.44 0h47.36z"/><path fill="#35495e" d="M0 0l128 220.8L256 0h-51.2L128 132.48L49.92 0H0z"/></svg>
+                <span>PublicEditor.vue</span>
+              </div>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </aside>
+
+    <div class="vce-stage">
+      <div class="vce-canvas">
+        <div class="vce-children" style="gap: 1rem; margin-top: 0;">
+          <!-- Closed by Default -->
+          <div class="vce-node kind-wrong">
+            <div class="vce-node-label">
+              <span>PrivateEditor.vue</span>
+              <span class="vce-node-props">✕ CLOSED (DEFAULT)</span>
+            </div>
+            <div class="editor-card">
+              <div class="editor-header">
+                <span>Article Draft (3 words)</span>
+                <span class="status-chip err">Private Scope</span>
+              </div>
+              <div class="editor-box">Breaking headline draft</div>
+              <div class="parent-action-row">
+                <button class="btn-action disabled">Parent: Clear Draft</button>
+                <span style="font-size: 0.68rem; color: #dc2626;">TypeError: method not exposed</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Explicit defineExpose -->
+          <div class="vce-node kind-counter">
+            <div class="vce-node-label">
+              <span>PublicEditor.vue</span>
+              <span class="vce-node-props">✓ EXPLICIT (defineExpose)</span>
+            </div>
+            <div class="editor-card">
+              <div class="editor-header">
+                <span>Article Draft (3 words)</span>
+                <span class="status-chip ok">Public API</span>
+              </div>
+              <div class="editor-box">Breaking headline draft</div>
+              <div class="parent-action-row">
+                <button class="btn-action active">Parent: Clear Draft</button>
+                <span class="status-chip ok">✓ clearDraft() exposed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<figcaption>Fig 01.3: Encapsulation boundary showing how script setup enforces private scope by default, requiring defineExpose to publish an explicit public API.</figcaption>
+</figure>
+<p>Examine the security boundary shown in the figure:</p>
+<p>On the left side, without <code>defineExpose</code>, the compiler generates an empty instance exposure proxy (<code>__expose()</code>). If the parent attempts to call <code>alertRef.value.dismiss()</code>, the browser throws a runtime <code>TypeError: alertRef.value.dismiss is not a function</code>, preventing unmanaged coupling.</p>
+<p>On the right side, <code>defineExpose({ dismiss, isUrgent })</code> tells the compiler to register specific bindings on the public component instance. The parent can now safely trigger <code>dismiss()</code> while all other internal variables remain protected from outside tampering.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">
+  <p>Components authored with <code>&lt;script setup&gt;</code> are completely closed by default. A parent component cannot access child properties through a template ref unless the child explicitly publishes them using <code>defineExpose()</code>.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Dual Scripts: When You Still Need a Standard Script Tag</h3>
+<p>Because <code>&lt;script setup&gt;</code> compiles into the body of the <code>setup()</code> function, it executes once per component instance.</p>
+<p>What happens if you have code that must execute once for the entire module, or need to configure component options that cannot be declared inside setup?</p>
+<p>For example, suppose <em>The National Times</em> requires an analytics tracker to initialize once when the module loads, or needs to set a custom component name for recursion.</p>
+<p>In Vue 3.3 and earlier, you solved this by declaring a <strong>standard <code>&lt;script&gt;</code> tag alongside <code>&lt;script setup&gt;</code></strong> in the same file:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">DualScriptComponent.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> { </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Executes once per module load; declares formal options</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  name: <span class="str">'CustomArticleCard'</span>,</span></div>
+<div class="row"><span class="num">4</span><span class="src">  inheritAttrs: <span class="kw">false</span>,</span></div>
+<div class="row"><span class="num">5</span><span class="src">};</span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src"><span class="kw">const</span> isExpanded = <span class="hook">ref</span>(<span class="kw">false</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Executes once per component mount</span></div></div></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+<p>When the compiler encounters dual scripts, it merges them seamlessly:</p>
+<ol><li>The standard <code>&lt;script&gt;</code> block exports the base component options object (<code>name</code>, <code>inheritAttrs</code>).</li>
+<li>The <code>&lt;script setup&gt;</code> block compiles into the <code>setup()</code> function property attached to that exact same object.</li></ol>
+<p>In modern Vue (version 3.3+), you rarely need dual script blocks because the <code>defineOptions()</code> macro handles component options directly:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ModernOptions.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="hook">defineOptions</span>({ </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Modern macro replacing the need for dual script blocks</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">  name: <span class="str">'CustomArticleCard'</span>,</span></div>
+<div class="row"><span class="num">6</span><span class="src">  inheritAttrs: <span class="kw">false</span>,</span></div>
+<div class="row"><span class="num">7</span><span class="src">});</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="kw">const</span> isExpanded = <span class="hook">ref</span>(<span class="kw">false</span>);</span></div>
+<div class="row"><span class="num">10</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+<p>Using <code>defineOptions()</code> keeps your entire component configuration unified inside a single script block, eliminating the visual clutter of dual script tags.</p>
+</div>
+<div class="keep-together">
+<h3>Top-Level Await and Async Compilation</h3>
+<p>In standard JavaScript, using the <code>await</code> keyword requires wrapping the statement inside an <code>async function</code>.</p>
+<p>However, inside <code>&lt;script setup&gt;</code>, you can write top-level <code>await</code> directly at the root of the script:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">AsyncNewsFeed.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://api.nationaltimes.com/articles/breaking'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Top-level await permitted in script setup</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">const</span> articles = <span class="kw">await</span> response.<span class="fn">json</span>();</span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">  &lt;ul <span class="kw">class</span>=<span class="str">"news-list"</span>&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">    &lt;li v-<span class="kw">for</span>=<span class="str">"item in articles"</span> :key=<span class="str">"item.id"</span>&gt;{{ item.title }}&lt;/li&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src">  &lt;/ul&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>How does Vue allow <code>await</code> at the top level without an explicit <code>async</code> wrapper?</p>
+<p>When the compiler detects an <code>await</code> statement inside <code>&lt;script setup&gt;</code>, it automatically compiles the underlying <code>setup()</code> function into an asynchronous function: <code>async setup()</code>.</p>
+<p>This is an extraordinarily powerful feature, but it introduces a critical architectural requirement: <strong>The Suspense Boundary</strong>.</p>
+<p>If a component's <code>setup()</code> function is compiled as <code>async</code>, the component cannot render synchronously. When Vue mounts the component tree, it cannot immediately produce Virtual DOM nodes because the data is still traveling across the network.</p>
+<p>If you attempt to render an asynchronous component without a parent <code>&lt;Suspense&gt;</code> container, Vue will suspend rendering and leave an empty hole on the screen until the promise resolves, or throw a warning in development mode.</p>
+<p>Whenever you author a component with top-level <code>await</code>, you must ensure that a parent component wraps it inside a <code>&lt;Suspense&gt;</code> boundary to coordinate loading skeletons and fallback UI.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>To impress the interviewer:</strong> Highlight that <code>&lt;script setup&gt;</code> is not merely "syntactic sugar" for developer convenience. Explain that because the SFC compiler parses the template and the script in the same build pass, it achieves <strong>compile-time optimization</strong>. It analyzes exactly which script identifiers are referenced in the template, skips generating intermediate runtime proxies, enables top-level <code>await</code> with automatic <code>async setup()</code> transformation, and provides compile-time dead-code elimination that significantly shrinks production bundle sizes.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Authoritative Reference</h3>
+<p>The official Vue 3 specification defines the role and compilation mechanics of <code>&lt;script setup&gt;</code> as follows:</p>
+<blockquote><code>&lt;script setup&gt;</code> is a compile-time syntactic sugar for using Composition API inside Single-File Components (SFCs). It is the recommended syntax if you are using both SFCs and Composition API. It provides a number of advantages over the normal <code>&lt;script&gt;</code> syntax: - More succinct code with less boilerplate - Ability to declare props and emitted events using pure TypeScript - Better runtime performance (the template is compiled into a render function in the same scope, without an intermediate proxy) - Better IDE type-inference performance (less work for the language server to extract types from code) <em>Vue 3 Official Documentation, <code>documentation official/vue/resources/core/docs/src/api/sfc-script-setup.md</code></em></blockquote>
+<p>Notice how the documentation emphasizes the synergy between compiler analysis and runtime performance. By compiling the script and template together, Vue bypasses the runtime limitations of generic JavaScript, providing an authoring experience that feels like an interpreted language while generating code that performs like an optimized compiler artifact.</p>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li><strong>Every Modern Vue 3 Application</strong>: <code>&lt;script setup&gt;</code> is the official, industry-standard convention for all new Single-File Components.</li>
+<li><strong>Enterprise Design Systems</strong>: Building UI component libraries where <code>defineProps</code>, <code>defineEmits</code>, and <code>defineExpose</code> enforce strict, type-safe API boundaries.</li>
+<li><strong>High-Performance Dashboards</strong>: Real-time interfaces (such as <em>The National Times</em> live metrics portal) where eliminating runtime proxy lookups reduces CPU overhead during rapid state updates.</li>
+<li><strong>Refactoring Legacy Codebases</strong>: Migrating multi-thousand-line Vue 2 Options API monoliths into modular, readable Composition API scripts.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Compiler Macro</strong>: A specialized function call (like <code>defineProps</code> or <code>defineEmits</code>) that does not exist at runtime, but is recognized and rewritten by the build compiler during bundling without em-dashes.</li>
+<li><strong>Single-File Component (SFC)</strong>: Vue's <code>.vue</code> file format that houses the component template, script logic, and scoped styles in a single document without em-dashes.</li>
+<li><strong>Abstract Syntax Tree (AST)</strong>: An in-memory tree representation of source code structure used by compilers like <code>@vue/compiler-sfc</code> to analyze and transform code before bundling without em-dashes.</li>
+<li><strong>Lexical Scope</strong>: The physical region of source code where a variable declaration is valid and directly accessible by nested functions without em-dashes.</li>
+<li><strong>Component Encapsulation</strong>: The architectural principle of hiding internal state and implementation details from outside parent components without em-dashes.</li>
+<li><strong>Suspense Boundary</strong>: A built-in Vue component orchestrator that coordinates fallback loading states while nested asynchronous components resolve their promises without em-dashes.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>The Script Setup Macro</strong> The definitive compile-time authoring standard for modern Vue 3 Single-File Components.</p>
+<p>❒ <strong>The Engine Architecture</strong></p>
+<ol><li><code>&lt;script setup&gt;</code> is a build-time compiler macro, not a native browser runtime closure.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) The compiler transforms top-level statements into the body of an underlying <code>setup()</code> function.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) The template is compiled into a render function within the same lexical scope, eliminating intermediate runtime proxy overhead.</li>
+<li>Component instances remain completely isolated in memory.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Every mounted component instance executes <code>setup()</code> independently, allocating separate reactive state.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Top-level declarations are never shared globally across instances.</li>
+<li>Component boundaries are closed by default for maximum encapsulation.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Parent template references see an empty object unless the child explicitly opts in.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) The <code>defineExpose()</code> macro defines the explicit, public interface for parent interaction.</li></ol>
+<p>➔ ALWAYS use <code>defineProps()</code> and <code>defineEmits()</code> without importing them, as they are pure compiler macros handled by the build step. ➔ NEVER rely on parent template refs to access child variables unless you have explicitly declared them inside <code>defineExpose()</code>. ➔ IF you use top-level <code>await</code> inside <code>&lt;script setup&gt;</code>, THEN you must wrap the component inside a parent <code>&lt;Suspense&gt;</code> boundary.</p>
+<div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">**DO THIS:** Author clean, top-level <span class="hook">reactive</span> declarations and <span class="kw">let</span> the compiler generate the <span class="kw">return</span> bindings.</span></div>
+<div class="row"><span class="num">2</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">const</span> count = <span class="hook">ref</span>(<span class="nl">0</span>);</span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="kw">function</span> <span class="fn">increment</span>() {</span></div>
+<div class="row"><span class="num">7</span><span class="src">  count.value++;</span></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">  &lt;button @click=<span class="str">"increment"</span>&gt;{{ count }}&lt;/button&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">**DO NOT DO THIS:** Do not write verbose <span class="fn">setup</span>() functions with manual <span class="kw">return</span> dictionaries <span class="kw">in</span> modern Vue <span class="nl">3</span> components.</span></div>
+<div class="row"><span class="num">2</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="fn">setup</span>() {</span></div>
+<div class="row"><span class="num">7</span><span class="src">    <span class="kw">const</span> count = <span class="hook">ref</span>(<span class="nl">0</span>);</span></div>
+<div class="row"><span class="num">8</span><span class="src">    <span class="kw">function</span> <span class="fn">increment</span>() {</span></div>
+<div class="row"><span class="num">9</span><span class="src">      count.value++;</span></div>
+<div class="row"><span class="num">10</span><span class="src">    }</span></div>
+<div class="row"><span class="num">11</span><span class="src">    <span class="kw">return</span> { count, increment };</span></div>
+<div class="row"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row"><span class="num">13</span><span class="src">};</span></div>
+<div class="row"><span class="num">14</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+<table><thead><tr><th></th><th><strong>LEGACY / EARLY ARCHITECTURE</strong><br>(Options API &amp; Explicit setup)</th><th><strong>SCRIPT SETUP STANDARD</strong><br>(Modern Vue 3 Macro)</th></tr></thead><tbody><tr><td><strong>Authoring Paradigm</strong></td><td>Options API uses rigid buckets; setup() uses procedural exports</td><td>Declarative, top-level script statements compiled via macro</td></tr><tr><td><strong>Template Binding</strong></td><td>Options reads via instance proxy; setup() requires manual return</td><td>Direct lexical scope closure; inlined render function</td></tr><tr><td><strong>Encapsulation Model</strong></td><td>Open by default; all data and methods exposed to parent</td><td>Strictly closed by default; requires explicit defineExpose</td></tr><tr><td><strong>Component Macros</strong></td><td>Not supported; configuration lives in options object</td><td>Native compiler macros (defineProps, defineEmits, defineModel)</td></tr><tr><td><strong>Runtime Overhead</strong></td><td>Runtime proxy traversal on every template property access</td><td>Zero proxy lookup overhead; direct local variable access</td></tr><tr><td><strong>TypeScript Ergonomics</strong></td><td>Verbose wrapper typings and fragile component inference</td><td>Seamless, native TypeScript variable and macro inference</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,1546 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 20: Controlled Inputs — Edition v7.1-1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v7.1-1";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 20: Controlled Inputs</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you make an input, textarea, or select fully controlled by React state?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>You call <code>setText('')</code> after submit, but the old text remains stuck in the textarea.</li>
+<li>You switch to <code>value={text}</code>, but the field refuses every keystroke while logging a read-only warning.</li>
+<li>How do you make an input, textarea, or select fully controlled by React state?</li></ol>
+</div>
+<div class="keep-together">
+<h3>The form field keeps its own text, but React state stays out of sync</h3>
+<p>Today we learn how React form fields bind directly to component memory, why native HTML habits cause fields to freeze or refuse to clear, and how to control text inputs, textareas, selects, and checkboxes cleanly with state.</p>
+<p>In modern frontend web applications, user interfaces collect information through interactive forms. Users type search queries, submit feedback comments, choose options from dropdown menus, and toggle confirmation checkboxes. In plain HTML, form fields own their internal text, and scripts inspect the DOM only after submission. In React, this imperative model causes state and the screen to drift out of sync. When an application needs to clear fields after submission, validate text length on the fly, or populate defaults dynamically, the component must become the single source of truth. By binding the field's displayed value to a React state variable through <code>value</code> and updating that state synchronously on every keystroke through <code>onChange</code>, the form control becomes fully controlled. State drives what appears on screen, and clearing state immediately flushes the field.</p>
+<p>When engineers transition from vanilla HTML scripting to React, they naturally carry over habits from native form elements. In HTML, a developer writes <span class="code-line-callout"><code>&lt;textarea&gt;Starting text&lt;/textarea&gt;</code></span> or <code>&lt;input value="Default"&gt;</code>, expecting the browser to manage user keystrokes independently while JavaScript reads the field value on submit. In React, passing <code>defaultValue</code> sets the initial text once at mount, after which the DOM node retains its own independent memory. When an event handler later updates a state variable with <code>setText('')</code>, a <code>defaultValue</code> field completely ignores the new state, leaving stale text on screen while counters reset to zero. Conversely, developers who hear that React needs <code>value={text}</code> often supply <code>value</code> without an <code>onChange</code> handler, inadvertently locking the field so it refuses every keystroke while the console logs a read-only warning. Furthermore, checkboxes require <code>checked</code> rather than <code>value</code>, dropdowns require <code>value</code> on the <code>&lt;select&gt;</code> rather than <code>selected</code> on an <code>&lt;option&gt;</code>, and text state must never start as <code>undefined</code>.</p>
+<p>This chapter investigates six core questions. <strong>Why does calling a state setter fail to clear an input that uses defaultValue?</strong> <strong>Why does assigning value without an onChange handler freeze the field completely?</strong> <strong>Why must the onChange handler store exactly what was typed synchronously, rather than modifying or delaying the text?</strong> <strong>Why does a checkbox require the checked prop and e.target.checked rather than value and e.target.value?</strong> <strong>Where must the value prop be declared when controlling a select dropdown or textarea?</strong> <strong>Why does initializing a state variable with useState() trigger an uncontrolled-to-controlled warning on the first keystroke?</strong></p>
+<p>Later lessons build directly on these controlled form fundamentals. Lecture 21 explores reacting to input with state, demonstrating how to disable buttons and toggle loading spinners based on form status flags. Lecture 30 introduces DOM refs for imperative operations like focusing an input, while Lecture 39 investigates uncontrolled forms with <code>FormData</code>.</p>
+<ul>
+<li><strong>Lecture 1 (What is React)</strong>: State acts as the single source of truth for the user interface, eliminating contradictory component memory.</li>
+<li><strong>Lecture 4 (JSX expressions)</strong>: JSX embeds dynamic values in curly braces, and null or undefined evaluate to empty content.</li>
+<li><strong>Lecture 6 (Component props)</strong>: Props pass read-only data into components, and nullish coalescing (<code>??</code>) provides safe fallbacks.</li>
+<li><strong>Lecture 10 (Conditional rendering)</strong>: JavaScript evaluates truthy and falsy values when determining conditional display logic.</li>
+<li><strong>Lecture 13 (Event handling)</strong>: Event handlers receive synthetic event objects (<code>e</code>), call <code>e.preventDefault()</code>, and forms submit via buttons by default.</li>
+<li><strong>Lecture 14 (Component memory with useState)</strong>: The <code>useState</code> hook returns a state variable and a setter function that schedules component re-renders.</li>
+<li><strong>Lecture 15 (Render and commit)</strong>: React diffs element trees during render and applies only minimal DOM mutations during the commit phase.</li>
+<li><strong>Lecture 16 (State snapshots)</strong>: State variables remain fixed constants within a single render, and <code>setTimeout</code> executes callbacks asynchronously.</li>
+<li><strong>Lecture 18 (Updating objects in state)</strong>: Form state objects pair input name attributes with state keys using <span class="code-line-callout"><code>[e.target.name]: e.target.value</code></span></li>
+</ul>
+</div>
+<div class="keep-together">
+<h3>Controlled versus uncontrolled form inputs</h3>
+<p>In Lecture 13, we learned how event handlers capture user interactions, and in Lecture 14, we learned how <code>useState</code> provides a setter that schedules a future render. In Lecture 18, we saw a preview of form inputs where <code>value</code> and <code>onChange</code> were wired to state properties. Today we unpack the exact mechanics of that binding.</p>
+<p>In React, form elements operate in one of two distinct modes: uncontrolled or controlled. An uncontrolled field uses <code>defaultValue="initial"</code> (or <code>defaultChecked</code> for checkboxes). React populates the DOM element once when it mounts, after which the browser's internal DOM node manages all subsequent typing and state. If your component updates a state variable later, the uncontrolled DOM node ignores it. In contrast, a controlled field explicitly binds its displayed text to React state via <code>value={text}</code>. On every keystroke, React's synthetic <code>onChange</code> event fires immediately, behaving like the native browser <code>input</code> event rather than the native <code>change</code> event, which only fires after the user leaves the field. The handler calls <code>setText(e.target.value)</code>, React re-renders the component, and the commit phase writes the new state value back into the DOM element. Because React drives the field on every render, state is the single source of truth. Clearing state programmatically with <code>setText('')</code> immediately flushes the visible text from the screen.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Uncontrolled Versus Controlled Form Fields</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">&lt;textarea defaultValue=<span class="str">"Initial note"</span> /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble cmt-bubble-multi" style="--indent-offset: 0px;">
+        <span class="text">Uncontrolled: browser keeps text; setting state does not clear it<br>Uncontrolled field</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src">&lt;textarea</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Controlled: React state drives field; setting state flushes DOM</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  value={text} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">State is single source of truth</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  onChange={e =&gt; <span class="fn">setText</span>(e.target.value)} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Synchronous state write</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">/&gt;</span></div></div></div></div>
+<p>The difference between uncontrolled and controlled form fields centers on three core concepts:</p>
+<ol><li><code>uncontrolled input</code>: a form element whose value is managed internally by the browser DOM node.</li>
+<li><code>defaultValue</code>: a prop that sets the initial field value once at mount without controlling subsequent renders.</li>
+<li><code>controlled input</code>: an input driven by React state via <code>value</code> and updated on every keystroke via <code>onChange</code>.</li>
+<li><code>single source of truth</code>: an architectural invariant where component state dictates exactly what appears on screen.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Synchronous input updates and the text caret</h3>
+<p>In Lecture 16, we saw that calling a state setter queues a render rather than mutating variables in place, and that <code>setTimeout</code> defers execution until the browser's event loop clears. When managing text inputs, timing and value fidelity become critical to cursor stability.</p>
+<p>When a user types into a text input, the browser places the new character at the active cursor position and advances the text caret immediately. In a controlled field, React must synchronize this DOM mutation with component state. If your <code>onChange</code> handler stores an altered string, such as calling <code>e.target.value.toUpperCase()</code>, the text that React renders back into the DOM differs from what the browser natively inserted. When React overwrites the element's <code>value</code> with a modified string, the browser loses track of the user's cursor position and jumps the caret to the very end of the input. If the user was editing text in the middle of a word, their next keystroke lands erroneously at the end of the line. Similarly, if a developer attempts to defer <code>setText</code> inside a <code>setTimeout</code>, React writes the old state back to the DOM before the timer fires, causing fast typing to scramble characters. To preserve seamless caret navigation, <code>onChange</code> must update state synchronously with the exact, unmodified string from <code>e.target.value</code>. Formatting should occur during render display or upon final submission.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Synchronous Event Handling and Caret Stability</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleTitleChange</span>(e) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Correct: stores raw typed text synchronously; cursor position stays stable</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setTitle</span>(e.target.value); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Caret remains at current edit position</span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div>
+<div class="row even"><span class="num">4</span><span class="src"></span></div>
+<div class="row odd"><span class="num">5</span><span class="src"><span class="kw">function</span> <span class="fn">handleBrokenTitleChange</span>(e) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Broken: uppercasing during typing forces the caret to jump to the end</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="fn">setTitle</span>(e.target.value.<span class="fn">toUpperCase</span>()); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Caret jumps to end on keystroke</span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>Managing the text caret during controlled typing introduces three essential concepts:</p>
+<ol><li><code>text caret</code>: the blinking cursor indicating where typed characters appear in an editable field.</li>
+<li><code>synchronous state update</code>: calling the state setter immediately inside the event handler without delay.</li>
+<li><code>caret jump</code>: cursor displacement to the end of a field caused by overwriting DOM text with an altered string.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Checkbox boolean bindings and select value props</h3>
+<p>In Lecture 4, we learned that JSX expressions evaluate JavaScript variables directly, and in Lecture 6, we learned that passing <code>undefined</code> causes React to fall back to default behavior. When dealing with form elements, <code>undefined</code> carries a specific structural consequence.</p>
+<p>Different HTML form elements require specialized prop pairings. A checkbox does not track state through <code>value</code>; in native HTML, an input checkbox has a default <code>value="on"</code>. If you write <span class="code-line-callout"><code>onChange={e =&gt; <span class="fn">setAgreed</span>(e.target.value)}</code></span> <code>e.target.value</code> evaluates to the string <code>"on"</code> regardless of whether the box was ticked or unticked. Because <code>"on"</code> is a non-empty string, JavaScript evaluates it as truthy. Passing <code>e.target.value</code> to <code>setAgreed</code> stores <code>"on"</code> on the first click and stores <code>"on"</code> again on the second click. The checkbox remains checked permanently. Checkboxes and radio buttons must pair the <code>checked</code> boolean prop with <code>e.target.checked</code>. Similarly, dropdown menus in React do not set <code>selected</code> on individual <code>&lt;option&gt;</code> elements. Setting <code>&lt;option selected&gt;</code> logs a console error; instead, React declares <code>value={selectedOption}</code> directly on the parent <code>&lt;select&gt;</code> element. Finally, text inputs must never initialize with <code>useState()</code> or <code>undefined</code>. When an input receives <code>value={undefined}</code>, React treats it as an uncontrolled field. When the user types their first letter and state becomes a string, React suddenly switches the input to controlled, logging an error: "A component is changing an uncontrolled input to be controlled." Always initialize text fields with an empty string <code>useState('')</code> or provide a fallback <code>value={text ?? ''}</code>.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Form Field Bindings and String Initialization</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">&lt;input type=<span class="str">"checkbox"</span> checked={on} onChange={e =&gt; <span class="fn">setOn</span>(e.target.checked)} /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Checkbox: binds checked and reads boolean e.target.checked</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src">&lt;select value={topic} onChange={e =&gt; <span class="fn">setTopic</span>(e.target.value)}&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Select: declares value on select element</span>
+      </div></div>
+<div class="row even"><span class="num">4</span><span class="src">  &lt;option value=<span class="str">"billing"</span>&gt;Billing&lt;/option&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">&lt;/select&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src"><span class="kw">const</span> [title, setTitle] = <span class="hook">useState</span>(<span class="str">''</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Starts with empty string</span>
+      </div></div></div></div></div>
+<p>Form element specialization requires understanding four foundational concepts:</p>
+<ol><li><code>checked</code>: a boolean prop governing the visual checkmark state of checkboxes and radio buttons.</li>
+<li><code>e.target.checked</code>: the boolean property reporting whether an input element is currently ticked.</li>
+<li><code>select value</code>: the container prop on <code>&lt;select&gt;</code> matching the active option's value.</li>
+<li><span class="code-line-callout"><code>uncontrolled-to-controlled warning</code></span> a console error triggered when an input switches from <code>undefined</code> to a string.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Principles of React: Controlled Inputs</h3>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="1">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 1</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 1: Calling a state setter fails to clear a textarea with defaultValue';">Calling a state setter fails to clear a textarea with defaultValue</h3>
+</div>
+<p>A developer builds a feedback submission component called <code>FeedbackForm</code>. To collect suggestions, the developer declares a textarea initialized with <code>defaultValue=""</code> and updates a local state variable <code>text</code> on each keystroke to display a live character counter:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FeedbackForm.jsx, defaultValue attempt</span></div><div class="code"><div class="row even"><span class="num">12</span><span class="src">  <span class="kw">function</span> <span class="fn">handleClear</span>() {</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    <span class="fn">setText</span>(<span class="str">''</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Re-renders character counter to 0/280</span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">16</span><span class="src">    &lt;form onSubmit={handleClear}&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      &lt;textarea defaultValue=<span class="str">""</span> onChange={e =&gt; <span class="fn">setText</span>(e.target.value)} /&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      &lt;span&gt;{text.length}/<span class="nl">280</span> characters&lt;/span&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">  );</span></div></div></div></div>
+<p>The user types "Fix the date" into the box. The counter displays "12/280 characters". When the user clicks the submit button, <code>handleClear</code> runs, calling <code>setText('')</code>. The character counter updates to "0/280 characters", but the textarea on screen continues displaying "Fix the date".</p>
+<p><strong>After Send, I call setText(''). The counter says 0/280, but the old text stays in the box. Why?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> A field with <code>defaultValue</code> sets its text only once at mount, after which the browser DOM manages its text independently of React state.</p>
+<p>When you pass <code>defaultValue=""</code> to a form element, React instructs the browser to populate the initial DOM node with that value when the element mounts. After mount, the DOM node maintains its own internal text memory. Each keystroke triggers <code>onChange</code>, which calls <code>setText(e.target.value)</code>. That state setter writes the string into React state, allowing the counter to read <code>text.length</code> during rendering.</p>
+<p>When the submit handler calls <code>setText('')</code>, React schedules a re-render. During the render pass, the counter evaluates <code>text.length</code> as zero, so the screen renders "0/280 characters". However, because the textarea uses <code>defaultValue</code>, nothing instructs React to synchronize the DOM element with the new state value. React compares the JSX element, notices <code>defaultValue</code> is an initial-mount instruction, and leaves the existing DOM node completely untouched.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Uncontrolled DefaultValue Versus Controlled Value</div>
+<pre class="ascii-diagram">[setText('')] -&gt; React schedules render
+      |
+      v
+Counter renders 0/280 from state
+      |
+      v
+Textarea uses defaultValue="" (mount only)
+      |
+      v
+[DOM node untouched] -&gt; Screen keeps showing "Fix the date"</pre>
+</div>
+<p>To make state drive the textarea after every render, you must replace <code>defaultValue</code> with <code>value={text}</code>. When <code>value</code> is present, React's commit phase writes the state string back into the DOM element on every render, ensuring that calling <code>setText('')</code> empties the box immediately.</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">A controlled field shows what is in state, after every render</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">defaultValue</span>
+          <span class="gloss-def">sets only the initial text when the field mounts; the browser keeps subsequent edits</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">A field with <code>defaultValue</code> sets its initial text once at mount; after that, the browser keeps the field's own text, so setting state does not change it. A controlled field takes its displayed text directly from React state through <code>value</code>. Each keystroke calls <code>onChange</code>, the handler writes the new text into state, and React writes state back into the field after every render. Because state is the single source of truth, whatever is in state is what the field shows, and clearing state clears the field.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx right</div><div class="case-code-line">&lt;textarea value={text} onChange={e =&gt; <span class="fn">setText</span>(e.target.value)} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">value drives the textarea from state; setText('') empties it</span></div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx wrong</div><div class="case-code-line">&lt;textarea defaultValue=<span class="str">""</span> onChange={e =&gt; <span class="fn">setText</span>(e.target.value)} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">defaultValue leaves field uncontrolled; setText('') does not clear it</span></div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="2">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 2</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 2: Assigning value without an onChange handler freezes the input';">Assigning value without an onChange handler freezes the input</h3>
+</div>
+<p>Having learned that <code>value</code> binds the textarea to state, the developer changes the input to <code>value={text}</code>, but removes the <code>onChange</code> handler, assuming that the browser will let the user type naturally while React reads the value on submit:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FeedbackForm.jsx, missing onChange</span></div><div class="code"><div class="row even"><span class="num">10</span><span class="src">  <span class="kw">const</span> [text, setText] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    &lt;form&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      &lt;textarea value={text} /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Missing onChange handler</span>
+      </div></div>
+<div class="row even"><span class="num">14</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  );</span></div></div></div></div>
+<p>The user clicks into the textarea and attempts to type "Hello". No letters appear in the box, the field appears completely frozen, and the browser console logs an error warning that a <code>value</code> prop without <code>onChange</code> renders a read-only field.</p>
+<p><strong>I wrote value={text} and the box no longer takes any typing. What broke?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> Supplying a <code>value</code> prop makes an input controlled, so without an <code>onChange</code> handler to update state, React overwrites every keystroke with the existing state string.</p>
+<p>In React, passing a string to the <code>value</code> prop transforms the input into a controlled component. When the user presses a key on their keyboard, the browser's native engine inserts the typed character into the DOM node for a fraction of a millisecond.</p>
+<p>However, because there is no <code>onChange</code> handler to capture the event and call <code>setText</code>, component state remains fixed at its initial value (<code>''</code>). React immediately reconciles the DOM element against the JSX <code>value={text}</code>, notices that the DOM node contains a character while state specifies <code>''</code>, and writes <code>''</code> back into the DOM element. The typed character vanishes instantly before the user can see it.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Read-Only Reversion on Missing OnChange</div>
+<pre class="ascii-diagram">User presses key -&gt; Browser DOM receives character
+      |
+      v
+No onChange handler -&gt; Component state remains ''
+      |
+      v
+React reconciles: state ('') !== DOM (char)
+      |
+      v
+[React writes '' back to DOM] -&gt; Character disappears instantly</pre>
+</div>
+<p>React detects this contradiction and prints an explicit diagnostic error: "You provided a <code>value</code> prop to a form field without an <code>onChange</code> handler. This will render a read-only field. If the field should be mutable use <code>defaultValue</code>. Otherwise, set either <code>onChange</code> or <code>readOnly</code>." To keep the field editable, you must supply an <code>onChange</code> handler that writes <code>e.target.value</code> into state.</p>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Pair every value with an onChange that sets state</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">readOnly</span>
+          <span class="gloss-def">marks a field as intentionally immutable without an onChange handler</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Passing a string <code>value</code> makes a form field controlled. Each keystroke changes the field for a moment, but with no <code>onChange</code> handler, nothing stores the new text into state. React writes the existing state value back into the field on render, causing the keystroke to disappear while logging an error advising to set <code>readOnly</code>. If a field should accept user edits, pair its <code>value</code> with an <code>onChange</code> handler that updates state.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx right</div><div class="case-code-line">&lt;input value={name} onChange={e =&gt; <span class="fn">setName</span>(e.target.value)} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">onChange updates state on each keystroke, keeping the field editable</span></div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx wrong</div><div class="case-code-line">&lt;input value={name} /&gt;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">value without onChange freezes the field and logs a console error</span></div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="3">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 3</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 3: Modifying text inside onChange causes the cursor caret to jump';">Modifying text inside onChange causes the cursor caret to jump</h3>
+</div>
+<p>The developer wants headline titles to always appear in uppercase letters. Rather than applying a styling rule, the developer uppercases the text directly inside the <code>onChange</code> event handler:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FeedbackForm.jsx, uppercase in onChange</span></div><div class="code"><div class="row even"><span class="num">14</span><span class="src">  <span class="kw">function</span> <span class="fn">handleTitleChange</span>(e) {</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    <span class="fn">setTitle</span>(e.target.value.<span class="fn">toUpperCase</span>()); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Stores uppercased text</span>
+      </div></div>
+<div class="row even"><span class="num">16</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  <span class="kw">return</span> &lt;input value={title} onChange={handleTitleChange} /&gt;;</span></div></div></div></div>
+<p>The user types "fix the date". Then the user clicks between "fix " and "the" to insert "xy". As soon as the user presses "x", the cursor unexpectedly jumps to the end of the input, and pressing "y" lands at the end of the string, producing "FIX XTHE DATEY".</p>
+<p><strong>Headlines are all caps. Can my onChange store e.target.value.toUpperCase()?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> Overwriting an input with a modified string causes the browser to lose the user's cursor position, jumping the text caret to the end of the field.</p>
+<p>When a user types a letter into an input field, the browser native engine inserts the character at the active cursor position and advances the caret one space forward. When <code>handleTitleChange</code> executes, it receives <code>e.target.value</code> (for example, <code>"fix xthe date"</code>). The handler calls <code>toUpperCase()</code>, storing <code>"FIX XTHE DATE"</code> in React state.</p>
+<p>When React re-renders the component and commits the changes, it writes <code>"FIX XTHE DATE"</code> into the input's <code>value</code> property. Because this string does not match what the browser natively placed in the input (lowercase "x" replaced by uppercase "X"), the browser cannot preserve the cursor position within the modified text. The browser defaults to placing the caret at the very end of the input string. When the user types the next character ("y"), that character is inserted at the end of the line.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Caret Jump Displacement on Modified String</div>
+<pre class="ascii-diagram">User types 'x' in middle: "fix xthe date"
+      |
+      v
+onChange stores uppercased: "FIX XTHE DATE"
+      |
+      v
+React writes modified string -&gt; Browser caret jumps to end
+      |
+      v
+Next letter 'y' typed at end -&gt; "FIX XTHE DATEY"</pre>
+</div>
+<p>A similar bug occurs if you wrap state updates in <code>setTimeout</code>. React writes the old state back to the DOM before the timer fires, causing fast typing to drop or scramble characters. You must store <code>e.target.value</code> synchronously and without transformation. If you want uppercase presentation, use CSS <code>text-transform: uppercase</code>, or transform the string upon form submission.</p>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Store exactly what was typed, right away</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">caret</span>
+          <span class="gloss-def">the blinking cursor that indicates where the next typed letter lands</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">When a user types, the browser advances the cursor to the next character position. If <code>onChange</code> stores a transformed string or defers state inside a timer, React writes a value back to the DOM that differs from what the browser received. Overwriting the input resets the cursor position, sending the text caret to the end of the field and scrambling subsequent keystrokes. Always store <code>e.target.value</code> synchronously and unmodified; format text during display or upon submission.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx right</div><div class="case-code-line">onChange={e =&gt; <span class="fn">setName</span>(e.target.value)}</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">store raw typed string synchronously; format when displaying or saving</span></div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx wrong</div><div class="case-code-line">onChange={e =&gt; <span class="fn">setName</span>(e.target.value.<span class="fn">toUpperCase</span>())}</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">transforming or delaying the typed value moves the caret to the end</span></div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="4">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 4</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 4: Reading e.target.value on a checkbox permanently locks it to checked';">Reading e.target.value on a checkbox permanently locks it to checked</h3>
+</div>
+<p>The developer adds an "urgent" checkbox to flag priority feedback. State variable <code>isUrgent</code> starts as <code>false</code>. The developer binds <code>checked</code> to <code>isUrgent</code> but reads <code>e.target.value</code> in <code>onChange</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FeedbackForm.jsx, checkbox reading value</span></div><div class="code"><div class="row even"><span class="num">20</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">    &lt;label&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">      &lt;input</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">        type=<span class="str">"checkbox"</span></span></div>
+<div class="row even"><span class="num">24</span><span class="src">        checked={isUrgent}</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">        onChange={e =&gt; <span class="fn">setIsUrgent</span>(e.target.value)} </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 76px;">
+        <span class="text">Reads string value</span>
+      </div></div>
+<div class="row even"><span class="num">26</span><span class="src">      /&gt;</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">      Mark as <span class="fn">urgent</span> ({<span class="fn">String</span>(isUrgent)})</span></div>
+<div class="row even"><span class="num">28</span><span class="src">    &lt;/label&gt;</span></div>
+<div class="row odd"><span class="num">29</span><span class="src">  );</span></div></div></div></div>
+<p>The user clicks the checkbox once. The checkbox becomes ticked, and the label displays "Mark as urgent (on)". The user clicks the checkbox a second time to uncheck it, but the checkbox remains stubbornly ticked and the label still displays "Mark as urgent (on)".</p>
+<p><strong>For the urgent checkbox, do I write value and e.target.value, like the text fields?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> A checkbox does not report boolean status through <code>value</code>; <code>e.target.value</code> returns the string <code>"on"</code>, which is truthy, so the checkbox can never be unchecked.</p>
+<p>In native HTML, a checkbox's <code>value</code> attribute specifies the data value submitted with the form when the checkbox is checked. If no <code>value</code> attribute is explicitly assigned, the browser assigns it a default value of <code>"on"</code>. Crucially, clicking a checkbox does not change its <code>value</code> property; <code>e.target.value</code> returns <code>"on"</code> on every single click, whether the user is checking or unchecking the box.</p>
+<p>Because <code>"on"</code> is a non-empty string, JavaScript evaluates it as truthy. When the user clicks the checkbox the first time, <code>setIsUrgent("on")</code> stores <code>"on"</code> in state, rendering <code>checked={true}</code>. When the user clicks the checkbox a second time, <code>e.target.value</code> is still <code>"on"</code>. React receives <code>"on"</code>, evaluates it as truthy, and renders <code>checked={true}</code> again. The checkbox becomes permanently locked in the checked state.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Checkbox Target Value Versus Target Checked</div>
+<pre class="ascii-diagram">[First Click: Tick Box]
+e.target.value === "on"      ---&gt; setIsUrgent("on")     ---&gt; checked={true}
+      |
+      v
+[Second Click: Untick Box]
+e.target.value === "on"      ---&gt; setIsUrgent("on")     ---&gt; checked={true}
+      |
+      v
+e.target.checked === false   ---&gt; setIsUrgent(false)    ---&gt; checked={false}</pre>
+</div>
+<p>To control a checkbox or a radio button, you must bind the <code>checked</code> boolean prop and read the boolean property <code>e.target.checked</code>. The property <code>e.target.checked</code> accurately returns <code>true</code> when the box is checked and <code>false</code> when it is unticked.</p>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">A checkbox uses checked, and its handler reads e.target.checked</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">e.target.checked</span>
+          <span class="gloss-def">the boolean property indicating whether a checkbox is ticked</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">A checkbox displays its visual state through the boolean <code>checked</code> prop. In HTML, a checkbox's <code>value</code> attribute defaults to the string <code>"on"</code>, so reading <code>e.target.value</code> yields <code>"on"</code> on every click. Because non-empty strings are truthy, storing <code>e.target.value</code> permanently locks the checkbox to checked. Always bind <code>checked</code> to state and read <code>e.target.checked</code>, which provides a clean boolean <code>true</code> or <code>false</code> on every toggle.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx right</div><div class="case-code-line">&lt;input</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">checked prop with e.target.checked stores true or false accurately</span></div><div class="case-code-line">  type=<span class="str">"checkbox"</span></div><div class="case-code-line">  checked={agree}</div><div class="case-code-line">  onChange={e =&gt; <span class="fn">setAgree</span>(e.target.checked)}</div><div class="case-code-line">/&gt;</div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx wrong</div><div class="case-code-line">&lt;input</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">e.target.value returns "on" every time, so the box never unchecks</span></div><div class="case-code-line">  type=<span class="str">"checkbox"</span></div><div class="case-code-line">  checked={agree}</div><div class="case-code-line">  onChange={e =&gt; <span class="fn">setAgree</span>(e.target.value)}</div><div class="case-code-line">/&gt;</div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="5">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 5</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 5: Setting selected on an option triggers a console warning';">Setting selected on an option triggers a console warning</h3>
+</div>
+<p>The developer adds a category selection dropdown. Relying on standard HTML syntax, the developer marks the default option with the boolean <code>selected</code> attribute:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FeedbackForm.jsx, option selected</span></div><div class="code"><div class="row even"><span class="num">22</span><span class="src">  <span class="kw">const</span> [category, setCategory] = <span class="hook">useState</span>(<span class="str">'support'</span>);</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">24</span><span class="src">    &lt;select onChange={e =&gt; <span class="fn">setCategory</span>(e.target.value)}&gt;</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">      &lt;option value=<span class="str">"general"</span>&gt;General&lt;/option&gt;</span></div>
+<div class="row even"><span class="num">26</span><span class="src">      &lt;option value=<span class="str">"support"</span> selected&gt;Support&lt;/option&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">HTML habit</span>
+      </div></div>
+<div class="row odd"><span class="num">27</span><span class="src">    &lt;/select&gt;</span></div>
+<div class="row even"><span class="num">28</span><span class="src">  );</span></div></div></div></div>
+<p>When the page loads, the browser console prints an error warning: "Use the <code>defaultValue</code> or <code>value</code> props on &lt;select&gt; instead of setting <code>selected</code> on &lt;option&gt;." Furthermore, when the user clicks a reset button that calls <code>setCategory('general')</code>, the dropdown fails to switch to "General Feedback".</p>
+<p><strong>In HTML I mark the default section with selected on its &lt;option&gt;. Do I do the same here?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> React does not support <code>selected</code> on an <code>&lt;option&gt;</code>; dropdown values must be controlled via <code>value</code> on the parent <code>&lt;select&gt;</code> element.</p>
+<p>In native HTML, setting <code>&lt;option selected&gt;</code> indicates which item should be initially chosen in a dropdown menu. In React's declarative architecture, form state belongs on the container element that manages user selection, rather than scattered across child option tags.</p>
+<p>When React encounters <code>selected</code> on an <code>&lt;option&gt;</code>, it rejects the attribute and prints a console error. Because the <code>&lt;select&gt;</code> tag itself has no <code>value</code> prop, React treats the dropdown as an uncontrolled element. When an event handler calls <code>setCategory('general')</code>, React updates component state, but the <code>&lt;select&gt;</code> DOM element ignores the update and remains stuck on whatever option the user previously picked.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Option Selected Versus Select Value Container</div>
+<pre class="ascii-diagram">&lt;option selected&gt;           ---&gt; Rejected by React; logs console error
+      |
+      v
+&lt;select&gt; lacks value prop   ---&gt; Dropdown is uncontrolled; ignores state updates
+      |
+      v
+&lt;select value={category}&gt;   ---&gt; React selects matching option automatically</pre>
+</div>
+<p>To control a dropdown menu in React, declare <code>value={category}</code> directly on the <code>&lt;select&gt;</code> element, along with an <code>onChange</code> handler that updates state with <code>e.target.value</code>. React inspects the child options and automatically highlights whichever <code>&lt;option&gt;</code> has a <code>value</code> matching the state variable. Similarly, a <code>&lt;textarea&gt;</code> must not place text between opening and closing tags; its content belongs in <code>value</code>.</p>
+<aside class="callout callout-principle" data-principle="5">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 5</span></div>
+    <h4 class="principle-title">Put value on the field itself, not on an option or between tags</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">select value</span>
+          <span class="gloss-def">selects the matching option declaratively from state</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">In React, dropdown selection is controlled on the container <code>&lt;select&gt;</code> element, not on individual <code>&lt;option&gt;</code> tags. Setting <code>selected</code> on an <code>&lt;option&gt;</code> logs a console error and breaks state control. Declare <code>value={choice}</code> on the <code>&lt;select&gt;</code> tag, and React automatically selects the matching option. Similarly, write a <code>&lt;textarea&gt;</code> as a self-closing tag with <code>value</code>, never placing child text between <code>&lt;textarea&gt;</code> tags.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx right</div><div class="case-code-line">&lt;select value={choice} onChange={e =&gt; <span class="fn">setChoice</span>(e.target.value)}&gt;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">select value matches the active option value without touching options</span></div><div class="case-code-line">  &lt;option value=<span class="str">"one"</span>&gt;First Option&lt;/option&gt;</div><div class="case-code-line">  &lt;option value=<span class="str">"two"</span>&gt;Second Option&lt;/option&gt;</div><div class="case-code-line">&lt;/select&gt;</div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx wrong</div><div class="case-code-line">&lt;select onChange={e =&gt; <span class="fn">setChoice</span>(e.target.value)}&gt;</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">selected on an option logs a console error and breaks state control</span></div><div class="case-code-line">  &lt;option value=<span class="str">"one"</span>&gt;First Option&lt;/option&gt;</div><div class="case-code-line">  &lt;option value=<span class="str">"two"</span> selected&gt;Second Option&lt;/option&gt;</div><div class="case-code-line">&lt;/select&gt;</div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<div class="principle-section-header question-section-header" data-question="6">
+  <div class="principle-ribbon-tab question-ribbon-tab"><span class="principle-num">QUESTION 6</span></div>
+  <h3 class="principle-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Question 6: Starting state with useState() triggers an uncontrolled-to-controlled warning';">Starting state with useState() triggers an uncontrolled-to-controlled warning</h3>
+</div>
+<p>The developer prepares the form to receive an initial title asynchronously from a remote server. Because the title is not available immediately when the component mounts, the developer initializes state without an argument:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FeedbackForm.jsx, undefined initial state</span></div><div class="code"><div class="row even"><span class="num">8</span><span class="src">  <span class="kw">const</span> [title, setTitle] = <span class="hook">useState</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Initializes state to undefined</span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;input</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      value={title}</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      onChange={e =&gt; <span class="fn">setTitle</span>(e.target.value)}</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    /&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  );</span></div></div></div></div>
+<p>When the form first renders, the input appears empty. When the user clicks into the field and types the letter "F", the console logs an error warning: "A component is changing an uncontrolled input to be controlled. This is likely caused by the value changing from undefined to a defined value, which should not happen."</p>
+<p><strong>The headline will come from the server later, so I wrote useState(). Is that fine?</strong></p>
+<hr class="qa-divider">
+<p><strong>ANSWER</strong></p>
+<p><strong>The code does not do what we wanted.</strong> Initializing state with <code>useState()</code> sets the variable to <code>undefined</code>, causing the input to mount uncontrolled before switching to controlled on the first keystroke.</p>
+<p>In JavaScript, declaring <code>useState()</code> without an initial value sets the state variable to <code>undefined</code>. When React evaluates <span class="code-line-callout"><code>&lt;input value={title} /&gt;</code></span> during initial mount, <code>value={undefined}</code> tells React that no controlled value is being supplied. React concludes that this input is uncontrolled, and lets the browser manage the field.</p>
+<p>When the user types the first character, <code>onChange</code> fires and calls <code>setTitle("F")</code>. On the next render, <code>title</code> is now a string. When React reconciles the element, it finds that an input that mounted as uncontrolled now has a defined string <code>value</code>. In React's architecture, an input element must remain either strictly controlled or strictly uncontrolled throughout its entire lifecycle.</p>
+<div class="ascii-diagram-card">
+<div class="ascii-diagram-title">Lifecycle Shift from Uncontrolled to Controlled</div>
+<pre class="ascii-diagram">useState() initializes title = undefined
+      |
+      v
+Initial render: &lt;input value={undefined} /&gt; mounts UNCONTROLLED
+      |
+      v
+User types 'F' -&gt; setTitle("F") schedules render
+      |
+      v
+Next render: &lt;input value="F" /&gt; switches to CONTROLLED (LOGS ERROR)</pre>
+</div>
+<p>Switching control mode mid-lifecycle can cause subtle rendering bugs where browser DOM state conflicts with React state. Always initialize text input state with an empty string: <code>useState('')</code>. If the value might arrive asynchronously as <code>null</code> or <code>undefined</code>, provide a safe fallback using nullish coalescing: <code>value={title ?? ''}</code>.</p>
+<aside class="callout callout-principle" data-principle="6">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 6</span></div>
+    <h4 class="principle-title">Start every value as a string</h4>
+  </div>
+  <div class="principle-body">
+    <div class="principle-top-row">
+      <div class="principle-marginalia-glossary">
+        <div class="gloss-entry">
+          <span class="gloss-term">nullish coalescing</span>
+          <span class="gloss-def">?? falls back to empty string when state is null or undefined</span>
+        </div>
+      </div>
+      <div class="principle-definition-card">
+        <p class="principle-statement">Passing <code>value={undefined}</code> makes React mount the element as an uncontrolled input. When the user types the first letter, state updates to a string, causing the input to switch suddenly from uncontrolled to controlled. React logs a console error because an input must maintain a stable control mode throughout its lifecycle. Always initialize text state with an empty string <code>useState('')</code>, or provide a nullish coalescing fallback with <code>value={text ?? ''}</code>.</p>
+      </div>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-watermark-bg"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx right</div><div class="case-code-line"><span class="kw">const</span> [title, setTitle] = <span class="hook">useState</span>(<span class="str">''</span>);</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">initialize with empty string so the field stays controlled from mount</span></div><div class="case-code-line"><span class="str">`</span></div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">or provide a fallback: value={title ?? ''}</span></div></div>
+      </div>
+      <div class="principle-case principle-case-dont">
+        <div class="case-watermark-bg"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+        <div class="case-react-bg"><svg class="react-logo-bg" fill="currentColor" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg"><path d="M410.66,180.72h0q-7.67-2.62-15.45-4.88,1.29-5.25,2.38-10.56c11.7-56.9,4.05-102.74-22.06-117.83-25-14.48-66,.61-107.36,36.69q-6.1,5.34-11.95,11-3.9-3.76-8-7.36c-43.35-38.58-86.8-54.83-112.88-39.69-25,14.51-32.43,57.6-21.9,111.53q1.58,8,3.55,15.93c-6.15,1.75-12.09,3.62-17.77,5.6C48.46,198.9,16,226.73,16,255.59c0,29.82,34.84,59.72,87.77,77.85q6.44,2.19,13,4.07Q114.64,346,113,354.68c-10,53-2.2,95.07,22.75,109.49,25.77,14.89,69-.41,111.14-37.31q5-4.38,10-9.25,6.32,6.11,13,11.86c40.8,35.18,81.09,49.39,106,34.93,25.75-14.94,34.12-60.14,23.25-115.13q-1.25-6.3-2.88-12.86,4.56-1.35,8.93-2.79c55-18.27,90.83-47.81,90.83-78C496,226.62,462.5,198.61,410.66,180.72Zm-129-81.08c35.43-30.91,68.55-43.11,83.65-34.39h0c16.07,9.29,22.32,46.75,12.22,95.88q-1,4.8-2.16,9.57a487.83,487.83,0,0,0-64.18-10.16,481.27,481.27,0,0,0-40.57-50.75Q276,104.57,281.64,99.64ZM157.73,280.25q6.51,12.6,13.61,24.89,7.23,12.54,15.07,24.71a435.28,435.28,0,0,1-44.24-7.13C146.41,309,151.63,294.75,157.73,280.25Zm0-48.33c-6-14.19-11.08-28.15-15.25-41.63,13.7-3.07,28.3-5.58,43.52-7.48q-7.65,11.94-14.72,24.23T157.7,231.92Zm10.9,24.17q9.48-19.77,20.42-38.78h0q10.93-19,23.27-37.13c14.28-1.08,28.92-1.65,43.71-1.65s29.52.57,43.79,1.66q12.21,18.09,23.13,37t20.69,38.6Q334,275.63,323,294.73h0q-10.91,19-23,37.24c-14.25,1-29,1.55-44,1.55s-29.47-.47-43.46-1.38q-12.43-18.19-23.46-37.29T168.6,256.09ZM340.75,305q7.25-12.58,13.92-25.49h0a440.41,440.41,0,0,1,16.12,42.32A434.44,434.44,0,0,1,326,329.48Q333.62,317.39,340.75,305Zm13.72-73.07q-6.64-12.65-13.81-25h0q-7-12.18-14.59-24.06c15.31,1.94,30,4.52,43.77,7.67A439.89,439.89,0,0,1,354.47,231.93ZM256.23,124.48h0a439.75,439.75,0,0,1,28.25,34.18q-28.35-1.35-56.74,0C237.07,146.32,246.62,134.87,256.23,124.48ZM145.66,65.86c16.06-9.32,51.57,4,89,37.27,2.39,2.13,4.8,4.36,7.2,6.67A491.37,491.37,0,0,0,201,160.51a499.12,499.12,0,0,0-64.06,10q-1.83-7.36-3.3-14.82h0C124.59,109.46,130.58,74.61,145.66,65.86ZM122.25,317.71q-6-1.71-11.85-3.71c-23.4-8-42.73-18.44-56-29.81C42.52,274,36.5,263.83,36.5,255.59c0-17.51,26.06-39.85,69.52-55q8.19-2.85,16.52-5.21a493.54,493.54,0,0,0,23.4,60.75A502.46,502.46,0,0,0,122.25,317.71Zm111.13,93.67c-18.63,16.32-37.29,27.89-53.74,33.72h0c-14.78,5.23-26.55,5.38-33.66,1.27-15.14-8.75-21.44-42.54-12.85-87.86q1.53-8,3.5-16a480.85,480.85,0,0,0,64.69,9.39,501.2,501.2,0,0,0,41.2,51C239.54,405.83,236.49,408.65,233.38,411.38Zm23.42-23.22c-9.72-10.51-19.42-22.14-28.88-34.64q13.79.54,28.08.54c9.78,0,19.46-.21,29-.64A439.33,439.33,0,0,1,256.8,388.16Zm124.52,28.59c-2.86,15.44-8.61,25.74-15.72,29.86-15.13,8.78-47.48-2.63-82.36-32.72-4-3.44-8-7.13-12.07-11a484.54,484.54,0,0,0,40.23-51.2,477.84,477.84,0,0,0,65-10.05q1.47,5.94,2.6,11.64h0C383.81,377.58,384.5,399.56,381.32,416.75Zm17.4-102.64h0c-2.62.87-5.32,1.71-8.06,2.53a483.26,483.26,0,0,0-24.31-60.94,481.52,481.52,0,0,0,23.36-60.06c4.91,1.43,9.68,2.93,14.27,4.52,44.42,15.32,71.52,38,71.52,55.43C475.5,274.19,446.23,298.33,398.72,314.11Z"/><path d="M256,298.55a43,43,0 1,0-42.86-43A42.91,42.91,0,0,0,256,298.55Z"/></svg></div>
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-cross" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">We should not do this:</div>
+        </div>
+        <div class="case-code"><div class="case-code-line"><span class="str">``</span>jsx wrong</div><div class="case-code-line"><span class="kw">const</span> [title, setTitle] = <span class="hook">useState</span>();</div><div class="cmt-bubble" style="--indent-offset: 0px;"><span class="text">undefined makes field uncontrolled; subsequent typing triggers warning</span></div><div class="case-code-line"><span class="str">`</span></div></div>
+      </div>
+    </div>
+  </div>
+</aside>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for feedback-form - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">feedback-form - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>FeedbackForm</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h1" data-elem="[h1.headline]"><div class="ui-elem-content">Feedback Portal</div></div><div class="ui-elem ui-tag-form" data-elem="[form.form-body]"><div class="ui-elem-content">Form Fields</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>FormControls</span><span class="component-explorer-props">onClear={handleClear}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.btn-sub]"><div class="ui-elem-content"><span class="surface-ui-btn">Submit Feedback</span></div></div><div class="ui-elem ui-tag-button" data-elem="[button.btn-clr]"><div class="ui-elem-content"><span class="surface-ui-btn">Clear Form</span></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="feedback-form: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">feedback-form: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Application shell hosting the feedback manager</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">FeedbackForm.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">State owner managing controlled form fields and synchronous update handlers</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">FormControls.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-leaf">leaf</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Action controls rendering buttons and dispatching user operations upward</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 2px;
+      height: 70%;
+      border-radius: 9999px;
+    }
+    .assembly-steps-figure .card-content {
+      padding: 10px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 5px;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      color: #0f172a;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Warm Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #d98c47; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #f3caa3; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we lay out the feedback form application</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the controlled form input boundary</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/FeedbackForm.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we build the form action controls</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;src/components/FormControls.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 20.1: Figure 20.1: Progressive three-step assembly pipeline for the feedback form</figcaption>
+</figure>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we lay out the feedback form application';">First, we lay out the feedback form application</div>
+      <div class="card-components"><span class="component-tag">&lt;src/App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <code>src/App.jsx</code>, we establish the top-level application container. The root component renders the main title and mounts the <code>FeedbackForm</code> widget.</p>
+<p>Notice that <code>App</code> owns zero interactive state. It serves as an architectural boundary isolating layout from interactive form state.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> FeedbackForm <span class="kw">from</span> <span class="str">'./components/FeedbackForm.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"feedback-app"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h1&gt;Feedback Portal&lt;/h1&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;FeedbackForm /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Controlled state boundary</span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the controlled form input boundary';">Next, we build the controlled form input boundary</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/FeedbackForm.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/FeedbackForm.jsx</code></span> we initialize four state variables with valid primitives, wire controlled inputs, textareas, selects, and checkboxes, compute a live character count, and reset all fields on submit.</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FeedbackForm.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> FormControls <span class="kw">from</span> <span class="str">'./FormControls.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">FeedbackForm</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [title, setTitle] = <span class="hook">useState</span>(<span class="str">''</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Initialized to empty string</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">const</span> [comment, setComment] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> [category, setCategory] = <span class="hook">useState</span>(<span class="str">'general'</span>);</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">const</span> [isUrgent, setIsUrgent] = <span class="hook">useState</span>(<span class="kw">false</span>);</span></div></div></div></div>
+<p>The component initializes every text field with <code>''</code> to prevent uncontrolled-to-controlled warnings. Next, we write the synchronous submission and reset handlers:</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    e.<span class="fn">preventDefault</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Prevents page reload</span>
+      </div></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="fn">handleClear</span>();</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">  <span class="kw">function</span> <span class="fn">handleClear</span>() {</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    <span class="fn">setTitle</span>(<span class="str">''</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Flushes title input</span>
+      </div></div>
+<div class="row odd"><span class="num">15</span><span class="src">    <span class="fn">setComment</span>(<span class="str">''</span>);</span></div>
+<div class="row even"><span class="num">16</span><span class="src">    <span class="fn">setCategory</span>(<span class="str">'general'</span>);</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    <span class="fn">setIsUrgent</span>(<span class="kw">false</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Resets checkbox</span>
+      </div></div>
+<div class="row even"><span class="num">18</span><span class="src">  }</span></div></div></div></div>
+<p>Next, we render the title input:</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">19</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">20</span><span class="src">    &lt;form onSubmit={handleSubmit} className=<span class="str">"feedback-form"</span>&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">      &lt;label&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">        Title:</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">        &lt;input value={title}</span></div>
+<div class="row even"><span class="num">24</span><span class="src">          onChange={e =&gt; <span class="fn">setTitle</span>(e.target.value)} /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px;">
+        <span class="text">Controlled title</span>
+      </div></div>
+<div class="row odd"><span class="num">25</span><span class="src">      &lt;/label&gt;</span></div></div></div></div>
+<p>Next, we render the department dropdown:</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row even"><span class="num">26</span><span class="src">      &lt;label&gt;</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">        Department:</span></div>
+<div class="row even"><span class="num">28</span><span class="src">        &lt;select value={category}</span></div>
+<div class="row odd"><span class="num">29</span><span class="src">          onChange={e =&gt; <span class="fn">setCategory</span>(e.target.value)}&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px;">
+        <span class="text">Controlled select</span>
+      </div></div>
+<div class="row even"><span class="num">30</span><span class="src">          &lt;option value=<span class="str">"general"</span>&gt;General&lt;/option&gt;</span></div>
+<div class="row odd"><span class="num">31</span><span class="src">          &lt;option value=<span class="str">"support"</span>&gt;Support&lt;/option&gt;</span></div>
+<div class="row even"><span class="num">32</span><span class="src">        &lt;/select&gt;</span></div>
+<div class="row odd"><span class="num">33</span><span class="src">      &lt;/label&gt;</span></div></div></div></div>
+<p>Next, we render the comment textarea and character counter:</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">35</span><span class="src">      &lt;label&gt;</span></div>
+<div class="row even"><span class="num">36</span><span class="src">        Comment:</span></div>
+<div class="row odd"><span class="num">37</span><span class="src">        &lt;textarea value={comment}</span></div>
+<div class="row even"><span class="num">38</span><span class="src">          onChange={e =&gt; <span class="fn">setComment</span>(e.target.value)} /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px;">
+        <span class="text">Controlled</span>
+      </div></div>
+<div class="row odd"><span class="num">39</span><span class="src">      &lt;/label&gt;</span></div>
+<div class="row even"><span class="num">40</span><span class="src">      &lt;span&gt;{comment.length}/<span class="nl">280</span> characters&lt;/span&gt;</span></div></div></div></div>
+<p>Finally, we render the urgent checkbox and the action controls leaf:</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row even"><span class="num">42</span><span class="src">      &lt;label&gt;</span></div>
+<div class="row odd"><span class="num">43</span><span class="src">        &lt;input type=<span class="str">"checkbox"</span> checked={isUrgent}</span></div>
+<div class="row even"><span class="num">44</span><span class="src">          onChange={e =&gt; <span class="fn">setIsUrgent</span>(e.target.checked)} /&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 95px;">
+        <span class="text">Checkbox</span>
+      </div></div>
+<div class="row odd"><span class="num">45</span><span class="src">        Mark as urgent priority</span></div>
+<div class="row even"><span class="num">46</span><span class="src">      &lt;/label&gt;</span></div>
+<div class="row odd"><span class="num">47</span><span class="src">      &lt;FormControls onClear={handleClear} /&gt;</span></div>
+<div class="row even"><span class="num">48</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">49</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">50</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Finally, we build the form action controls';">Finally, we build the form action controls</div>
+      <div class="card-components"><span class="component-tag">&lt;src/components/FormControls.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>In <span class="code-line-callout"><code>src/components/FormControls.jsx</code></span> we render Submit and Reset buttons that dispatch actions upward through callbacks:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FormControls.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">FormControls</span>({ onClear }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;div className=<span class="str">"form-actions"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;button type=<span class="str">"submit"</span>&gt;Submit Feedback&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;button type=<span class="str">"button"</span> onClick={onClear}&gt;</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Dispatches clear</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">        Clear Form</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice that <code>FormControls</code> owns zero local state. It receives callback functions from its parent and wires them directly to button click events, illustrating inverse data flow.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>application shell</strong> hosts the feedback manager without owning interactive state, keeping the layout stable.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>FeedbackForm</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>form boundary</strong> owns the four controlled field states and coordinates validation and submission.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>FormControls</span><span class="component-explorer-props">onClear={handleClear}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>action controls</strong> render submission and reset buttons, forwarding user clicks upward.</p></div></div></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .th-col-layer {
+      width: 22% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    .architecture-audit-figure .th-col-naive {
+      width: 39% !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    .architecture-audit-figure .th-col-reality {
+      width: 39% !important;
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .th-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: #64748b;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .architecture-audit-figure .sub-danger {
+      color: #dc2626;
+    }
+    .architecture-audit-figure .sub-teal {
+      color: #0d9488;
+    }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 6px 12px !important;
+      vertical-align: top !important;
+      font-size: 0.81rem !important;
+      line-height: 1.35 !important;
+      color: #334155;
+    }
+    .architecture-audit-figure .audit-table td.cell-layer {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .audit-table td.cell-reality {
+      background: #f8fafc !important;
+      border-left: 1px solid #e2e8f0 !important;
+    }
+    .architecture-audit-figure .tag-danger {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: #fee2e2;
+      color: #991b1b;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .tag-success {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: #ccfbf1;
+      color: #115e59;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure code {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.74rem;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #0f172a;
+    }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Architectural Contrast Matrix</div>
+    <div class="audit-title">Form Control Paradigms in React 19</div>
+    <div class="audit-subtitle">Contrasting uncontrolled DOM field state with declarative controlled React state architecture across six operational dimensions.</div>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Dimension</span>
+          <span class="th-main">Form Operation</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-label">Browser Habit</span>
+          <span class="th-main">Uncontrolled Field</span>
+          <span class="th-sub sub-danger">defaultValue & DOM Memory</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-label">Declarative Model</span>
+          <span class="th-main">Controlled Field</span>
+          <span class="th-sub sub-teal">value & React State</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="cell-layer">
+          <strong>Authority & Memory</strong>
+          <br><small>Source of truth</small>
+        </td>
+        <td>
+          <span class="tag-danger">DOM Internal</span><br>
+          The DOM node retains typed characters internally; <code>defaultValue</code> sets only the initial value once at mount.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Single Source of Truth</span><br>
+          React state variable drives the field via <code>value</code>; the field displays whatever exists in component state after each render.
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-layer">
+          <strong>Programmatic Reset</strong>
+          <br><small>State clearing</small>
+        </td>
+        <td>
+          <span class="tag-danger">Desynchronized</span><br>
+          Calling <code>setText('')</code> updates state counters but leaves old text visible in the DOM textarea.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Synchronized Flush</span><br>
+          Calling <code>setText('')</code> triggers a re-render where React writes the empty string back into the DOM element.
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-layer">
+          <strong>Event Dispatch</strong>
+          <br><small>Keystroke timing</small>
+        </td>
+        <td>
+          <span class="tag-danger">Native Change</span><br>
+          Native browser <code>change</code> events fire only after the user leaves the input (blur event).
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Per-Keystroke</span><br>
+          React synthetic <code>onChange</code> fires synchronously on every keystroke, keeping state strictly current.
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-layer">
+          <strong>Missing Handler</strong>
+          <br><small>Read-only trap</small>
+        </td>
+        <td>
+          <span class="tag-danger">Silent Mutation</span><br>
+          Typing modifies the element without warning, but component state remains completely unaware.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Read-Only Guard</span><br>
+          Providing <code>value</code> without <code>onChange</code> locks the input and warns in the development console.
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-layer">
+          <strong>Checkbox Property</strong>
+          <br><small>Boolean toggles</small>
+        </td>
+        <td>
+          <span class="tag-danger">Static "on" Value</span><br>
+          Reading <code>e.target.value</code> yields <code>"on"</code> on every toggle, permanently locking the checkbox to checked.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Boolean Checked</span><br>
+          Uses <code>checked={isUrgent}</code> and reads <code>e.target.checked</code> to accurately capture true and false transitions.
+        </td>
+      </tr>
+      <tr>
+        <td class="cell-layer">
+          <strong>Select Dropdown</strong>
+          <br><small>Option selection</small>
+        </td>
+        <td>
+          <span class="tag-danger">Option Selected</span><br>
+          Using HTML <code>&lt;option selected&gt;</code> triggers console errors and breaks programmatic re-selection.
+        </td>
+        <td class="cell-reality">
+          <span class="tag-success">Select Value Prop</span><br>
+          Declares <code>&lt;select value={choice}&gt;</code> on the container; React selects the matching option cleanly.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 20.2: Figure 20.2: Architectural audit comparing uncontrolled DOM state against controlled React state</figcaption>
+</figure>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<p>In production frontend applications, controlled form inputs are universal across user authentication screens, search filters, checkout forms, and profile editors. A frequent production bug occurs when an engineer implements a "Clear Form" button that resets component state, only to discover that uncontrolled fields retaining <code>defaultValue</code> stubbornly hold user text on screen. Adopting <code>value</code> paired with <code>onChange</code> guarantees programmatic synchronization.</p>
+<p>Another common production bug occurs when teams connect forms to asynchronous APIs where initial user data loads after the component mounts. Initializing state with <code>useState()</code> leaves the field <code>undefined</code>, triggering uncontrolled-to-controlled console warnings that degrade test suites and user experience. Initializing with <code>useState('')</code> or using <code>value={data?.title ?? ''}</code> eliminates this issue permanently.</p>
+<p>In technical interviews, candidates are routinely asked how controlled components work under the hood. Interviewers specifically probe whether candidates understand why React's <code>onChange</code> fires on every single keystroke rather than on blur, why checkboxes require <code>e.target.checked</code> instead of <code>e.target.value</code>, and how transforming strings inside <code>onChange</code> disrupts the browser text caret.</p>
+</div>
+<div class="keep-together interview-section">
+<h3>For the interview</h3>
+<blockquote><strong>The Interview Question:</strong> How do you make an input, textarea, or select fully controlled by React state?</blockquote>
+<p>A senior response breaks the explanation into four architectural beats:</p>
+<p><strong>1. The Single Source of Truth</strong></p>
+<p>In React, a controlled component derives its displayed value entirely from state via props: <code>value</code> for text inputs, textareas, and selects, or <code>checked</code> for checkboxes and radio buttons. The component pairs this prop with an <code>onChange</code> handler that captures user interaction and writes the new value into state. State becomes the single source of truth: whatever exists in state is what the DOM renders, and setting state to an empty string programmatically flushes the field.</p>
+<p><strong>2. Synchronous Keystroke Updates</strong></p>
+<p>React synthetic <code>onChange</code> events fire on every single keystroke, behaving like the native browser <code>input</code> event rather than the native <code>change</code> event, which waits until blur. The <code>onChange</code> handler must store <code>e.target.value</code> synchronously and without transformation. If a handler attempts to uppercase text or delay updates inside <code>setTimeout</code>, React writes a modified string back to the DOM, causing the browser to lose cursor tracking and jump the text caret to the end of the line.</p>
+<p><strong>3. Element Specialization: Checkboxes and Selects</strong></p>
+<p>Different HTML form elements require specialized property bindings. A checkbox displays its visual state via <code>checked={boolean}</code> and reports changes through <code>e.target.checked</code>; reading <code>e.target.value</code> yields the static string <code>"on"</code>, which is truthy and locks the checkbox permanently. Dropdown menus declare <code>value={choice}</code> directly on the parent <code>&lt;select&gt;</code> container rather than setting <code>selected</code> on an <code>&lt;option&gt;</code>, allowing React to match the active option declaratively.</p>
+<p><strong>4. Initial Value Guarantees</strong></p>
+<p>A controlled text input must maintain a stable control mode throughout its entire lifecycle. Initializing state with <code>useState()</code> sets the variable to <code>undefined</code>, mounting the input as uncontrolled. When the user types their first character, state becomes a string, triggering an uncontrolled-to-controlled console warning. Always initialize text inputs with an empty string <code>useState('')</code> or provide a nullish fallback <code>value={text ?? ''}</code>.</p>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Controlled Input</strong>: A form element whose displayed value is driven by React state and whose changes update that state.</li>
+<li><strong>Uncontrolled Input</strong>: A form element whose value is managed internally by the browser DOM node.</li>
+<li><strong>Single Source of Truth</strong>: The architectural model where one state variable determines what appears on screen.</li>
+<li><strong>Synthetic <code>onChange</code></strong>: React's cross-browser event firing synchronously on every keystroke like native <code>input</code>.</li>
+<li><strong>Text Caret</strong>: The blinking cursor that indicates where the next typed letter lands in an editable field.</li>
+<li><strong><code>defaultValue</code></strong>: A React prop that sets the initial text once at mount without controlling subsequent renders.</li>
+<li><strong><code>e.target.checked</code></strong>: The boolean property on a synthetic event reporting whether a checkbox is ticked.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Official React reference on input component</strong>: Technical documentation detailing controlled inputs, uncontrolled fallbacks, and caret troubleshooting (see <a href="https://react.dev/reference/react-dom/components/input">react.dev/reference/react-dom/components/input</a>).</li>
+<li><strong>Official React reference on textarea component</strong>: Comprehensive guide to controlled textareas, initial text caveats, and submission behavior (see <a href="https://react.dev/reference/react-dom/components/textarea">react.dev/reference/react-dom/components/textarea</a>).</li>
+<li><strong>Official React reference on select component</strong>: Documentation on controlled dropdown menus, multiple selection arrays, and option values (see <a href="https://react.dev/reference/react-dom/components/select">react.dev/reference/react-dom/components/select</a>).</li>
+<li><strong>Official guide on reacting to input with state</strong>: Architectural walkthrough showing how declarative state replaces imperative DOM manipulation (see <a href="https://react.dev/learn/reacting-to-input-with-state">react.dev/learn/reacting-to-input-with-state</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<p class="summary-principle">➔ ALWAYS pair every <code>value</code> prop with an <code>onChange</code> handler that updates state synchronously.</p>
+<p class="summary-principle">➔ ALWAYS initialize text input state with an empty string <code>useState('')</code> to prevent uncontrolled warnings.</p>
+<p class="summary-principle">➔ IF controlling a checkbox or radio button THEN bind <code>checked</code> to boolean state and read <code>e.target.checked</code>.</p>
+<p class="summary-principle">➔ IF controlling a dropdown selection THEN declare <code>value</code> directly on <code>&lt;select&gt;</code> rather than <code>selected</code> on <code>&lt;option&gt;</code>.</p>
+<p class="summary-principle">➔ NEVER transform text inside <code>onChange</code> or defer updates in timers; format during display or upon submission.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong></p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleTitleChange</span>(e) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setTitle</span>(e.target.value);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  &lt;form onSubmit={handleSubmit}&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;input value={title} onChange={handleTitleChange} /&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;select value={topic} onChange={e =&gt; <span class="fn">setTopic</span>(e.target.value)}&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      &lt;option value=<span class="str">"billing"</span>&gt;Billing&lt;/option&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;/select&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;input</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      type=<span class="str">"checkbox"</span></span></div>
+<div class="row even"><span class="num">12</span><span class="src">      checked={isUrgent}</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      onChange={e =&gt; <span class="fn">setIsUrgent</span>(e.target.checked)}</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    /&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  &lt;/form&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">);</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong></p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleTitleChange</span>(e) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="fn">setTitle</span>(e.target.value.<span class="fn">toUpperCase</span>());</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  &lt;form onSubmit={handleSubmit}&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    &lt;input value={title} /&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;select onChange={e =&gt; <span class="fn">setTopic</span>(e.target.value)}&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      &lt;option value=<span class="str">"billing"</span> selected&gt;Billing&lt;/option&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;/select&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;input</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      type=<span class="str">"checkbox"</span></span></div>
+<div class="row even"><span class="num">12</span><span class="src">      checked={isUrgent}</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      onChange={e =&gt; <span class="fn">setIsUrgent</span>(e.target.value)}</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    /&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  &lt;/form&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">);</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>UNCONTROLLED FORM DOM</strong><br>(Browser Native Habit)</th><th><strong>CONTROLLED REACT STATE</strong><br>(Declarative Architecture)</th></tr></thead><tbody><tr><td><strong>State authority</strong></td><td>Browser DOM node retains text internally</td><td>React state variable is single source of truth</td></tr><tr><td><strong>Initial mounting</strong></td><td>Sets starting text with <code>defaultValue</code></td><td>Binds active state to <code>value</code> prop</td></tr><tr><td><strong>Programmatic clear</strong></td><td>Calling <code>setText('')</code> leaves DOM text unchanged</td><td>Calling <code>setText('')</code> flushes DOM element</td></tr><tr><td><strong>Keystroke event</strong></td><td>Native <code>change</code> waits for field blur</td><td>Synthetic <code>onChange</code> fires on every keystroke</td></tr><tr><td><strong>Missing handler</strong></td><td>Editing works, but state remains unaware</td><td>Locks field with read-only console error</td></tr><tr><td><strong>Checkbox property</strong></td><td>Reads <code>e.target.value</code> (always <code>"on"</code>)</td><td>Reads <code>e.target.checked</code> (boolean)</td></tr><tr><td><strong>Dropdown selection</strong></td><td>HTML <code>&lt;option selected&gt;</code> logs error</td><td><code>&lt;select value&gt;</code> matches option</td></tr><tr><td><strong>State initialization</strong></td><td><code>useState()</code> leaves field uncontrolled</td><td><code>useState('')</code> keeps field strictly controlled</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

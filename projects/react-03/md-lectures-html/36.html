@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 36: Custom Hooks: Reusing Stateful Logic</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 36: Custom Hooks: Reusing Stateful Logic</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you extract and reuse stateful logic between components?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Nathan builds mobile features for The National Times website.</li>
+<li>Two different components need to monitor whether the browser is online or offline.</li>
+<li>Nathan copy-pastes the same twelve lines of state and listeners into both component files.</li>
+<li>Why must developers duplicate stateful logic when standard helper functions cannot call hooks?</li>
+<li>Duplicated logic drifts out of sync, multiplies bug surfaces, and complicates code maintenance.</li>
+<li>Standard JavaScript functions cannot hold state, but custom hook functions can call React hooks.</li>
+<li>Today you learn how custom hooks extract and share stateful logic across components.</li></ol>
+</div>
+<div class="keep-together">
+<h3>What is a Custom Hook: Sharing Logic, Not State</h3>
+<p>As applications grow, you often find multiple components that need the exact same stateful behavior. For example:</p>
+<ul>
+<li>Checking whether the user is online or offline.</li>
+<li>Listening to window resize dimensions.</li>
+<li>Synchronizing a state variable with <code>localStorage</code>.</li>
+<li>Tracking whether an element is hovering or focused.</li>
+</ul>
+<p>In standard JavaScript, when two functions share logic, you extract that logic into a helper function. However, regular JavaScript functions cannot call React hooks like <code>useState</code> or <code>useEffect</code>.</p>
+<p>To solve this, React allows you to build <strong>custom hooks</strong>. A custom hook is simply a JavaScript function whose name starts with <code>use</code> and that can call other React hooks internally.</p>
+<p>Crucially, <strong>custom hooks share stateful logic, not state itself</strong>. Each time a component calls a custom hook, React allocates brand-new, completely independent state slots in that component's fiber node. Two components calling the same hook do not share data; they share the code that manages the data.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Do custom hooks share state between components?</strong> Imagine a blueprint for building an efficient brick fireplace. Two homeowners living on opposite sides of town hire a builder to build fireplaces using that exact same blueprint. Each house gets a working fireplace with an identical chimney and flue damper. When homeowner Alice lights a crackling fire in her living room, does smoke pour out of homeowner Bob's chimney across town? Of course not! They share the blueprint, but each house has its own physical fireplace and its own wood burning inside. That is a custom hook. The custom hook is the architectural blueprint. It defines how state and effects operate. When Component A and Component B both call useOnlineStatus(), each component builds its own private fireplace. They share the stateful logic, but their state instances are completely independent. Understanding <strong>custom hooks</strong> as an <strong>architectural blueprint</strong> clarifies why <strong>hooks share logic without sharing state</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The "use" Naming Convention and the Rules of Hooks</h3>
+<p>React enforces a mandatory naming convention for custom hooks: <strong>the function name must start with <code>use</code> followed by a capital letter</strong> (for example, <code>useOnlineStatus</code>, <code>useWindowWidth</code>, <code>useLocalStorage</code>).</p>
+<p>This convention is not merely stylistic; it is an explicit signal to React's compiler and linter tools:</p>
+<ol><li><strong>Enforcing the Rules of Hooks</strong>: When the linter sees a function starting with <code>use</code>, it verifies that the function only calls hooks at the top level, never inside conditional branches, loops, or nested callbacks.</li>
+<li><strong>Exhaustive dependency validation</strong>: The linter inspects dependency arrays inside your custom hook, catching missing reactive values before they turn into production bugs.</li>
+<li><strong>Fiber tracking</strong>: React ensures that calls to custom hooks map cleanly to the component's internal hook linked list during render.</li></ol>
+<p>If you extract hook logic into a function named <code>getOnlineStatus</code> or <code>checkConnectivity</code>, the linter will disable its safety checks, leaving your application vulnerable to mysterious hook order corruption bugs.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why must custom hooks begin with "use"?</strong> Imagine a municipal airport where air traffic controllers communicate with airplanes. Every commercial flight must use the official callsign prefix "Flight" before its number, such as "Flight 404." When the controller hears "Flight," the automated radar system immediately enforces strict flight separation rules and monitors fuel levels. If a pilot transmits without the prefix, the automated safety sensors fail to identify the aircraft, and automated collision warnings are disabled! That is why custom hooks must start with "use." React's compiler and linter scan function names for the "use" prefix. When React sees "use," it enables the Rules of Hooks: ensuring the hook is not called inside if statements or loops, verifying dependency arrays, and tracking hook slot indices in the fiber. Naming a hook getOnlineStatus turns off the compiler's safety radar, leading to mysterious runtime fiber corruption. Understanding the <strong>"use" prefix</strong> as an <strong>air traffic callsign</strong> clarifies why <strong>the naming convention enforces the Rules of Hooks</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Newsroom Field Reporting Architecture</h3>
+<p>To observe custom hook architecture in production, inspect the field reporting terminal for The National Times. Field reporters draft articles on mobile devices with intermittent internet connectivity. Both the header status bar and the dispatch submission button consume a shared <code>useOnlineStatus</code> hook:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>FieldReportingApp.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>NetworkStatusBar.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>StorySubmitButton.jsx</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>state</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9.5 13c-.8 1-1.5 1.7-1.5 2.5s.7 1.5 1.5 2.5"/><path d="M14.5 13c.8 1 1.5 1.7 1.5 2.5s-.7 1.5-1.5 2.5"/></svg><span>useOnlineStatus.js</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>FieldReportingApp</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-badge"><div class="component-explorer-label"><span>NetworkStatusBar</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Network Status: <strong>Online (Connected)</strong></span></div></div><div class="component-explorer-node component-kind-button"><div class="component-explorer-label"><span>StorySubmitButton</span><span class="component-explorer-props">onSubmit=&quot;...&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-ui-btn">Transmit Field Dispatch</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above illustrates the architecture. On the left, <code>FieldReportingApp.jsx</code> renders <code>NetworkStatusBar.jsx</code> and <code>StorySubmitButton.jsx</code>, both importing <code>useOnlineStatus.js</code>. On the right, the rendered view shows the active network status and submission button.</p>
+<p>First, inspect the extracted custom hook <code>useOnlineStatus.js</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">useOnlineStatus.js</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useEffect</span>, <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="hook">useOnlineStatus</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [isOnline, setIsOnline] = <span class="hook">useState</span>(<span class="kw">true</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="kw">const</span> handleOnline = () =&gt; <span class="fn">setIsOnline</span>(<span class="kw">true</span>);</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="kw">const</span> handleOffline = () =&gt; <span class="fn">setIsOnline</span>(<span class="kw">false</span>);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src"></span></div>
+<div class="row even"><span class="num">10</span><span class="src">    window.<span class="fn">addEventListener</span>(<span class="str">'online'</span>, handleOnline);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    window.<span class="fn">addEventListener</span>(<span class="str">'offline'</span>, handleOffline);</span></div>
+<div class="row even"><span class="num">12</span><span class="src"></span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      window.<span class="fn">removeEventListener</span>(<span class="str">'online'</span>, handleOnline);</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      window.<span class="fn">removeEventListener</span>(<span class="str">'offline'</span>, handleOffline);</span></div>
+<div class="row even"><span class="num">16</span><span class="src">    };</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  }, []);</span></div>
+<div class="row even"><span class="num">18</span><span class="src"></span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  <span class="kw">return</span> isOnline;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">}</span></div></div></div></div>
+<p>Next, examine the status bar component <code>NetworkStatusBar.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">NetworkStatusBar.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useOnlineStatus</span> } <span class="kw">from</span> <span class="str">'./useOnlineStatus.js'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">NetworkStatusBar</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> isOnline = <span class="hook">useOnlineStatus</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Consumes reusable custom hook logic <b class="tag">CALL</b></span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;div className={<span class="str">`status-badge ${isOnline ? 'badge-online' : 'badge-offline'}`</span>}&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      Network Status: &lt;strong&gt;{isOnline ? <span class="str">'Online (Connected)'</span> : <span class="str">'Offline (Disconnected)'</span>}&lt;/strong&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+<p>Now examine the submission button <code>StorySubmitButton.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">StorySubmitButton.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useOnlineStatus</span> } <span class="kw">from</span> <span class="str">'./useOnlineStatus.js'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StorySubmitButton</span>({ onSubmit }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> isOnline = <span class="hook">useOnlineStatus</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Independent hook instance with private <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;button</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      onClick={onSubmit}</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      disabled={!isOnline}</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      className={<span class="str">`btn-submit ${isOnline ? 'btn-ready' : 'btn-disabled'}`</span>}</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      {isOnline ? <span class="str">'Transmit Field Dispatch'</span> : <span class="str">'Awaiting Connection...'</span>}</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Independent component receives its own hook state <b class="tag">INSTANCE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">15</span><span class="src">}</span></div></div></div></div>
+<p>Notice how <code>StorySubmitButton</code> also calls <code>useOnlineStatus()</code>. It receives its own independent <code>isOnline</code> state instance. When connectivity drops, both components re-render immediately and reflect the offline state.</p>
+<p>Finally, examine the parent component <code>FieldReportingApp.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">FieldReportingApp.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> NetworkStatusBar <span class="kw">from</span> <span class="str">'./NetworkStatusBar.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> StorySubmitButton <span class="kw">from</span> <span class="str">'./StorySubmitButton.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">FieldReportingApp</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSubmit</span>() {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="fn">alert</span>(<span class="str">'Field dispatch submitted to copy desk!'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Direct event handler for field <b class="tag">SUBMISSION</b></span>
+      </div></div>
+<div class="row odd"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">8</span><span class="src"></span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;main className=<span class="str">"reporting-container"</span>&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;header className=<span class="str">"reporting-header"</span>&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">        &lt;h2&gt;The National Times Field Reporter Terminal&lt;/h2&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">        &lt;NetworkStatusBar /&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      &lt;/header&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      &lt;section className=<span class="str">"reporting-workspace"</span>&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">        &lt;textarea placeholder=<span class="str">"Type breaking field notes here..."</span> rows={<span class="nl">6</span>} /&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">        &lt;div className=<span class="str">"reporting-actions"</span>&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">          &lt;StorySubmitButton onSubmit={handleSubmit} /&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">        &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">      &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Top-level parent renders children with zero lifted status <b class="tag">PROPS</b></span>
+      </div></div>
+<div class="row odd"><span class="num">23</span><span class="src">}</span></div></div></div></div>
+<p>In <code>FieldReportingApp</code>, notice how clean the tree is. We did not have to lift online status to the parent component, and we did not have to drill <code>isOnline</code> down through props. Each component taps into the custom hook independently.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — Custom Hook Stateful Logic Reuse</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Field Operations</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            FieldReportingApp.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JS</text></svg>
+            useOnlineStatus.js
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            NetworkStatusBar.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            StorySubmitButton.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            useOnlineStatus() Hook
+            <span class="rce-node-props">✓ MODULAR LOGIC</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Single Encapsulated Blueprint: <span class="ref-tag ref-green">useOnlineStatus.js</span></div>
+            <div style="margin-top:0.3rem;">2. Independent State: StatusBar has slot A; SubmitButton has slot B</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Zero Duplication: Both components stay 100% in sync cleanly!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            Custom hooks extract complex stateful behaviors into clean, testable functions.<br>
+            Consumers gain reactive capabilities in one line without duplicating lifecycle code.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            Copy-Pasted useState + useEffect Boilerplate
+            <span class="rce-node-props">✕ CODE DRIFT</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Code Duplication: <span class="ref-tag ref-red">15 lines of listeners copied</span> across files</div>
+            <div style="margin-top:0.3rem;">2. Implementation Drift: StatusBar cleans up, but SubmitButton forgets</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">Bug Hazard: Missing event listener cleanup leaks memory on unmount!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Copy-pasting stateful logic leads to inconsistent behavior and missing cleanups.<br>
+            Always encapsulate reusable stateful behavior into custom hooks prefixed with "use".
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 36.1: The National Times — Custom Hook Stateful Logic Reuse</figcaption>
+</figure>
+<p>The figure above demonstrates how the custom hook acts as a shared logic blueprint while maintaining completely independent state instances inside React's fiber tree.</p>
+</div>
+<div class="keep-together">
+<h3>Designing Clean Return Interfaces for Custom Hooks</h3>
+<p>When authoring custom hooks, consider how consumers will consume your return values:</p>
+<ol><li><strong>Single primitive value</strong>: When your hook tracks a single concept (like <code>isOnline</code> or <code>windowWidth</code>), return the primitive directly (<span class="code-line-callout"><code><span class="kw">return</span> isOnline;</code></span>).</li>
+<li><strong>Tuple array (<code>[value, setValue]</code>)</strong>: When your hook provides a value and an update function (like <code>useState</code>), return a 2-element tuple so consumers can name variables freely (<span class="code-line-callout"><code><span class="kw">const</span> [text, setText] = <span class="hook">useLocalStorage</span>(<span class="str">'draft'</span>, <span class="str">''</span>);</code></span>).</li>
+<li><strong>Structured object (<span class="code-line-callout"><code>{ data, loading, error, refetch }</code></span>)</strong>: When your hook exposes multiple properties or helper actions, return an object so consumers can destructure only the properties they need and ignore the rest.</li></ol>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how custom hooks work under the hood, provide this concise breakdown: "1. Logic reuse vs state sharing: Custom hooks reuse stateful logic, not state instances. Every call to a custom hook creates an independent set of state and effect slots in that specific component's fiber. 2. The 'use' naming contract: Prefixing functions with 'use' enables the React compiler and linter to enforce the Rules of Hooks and validate dependency arrays. 3. Declarative abstraction: Custom hooks encapsulate complex imperativeness (such as window event listeners, timers, or WebSocket subscriptions) behind clean declarative return interfaces, decoupling business logic from UI components."</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Device and browser capabilities: <code>useMediaQuery</code>, <code>useWindowSize</code>, <code>useGeolocation</code>, and <code>useOrientation</code>.</li>
+<li>Asynchronous data abstractions: <code>useFetch</code>, <code>usePolling</code>, and <code>useWebSocket</code>.</li>
+<li>Local browser persistence: <code>useLocalStorage</code> and <code>useSessionStorage</code>.</li>
+<li>User interaction modifiers: <code>useDebounce</code>, <code>useThrottle</code>, <code>useHover</code>, and <code>useClickOutside</code>.</li>
+<li>Complex form controllers: <code>useForm</code> managing validation, dirty tracking, and submission states.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Custom Hook</strong>: A JavaScript function whose name starts with "use" that can call other React hooks to share stateful logic.</li>
+<li><strong>Stateful Logic Reuse</strong>: Extracting and sharing the mechanisms of state and effect management without duplicating code.</li>
+<li><strong>Independent State Instance</strong>: The guarantee that each invocation of a custom hook maintains its own isolated state variables in the fiber.</li>
+<li><strong>"use" Prefix Convention</strong>: The required React naming pattern allowing compiler tools to enforce the Rules of Hooks.</li>
+<li><strong>Reactive Return Interface</strong>: The primitive, tuple, or object returned by a custom hook to expose reactive values to consumers.</li>
+<li><strong>Hook Composition</strong>: The practice of combining multiple basic hooks (<code>useState</code>, <code>useEffect</code>, <code>useRef</code>) inside a custom hook to build higher-level abstractions.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Custom Hooks: Reusing Stateful Logic</strong></p>
+<p>Custom hooks extract stateful logic into reusable functions prefixed with <code>use</code>. They share stateful behavior and lifecycles without sharing state instances, allowing components to consume complex browser APIs declaratively in a single line.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Takeaways of Custom Hook Architecture</span></div>
+<ol><li>Share stateful logic, not state variables.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Each component calling a custom hook gets isolated state.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Custom hooks provide the blueprint, while components provide the state instances.</li>
+<li>Adhere strictly to the "use" prefix.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Always name custom hooks with <code>use</code> followed by a capital letter.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) The prefix activates compiler and linter enforcement of the Rules of Hooks.</li>
+<li>Design clear return interfaces.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Return single values, tuples, or objects based on consumer ergonomic needs.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Encapsulate low-level event listeners and cleanup functions entirely inside the hook.
+➔ ALWAYS prefix custom hooks with use to ensure React enforces the Rules of Hooks.<br>
+➔ NEVER assume calling the same custom hook in two components shares a single state variable between them.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Copy-paste hook logic across components and use non-standard function names.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BrokenCheckOnline</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">checkOnline</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [online, setOnline] = <span class="hook">useState</span>(<span class="kw">true</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    window.<span class="fn">addEventListener</span>(<span class="str">'online'</span>, () =&gt; <span class="fn">setOnline</span>(<span class="kw">true</span>));</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }, []);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> online;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Author idiomatic custom hooks with "use" prefix and symmetrical cleanup.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">IdiomaticUseOnlineStatus</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="hook">useOnlineStatus</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [isOnline, setIsOnline] = <span class="hook">useState</span>(navigator.onLine);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="kw">function</span> <span class="fn">handleOnline</span>() { <span class="fn">setIsOnline</span>(<span class="kw">true</span>); }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    <span class="kw">function</span> <span class="fn">handleOffline</span>() { <span class="fn">setIsOnline</span>(<span class="kw">false</span>); }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src"></span></div>
+<div class="row even"><span class="num">8</span><span class="src">    window.<span class="fn">addEventListener</span>(<span class="str">'online'</span>, handleOnline);</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    window.<span class="fn">addEventListener</span>(<span class="str">'offline'</span>, handleOffline);</span></div>
+<div class="row even"><span class="num">10</span><span class="src"></span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="kw">return</span> () =&gt; {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      window.<span class="fn">removeEventListener</span>(<span class="str">'online'</span>, handleOnline);</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      window.<span class="fn">removeEventListener</span>(<span class="str">'offline'</span>, handleOffline);</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    };</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  }, []);</span></div>
+<div class="row even"><span class="num">16</span><span class="src"></span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  <span class="kw">return</span> isOnline;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>COPY-PASTED HOOK CODE</strong><br>(anti-pattern)</th><th><strong>CUSTOM HOOK EXTRACTION</strong><br>(idiomatic React)</th></tr></thead><tbody><tr><td><strong>Code Duplication</strong></td><td>High; 15-20 lines of lifecycle<br>code copied into every file</td><td>Zero; single reusable module<br>imported across components</td></tr><tr><td><strong>Maintenance Drift</strong></td><td>Severe; bug fixes or cleanups<br>made in one file forgotten in others</td><td>Zero; updates in custom hook<br>benefit all consumers instantly</td></tr><tr><td><strong>Component Readability</strong></td><td>Low; UI markup cluttered with<br>low-level browser event listeners</td><td>High; declarative single line<br><code>const isOnline =</code><br><code>useOnlineStatus()</code></td></tr><tr><td><strong>State Independence</strong></td><td>Independent; but implementations<br>quickly diverge</td><td>Independent; identical robust<br>behavior in every component</td></tr><tr><td><strong>Compiler Verification</strong></td><td>Inconsistent if helper functions<br>omit the <code>use</code> prefix</td><td>Fully compliant with compiler<br>and Rules of Hooks checks</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

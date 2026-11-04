@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 37: Forms: Controlled State versus Uncontrolled FormData</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 37: Forms: Controlled State versus Uncontrolled FormData</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">Should a form use controlled state or uncontrolled FormData, and how do you choose?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Carlos builds a registration form for The National Times website.</li>
+<li>The form contains twenty input fields, each wired to its own state variable.</li>
+<li>Typing into any input triggers a re-render of the entire form on every keystroke.</li>
+<li>Why does typing in one field force twenty unrelated inputs to re-render repeatedly?</li>
+<li>Excessive re-renders cause typing lag on mobile devices and frustrate readers completing subscriptions.</li>
+<li>Native inputs already store their own values without needing continuous React state synchronization.</li>
+<li>Today you learn the architectural trade-offs between controlled inputs and uncontrolled form data.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Architectural Spectrum: Controlled versus Uncontrolled</h3>
+<p>In React, every form field represents a choice between two distinct architectural paradigms:</p>
+<ul>
+<li><strong>Controlled inputs</strong>: You provide a <code>value</code> prop and an <code>onChange</code> handler tied to React state. React serves as the single source of truth. Whenever the user presses a key, the browser triggers <code>onChange</code>, your state setter runs, React re-renders the component, and the updated value is pushed back into the DOM input. This gives you complete programmatic control over the field on every keystroke.</li>
+<li><strong>Uncontrolled inputs</strong>: You provide an optional <code>defaultValue</code> prop, but omit <code>value</code> and <code>onChange</code>. The browser's native DOM retains and updates the value internally. React does not intervene and <strong>never re-renders</strong> while the user is typing. When the form is submitted, you extract all field values in one pass using the native browser <code>FormData</code> API.</li>
+</ul>
+<p>While early React tutorials encouraged developers to make every input controlled, senior architects recognize that controlling inputs comes with an operational cost: the <strong>keystroke re-render tax</strong>. On large forms or budget mobile devices, triggering dozens of re-renders per second while a user types can cause noticeable input latency.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>What is the real difference between controlled and uncontrolled inputs?</strong> Imagine a court scribe dictating a witness statement to a typist. In a controlled model, every time the witness presses a letter on the keyboard, the typist stops, phones the supreme court judge, asks "May I print the letter 'e'?", waits for the judge to approve, and then prints the letter 'e' on the paper. For every single character, a round-trip conference occurs! That is a controlled input: every keystroke round-trips through React's state engine and triggers a re-render. Now imagine an uncontrolled model: the typist types freely on a physical notepad without phoning anyone. When the entire testimony is finished, the typist hands the completed sheet of paper to the judge in one clean folder. That is an uncontrolled input with FormData. The browser handles keystrokes natively at 120 frames per second, and React inspects the data only when the form is submitted. Understanding <strong>controlled inputs</strong> as <strong>per-character judicial conferences</strong> and <strong>uncontrolled inputs</strong> as <strong>a completed paper folder</strong> clarifies why <strong>uncontrolled FormData delivers peak typing performance</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Reading Uncontrolled Data with FormData and the Name Attribute</h3>
+<p>Extracting data from an uncontrolled form is simple and declarative using the browser's native <code>FormData</code> interface:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">handleSubmit</span>(event) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  event.<span class="fn">preventDefault</span>();</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> formData = <span class="kw">new</span> <span class="fn">FormData</span>(event.currentTarget);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> email = formData.<span class="kw">get</span>(<span class="str">'email'</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> allValues = Object.<span class="fn">fromEntries</span>(formData);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>For <code>FormData</code> to work, every input control must have a <code>name</code> attribute. The <code>name</code> string serves as the dictionary key when serializing form fields.</p>
+<p>If you omit the <code>name</code> attribute on an input, <code>FormData</code> silently skips that field, leaving it completely missing from the submission payload.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why do uncontrolled inputs require the name attribute?</strong> Imagine mailing five different tax documents to an auditor in a single manila envelope. If you place five blank sheets of paper in the envelope with no headers, labels, or names, the auditor opens the envelope, stares at five anonymous numbers, and throws the whole packet in the shredder! The auditor has no idea which number is your income, which is your deduction, and which is your donation. That is what happens when you omit the name attribute on an uncontrolled input. The browser's native FormData engine looks only for inputs that have a name attribute. The name is the postal label on the envelope. Without name="email", FormData discards the field entirely. Understanding <strong>FormData</strong> as a <strong>labeled envelope</strong> clarifies why <strong>the name attribute is the required identifier for uncontrolled inputs</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Reader Registration Architecture</h3>
+<p>To observe modern form architecture in production, inspect the subscriber registration form for The National Times. The form uses a hybrid pattern: standard contact fields (<code>fullName</code>, <code>email</code>, <code>tier</code>) remain uncontrolled, while the public profile handle (<code>slug</code>) is controlled to display a live URL preview:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>RegistrationForm.jsx</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>SubscriberRegistrationApp.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>SubscriberRegistrationApp</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>RegistrationForm</span><span class="component-explorer-props">onRegister=&quot;...&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">New Subscriber Registration</span><span class="surface-render-line">Complete Subscription</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above illustrates the hierarchy. On the left, <code>SubscriberRegistrationApp.jsx</code> handles submitted registration records and renders <code>RegistrationForm.jsx</code>. On the right, the rendered view shows the active form controls and public profile preview.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure">
+  <style>
+    .pipeline-card-figure {
+      margin: 1.5rem auto;
+      max-width: 590px;
+      background: #f4f6f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pipeline-card-figure .pipeline-header {
+      background: #344154;
+      padding: 10px 18px;
+    }
+    .pipeline-card-figure .pipeline-header span {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .pipeline-card-figure .pipeline-body {
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pipeline-card-figure .step-node {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #fcfcfb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 20px 14px 26px;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .pipeline-card-figure .step-node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #0e7490;
+    }
+    .pipeline-card-figure .step-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 5px;
+      text-align: center;
+    }
+    .pipeline-card-figure .step-num {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 0.86rem;
+      color: #0e7490;
+    }
+    .pipeline-card-figure .step-label {
+      font-weight: 700;
+      font-size: 0.86rem;
+      color: #1e293b;
+    }
+    .pipeline-card-figure .step-code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 500;
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      display: inline-block;
+      margin-bottom: 7px;
+      text-align: center;
+    }
+    .pipeline-card-figure .step-desc {
+      font-size: 0.77rem;
+      line-height: 1.42;
+      color: #475569;
+      font-style: italic;
+      text-align: center;
+    }
+    .pipeline-card-figure .step-desc strong {
+      color: #0f172a;
+      font-weight: 700;
+      font-style: normal;
+    }
+    .pipeline-card-figure .step-connector {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 28px;
+      margin: 1px 0;
+    }
+  </style>
+
+  <div class="pipeline-header">
+    <span>HYBRID FORM ARCHITECTURE ASSEMBLY PIPELINE</span>
+  </div>
+
+  <div class="pipeline-body">
+    <!-- Step 1 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 1:</span>
+        <span class="step-label">Declaring State &amp; Extracting FormData on Submit</span>
+      </div>
+      <div class="step-code">new FormData(e.currentTarget)</div>
+      <div class="step-desc">
+        Store only <strong>live preview inputs in state</strong>, extracting static text fields in a single pass using native FormData.
+      </div>
+    </div>
+
+    <!-- Connector 1 -> 2 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 2:</span>
+        <span class="step-label">Laying Out Uncontrolled Input Fields</span>
+      </div>
+      <div class="step-code">&lt;input name="fullName" /&gt; &amp; &lt;input value={slug} /&gt;</div>
+      <div class="step-desc">
+        Leave standard text inputs <strong>uncontrolled for zero re-render overhead</strong> while controlling the sanitized profile slug.
+      </div>
+    </div>
+
+    <!-- Connector 2 -> 3 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 3:</span>
+        <span class="step-label">Binding the Controlled Profile Handle &amp; URL Preview</span>
+      </div>
+      <div class="step-code">&lt;p className="slug-preview"&gt;...&lt;/p&gt; &amp; &lt;button type="submit"&gt;</div>
+      <div class="step-desc">
+        Render <strong>instant error feedback</strong> alongside the <strong>live profile URL preview</strong> and submission button.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 37.1: Step-by-step code assembly pipeline for hybrid controlled and uncontrolled form architecture</figcaption>
+</figure>
+<p>To construct this hybrid form architecture cleanly, we assemble <code>RegistrationForm.jsx</code> across three progressive implementation steps:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: Declaring State and Extracting FormData on Submit';">Declaring State and Extracting FormData on Submit</div>
+      
+    </div>
+  </div>
+</div>
+<p>We open <code>RegistrationForm.jsx</code> and allocate state strictly for dynamic fields, extracting text inputs upon submission via native <code>FormData</code>:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">RegistrationForm.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">RegistrationForm</span>({ onRegister }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [slug, setSlug] = <span class="hook">useState</span>(<span class="str">'reader'</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [error, setError] = <span class="hook">useState</span>(<span class="kw">null</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    <span class="kw">const</span> formData = <span class="kw">new</span> <span class="fn">FormData</span>(e.currentTarget);</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    <span class="kw">const</span> fullName = formData.<span class="kw">get</span>(<span class="str">'fullName'</span>)?.<span class="fn">toString</span>().<span class="fn">trim</span>();</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    <span class="kw">const</span> email = formData.<span class="kw">get</span>(<span class="str">'email'</span>)?.<span class="fn">toString</span>().<span class="fn">trim</span>();</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    <span class="kw">const</span> tier = formData.<span class="kw">get</span>(<span class="str">'tier'</span>)?.<span class="fn">toString</span>();</span></div>
+<div class="row odd"><span class="num">13</span><span class="src"></span></div>
+<div class="row even"><span class="num">14</span><span class="src">    <span class="kw">if</span> (!fullName || !email) {</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      <span class="fn">setError</span>(<span class="str">'Please fill in all mandatory fields.'</span>);</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      <span class="kw">return</span>;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    }</span></div>
+<div class="row even"><span class="num">18</span><span class="src"></span></div>
+<div class="row odd"><span class="num">19</span><span class="src">    <span class="fn">setError</span>(<span class="kw">null</span>);</span></div>
+<div class="row even"><span class="num">20</span><span class="src">    <span class="fn">onRegister</span>({ fullName, email, tier, slug });</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">  }</span></div></div></div></div>
+<p>By extracting inputs at submission time, we avoid hundreds of unnecessary re-render cycles while retaining immediate access to validated form values.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Laying Out Uncontrolled Input Fields';">Laying Out Uncontrolled Input Fields</div>
+      
+    </div>
+  </div>
+</div>
+<p>Next, we lay out standard text inputs as uncontrolled fields with default values, reserving controlled state strictly for the live slug:</p>
+<div class="editor continues-both has-sticky-note"><div class="sticky-note"><span class="note-filename">RegistrationForm.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row even"><span class="num">20</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">    &lt;form onSubmit={handleSubmit} className=<span class="str">"registration-form"</span>&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">      &lt;h3&gt;New Subscriber Registration&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">      {error &amp;&amp; &lt;p className=<span class="str">"form-error"</span>&gt;{error}&lt;/p&gt;}</span></div>
+<div class="row even"><span class="num">24</span><span class="src"></span></div>
+<div class="row odd"><span class="num">25</span><span class="src">      &lt;label&gt;</span></div>
+<div class="row even"><span class="num">26</span><span class="src">        Full Legal Name:</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">        &lt;input name=<span class="str">"fullName"</span> type=<span class="str">"text"</span> defaultValue=<span class="str">""</span> placeholder=<span class="str">"e.g. Jane Doe"</span> /&gt;</span></div>
+<div class="row even"><span class="num">28</span><span class="src">      &lt;/label&gt;</span></div>
+<div class="row odd"><span class="num">29</span><span class="src"></span></div>
+<div class="row even"><span class="num">30</span><span class="src">      &lt;label&gt;</span></div>
+<div class="row odd"><span class="num">31</span><span class="src">        Subscriber Email:</span></div>
+<div class="row even"><span class="num">32</span><span class="src">        &lt;input name=<span class="str">"email"</span> type=<span class="str">"email"</span> defaultValue=<span class="str">""</span> placeholder=<span class="str">"jane@example.com"</span> /&gt;</span></div>
+<div class="row odd"><span class="num">33</span><span class="src">      &lt;/label&gt;</span></div>
+<div class="row even"><span class="num">34</span><span class="src"></span></div>
+<div class="row odd"><span class="num">35</span><span class="src">      &lt;label&gt;</span></div>
+<div class="row even"><span class="num">36</span><span class="src">        Subscription Tier:</span></div>
+<div class="row odd"><span class="num">37</span><span class="src">        &lt;select name=<span class="str">"tier"</span> defaultValue=<span class="str">"digital"</span>&gt;</span></div>
+<div class="row even"><span class="num">38</span><span class="src">          &lt;option value=<span class="str">"digital"</span>&gt;Digital Morning Edition&lt;/option&gt;</span></div>
+<div class="row odd"><span class="num">39</span><span class="src">          &lt;option value=<span class="str">"weekend"</span>&gt;Sunday Print &amp; Archive&lt;/option&gt;</span></div>
+<div class="row even"><span class="num">40</span><span class="src">          &lt;option value=<span class="str">"all-access"</span>&gt;All-Access Premium&lt;/option&gt;</span></div>
+<div class="row odd"><span class="num">41</span><span class="src">        &lt;/select&gt;</span></div>
+<div class="row even"><span class="num">42</span><span class="src">      &lt;/label&gt;</span></div></div></div></div>
+<p>Leaving <code>fullName</code>, <code>email</code>, and <code>tier</code> uncontrolled allows the browser DOM to handle typing interactions natively without triggering component re-renders.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Binding the Controlled Profile Handle and URL Preview';">Binding the Controlled Profile Handle and URL Preview</div>
+      
+    </div>
+  </div>
+</div>
+<p>Finally, we bind the controlled slug input to a live URL preview and render the submission button:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">RegistrationForm.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row even"><span class="num">44</span><span class="src">      &lt;label&gt;</span></div>
+<div class="row odd"><span class="num">45</span><span class="src">        Custom Profile Handle:</span></div>
+<div class="row even"><span class="num">46</span><span class="src">        &lt;input</span></div>
+<div class="row odd"><span class="num">47</span><span class="src">          type=<span class="str">"text"</span></span></div>
+<div class="row even"><span class="num">48</span><span class="src">          value={slug}</span></div>
+<div class="row odd"><span class="num">49</span><span class="src">          onChange={e =&gt; <span class="fn">setSlug</span>(e.target.value.<span class="fn">toLowerCase</span>().<span class="fn">replace</span>(/\s+/g, <span class="str">'-'</span>))}</span></div>
+<div class="row even"><span class="num">50</span><span class="src">          className=<span class="str">"slug-input"</span></span></div>
+<div class="row odd"><span class="num">51</span><span class="src">        /&gt;</span></div>
+<div class="row even"><span class="num">52</span><span class="src">      &lt;/label&gt;</span></div>
+<div class="row odd"><span class="num">53</span><span class="src">      &lt;p className=<span class="str">"slug-preview"</span>&gt;Public Profile URL: &lt;code&gt;nationaltimes.org/reader/{slug}&lt;/code&gt;&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">54</span><span class="src"></span></div>
+<div class="row odd"><span class="num">55</span><span class="src">      &lt;button type=<span class="str">"submit"</span> className=<span class="str">"btn-register"</span>&gt;Complete Subscription&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">56</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">57</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">58</span><span class="src">}</span></div></div></div></div>
+<p>Now examine the parent component <code>SubscriberRegistrationApp.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">SubscriberRegistrationApp.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> RegistrationForm <span class="kw">from</span> <span class="str">'./RegistrationForm.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SubscriberRegistrationApp</span>() {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [subscriber, setSubscriber] = <span class="hook">useState</span>(<span class="kw">null</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Settled subscriber registration record <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;main className=<span class="str">"subscriber-container"</span>&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;header className=<span class="str">"subscriber-header"</span>&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">        &lt;h2&gt;The National Times Subscription Desk&lt;/h2&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;/header&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;div className=<span class="str">"subscriber-content"</span>&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">        &lt;RegistrationForm onRegister={data =&gt; <span class="fn">setSubscriber</span>(data)} /&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">        {subscriber &amp;&amp; (</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">          &lt;aside className=<span class="str">"confirmation-card"</span>&gt;</span></div>
+<div class="row even"><span class="num">16</span><span class="src">            &lt;h4&gt;Registration Confirmed!&lt;/h4&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">            &lt;p&gt;Welcome, &lt;strong&gt;{subscriber.fullName}&lt;/strong&gt; ({subscriber.tier})&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">            &lt;p&gt;Account URL: nationaltimes.org/reader/{subscriber.slug}&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">          &lt;/aside&gt;</span></div>
+<div class="row even"><span class="num">20</span><span class="src">        )}</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">      &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">22</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Receives submitted record payload with zero child input state <b class="tag">POLLUTION</b></span>
+      </div></div>
+<div class="row even"><span class="num">24</span><span class="src">}</span></div></div></div></div>
+<p>In <code>SubscriberRegistrationApp</code>, the parent receives the clean registration data payload without having to manage form state or pass down multiple setter callbacks.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — Controlled Inputs vs Uncontrolled FormData</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Subscription Desk</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            SubscriberRegistrationApp.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            RegistrationForm.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            Uncontrolled Inputs + new FormData()
+            <span class="rce-node-props">✓ ZERO RE-RENDER TAX</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Native Typing: <span class="ref-tag ref-green">120fps browser typing</span> without React re-renders</div>
+            <div style="margin-top:0.3rem;">2. Single-Pass Extraction: FormData reads all named fields on submit</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Optimal Hybrid: Only live slug field is controlled for URL preview!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            Uncontrolled inputs let the browser DOM hold input state with zero typing overhead.<br>
+            Reserve controlled inputs strictly for fields requiring live per-character UI reactions.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            20 Controlled useState Inputs with onChange
+            <span class="rce-node-props">✕ KEYSTROKE TAX</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Keystroke Flood: <span class="ref-tag ref-red">every letter triggers full component re-render</span></div>
+            <div style="margin-top:0.3rem;">2. State Bloat: 20 separate useState hooks and 20 onChange handlers</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">Mobile Stutter: Typing lag and dropped frames on low-end devices!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Over-controlling every input without UI justification degrades typing responsiveness.<br>
+            Default to uncontrolled FormData for standard forms to maximize performance.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 37.2: The National Times — Controlled Inputs vs Uncontrolled FormData</figcaption>
+</figure>
+<p>The figure above contrasts the typing execution loops. Controlled inputs force round-trip re-render conferences for every keystroke, whereas uncontrolled inputs let the browser handle typing natively and extract all values cleanly at submit time.</p>
+</div>
+<div class="keep-together">
+<h3>The Form Architecture Decision Matrix</h3>
+<p>When deciding between controlled and uncontrolled strategies for any form field, apply these guidelines:</p>
+<ul>
+<li><strong>Choose Uncontrolled with FormData</strong>:
+<ul>
+<li>Standard user registration and login forms.</li>
+<li>Multi-field checkout, address, or survey forms.</li>
+<li>Forms where field values are only needed when the user presses Submit.</li>
+<li>Large forms where re-rendering on every keystroke causes frame drops.</li>
+</ul>
+</li>
+<li><strong>Choose Controlled with useState</strong>:
+<ul>
+<li>Live formatting inputs (such as credit card grouping or phone number dashes).</li>
+<li>Fields driving instant live validation (such as a dynamic password strength meter).</li>
+<li>Fields that dynamically show, hide, or disable other form elements in real-time.</li>
+<li>Live search inputs driving autocomplete dropdowns.</li>
+</ul>
+</li>
+</ul>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked whether to use controlled or uncontrolled forms, articulate this pragmatic engineering response: "1. The Performance Trade-off: Controlled inputs bind value to React state, causing the component to re-render on every single keystroke. Uncontrolled inputs store values in the DOM, offering native 120fps typing with zero re-renders. 2. Modern React 19 Direction: With the introduction of React 19 form actions and FormData integration, uncontrolled forms are the idiomatic default for standard submissions. 3. The Hybrid Strategy: Default to uncontrolled FormData for standard submission inputs, and use controlled state selectively for inputs that require instant per-character UI reactions like live slug previews or dynamic validation."</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Checkout and payment billing forms: Extracting shipping addresses via uncontrolled FormData while controlling credit card number masking.</li>
+<li>Account profile editors: Submitting biographical details via FormData while controlling avatar upload previews.</li>
+<li>Search and filter bars: Controlling search keywords to query live autocomplete APIs on keystroke.</li>
+<li>Multi-step application workflows: Serializing form pages into FormData dictionaries before advancing to the next step.</li>
+<li>Comment and feedback drawers: Gathering feedback text and rating selections with zero typing overhead.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Controlled Input</strong>: A form control whose displayed value is driven by React state and updated via an <code>onChange</code> handler.</li>
+<li><strong>Uncontrolled Input</strong>: A form control whose internal value is retained by the browser DOM, read via <code>FormData</code> upon submission.</li>
+<li><strong>FormData API</strong>: A native browser interface for capturing key-value pairs representing form fields and their values.</li>
+<li><strong>Keystroke Re-render Tax</strong>: The CPU cost of re-rendering a component tree on every character typed into a controlled input.</li>
+<li><strong>Name Attribute Requirement</strong>: The mandatory HTML attribute required on inputs for <code>FormData</code> to extract their values.</li>
+<li><strong>Hybrid Form Pattern</strong>: Combining uncontrolled inputs for standard fields with controlled inputs for specific live-preview fields.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Forms: Controlled State versus Uncontrolled FormData</strong></p>
+<p>Choosing between controlled inputs and uncontrolled FormData is a balance between per-character reactivity and typing performance. Uncontrolled inputs eliminate the keystroke re-render tax, making them the ideal default for standard forms, while controlled inputs excel when instant UI feedback is required.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Takeaways of Form Architecture</span></div>
+<ol><li>Default to uncontrolled FormData.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Let the browser DOM manage typing natively with zero re-renders.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Extract all values synchronously on submission using <code>new FormData(e.currentTarget)</code>.</li>
+<li>Ensure every control has a name attribute.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) <code>FormData</code> serializes only elements that declare a <code>name</code>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Missing <code>name</code> attributes cause values to be silently omitted from submission payloads.</li>
+<li>Reserve controlled state for live UI needs.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Use controlled inputs only when a field drives instant validation, masking, or preview.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Combine both paradigms in a hybrid form to achieve optimal performance and interactivity.
+➔ ALWAYS include a name attribute on all uncontrolled form controls to allow FormData extraction.<br>
+➔ NEVER control every input in a large form by default if values are only needed upon submission.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Create dozens of useState hooks and control every input needlessly.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">OvercontrolledForm</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">BadForm</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [firstName, setFirstName] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [lastName, setLastName] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [email, setEmail] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;form&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      &lt;input value={firstName} onChange={e =&gt; <span class="fn">setFirstName</span>(e.target.value)} /&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;input value={lastName} onChange={e =&gt; <span class="fn">setLastName</span>(e.target.value)} /&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      &lt;input value={email} onChange={e =&gt; <span class="fn">setEmail</span>(e.target.value)} /&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use standard form fields with native FormData and control only live-preview fields.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">HybridFormDataForm</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">GoodForm</span>({ onSubmit }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="kw">const</span> data = Object.<span class="fn">fromEntries</span>(<span class="kw">new</span> <span class="fn">FormData</span>(e.currentTarget));</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">onSubmit</span>(data);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">7</span><span class="src"></span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">    &lt;form onSubmit={handleSubmit}&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      &lt;input name=<span class="str">"firstName"</span> defaultValue=<span class="str">""</span> /&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      &lt;input name=<span class="str">"lastName"</span> defaultValue=<span class="str">""</span> /&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;input name=<span class="str">"email"</span> defaultValue=<span class="str">""</span> /&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">      &lt;button type=<span class="str">"submit"</span>&gt;Submit&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">16</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>CONTROLLED INPUTS</strong><br>(React state single source)</th><th><strong>UNCONTROLLED FORMDATA</strong><br>(native DOM single source)</th></tr></thead><tbody><tr><td><strong>Typing Re-renders</strong></td><td>Re-renders component tree on<br>every single typed keystroke</td><td>Zero re-renders while typing;<br>native 120fps browser speed</td></tr><tr><td><strong>Data Access</strong></td><td>Value available continuously<br>in live component state</td><td>Value extracted on submit<br>via <code>new FormData()</code></td></tr><tr><td><strong>Boilerplate Overhead</strong></td><td>Requires <code>value</code> prop and manual<br><code>onChange</code> setter for each field</td><td>Requires only standard <code>name</code><br>attribute on input element</td></tr><tr><td><strong>Ideal Scenarios</strong></td><td>Input masking, live preview,<br>instant per-character checks</td><td>Standard forms, logins, multi-field<br>surveys, and mobile forms</td></tr><tr><td><strong>React 19 Direction</strong></td><td>Supported for custom controls<br>and instant UI feedback</td><td>Primary foundation for React 19<br>form actions and server actions</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

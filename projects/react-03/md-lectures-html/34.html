@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 34: You Might Not Need an Effect: Removing Redundant Lifecycles</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 34: You Might Not Need an Effect: Removing Redundant Lifecycles</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">When do you not need an Effect, and what replaces it?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Maya calculates freelancer payouts for The National Times website.</li>
+<li>Maya needs to update the total sum whenever an invoice item is added.</li>
+<li>Maya writes an effect to recompute the total, triggering an extra re-render on every change.</li>
+<li>Why does using an effect to compute a total cause noticeable screen flickering?</li>
+<li>Unnecessary effects create duplicate render cycles, slow down interfaces, and produce hard-to-trace update bugs.</li>
+<li>Transforming existing data is a pure calculation that belongs directly inside the render pass.</li>
+<li>Today you learn when to avoid effects and how to calculate values during rendering.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Two Core Invariants: What Belongs Where</h3>
+<p>When developers first learn <code>useEffect</code>, they often treat it as a universal swiss-army knife for running code after a render. This leads to bloated components riddled with unnecessary effects, duplicate state variables, and sluggish performance.</p>
+<p>To write clean React code, you must anchor your architecture to two fundamental invariants:</p>
+<ul>
+<li><strong>Invariant 1: You do not need an Effect to transform data for rendering</strong>: If a value can be calculated from the existing props or state, do not put it in state and do not update it with an Effect. Calculate it directly during the top-level render execution.</li>
+<li><strong>Invariant 2: You do not need an Effect to handle user events</strong>: If code should run because the user clicked a button, submitted a form, or dragged a slider, put that code directly in the corresponding event handler.</li>
+</ul>
+<p>Effects should be reserved strictly for code that must run <em>because the component was displayed to the user</em>, regardless of which user interaction triggered the appearance.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why is calculating derived state in useEffect bad?</strong> Imagine an accountant reviewing a paper invoice with ten line items. At the bottom is a "Total" box. Instead of simply adding the ten numbers on the paper with a pen right then and there, the accountant files the invoice into a filing cabinet, walks down three flights of stairs to the basement mailroom, fills out a requisition slip asking for a calculator, waits for the mailroom to send the calculator upstairs thirty minutes later, walks back up three flights of stairs, pulls the paper out of the cabinet, and writes the total down. It took twice as long and wasted endless energy! That is what happens when you use an Effect to calculate derived data. You render the component with an outdated total, pause, commit to the screen, run the effect, set state, and render the whole component a second time. Calculating it directly in the component body computes the total in one pass on the spot. Understanding <strong>derived state in effects</strong> as a <strong>pointless mailroom detour</strong> clarifies why <strong>calculating values during render eliminates redundant redraws</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Resetting State on Prop Change: The Key Attribute</h3>
+<p>Another frequent anti-pattern is using <code>useEffect</code> to reset local component state when an ID prop changes:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Effect State Reset Anti-Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">function</span> <span class="fn">BadDraftEditor</span>({ articleId }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [comment, setComment] = <span class="hook">useState</span>(<span class="str">''</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">setComment</span>(<span class="str">''</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Runs after initial paint, causing visual glitch and second <b class="tag">RENDER</b></span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src">  }, [articleId]);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<p>This pattern causes a visible visual glitch. When <code>articleId</code> changes, the component initially renders the <em>new</em> article with the <em>old</em> comment text. Only after committing to the DOM does the effect run, clearing the comment and forcing an immediate second render.</p>
+<p>The idiomatic React solution is to pass a distinct <code>key</code> prop to the component from the parent:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Key-Based State Reset Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src">&lt;DraftEditor key={articleId} articleId={articleId} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Key resets component tree automatically without <b class="tag">EFFECTS</b></span>
+      </div></div></div></div></div>
+<p>By telling React that components with different <code>key</code> values represent entirely different conceptual entities, React destroys the old component instance and mounts a fresh one with pristine initial state in a single render pass.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why do user actions belong in event handlers?</strong> Imagine a photographer at a wedding with a camera. When the bride and groom kiss, the photographer presses the shutter button. The flash goes off immediately and captures the kiss. Now imagine if pressing the shutter button simply set a little yellow flag on top of the camera. Then, every ten seconds, the camera's internal computer looked around to see if the yellow flag was up, and if so, fired the flash. By the time the camera finally decides to fire the flash, the kiss is over, the couple is eating cake, and the photo is ruined! That is what happens when you react to user events with an Effect. The event handler knows exactly which button was clicked and why. Deferring the action to an effect disconnects the action from the user's intent. Code that runs in response to a user gesture belongs directly in the event handler. Understanding <strong>event handlers</strong> as an <strong>instant camera shutter</strong> clarifies why <strong>user actions must not be routed through effects</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Contributor Billing Architecture</h3>
+<p>To observe clean architecture without unnecessary effects, inspect the freelancer billing calculator for The National Times. Editors review assigned stories, add bonus field stories, and calculate payouts:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>ContributorBillingApp.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>InvoiceCalculator.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>ContributorBillingApp</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>InvoiceCalculator</span><span class="component-explorer-props">contributor=&quot;...&quot; baseRate=&quot;...&quot;</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Invoice for Eleanor Vance</span><span class="surface-render-line">Net Contributor Payout: <strong>$750</strong></span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The component explorer panel above displays the hierarchy. On the left, <code>ContributorBillingApp.jsx</code> handles contributor selection and passes active data to <code>InvoiceCalculator.jsx</code>. On the right, the rendered view shows the invoice summary and net payout.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure">
+  <style>
+    .pipeline-card-figure {
+      margin: 1.5rem auto;
+      max-width: 590px;
+      background: #f4f6f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pipeline-card-figure .pipeline-header {
+      background: #344154;
+      padding: 10px 18px;
+    }
+    .pipeline-card-figure .pipeline-header span {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .pipeline-card-figure .pipeline-body {
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pipeline-card-figure .step-node {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #fcfcfb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 20px 14px 26px;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .pipeline-card-figure .step-node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #0e7490;
+    }
+    .pipeline-card-figure .step-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 5px;
+      text-align: center;
+    }
+    .pipeline-card-figure .step-num {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 0.86rem;
+      color: #0e7490;
+    }
+    .pipeline-card-figure .step-label {
+      font-weight: 700;
+      font-size: 0.86rem;
+      color: #1e293b;
+    }
+    .pipeline-card-figure .step-code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 500;
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      display: inline-block;
+      margin-bottom: 7px;
+      text-align: center;
+    }
+    .pipeline-card-figure .step-desc {
+      font-size: 0.77rem;
+      line-height: 1.42;
+      color: #475569;
+      font-style: italic;
+      text-align: center;
+    }
+    .pipeline-card-figure .step-desc strong {
+      color: #0f172a;
+      font-weight: 700;
+      font-style: normal;
+    }
+    .pipeline-card-figure .step-connector {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 28px;
+      margin: 1px 0;
+    }
+  </style>
+
+  <div class="pipeline-header">
+    <span>DERIVED STATE &amp; EVENT CALCULATION ASSEMBLY PIPELINE</span>
+  </div>
+
+  <div class="pipeline-body">
+    <!-- Step 1 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 1:</span>
+        <span class="step-label">Declaring State &amp; Deriving Payout Totals</span>
+      </div>
+      <div class="step-code">useState(0) &amp; subtotal = totalStories * baseRate</div>
+      <div class="step-desc">
+        Store only <strong>raw interactive inputs</strong> in state, calculating <strong>derived totals purely in render</strong>.
+      </div>
+    </div>
+
+    <!-- Connector 1 -> 2 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 2:</span>
+        <span class="step-label">Executing Payout Submissions in Event Handlers</span>
+      </div>
+      <div class="step-code">function handleApprovePayout() { fetch(...) }</div>
+      <div class="step-desc">
+        Execute <strong>side-effect dispatches</strong> directly inside user event handlers <strong>without intermediate effects</strong>.
+      </div>
+    </div>
+
+    <!-- Connector 2 -> 3 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 3:</span>
+        <span class="step-label">Rendering the Invoice and Calculation Summary</span>
+      </div>
+      <div class="step-code">&lt;section className="invoice-box"&gt;...&lt;/section&gt;</div>
+      <div class="step-desc">
+        Render the <strong>invoice card</strong>, connecting input controls and displaying <strong>immediate payout status</strong>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 34.1: Step-by-step code assembly pipeline for derived calculations and event handling</figcaption>
+</figure>
+<p>To construct this billing calculator cleanly, we assemble <code>InvoiceCalculator.jsx</code> across three progressive implementation steps:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: Declaring State and Deriving Payout Totals';">Declaring State and Deriving Payout Totals</div>
+      
+    </div>
+  </div>
+</div>
+<p>We open <code>InvoiceCalculator.jsx</code> and declare state for interactive user inputs, deriving financial totals directly in the render calculation pass:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">InvoiceCalculator.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">InvoiceCalculator</span>({ contributor, baseRate }) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [extraStories, setExtraStories] = <span class="hook">useState</span>(<span class="nl">0</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Interactive counter stored in component <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [submissionStatus, setSubmissionStatus] = <span class="hook">useState</span>(<span class="str">'idle'</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> totalStories = contributor.assignedStories + extraStories; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Pure calculation on render pass with zero <b class="tag">EFFECTS</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">const</span> subtotal = totalStories * baseRate;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">const</span> taxWithholding = Math.<span class="fn">round</span>(subtotal * <span class="nl">0.15</span>);</span></div>
+<div class="row even"><span class="num">10</span><span class="src">  <span class="kw">const</span> netPayout = subtotal - taxWithholding;</span></div></div></div></div>
+<p>Because derived values like <code>subtotal</code> and <code>netPayout</code> recalculate automatically on every render pass, we avoid redundant state slots and eliminate out-of-sync bugs.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Executing Payout Submissions in Event Handlers';">Executing Payout Submissions in Event Handlers</div>
+      
+    </div>
+  </div>
+</div>
+<p>Next, we declare the submission handler that dispatches the payment directly upon user action:</p>
+<div class="editor continues-both has-sticky-note"><div class="sticky-note"><span class="note-filename">InvoiceCalculator.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">11</span><span class="src">  <span class="kw">function</span> <span class="fn">handleApprovePayout</span>() {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">    <span class="fn">setSubmissionStatus</span>(<span class="str">'submitting'</span>);</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    <span class="fn">fetch</span>(<span class="str">`/api/payouts/${contributor.id}`</span>, {</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      method: <span class="str">'POST'</span>,</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">      headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      body: JSON.<span class="fn">stringify</span>({ netPayout }),</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">    })</span></div>
+<div class="row even"><span class="num">18</span><span class="src">      .<span class="fn">then</span>(() =&gt; <span class="fn">setSubmissionStatus</span>(<span class="str">'approved'</span>))</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">      .<span class="kw">catch</span>(() =&gt; <span class="fn">setSubmissionStatus</span>(<span class="str">'error'</span>));</span></div>
+<div class="row even"><span class="num">20</span><span class="src">  }</span></div></div></div></div>
+<p>Dispatched network mutations belong inside the event handler because they run as an immediate consequence of the editor clicking the payout button, not as a side effect of rendering.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Rendering the Invoice and Calculation Summary';">Rendering the Invoice and Calculation Summary</div>
+      
+    </div>
+  </div>
+</div>
+<p>Finally, we construct the template layout and render interactive controls:</p>
+<div class="editor continues-top has-sticky-note"><div class="sticky-note"><span class="note-filename">InvoiceCalculator.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row even"><span class="num">22</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">    &lt;section className=<span class="str">"invoice-box"</span>&gt;</span></div>
+<div class="row even"><span class="num">24</span><span class="src">      &lt;h3&gt;Invoice <span class="kw">for</span> {contributor.name}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">      &lt;label&gt;</span></div>
+<div class="row even"><span class="num">26</span><span class="src">        Additional Field Stories:</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">        &lt;input</span></div>
+<div class="row even"><span class="num">28</span><span class="src">          type=<span class="str">"number"</span></span></div>
+<div class="row odd"><span class="num">29</span><span class="src">          min=<span class="str">"0"</span></span></div>
+<div class="row even"><span class="num">30</span><span class="src">          value={extraStories}</span></div>
+<div class="row odd"><span class="num">31</span><span class="src">          onChange={e =&gt; <span class="fn">setExtraStories</span>(<span class="fn">Number</span>(e.target.value))}</span></div>
+<div class="row even"><span class="num">32</span><span class="src">        /&gt;</span></div>
+<div class="row odd"><span class="num">33</span><span class="src">      &lt;/label&gt;</span></div>
+<div class="row even"><span class="num">34</span><span class="src">      &lt;div className=<span class="str">"payout-summary"</span>&gt;</span></div>
+<div class="row odd"><span class="num">35</span><span class="src">        &lt;p&gt;Total Stories: &lt;strong&gt;{totalStories}&lt;/strong&gt;&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">36</span><span class="src">        &lt;p className=<span class="str">"net-total"</span>&gt;Net Contributor Payout: &lt;strong&gt;${netPayout}&lt;/strong&gt;&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">37</span><span class="src">      &lt;/div&gt;</span></div>
+<div class="row even"><span class="num">38</span><span class="src">      &lt;button onClick={handleApprovePayout} disabled={submissionStatus === <span class="str">'submitting'</span>}&gt;</span></div>
+<div class="row odd"><span class="num">39</span><span class="src">        {submissionStatus === <span class="str">'submitting'</span> ? <span class="str">'Transmitting Payout...'</span> : <span class="str">'Approve Payout'</span>}</span></div>
+<div class="row even"><span class="num">40</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">41</span><span class="src">      {submissionStatus === <span class="str">'approved'</span> &amp;&amp; &lt;p className=<span class="str">"status-notice"</span>&gt;Payout Approved &amp; Queued&lt;/p&gt;}</span></div>
+<div class="row even"><span class="num">42</span><span class="src">    &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">43</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">44</span><span class="src">}</span></div></div></div></div>
+<p>Now examine the parent component <code>ContributorBillingApp.jsx</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ContributorBillingApp.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useState</span> } <span class="kw">from</span> <span class="str">'react'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">import</span> InvoiceCalculator <span class="kw">from</span> <span class="str">'./InvoiceCalculator.jsx'</span>;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src"><span class="kw">const</span> WRITERS = [{ id: <span class="str">'c1'</span>, name: <span class="str">'Eleanor Vance'</span>, assignedStories: <span class="nl">3</span> }, { id: <span class="str">'c2'</span>, name: <span class="str">'Marcus Thorne'</span>, assignedStories: <span class="nl">5</span> }];</span></div>
+<div class="row odd"><span class="num">5</span><span class="src"></span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ContributorBillingApp</span>() {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">const</span> [id, setId] = <span class="hook">useState</span>(<span class="str">'c1'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Active selected contributor identifier <b class="tag">STATE</b></span>
+      </div></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">const</span> active = WRITERS.<span class="fn">find</span>(c =&gt; c.id === id); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Active contributor record reference <b class="tag">LOOKUP</b></span>
+      </div></div>
+<div class="row odd"><span class="num">9</span><span class="src"></span></div>
+<div class="row even"><span class="num">10</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    &lt;main className=<span class="str">"billing-container"</span>&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;nav className=<span class="str">"contributor-tabs"</span>&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">        {WRITERS.<span class="fn">map</span>(c =&gt; (</span></div>
+<div class="row even"><span class="num">14</span><span class="src">          &lt;button key={c.id} onClick={() =&gt; <span class="fn">setId</span>(c.id)}&gt;{c.name}&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">        ))}</span></div>
+<div class="row even"><span class="num">16</span><span class="src">      &lt;/nav&gt;</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">      &lt;InvoiceCalculator key={id} contributor={active} baseRate={<span class="nl">250</span>} /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 57px;">
+        <span class="text">Key prop forces fresh instance remount with zero <b class="tag">EFFECTS</b></span>
+      </div></div>
+<div class="row even"><span class="num">18</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">  ); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Declarative key-based reset completely replaces imperative effect cleanup <b class="tag">SYNCHRONIZATION</b></span>
+      </div></div>
+<div class="row even"><span class="num">20</span><span class="src">}</span></div></div></div></div>
+<p>Notice <span class="code-line-callout"><code>&lt;InvoiceCalculator key={id} ... /&gt;</code></span> When the editor clicks from Eleanor Vance to Marcus Thorne, <code>id</code> changes. Because the <code>key</code> changed, React automatically discards the old calculator instance and mounts a fresh one. <code>extraStories</code> resets to <code>0</code> and <code>submissionStatus</code> resets to <code>'idle'</code> automatically, without a single line of effect cleanup code!</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="component-explorer rce-theme">
+  <style>
+    .component-explorer.rce-theme {
+      margin: 1.5rem auto;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid #aeb8c5;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .rce-theme .rce-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 1px solid #aeb8c5;
+    }
+    .rce-theme .rce-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .rce-theme .rce-dots i {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .rce-theme .rce-dots i:nth-child(1) { background: #ef6259; border: 1px solid #d94d46; }
+    .rce-theme .rce-dots i:nth-child(2) { background: #f3b62f; border: 1px solid #d79c1f; }
+    .rce-theme .rce-dots i:nth-child(3) { background: #55bd55; border: 1px solid #3da543; }
+    .rce-theme .rce-title {
+      flex: 1;
+      text-align: center;
+      color: #475569;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      user-select: none;
+      padding-right: 48px;
+    }
+    .rce-theme .rce-window {
+      display: flex;
+      min-height: 330px;
+      background: #ffffff;
+    }
+    .rce-theme .rce-sidebar {
+      flex: 0 0 32%;
+      padding: 1.1rem 0.95rem;
+      background: #fdfdfd;
+      border-right: 1px solid #cbd5e1;
+      color: #0f172a;
+      font-size: 0.84rem;
+    }
+    .rce-theme .rce-sidebar-title {
+      padding: 0 0 0.65rem 0.25rem;
+      margin-bottom: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .rce-theme .rce-tree {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .rce-theme .rce-tree li {
+      margin-bottom: 0.45rem;
+    }
+    .rce-theme .rce-tree-label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 6px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #334155;
+    }
+    .rce-theme .rce-tree-label.active {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-weight: 700;
+    }
+    .rce-theme .rce-icon {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex: none;
+    }
+    .rce-theme .rce-stage {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      padding: 1.1rem;
+      background: #f1f5f9;
+      box-shadow: inset 1px 0 3px rgba(15, 23, 42, 0.025);
+    }
+    .rce-theme .rce-canvas {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+    .rce-theme .rce-node {
+      position: relative;
+      margin-top: 0.85rem;
+      padding: 1.4rem 0.85rem 0.75rem;
+      border: 2px dashed #94a3b8;
+      border-radius: 9px;
+      background: #fff;
+      box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
+    }
+    .rce-theme .rce-node:first-child { margin-top: 0; }
+    .rce-theme .rce-node-label {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      display: flex;
+      align-items: baseline;
+      max-width: calc(100% + 4px);
+      padding: 0.28rem 0.65rem;
+      border-top-left-radius: 7px;
+      border-bottom-right-radius: 6px;
+      color: #fff;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+    .rce-theme .rce-node-props {
+      margin-left: 0.45rem;
+      color: rgba(255, 255, 255, 0.95);
+      font-weight: 600;
+    }
+    .rce-theme .kind-right { border-color: #059669; background: #ecfdf5; }
+    .rce-theme .kind-right > .rce-node-label { background: #059669; }
+    .rce-theme .kind-wrong { border-color: #dc2626; background: #fef2f2; }
+    .rce-theme .kind-wrong > .rce-node-label { background: #dc2626; }
+
+    .rce-theme .preview-panel {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.75rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+    }
+    .rce-theme .ref-tag {
+      display: inline-block;
+      font-weight: 700;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.68rem;
+    }
+    .rce-theme .ref-green { background: #d1fae5; color: #065f46; }
+    .rce-theme .ref-red { background: #fee2e2; color: #dc2626; }
+    .rce-theme .diagnostic-strip {
+      margin-top: 0.45rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .rce-theme .diag-right {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 3px solid #059669;
+    }
+    .rce-theme .diag-wrong {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 3px solid #dc2626;
+    }
+  </style>
+
+  <div class="rce-bar">
+    <div class="rce-dots"><i></i><i></i><i></i></div>
+    <div class="rce-title">The National Times — Derived State vs Redundant Effect Cascades</div>
+  </div>
+
+  <div class="rce-window">
+    <aside class="rce-sidebar">
+      <div class="rce-sidebar-title">Billing Desk</div>
+      <ul class="rce-tree">
+        <li>
+          <span class="rce-tree-label">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#64748b">JSX</text></svg>
+            ContributorBillingApp.jsx
+          </span>
+        </li>
+        <li>
+          <span class="rce-tree-label active">
+            <svg class="rce-icon" viewBox="0 0 24 24" fill="none" stroke="#087ea4" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><text x="6" y="17" font-size="6" font-family="sans-serif" font-weight="900" fill="#087ea4">JSX</text></svg>
+            InvoiceCalculator.jsx
+          </span>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="rce-stage">
+      <div class="rce-canvas">
+        <div class="rce-node kind-right">
+          <div class="rce-node-label">
+            const netPayout = subtotal - tax
+            <span class="rce-node-props">✓ SINGLE-PASS RENDER</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Synchronous Calculation: <span class="ref-tag ref-green">netPayout</span> computed during render</div>
+            <div style="margin-top:0.3rem;">2. Instant Consistency: Numbers guaranteed 100% in sync at all times</div>
+            <div style="margin-top:0.35rem; color:#059669; font-weight:700;">Scorecard: 1 clean render pass; zero state duplication; zero flicker!</div>
+          </div>
+          <div class="diagnostic-strip diag-right">
+            Calculating derived values during render guarantees immediate UI consistency.<br>
+            Eliminates redundant render passes and keeps component logic simple and fast.
+          </div>
+        </div>
+
+        <div class="rce-node kind-wrong">
+          <div class="rce-node-label">
+            useEffect(() =&gt; setNetPayout(...), [subtotal])
+            <span class="rce-node-props">✕ TWO-PASS CASCADE</span>
+          </div>
+          <div class="preview-panel">
+            <div>1. Render Pass 1: <span class="ref-tag ref-red">stale outdated payout</span> painted to browser</div>
+            <div style="margin-top:0.3rem;">2. Effect Execution: useEffect runs post-commit and calls setter</div>
+            <div style="margin-top:0.35rem; color:#dc2626; font-weight:700;">Render Pass 2: Forced second redraw causes visible screen flicker!</div>
+          </div>
+          <div class="diagnostic-strip diag-wrong">
+            Syncing derived state inside useEffect triggers a mandatory second render.<br>
+            Never store derived calculations in separate state synchronized via effects.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<figcaption>Fig 34.2: The National Times — Derived State vs Redundant Effect Cascades</figcaption>
+</figure>
+<p>The figure above contrasts the execution paths. Computing derived values during render guarantees single-pass rendering, whereas syncing derived state in effects forces a slow, glitchy two-pass render cascade.</p>
+</div>
+<div class="keep-together">
+<h3>The Decision Matrix: Do You Need an Effect?</h3>
+<p>Before writing <code>useEffect</code>, run through this quick checklist:</p>
+<ul>
+<li><strong>Are you calculating a value derived from existing props or state?</strong></li>
+</ul>
+<p>  Do not use an Effect. Calculate it directly in the component body (wrap in <code>useMemo</code> only if it is an expensive calculation).</p>
+<ul>
+<li><strong>Are you caching an expensive calculation?</strong></li>
+</ul>
+<p>  Do not use an Effect. Use <code>useMemo</code>.</p>
+<ul>
+<li><strong>Are you resetting state when a prop changes?</strong></li>
+</ul>
+<p>  Do not use an Effect. Pass a distinct <code>key</code> prop to the child component.</p>
+<ul>
+<li><strong>Are you executing code in response to a user click, submit, or keypress?</strong></li>
+</ul>
+<p>  Do not use an Effect. Place the code inside the event handler.</p>
+<ul>
+<li><strong>Are you synchronizing a component with an external system outside React (WebSocket, DOM listener, timer, non-React library)?</strong></li>
+</ul>
+<p>  <strong>YES!</strong> This is the single legitimate purpose of <code>useEffect</code>.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how to refactor an application bloated with useEffect, state the 3 core replacements: "1. Derived state elimination: Compute derived values directly during render execution rather than synchronizing separate state in an effect. 2. Event handler locality: Keep user-triggered actions inside event handlers rather than passing boolean state flags to trigger effects. 3. Key-based state resetting: Use the key prop to reset a component's internal state automatically when an ID changes instead of manually clearing state in an effect."</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>E-commerce checkout summaries: Computing item totals, taxes, and shipping fees from the cart state array synchronously.</li>
+<li>Filterable product catalogs: Filtering and sorting items on the fly during render rather than holding a redundant <code>filteredItems</code> state.</li>
+<li>Form draft resets: Resetting dirty form state when switching between customer records using a <code>key={customerId}</code> prop.</li>
+<li>Analytics and conversion tracking: Firing purchase events directly inside the checkout button click handler rather than in a post-render effect.</li>
+<li>Multi-step wizards: Transitioning between wizard steps directly within handler callbacks.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>Derived State</strong>: A value that can be computed synchronously from existing props or state during render execution.</li>
+<li><strong>Redundant Effect Cascade</strong>: A performance defect where updating state inside an effect forces an immediate, unnecessary second re-render.</li>
+<li><strong>Two-Pass Rendering</strong>: The pattern where a component renders with stale state, commits to the DOM, runs an effect, and re-renders with new state.</li>
+<li><strong>Event Handler Locality</strong>: The architectural principle that actions triggered by user gestures belong directly in event handlers.</li>
+<li><strong>Key-Based State Reset</strong>: Passing a dynamic <code>key</code> prop to tell React to destroy and re-create a component instance when identity changes.</li>
+<li><strong>Single-Pass Calculation</strong>: Computing all UI values synchronously during the initial render pass to eliminate screen flickering.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>You Might Not Need an Effect: Removing Redundant Lifecycles</strong></p>
+<p>Effects should be reserved exclusively for synchronizing components with external systems. Derived values belong in render calculations, user actions belong in event handlers, and state resets belong in <code>key</code> props.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Takeaways of Lean Effect Architecture</span></div>
+<ol><li>Compute derived values synchronously.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Calculate totals, filters, and display strings during render execution.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Never duplicate props into state synchronized via <code>useEffect</code>.</li>
+<li>Keep user actions in event handlers.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Place API submissions, alerts, and navigation in event handlers.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Never use boolean state flags to trigger action effects.</li>
+<li>Reset state with the key prop.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Pass a unique <code>key</code> prop when you need state to reset on prop changes.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Let React recreate the component cleanly in a single render pass.
+➔ ALWAYS compute derived state synchronously in the component render body.<br>
+➔ NEVER use useEffect to synchronize state variables with other state variables.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Duplicate derived state and update it with an effect.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">BadInvoice</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">BadInvoice</span>({ items }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [total, setTotal] = <span class="hook">useState</span>(<span class="nl">0</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="hook">useEffect</span>(() =&gt; {</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    <span class="fn">setTotal</span>(items.<span class="fn">reduce</span>((sum, item) =&gt; sum + item.price, <span class="nl">0</span>));</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  }, [items]);</span></div>
+<div class="row odd"><span class="num">7</span><span class="src"></span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">return</span> &lt;div&gt;Total: ${total}&lt;/div&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Compute derived values directly during render in a single pass.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">GoodInvoice</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">GoodInvoice</span>({ items }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> total = items.<span class="fn">reduce</span>((sum, item) =&gt; sum + item.price, <span class="nl">0</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"></span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> &lt;div&gt;Total: ${total}&lt;/div&gt;;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>REDUNDANT USEEFFECT</strong><br>(anti-pattern)</th><th><strong>DIRECT RENDER CALCULATION</strong><br>(idiomatic React)</th></tr></thead><tbody><tr><td><strong>Render Passes</strong></td><td>Two passes; initial render with<br>stale data followed by redraw</td><td>Single pass; data and UI<br>render in perfect sync</td></tr><tr><td><strong>State Duplication</strong></td><td>High; requires extra state<br>variables and setter calls</td><td>Zero; computes values from<br>existing props and state</td></tr><tr><td><strong>Screen Glitches</strong></td><td>Visible flicker as stale<br>values are replaced post-commit</td><td>Flawless; UI displays fresh<br>values on the very first frame</td></tr><tr><td><strong>Code Simplicity</strong></td><td>Complex; requires tracking<br>dependencies in hook array</td><td>Minimal; plain JavaScript<br>arithmetic in component body</td></tr><tr><td><strong>Mental Model</strong></td><td>Treating React like an imperative<br>event-driven lifecycle script</td><td>Declaratively deriving UI<br>directly from current data</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

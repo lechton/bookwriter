@@ -1,0 +1,1672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 30: Custom Controls and the Combobox Pattern</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 30: Custom Controls and the Combobox Pattern</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> ADVANCED</span>
+  </div>
+  <p class="iq-text">How do you build a custom control when native HTML doesn't suffice?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>Maya uses screen reading software to research past municipal election records on the National Times website.</li>
+<li>The archive search features an autocompleting filter field for candidate names, districts, and party affiliations.</li>
+<li>She types three letters, hears nothing about suggestions, and presses the Down Arrow key to explore matches.</li>
+<li>Why does the custom input completely trap Maya's cursor without speaking a single suggested record?</li>
+<li>The developer moved physical focus into a detached dropdown list, stranding her keyboard cursor away from text editing.</li>
+<li>Hand-rolled composite widgets that hijack DOM focus break typing ergonomics and isolate assistive technology users.</li>
+<li>Today we implement virtual focus using aria-activedescendant, wire combobox states, and build bulletproof custom controls.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Focus Hijack: Physical DOM Focus Versus Virtual Descendants</h3>
+<p>Maya navigates the municipal records archive using speech output and keyboard commands. When frontend engineers construct custom autocompleting comboboxes, a common anti-pattern is transferring physical DOM focus into the dropdown list items as the user arrows downward. Moving actual focus away from the input field destroys typing ergonomics, preventing users from editing their search query without manually tabbing backward. Managing virtual focus via <code>aria-activedescendant</code> retains keyboard focus strictly on the text input while communicating the highlighted option:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">combobox-focus.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;li tabindex=<span class="str">"0"</span> onfocus=<span class="str">"highlight(this)"</span>&gt;Transit&lt;/li&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-wrong">WRONG:</b> Physical focus steals cursor from input</span>
+      </div></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;input role=<span class="str">"combobox"</span> aria-activedescendant=<span class="str">"opt-1"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> Virtual focus preserves text typing cursor</span>
+      </div></div></div></div></div>
+<style>:root {
+    --meta-landmark: #ea580c;
+    --meta-landmark-bg: #fff7ed;
+    --meta-focus: #0284c7;
+    --meta-sr: #7c3aed;
+    --meta-sr-bg: #f5f3ff;
+    --meta-wrong: #e11d48;
+    --meta-right: #059669;
+    
+    --font-ui: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-serif: 'Lora', Georgia, serif;
+    --font-meta: 'JetBrains Mono', Menlo, monospace;
+}
+
+/* Base Canvas Container */
+.a11y-canvas {
+    font-family: var(--font-ui);
+    color: #0f172a;
+    margin: 2rem 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+/* Width Modifiers */
+.a11y-canvas.w-half .browser-window {
+    max-width: 480px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-2-3 .browser-window {
+    max-width: 660px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-full .browser-window {
+    max-width: 100%;
+}
+
+/* The Browser Chrome */
+.browser-window {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+.browser-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #cbd5e1;
+}
+.browser-dots { display: flex; gap: 5px; }
+.browser-dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; }
+.browser-dot.red { background: #fca5a5; }
+.browser-dot.yellow { background: #fde047; }
+.browser-dot.green { background: #86efac; }
+.browser-title {
+    flex: 1;
+    font-family: var(--font-meta);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.browser-url { flex: 1; max-width: 400px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; color: #64748b; }
+
+/* The UI Layer (The actual mocked page) */
+.mock-page {
+    position: relative;
+    padding: 24px 28px;
+    background: #f8fafc;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* Minimal 2-Element Comparison Layout */
+.mock-page.layout-compare {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    padding: 24px 20px;
+    flex-wrap: wrap;
+}
+.mock-page.layout-compare .meta-validity-outline {
+    display: none;
+}
+.mock-page.layout-compare .ui-element {
+    margin-bottom: 0;
+    flex: 1 1 200px;
+    max-width: 270px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 16px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    position: relative;
+}
+.mock-page.layout-compare .meta-validity-tag {
+    top: -11px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 3px 12px;
+    border-radius: 99px;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+/* In compare mode, suppress the numbered tab-stop circle (1) as it makes no sense in a 2-element comparison */
+.mock-page.layout-compare .meta-focus-badge {
+    display: none !important;
+}
+/* In compare mode, suppress outer landmark boxes and tags that clash with top validity tags */
+.mock-page.layout-compare .meta-landmark-box,
+.mock-page.layout-compare .meta-landmark-tag {
+    display: none !important;
+}
+/* In compare mode, let screen reader tooltips flow naturally above note chips to eliminate text overlap */
+.mock-page.layout-compare .meta-sr-tooltip {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin-top: 12px;
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 10;
+}
+.mock-page.layout-compare .meta-sr-tooltip::before {
+    left: 50%;
+    margin-left: -4px;
+}
+.mock-page.layout-compare .ui-element.has-sr {
+    margin-bottom: 0;
+    padding-bottom: 16px;
+}
+.mock-page.layout-compare .has-sr .meta-note-chip {
+    margin-top: 10px;
+}
+
+/* UI Control Wrapper */
+.ui-control-wrapper {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+.ui-control-wrapper.is-input {
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Ghost Outline for Invisible Focus */
+.meta-ghost-outline {
+    position: absolute;
+    inset: -5px;
+    border: 2px dashed #f43f5e;
+    border-radius: 8px;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.15);
+}
+.meta-ghost-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    background: #f43f5e;
+    color: white;
+    font-family: var(--font-meta);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 99px;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    white-space: nowrap;
+    z-index: 60;
+}
+
+/* Status Note Chips */
+.meta-note-chip {
+    margin-top: 14px;
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.02em;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.has-sr .meta-note-chip {
+    margin-top: 48px;
+}
+.meta-note-chip.note-wrong {
+    background: #ffe4e6;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+}
+.meta-note-chip.note-right {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+.meta-note-chip.note-info {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
+.ui-element {
+    position: relative;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+}
+
+/* Selectively add space ONLY for elements that have a Screen Reader tooltip */
+.ui-element.has-sr { margin-bottom: 72px; }
+.ui-form-group.has-sr { margin-bottom: 72px; }
+
+/* Dynamically tint the SR tooltip based on validity */
+.is-right .meta-sr-tooltip, .is-right .meta-sr-tooltip::before {
+    background: var(--meta-right);
+    box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.3);
+}
+.is-wrong .meta-sr-tooltip, .is-wrong .meta-sr-tooltip::before {
+    background: var(--meta-wrong);
+    box-shadow: 0 10px 15px -3px rgba(225, 29, 72, 0.3);
+}
+
+.ui-masthead { font-family: var(--font-serif); font-size: 2rem; font-weight: 700; text-align: center; border-bottom: 4px double #0f172a; padding-bottom: 8px; color: #0f172a; }
+.ui-nav { font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; font-weight: 600; color: #334155; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: center; gap: 24px; }
+.ui-h1 { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 700; color: #0f172a; margin-top: 16px; margin-bottom: 4px;}
+.ui-text { font-size: 0.95rem; color: #475569; margin-bottom: 16px; }
+
+.ui-form-group { margin-bottom: 24px; }
+.ui-label { font-size: 0.85rem; font-weight: 600; color: #334155; display: block; margin-bottom: 6px; }
+.ui-input { width: 100%; max-width: 300px; border: 1px solid #94a3b8; border-radius: 6px; padding: 10px 14px; font-size: 0.95rem; color: #64748b; background: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); outline: none; min-height: 20px; box-sizing: content-box; }
+.ui-input.is-broken { border-color: #cbd5e1; color: #94a3b8; }
+
+.ui-button { display: inline-block; background: #2563eb; color: #fff; font-size: 0.95rem; font-weight: 600; padding: 10px 28px; border-radius: 6px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2); cursor: pointer; border: none; }
+.ac-inline-link { color: #2563eb; text-decoration: underline; font-weight: 600; font-size: 0.95rem; display: inline-block; }
+.ac-card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 18px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.ac-card-headline { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+.ac-card i { display: block; height: 8px; background: #f1f5f9; border-radius: 4px; margin-bottom: 6px; width: 90%; }
+.ac-card i:last-child { width: 65%; margin-bottom: 0; }
+.ui-footer { margin-top: 48px; padding: 24px; background: #1e293b; color: #f8fafc; font-size: 0.85rem; border-radius: 8px; text-align: center; }
+
+/* Modal Dialog Pattern */
+.ui-modal-scene {
+    position: relative;
+    width: 236px;
+    height: 142px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    background: #f1f5f9;
+}
+.ui-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 8px;
+}
+.ui-modal-backdrop.is-inert {
+    background: rgba(15, 23, 42, 0.6);
+    filter: grayscale(0.8);
+}
+.ui-modal-bg-doc {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.ui-modal-bg-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.ui-modal-bg-tag {
+    font-family: var(--font-meta);
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: #94a3b8;
+}
+.ui-modal-leak-badge {
+    font-family: var(--font-meta);
+    font-size: 0.52rem;
+    font-weight: 800;
+    color: #f43f5e;
+    background: #ffe4e6;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.ui-modal-inert-badge {
+    font-family: var(--font-meta);
+    font-size: 0.52rem;
+    font-weight: 700;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.ui-modal-bg-link {
+    font-size: 0.65rem;
+    color: #bae6fd;
+    text-decoration: underline;
+    display: inline-block;
+    width: fit-content;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+.ui-modal-bg-link.has-leaked-focus {
+    outline: 2px solid #38bdf8;
+    outline-offset: 1px;
+    background: rgba(56, 189, 248, 0.3);
+    color: #ffffff;
+    font-weight: 700;
+}
+.ui-modal-dialog {
+    position: absolute;
+    top: 36px;
+    left: 8px;
+    right: 8px;
+    bottom: 6px;
+    z-index: 10;
+    background: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    border: 1px solid #cbd5e1;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.ui-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.ui-modal-dialog-tag {
+    font-family: var(--font-meta);
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: #0284c7;
+    background: #e0f2fe;
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+.ui-modal-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ui-modal-body {
+    font-size: 0.6rem;
+    color: #64748b;
+    line-height: 1.2;
+    margin: 2px 0 4px;
+}
+.ui-modal-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+    align-items: center;
+}
+.ui-modal-btn {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #0f172a;
+    color: #ffffff;
+    cursor: pointer;
+}
+.ui-modal-btn.has-trapped-focus {
+    outline: 2px solid #0284c7;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 1px #ffffff;
+}
+.ui-modal-btn-ghost {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+/* Switch & Badge Components */
+.ui-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.ui-switch-track {
+    width: 36px;
+    height: 20px;
+    background: #cbd5e1;
+    border-radius: 99px;
+    position: relative;
+    transition: background 0.2s ease;
+}
+.ui-switch.is-checked .ui-switch-track {
+    background: #059669;
+}
+.ui-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease;
+}
+.ui-switch.is-checked .ui-switch-thumb {
+    transform: translateX(16px);
+}
+.ui-switch-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.ui-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 99px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+/* Tablist Pattern */
+.ui-tablist {
+    display: flex;
+    gap: 4px;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+}
+.ui-tab-item {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 6px;
+    color: #64748b;
+    background: transparent;
+    border: 1px solid transparent;
+}
+.ui-tab-item.is-active {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-color: #e2e8f0;
+}
+
+/* Menu Dropdown Pattern */
+.ui-menu-dropdown {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 4px;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.ui-menu-item {
+    font-size: 0.74rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    color: #1e293b;
+    font-weight: 500;
+}
+.ui-menu-item.is-active {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+/* Combobox Pattern */
+.ui-combobox {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+}
+.ui-combobox-input {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.76rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #0f172a;
+}
+.ui-combobox-caret {
+    font-size: 0.65rem;
+    color: #64748b;
+}
+.ui-combobox-listbox {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.ui-combobox-option {
+    font-size: 0.72rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #334155;
+}
+.ui-combobox-option.is-active {
+    background: #0284c7;
+    color: #ffffff;
+    font-weight: 600;
+}
+.ui-h2 {
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* Meta-Layer Annotations */
+.meta-layer {
+    position: absolute;
+    font-family: var(--font-meta);
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* Landmarks */
+.meta-landmark-box {
+    inset: -8px;
+    border: 2px dashed var(--meta-landmark);
+    border-radius: 8px;
+    background: rgba(255, 247, 237, 0.3);
+}
+.meta-landmark-tag {
+    top: -12px;
+    left: 12px;
+    color: var(--meta-landmark);
+    background: var(--meta-landmark-bg);
+    border: 1px solid var(--meta-landmark);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.1);
+}
+
+/* Screen Reader Tooltips */
+.meta-sr-tooltip {
+    top: 100%;
+    left: 0;
+    margin-top: 12px;
+    background: var(--meta-sr);
+    color: white;
+    font-size: 0.7rem;
+    padding: 5px 8px;
+    border-radius: 6px;
+    white-space: normal;
+    max-width: 210px;
+    box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.meta-sr-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 16px;
+    width: 8px; height: 8px;
+    background: var(--meta-sr);
+    transform: rotate(45deg);
+}
+.meta-sr-badge {
+    background: rgba(255,255,255,0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+/* Focus Order */
+.meta-focus-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--meta-focus);
+    color: white;
+    border: 2px solid white;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    box-shadow: 0 0 0 2px var(--meta-focus), 0 3px 5px rgba(0,0,0,0.2);
+    z-index: 60;
+}
+.meta-focus-outline {
+    position: absolute;
+    inset: -5px;
+    border: 3px solid var(--meta-focus);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+/* Surface Dark mode for dark containers/footers */
+.mock-page.surface-dark {
+    background: #090d16;
+    background-image: radial-gradient(#1e293b 1px, transparent 1px);
+}
+.mock-page.surface-dark.layout-compare .ui-element {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.mock-page.surface-dark .meta-note-chip.note-wrong {
+    background: #450a0a;
+    color: #fca5a5;
+    border-color: #7f1d1d;
+}
+.mock-page.surface-dark .meta-note-chip.note-right {
+    background: #082f49;
+    color: #7dd3fc;
+    border-color: #0369a1;
+}
+
+/* Validity */
+.meta-validity-outline {
+    inset: -6px;
+    border: 2px solid transparent;
+    border-left-width: 6px;
+    border-radius: 8px;
+}
+.meta-validity-tag {
+    top: -12px;
+    left: 10px;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+}
+
+.is-wrong .meta-validity-outline { border-color: var(--meta-wrong); background: linear-gradient(90deg, rgba(225, 29, 72, 0.05) 0%, transparent 100%); }
+.is-right .meta-validity-outline { border-color: var(--meta-right); background: linear-gradient(90deg, rgba(5, 150, 105, 0.05) 0%, transparent 100%); }
+.is-wrong .meta-validity-tag { background: var(--meta-wrong); }
+.is-right .meta-validity-tag { background: var(--meta-right); }
+
+.relative-wrapper { position: relative; display: inline-block; width: 100%; max-width: 300px; }
+.relative-wrapper .ui-button { max-width: none; width: auto; }
+
+/* Image element */
+.ac-image {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 14px 18px;
+    color: #475569;
+    font-size: 0.85rem;
+    font-family: var(--font-meta);
+}
+.ac-picture {
+    width: 24px;
+    height: 24px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+.ac-image-file {
+    font-weight: 600;
+}
+.ac-chip-row {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+.ac-chip {
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.ac-chip.pass { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.ac-chip.fail { background: #ffe4e6; color: #be123c; border: 1px solid #fca5a5; }</style>
+<div class="a11y-canvas w-2-3">
+
+<div class="browser-window">
+	<div class="browser-chrome">
+		<div class="browser-dots">
+			<div class="browser-dot red"></div>
+			<div class="browser-dot yellow"></div>
+			<div class="browser-dot green"></div>
+		</div>
+		<div class="browser-title">
+			<svg class="w-3 h-3" style="width:11px;height:11px;margin-right:6px;color:#059669;display:inline-block;vertical-align:-1px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+			Archive Search: Physical Focus Steal vs Virtual Descendant
+		</div>
+		<div style="width:40px;"></div>
+	</div>
+	<div class="mock-page show-landmarks show-sr show-focus show-validity layout-compare ">
+		<div class="ui-element ac-combobox is-wrong has-validity" style="z-index: 100;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">WRONG: PHYSICAL FOCUS STOLE CURSOR</div>
+				<div class="ui-combobox">
+					<div class="ui-combobox-input">Search archives... <span class="ui-combobox-caret">▾</span></div>
+					<div class="ui-combobox-listbox"><div class="ui-combobox-option is-active">Transit</div><div class="ui-combobox-option ">Housing</div></div>
+				</div>
+			<div class="meta-note-chip note-wrong">✕ Cannot type or edit query</div></div>
+<div class="ui-element ac-combobox is-right has-validity" style="z-index: 99;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">RIGHT: ARIA-ACTIVEDESCENDANT</div>
+				<div class="ui-combobox">
+					<div class="ui-combobox-input">Search archives... <span class="ui-combobox-caret">▾</span></div>
+					<div class="ui-combobox-listbox"><div class="ui-combobox-option is-active">Transit</div><div class="ui-combobox-option ">Housing</div></div>
+				</div>
+			<div class="meta-note-chip note-right">✓ Virtual focus keeps typing active</div></div>
+	</div>
+</div>
+</div>
+<p>The contrast illustrates the necessity of virtual focus management in composite input controls. On the left, pressing the Down Arrow invokes <code>element.focus()</code> on the list item. While the item receives a visual focus outline, the input cursor vanishes. If Maya wants to backspace or add another character, her keystrokes fail because the active element in the DOM is no longer a text field. On the right, physical focus remains locked within the <code>&lt;input&gt;</code> element throughout the entire interaction. As Maya presses the Down Arrow, JavaScript updates <code>aria-activedescendant="opt-1"</code>, which instructs assistive technologies to speak the highlighted option while Maya retains continuous typing control over the text string.</p>
+</div>
+<div class="keep-together">
+<h3>The Combobox Contract: Roles, Expansion States, and Listbox Linkage</h3>
+<p>An accessible custom combobox requires a synchronized multi-attribute contract connecting the text input to its popover listbox. Failing to declare the combobox role, expansion state, and popup linkage leaves assistive technology users unaware that typing filters dynamic results below the field. Binding the input to a semantic listbox with explicit options ensures screen readers announce result counts and selection changes:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">combobox-aria.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;input type=<span class="str">"text"</span> <span class="kw">class</span>=<span class="str">"search-input"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 8px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-wrong">WRONG:</b> Plain input hides dynamic popup list</span>
+      </div></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;input role=<span class="str">"combobox"</span> aria-expanded=<span class="str">"true"</span></span></div>
+<div class="row"><span class="num">4</span><span class="src">       aria-haspopup=<span class="str">"listbox"</span></span></div>
+<div class="row"><span class="num">5</span><span class="src">       aria-controls=<span class="str">"res-list"</span></span></div>
+<div class="row"><span class="num">6</span><span class="src">       aria-autocomplete=<span class="str">"list"</span> /&gt; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="margin-left: 75px;">
+        <i class="cmt-tail" style="left: 16px;"></i>
+        <span class="text"><b class="tag tag-right">RIGHT:</b> Full ARIA popup contract</span>
+      </div></div></div></div></div>
+<style>:root {
+    --meta-landmark: #ea580c;
+    --meta-landmark-bg: #fff7ed;
+    --meta-focus: #0284c7;
+    --meta-sr: #7c3aed;
+    --meta-sr-bg: #f5f3ff;
+    --meta-wrong: #e11d48;
+    --meta-right: #059669;
+    
+    --font-ui: 'Inter', -apple-system, system-ui, sans-serif;
+    --font-serif: 'Lora', Georgia, serif;
+    --font-meta: 'JetBrains Mono', Menlo, monospace;
+}
+
+/* Base Canvas Container */
+.a11y-canvas {
+    font-family: var(--font-ui);
+    color: #0f172a;
+    margin: 2rem 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+/* Width Modifiers */
+.a11y-canvas.w-half .browser-window {
+    max-width: 480px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-2-3 .browser-window {
+    max-width: 660px;
+    margin: 0 auto;
+}
+.a11y-canvas.w-full .browser-window {
+    max-width: 100%;
+}
+
+/* The Browser Chrome */
+.browser-window {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+.browser-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #cbd5e1;
+}
+.browser-dots { display: flex; gap: 5px; }
+.browser-dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; }
+.browser-dot.red { background: #fca5a5; }
+.browser-dot.yellow { background: #fde047; }
+.browser-dot.green { background: #86efac; }
+.browser-title {
+    flex: 1;
+    font-family: var(--font-meta);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.browser-url { flex: 1; max-width: 400px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; color: #64748b; }
+
+/* The UI Layer (The actual mocked page) */
+.mock-page {
+    position: relative;
+    padding: 24px 28px;
+    background: #f8fafc;
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 20px 20px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* Minimal 2-Element Comparison Layout */
+.mock-page.layout-compare {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    padding: 24px 20px;
+    flex-wrap: wrap;
+}
+.mock-page.layout-compare .meta-validity-outline {
+    display: none;
+}
+.mock-page.layout-compare .ui-element {
+    margin-bottom: 0;
+    flex: 1 1 200px;
+    max-width: 270px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 16px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    position: relative;
+}
+.mock-page.layout-compare .meta-validity-tag {
+    top: -11px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 3px 12px;
+    border-radius: 99px;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+/* In compare mode, suppress the numbered tab-stop circle (1) as it makes no sense in a 2-element comparison */
+.mock-page.layout-compare .meta-focus-badge {
+    display: none !important;
+}
+/* In compare mode, suppress outer landmark boxes and tags that clash with top validity tags */
+.mock-page.layout-compare .meta-landmark-box,
+.mock-page.layout-compare .meta-landmark-tag {
+    display: none !important;
+}
+/* In compare mode, let screen reader tooltips flow naturally above note chips to eliminate text overlap */
+.mock-page.layout-compare .meta-sr-tooltip {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin-top: 12px;
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 10;
+}
+.mock-page.layout-compare .meta-sr-tooltip::before {
+    left: 50%;
+    margin-left: -4px;
+}
+.mock-page.layout-compare .ui-element.has-sr {
+    margin-bottom: 0;
+    padding-bottom: 16px;
+}
+.mock-page.layout-compare .has-sr .meta-note-chip {
+    margin-top: 10px;
+}
+
+/* UI Control Wrapper */
+.ui-control-wrapper {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+.ui-control-wrapper.is-input {
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Ghost Outline for Invisible Focus */
+.meta-ghost-outline {
+    position: absolute;
+    inset: -5px;
+    border: 2px dashed #f43f5e;
+    border-radius: 8px;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(244, 63, 94, 0.15);
+}
+.meta-ghost-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    background: #f43f5e;
+    color: white;
+    font-family: var(--font-meta);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 99px;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    white-space: nowrap;
+    z-index: 60;
+}
+
+/* Status Note Chips */
+.meta-note-chip {
+    margin-top: 14px;
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.02em;
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.has-sr .meta-note-chip {
+    margin-top: 48px;
+}
+.meta-note-chip.note-wrong {
+    background: #ffe4e6;
+    color: #be123c;
+    border: 1px solid #fecdd3;
+}
+.meta-note-chip.note-right {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+.meta-note-chip.note-info {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
+.ui-element {
+    position: relative;
+    margin-bottom: 24px;
+    transition: all 0.3s ease;
+}
+
+/* Selectively add space ONLY for elements that have a Screen Reader tooltip */
+.ui-element.has-sr { margin-bottom: 72px; }
+.ui-form-group.has-sr { margin-bottom: 72px; }
+
+/* Dynamically tint the SR tooltip based on validity */
+.is-right .meta-sr-tooltip, .is-right .meta-sr-tooltip::before {
+    background: var(--meta-right);
+    box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.3);
+}
+.is-wrong .meta-sr-tooltip, .is-wrong .meta-sr-tooltip::before {
+    background: var(--meta-wrong);
+    box-shadow: 0 10px 15px -3px rgba(225, 29, 72, 0.3);
+}
+
+.ui-masthead { font-family: var(--font-serif); font-size: 2rem; font-weight: 700; text-align: center; border-bottom: 4px double #0f172a; padding-bottom: 8px; color: #0f172a; }
+.ui-nav { font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; font-weight: 600; color: #334155; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: center; gap: 24px; }
+.ui-h1 { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 700; color: #0f172a; margin-top: 16px; margin-bottom: 4px;}
+.ui-text { font-size: 0.95rem; color: #475569; margin-bottom: 16px; }
+
+.ui-form-group { margin-bottom: 24px; }
+.ui-label { font-size: 0.85rem; font-weight: 600; color: #334155; display: block; margin-bottom: 6px; }
+.ui-input { width: 100%; max-width: 300px; border: 1px solid #94a3b8; border-radius: 6px; padding: 10px 14px; font-size: 0.95rem; color: #64748b; background: #fff; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); outline: none; min-height: 20px; box-sizing: content-box; }
+.ui-input.is-broken { border-color: #cbd5e1; color: #94a3b8; }
+
+.ui-button { display: inline-block; background: #2563eb; color: #fff; font-size: 0.95rem; font-weight: 600; padding: 10px 28px; border-radius: 6px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2); cursor: pointer; border: none; }
+.ac-inline-link { color: #2563eb; text-decoration: underline; font-weight: 600; font-size: 0.95rem; display: inline-block; }
+.ac-card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px 18px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.ac-card-headline { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+.ac-card i { display: block; height: 8px; background: #f1f5f9; border-radius: 4px; margin-bottom: 6px; width: 90%; }
+.ac-card i:last-child { width: 65%; margin-bottom: 0; }
+.ui-footer { margin-top: 48px; padding: 24px; background: #1e293b; color: #f8fafc; font-size: 0.85rem; border-radius: 8px; text-align: center; }
+
+/* Modal Dialog Pattern */
+.ui-modal-scene {
+    position: relative;
+    width: 236px;
+    height: 142px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    background: #f1f5f9;
+}
+.ui-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 8px;
+}
+.ui-modal-backdrop.is-inert {
+    background: rgba(15, 23, 42, 0.6);
+    filter: grayscale(0.8);
+}
+.ui-modal-bg-doc {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.ui-modal-bg-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.ui-modal-bg-tag {
+    font-family: var(--font-meta);
+    font-size: 0.58rem;
+    font-weight: 700;
+    color: #94a3b8;
+}
+.ui-modal-leak-badge {
+    font-family: var(--font-meta);
+    font-size: 0.52rem;
+    font-weight: 800;
+    color: #f43f5e;
+    background: #ffe4e6;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.ui-modal-inert-badge {
+    font-family: var(--font-meta);
+    font-size: 0.52rem;
+    font-weight: 700;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+.ui-modal-bg-link {
+    font-size: 0.65rem;
+    color: #bae6fd;
+    text-decoration: underline;
+    display: inline-block;
+    width: fit-content;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+.ui-modal-bg-link.has-leaked-focus {
+    outline: 2px solid #38bdf8;
+    outline-offset: 1px;
+    background: rgba(56, 189, 248, 0.3);
+    color: #ffffff;
+    font-weight: 700;
+}
+.ui-modal-dialog {
+    position: absolute;
+    top: 36px;
+    left: 8px;
+    right: 8px;
+    bottom: 6px;
+    z-index: 10;
+    background: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    border: 1px solid #cbd5e1;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.ui-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.ui-modal-dialog-tag {
+    font-family: var(--font-meta);
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: #0284c7;
+    background: #e0f2fe;
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+.ui-modal-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ui-modal-body {
+    font-size: 0.6rem;
+    color: #64748b;
+    line-height: 1.2;
+    margin: 2px 0 4px;
+}
+.ui-modal-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+    align-items: center;
+}
+.ui-modal-btn {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #0f172a;
+    color: #ffffff;
+    cursor: pointer;
+}
+.ui-modal-btn.has-trapped-focus {
+    outline: 2px solid #0284c7;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 1px #ffffff;
+}
+.ui-modal-btn-ghost {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+/* Switch & Badge Components */
+.ui-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.ui-switch-track {
+    width: 36px;
+    height: 20px;
+    background: #cbd5e1;
+    border-radius: 99px;
+    position: relative;
+    transition: background 0.2s ease;
+}
+.ui-switch.is-checked .ui-switch-track {
+    background: #059669;
+}
+.ui-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease;
+}
+.ui-switch.is-checked .ui-switch-thumb {
+    transform: translateX(16px);
+}
+.ui-switch-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.ui-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 99px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+/* Tablist Pattern */
+.ui-tablist {
+    display: flex;
+    gap: 4px;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+}
+.ui-tab-item {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 6px;
+    color: #64748b;
+    background: transparent;
+    border: 1px solid transparent;
+}
+.ui-tab-item.is-active {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-color: #e2e8f0;
+}
+
+/* Menu Dropdown Pattern */
+.ui-menu-dropdown {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 4px;
+    min-width: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.ui-menu-item {
+    font-size: 0.74rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    color: #1e293b;
+    font-weight: 500;
+}
+.ui-menu-item.is-active {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+/* Combobox Pattern */
+.ui-combobox {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+}
+.ui-combobox-input {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 0.76rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #0f172a;
+}
+.ui-combobox-caret {
+    font-size: 0.65rem;
+    color: #64748b;
+}
+.ui-combobox-listbox {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.ui-combobox-option {
+    font-size: 0.72rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #334155;
+}
+.ui-combobox-option.is-active {
+    background: #0284c7;
+    color: #ffffff;
+    font-weight: 600;
+}
+.ui-h2 {
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* Meta-Layer Annotations */
+.meta-layer {
+    position: absolute;
+    font-family: var(--font-meta);
+    z-index: 50;
+    pointer-events: none;
+}
+
+/* Landmarks */
+.meta-landmark-box {
+    inset: -8px;
+    border: 2px dashed var(--meta-landmark);
+    border-radius: 8px;
+    background: rgba(255, 247, 237, 0.3);
+}
+.meta-landmark-tag {
+    top: -12px;
+    left: 12px;
+    color: var(--meta-landmark);
+    background: var(--meta-landmark-bg);
+    border: 1px solid var(--meta-landmark);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.1);
+}
+
+/* Screen Reader Tooltips */
+.meta-sr-tooltip {
+    top: 100%;
+    left: 0;
+    margin-top: 12px;
+    background: var(--meta-sr);
+    color: white;
+    font-size: 0.7rem;
+    padding: 5px 8px;
+    border-radius: 6px;
+    white-space: normal;
+    max-width: 210px;
+    box-shadow: 0 10px 15px -3px rgba(124, 58, 237, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.meta-sr-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 16px;
+    width: 8px; height: 8px;
+    background: var(--meta-sr);
+    transform: rotate(45deg);
+}
+.meta-sr-badge {
+    background: rgba(255,255,255,0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+/* Focus Order */
+.meta-focus-badge {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--meta-focus);
+    color: white;
+    border: 2px solid white;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    box-shadow: 0 0 0 2px var(--meta-focus), 0 3px 5px rgba(0,0,0,0.2);
+    z-index: 60;
+}
+.meta-focus-outline {
+    position: absolute;
+    inset: -5px;
+    border: 3px solid var(--meta-focus);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+/* Surface Dark mode for dark containers/footers */
+.mock-page.surface-dark {
+    background: #090d16;
+    background-image: radial-gradient(#1e293b 1px, transparent 1px);
+}
+.mock-page.surface-dark.layout-compare .ui-element {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.mock-page.surface-dark .meta-note-chip.note-wrong {
+    background: #450a0a;
+    color: #fca5a5;
+    border-color: #7f1d1d;
+}
+.mock-page.surface-dark .meta-note-chip.note-right {
+    background: #082f49;
+    color: #7dd3fc;
+    border-color: #0369a1;
+}
+
+/* Validity */
+.meta-validity-outline {
+    inset: -6px;
+    border: 2px solid transparent;
+    border-left-width: 6px;
+    border-radius: 8px;
+}
+.meta-validity-tag {
+    top: -12px;
+    left: 10px;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+}
+
+.is-wrong .meta-validity-outline { border-color: var(--meta-wrong); background: linear-gradient(90deg, rgba(225, 29, 72, 0.05) 0%, transparent 100%); }
+.is-right .meta-validity-outline { border-color: var(--meta-right); background: linear-gradient(90deg, rgba(5, 150, 105, 0.05) 0%, transparent 100%); }
+.is-wrong .meta-validity-tag { background: var(--meta-wrong); }
+.is-right .meta-validity-tag { background: var(--meta-right); }
+
+.relative-wrapper { position: relative; display: inline-block; width: 100%; max-width: 300px; }
+.relative-wrapper .ui-button { max-width: none; width: auto; }
+
+/* Image element */
+.ac-image {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 14px 18px;
+    color: #475569;
+    font-size: 0.85rem;
+    font-family: var(--font-meta);
+}
+.ac-picture {
+    width: 24px;
+    height: 24px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+.ac-image-file {
+    font-weight: 600;
+}
+.ac-chip-row {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+.ac-chip {
+    font-family: var(--font-meta);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.ac-chip.pass { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.ac-chip.fail { background: #ffe4e6; color: #be123c; border: 1px solid #fca5a5; }</style>
+<div class="a11y-canvas w-2-3">
+
+<div class="browser-window">
+	<div class="browser-chrome">
+		<div class="browser-dots">
+			<div class="browser-dot red"></div>
+			<div class="browser-dot yellow"></div>
+			<div class="browser-dot green"></div>
+		</div>
+		<div class="browser-title">
+			<svg class="w-3 h-3" style="width:11px;height:11px;margin-right:6px;color:#059669;display:inline-block;vertical-align:-1px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+			Autocomplete State: Plain Input vs ARIA Combobox Contract
+		</div>
+		<div style="width:40px;"></div>
+	</div>
+	<div class="mock-page show-landmarks show-sr show-focus show-validity layout-compare ">
+		<div class="ui-element ac-combobox is-wrong has-validity has-sr" style="z-index: 100;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">WRONG: PLAIN TEXT INPUT</div>
+				<div class="ui-combobox">
+					<div class="ui-combobox-input">Search archives... <span class="ui-combobox-caret">▾</span></div>
+					
+				</div>
+			<div class="meta-layer meta-sr-tooltip"><span class="meta-sr-badge">Screen Reader</span><span>Search archives, edit text</span></div><div class="meta-note-chip note-wrong">✕ Popup list hidden from screen reader</div></div>
+<div class="ui-element ac-combobox is-right has-validity has-sr" style="z-index: 99;"><div class="meta-layer meta-validity-outline"></div><div class="meta-layer meta-validity-tag">RIGHT: COMBOBOX ARIA CONTRACT</div>
+				<div class="ui-combobox">
+					<div class="ui-combobox-input">Search archives... <span class="ui-combobox-caret">▾</span></div>
+					<div class="ui-combobox-listbox"><div class="ui-combobox-option is-active">Transit Budget ($14M)</div></div>
+				</div>
+			<div class="meta-layer meta-sr-tooltip"><span class="meta-sr-badge">Screen Reader</span><span>Search archives, combobox, expanded, 1 of 5</span></div><div class="meta-note-chip note-right">✓ Exposes role, state, and option index</div></div>
+	</div>
+</div>
+</div>
+<p>When an input declares <code>role="combobox"</code>, the screen reader announces its specialized composite identity immediately upon entry. On the right, declaring <code>aria-expanded="true"</code> informs Maya that a popup has opened, while <code>aria-haspopup="listbox"</code> and <code>aria-controls="res-list"</code> establish the programmatic bond between the search bar and the results list. When Maya arrows down, the screen reader announces: "Transit Budget ($14M), 1 of 5". Without these attributes, a screen reader announces only a generic text edit field, keeping Maya entirely oblivious to the suggested search matches.</p>
+<p>The W3C ARIA Authoring Practices Guide establishes the definitive definition and structure of the combobox pattern:</p>
+<blockquote>A combobox is an input widget that has an associated popup. The popup enables users to choose a value for the input from a collection. The popup may be a listbox, grid, tree, or dialog.</blockquote>
+<p><em>W3C WAI, Combobox Pattern, resources/accessibility/aria-practices/content/patterns/combobox/combobox-pattern.html</em></p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Never move physical DOM focus away from the combobox text input; manage the active dropdown item virtually using aria-activedescendant.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> detail the four W3C combobox autocomplete modes: no autocomplete, list autocomplete with manual selection, list autocomplete with automatic selection, and list with inline autocomplete. Explain how each option requires distinct <code>aria-autocomplete</code> and <code>aria-activedescendant</code> management to ensure assistive software announces the highlighted choice without disrupting the user's cursor position.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Public record search portals: filtering municipal resolutions and judicial dockets by keyword with instant autocomplete suggestions.</li>
+<li>E-commerce address forms: selecting postal cities and provinces from an autocompleting listbox linked to physical text inputs.</li>
+<li>Financial reporting suites: searching stock tickers and bond identifiers across thousands of listings using virtual focus.</li>
+<li>Healthcare provider directories: filtering clinic specialties and physician names with keyboard-operable combobox lists.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Combobox Role</strong>: A composite input widget that pairs a single-line textbox with an associated popup listbox, grid, or tree.</li>
+<li><strong>aria-activedescendant</strong>: A focus delegation property that identifies the currently active child element without moving physical DOM focus.</li>
+<li><strong>aria-expanded</strong>: A boolean state indicating whether the combobox's associated popup container is currently displayed or collapsed.</li>
+<li><strong>aria-haspopup</strong>: An attribute indicating the type of popup component triggered by the combobox widget, such as listbox or dialog.</li>
+<li><strong>Virtual Focus</strong>: An architectural pattern where keyboard navigation updates visual styles and ARIA pointers while physical focus stays on the container.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Virtual Focus Architecture and Combobox Widget Engineering</strong></p>
+<p>Custom form controls require an airtight contract between visual behavior and programmatic state. Stealing physical focus from an input element traps users and destroys typing flow. Retain physical focus on the text box, delegate selection states through virtual focus attributes, and expose dynamic popup relationships through standardized ARIA properties. Here is your streetwise review.</p>
+<p>❒ The Architectural Foundation of Accessible Comboboxes</p>
+<ol><li>Virtual Focus Management
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Physical DOM focus remains permanently on the <code>&lt;input role="combobox"&gt;</code>.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Arrow keys update <code>aria-activedescendant</code> with the active option's ID.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(c) Visual styling updates via CSS attribute selectors matching the active descendant.</li>
+<li>Synchronized State Binding
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Set <code>aria-expanded="true"</code> when the suggestion listbox appears.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Bind the input to the dropdown container using <code>aria-controls="listbox-id"</code>.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;(c) Declare <code>role="listbox"</code> on the popup and <code>role="option"</code> on every suggestion item.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Move DOM focus to list elements, breaking keyboard typing and editing.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;input type=<span class="str">"text"</span> onkeydown=<span class="str">"list[0].focus()"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">&lt;ul <span class="kw">class</span>=<span class="str">"suggestions"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;li tabindex=<span class="str">"0"</span>&gt;Transit&lt;/li&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">&lt;/ul&gt;</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;">&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Retain input focus and delegate selection using aria-activedescendant.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">index.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;input role=<span class="str">"combobox"</span> aria-expanded=<span class="str">"true"</span></span></div>
+<div class="row"><span class="num">2</span><span class="src">       aria-controls=<span class="str">"opt-list"</span> aria-activedescendant=<span class="str">"opt-1"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;ul id=<span class="str">"opt-list"</span> role=<span class="str">"listbox"</span>&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;li id=<span class="str">"opt-1"</span> role=<span class="str">"option"</span>&gt;Transit&lt;/li&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;/ul&gt;</span></div></div></div></div>
+</div>
+<p>➔ NEVER transfer physical DOM focus away from an active text input during autocompletion.</p>
+<p>➔ ALWAYS update <code>aria-expanded</code> dynamically as the popup opens and closes.</p>
+<p>➔ IF options can be filtered by typing THEN declare <code>aria-autocomplete="list"</code>.</p>
+<table><thead><tr><th></th><th><strong>NAIVE FOCUS STEAL</strong><br>(physical shift)</th><th><strong>ARIA COMBOBOX</strong><br>(virtual focus)</th></tr></thead><tbody><tr><td><strong>Focus location</strong></td><td>Jumps onto list item;<br>leaves input field</td><td>Stays permanently<br>inside text input</td></tr><tr><td><strong>Typing ergonomics</strong></td><td>Broken; user cannot<br>backspace or edit</td><td>Flawless; typing continues<br>without interruption</td></tr><tr><td><strong>State announcement</strong></td><td>Speaks raw item as<br>independent focus stop</td><td>Speaks option text,<br>index, and set size</td></tr><tr><td><strong>Popup visibility</strong></td><td>Hidden from AT;<br>unannounced list</td><td>Programmatic link via<br><code>aria-controls</code></td></tr><tr><td><strong>Escape behavior</strong></td><td>Strands user inside<br>dropdown container</td><td>Closes popup and<br>clears descendant</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 39: Managing Action State: The useActionState Hook</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 39: Managing Action State: The useActionState Hook</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">How does useActionState manage a form's submitted state and pending flag?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer named Jeremy builds a reader tip submission form for The National Times.</li>
+<li>Jeremy coordinates three separate state variables to track pending status, errors, and results.</li>
+<li>A missing error reset leaves the submit button permanently disabled after a failed attempt.</li>
+<li>Why must developers manage three separate state variables just to track a form submission?</li>
+<li>Desynchronized submission states freeze submit buttons and prevent readers from sending urgent news tips.</li>
+<li>Coordinating asynchronous states manually invites race conditions whenever readers click multiple times.</li>
+<li>Today you learn how useActionState manages pending transitions and submission outcomes automatically.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Anatomy of useActionState: The Three-Element Tuple</h3>
+<p>In web applications, submitting a form is rarely a fire-and-forget operation. Users expect instant feedback: buttons should disable while a request is in flight, spinners should indicate network progress, validation errors must display inline, and successful submissions should reveal confirmation receipts.</p>
+<p>Historically in React, achieving this required developers to manually coordinate multiple independent state variables:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Historical Pattern</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> [isSubmitting, setIsSubmitting] = <span class="hook">useState</span>(<span class="kw">false</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text">Manual tracking of pending <b class="tag">SUBMISSION</b></span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">const</span> [error, setError] = <span class="hook">useState</span>(<span class="kw">null</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">const</span> [result, setResult] = <span class="hook">useState</span>(<span class="kw">null</span>);</span></div></div></div></div>
+<p>Whenever the form was submitted, the developer had to remember to wrap the asynchronous fetch in a <code>try / catch / finally</code> block, manually toggling <code>setIsSubmitting(true)</code> at the start and <code>setIsSubmitting(false)</code> inside <code>finally</code>. If a developer forgot the <code>finally</code> block or encountered an unhandled exception, the submit button remained permanently disabled, freezing the interface.</p>
+<p>React 19 eliminates this manual coordination by introducing the <strong>useActionState hook</strong> (standardized from the experimental <code>useFormState</code> API). The hook unifies the entire asynchronous action lifecycle into a single atomic declaration:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">useActionState Hook Signature</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">const</span> [state, formAction, isPending] = <span class="hook">useActionState</span>(actionFn, initialState, permalink);</span></div></div></div></div>
+<p>The hook accepts an asynchronous action function and an initial state object, returning a clean three-element tuple:</p>
+<ul>
+<li><strong>state</strong>: The latest value returned by <code>actionFn</code>. On initial render, this equals <code>initialState</code>. After an action executes, it updates to whatever value the action returned (such as a success payload or structured error object).</li>
+<li><strong>formAction</strong>: A specialized action dispatcher function that you pass directly to <code>&lt;form action={formAction}&gt;</code> or <span class="code-line-callout"><code>&lt;button formAction={formAction}&gt;</code></span> Invoking this function triggers <code>actionFn</code> within a React Transition.</li>
+<li><strong>isPending</strong>: A built-in boolean flag managed automatically by React. It becomes <code>true</code> the instant the action begins executing and automatically resets to <code>false</code> when the returned promise resolves or rejects.</li>
+</ul>
+<p>Crucially, the action function passed to <code>useActionState</code> receives a unique signature:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Action Function Signature</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">async</span> <span class="kw">function</span> <span class="fn">actionFn</span>(previousState, formData) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> nextState; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Reducer returns next state using previousState and <b class="tag">FORMDATA</b></span>
+      </div></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+<p>Unlike basic form actions that receive only <code>formData</code>, an action managed by <code>useActionState</code> receives <code>previousState</code> as its first parameter. This architecture turns your action function into an asynchronous state reducer.</p>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>How does useActionState eliminate form bookkeeping boilerplate?</strong> Imagine a bank teller window with a manual paper logbook. In the old system, every time a customer deposited money, the teller had to manually turn on an electric "In Service" bulb, open three separate ledger binders to write down the customer name, balance, and error log, calculate the new balance by hand, and remember to turn off the light bulb when finished. If the teller got distracted and forgot to turn off the light bulb, the line stood frozen for hours! That was hand-rolled useState with loading, error, and data: one forgotten finally block, and your submit button froze permanently in a disabled state! Now imagine a modern automated teller machine: you insert the deposit envelope. The machine automatically displays a processing status indicator, computes the new account total using your previous balance, updates your account state on screen, and resets the interface when finished. That is useActionState. You pass an action function and an initial state. React automatically manages the isPending flag, supplies the previousState to your function, and updates the returned state when the promise resolves. Understanding <strong>hand-rolled useState</strong> as a <strong>manual teller with paper binders</strong> and <strong>useActionState</strong> as an <strong>automated teller transaction</strong> clarifies why <strong>useActionState makes async form state atomic and bulletproof</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Built-in Concurrent Transitions and the isPending Flag</h3>
+<p>The second profound advantage of <code>useActionState</code> is its native integration with React concurrent rendering.</p>
+<p>When a user submits a <code>&lt;form action={formAction}&gt;</code>, React wraps the execution of <code>actionFn</code> inside a React Transition automatically. In earlier versions of React, developers had to manually import <code>useTransition</code>, declare <span class="code-line-callout"><code><span class="kw">const</span> [isPending, startTransition] = <span class="hook">useTransition</span>()</code></span> and wrap their async calls inside <span class="code-line-callout"><code><span class="fn">startTransition</span>(<span class="kw">async</span> () =&gt; { ... })</code></span></p>
+<p>With <code>useActionState</code>, the transition is intrinsic:</p>
+<ul>
+<li><strong>Non-Blocking Execution</strong>: Because the action runs inside a Transition, long-running network operations do not block high-priority browser events. If a user types into an unrelated search bar or clicks a navigation tab while the form is transmitting, React responds immediately.</li>
+<li><strong>Automated isPending Flag</strong>: You do not need a custom boolean state variable. You read <code>isPending</code> directly from the tuple to disable form fields, display progress indicators, and swap button labels.</li>
+<li><strong>Accumulative State Updates</strong>: Because <code>actionFn</code> receives <code>previousState</code>, you can easily maintain running session counts, append submitted records to a client-side history log, or calculate incremental changes without creating auxiliary state hooks.</li>
+</ul>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why is receiving previousState in the action function significant?</strong> Imagine a warehouse inventory clerk logging inbound crates on a chalkboard. If the clerk only looks at the new shipping manifest without knowing how many crates are already stacked in the warehouse, they cannot tell you the total stock! They must look at the current total written on the chalkboard, add the new shipment, and write down the new combined total. That is why useActionState passes previousState as its very first argument: (previousState, formData) =&gt; nextState. It allows your action to preserve running counters, accumulate a submission history log, or conditionally branch based on previous results without reading stale closures. Understanding <strong>previousState</strong> as <strong>the warehouse chalkboard total</strong> clarifies why <strong>useActionState functions act as asynchronous state reducers</strong>.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The National Times Whistleblower Tip Portal Architecture</h3>
+<p>To inspect <code>useActionState</code> in production, explore the confidential whistleblower submission portal for The National Times. Investigative reporters rely on <code>ConfidentialTipForm.jsx</code> to receive sensitive leads, validate content length, increment submission tallies, and display real-time transmission progress:</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>App.jsx</span></div></li><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-component" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg><span>ConfidentialTipForm.jsx</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-generic"><div class="component-explorer-label"><span>App</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>ConfidentialTipForm</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Whistleblower Vault</span><span class="surface-render-line">Transmit Confidential Lead</span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+<p>The Component Explorer shows the architecture. <code>App.jsx</code> serves as the parent component that renders the page header and mounts <code>&lt;ConfidentialTipForm /&gt;</code>. Because <code>useActionState</code> manages the action handler, pending indicator, and submission state entirely inside the form, <code>App.jsx</code> remains completely lean, requiring zero props, zero state hooks, and zero callback plumbing.</p>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure">
+  <style>
+    .pipeline-card-figure {
+      margin: 1.5rem auto;
+      max-width: 590px;
+      background: #f4f6f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .pipeline-card-figure .pipeline-header {
+      background: #344154;
+      padding: 10px 18px;
+    }
+    .pipeline-card-figure .pipeline-header span {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .pipeline-card-figure .pipeline-body {
+      padding: 18px 20px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pipeline-card-figure .step-node {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: #fcfcfb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 20px 14px 26px;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .pipeline-card-figure .step-node::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #0e7490;
+    }
+    .pipeline-card-figure .step-title-line {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      line-height: 1.35;
+    }
+    .pipeline-card-figure .step-num {
+      color: #0e7490;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-label {
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.86rem;
+    }
+    .pipeline-card-figure .step-code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: #475569;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+    .pipeline-card-figure .step-desc {
+      margin-top: 11px;
+      text-align: center;
+      font-size: 0.77rem;
+      line-height: 1.45;
+      font-style: italic;
+      color: #334155;
+      max-width: 470px;
+    }
+    .pipeline-card-figure .step-desc strong {
+      font-weight: 700;
+      color: #0f172a;
+      font-style: normal;
+    }
+    .pipeline-card-figure .step-connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+    }
+    .pipeline-card-figure .step-connector svg {
+      display: block;
+    }
+  </style>
+
+  <div class="pipeline-header">
+    <span>EXAMPLE OF MANAGING ACTION STATE</span>
+  </div>
+
+  <div class="pipeline-body">
+    <!-- Step 1 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 1:</span>
+        <span class="step-label">Writing the Asynchronous Action Reducer Function</span>
+      </div>
+      <div class="step-code">submitTipAction(previousState, formData)</div>
+      <div class="step-desc">
+        First, we write the <strong>async reducer</strong> to <strong>read inputs from FormData</strong>, <strong>validate text length</strong>, and <strong>return the next state</strong>.
+      </div>
+    </div>
+
+    <!-- Connector 1 -> 2 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 2:</span>
+        <span class="step-label">Declaring useActionState and Binding the Form Action</span>
+      </div>
+      <div class="step-code">useActionState(submitTipAction, initialState)</div>
+      <div class="step-desc">
+        Next, we <strong>declare useActionState</strong> inside the component and <strong>bind its action handler</strong> directly to the form.
+      </div>
+    </div>
+
+    <!-- Connector 2 -> 3 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 3:</span>
+        <span class="step-label">Rendering Interactive Feedback and Non-Blocking Controls</span>
+      </div>
+      <div class="step-code">JSX alert banners &amp; disabled={isPending}</div>
+      <div class="step-desc">
+        Then, we <strong>disable the submit button</strong> during pending transitions and <strong>render dynamic alert banners</strong> for errors or receipts.
+      </div>
+    </div>
+
+    <!-- Connector 3 -> 4 -->
+    <div class="step-connector">
+      <svg width="22" height="32" viewBox="0 0 22 32" fill="none">
+        <line x1="11" y1="3" x2="11" y2="20" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+        <polygon points="5,18 11,27 17,18" fill="#475569" stroke="#475569" stroke-width="1" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-node">
+      <div class="step-title-line">
+        <span class="step-num">Step 4:</span>
+        <span class="step-label">Mounting the Form in the Parent Component App</span>
+      </div>
+      <div class="step-code">App.jsx</div>
+      <div class="step-desc">
+        Finally, we <strong>mount the whistleblower form</strong> inside the <strong>parent component App.jsx</strong>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 39.1: Step-by-step code assembly pipeline for useActionState form architecture</figcaption>
+</figure>
+<p>The schematic blueprint above illustrates the sequential code construction pipeline for <code>useActionState</code>. Rather than authoring a massive, monolithic component all at once, senior engineers decompose modern React 19 forms across distinct architectural steps:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: Writing the Asynchronous Action Reducer Function';">Writing the Asynchronous Action Reducer Function</div>
+      
+    </div>
+  </div>
+</div>
+<p>The foundation of <code>useActionState</code> is a pure asynchronous function that accepts <code>(previousState, formData)</code> and returns the next state object. In <code>ConfidentialTipForm.jsx</code>, we first author <code>submitTipAction</code> to isolate all validation and persistence logic from visual markup:</p>
+<div class="editor continues-bottom"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ConfidentialTipForm.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">useActionState</span> } <span class="kw">from</span> <span class="str">"react"</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">async</span> <span class="kw">function</span> <span class="fn">submitTipAction</span>(previousState, formData) {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> topic = formData.<span class="kw">get</span>(<span class="str">"topic"</span>)?.<span class="fn">toString</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Extract topic field from native FormData</span>
+      </div></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> message = formData.<span class="kw">get</span>(<span class="str">"message"</span>)?.<span class="fn">toString</span>().<span class="fn">trim</span>(); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Extract narrative message text</span>
+      </div></div>
+<div class="row even"><span class="num">6</span><span class="src"></span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">if</span> (!message || message.length &lt; <span class="nl">10</span>) {</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="kw">return</span> {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      status: <span class="str">"error"</span>,</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      error: <span class="str">"Confidential tip must contain at least 10 characters of detail."</span>,</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">      submissionCount: previousState.submissionCount,</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      receiptId: <span class="kw">null</span></span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    };</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  }</span></div></div></div></div>
+<p>Instead of syncing keystrokes into React state on every keypress, <code>formData.get("topic")</code> and <code>formData.get("message")</code> extract submitted field values directly from native browser <strong>FormData</strong>. When a tip is shorter than ten characters, the reducer returns an atomic error object rather than throwing an exception. Continuing inside the reducer function, we simulate encrypted vault transmission and derive the success state payload:</p>
+<div class="editor continues-both"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">15</span><span class="src">  <span class="kw">await</span> <span class="kw">new</span> <span class="fn">Promise</span>(resolve =&gt; <span class="fn">setTimeout</span>(resolve, <span class="nl">350</span>)); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text">Simulate encrypted vault dispatch</span>
+      </div></div>
+<div class="row even"><span class="num">16</span><span class="src"></span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  <span class="kw">return</span> {</span></div>
+<div class="row even"><span class="num">18</span><span class="src">    status: <span class="str">"success"</span>,</span></div>
+<div class="row odd"><span class="num">19</span><span class="src">    error: <span class="kw">null</span>,</span></div>
+<div class="row even"><span class="num">20</span><span class="src">    submissionCount: previousState.submissionCount + <span class="nl">1</span>,</span></div>
+<div class="row odd"><span class="num">21</span><span class="src">    receiptId: <span class="str">`LEAD-${Math.floor(100000 + Math.random() * 900000)}`</span></span></div>
+<div class="row even"><span class="num">22</span><span class="src">  };</span></div>
+<div class="row odd"><span class="num">23</span><span class="src">}</span></div></div></div></div>
+<p>Notice how receiving <code>previousState</code> enables multi-submission counters and rolling audit logs without reading stale closures. With the action reducer sealed, we move into the component body to declare <code>useActionState</code> and bind our action dispatcher:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Declaring useActionState and Binding the Form Action';">Declaring useActionState and Binding the Form Action</div>
+      
+    </div>
+  </div>
+</div>
+<p>With the action reducer established, we declare <code>useActionState</code> inside <code>ConfidentialTipForm</code> and bind the resulting dispatcher to <code>&lt;form action={formAction}&gt;</code>. This connects our business logic directly into React 19 concurrent transition lifecycle without requiring synthetic event handlers:</p>
+<div class="editor continues-both has-sticky-note"><div class="sticky-note"><span class="note-filename">ConfidentialTipForm.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row even"><span class="num">24</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ConfidentialTipForm</span>() {</span></div>
+<div class="row odd"><span class="num">25</span><span class="src">  <span class="kw">const</span> [state, formAction, isPending] = <span class="hook">useActionState</span>(submitTipAction, {</span></div>
+<div class="row even"><span class="num">26</span><span class="src">    status: <span class="str">"idle"</span>,</span></div>
+<div class="row odd"><span class="num">27</span><span class="src">    error: <span class="kw">null</span>,</span></div>
+<div class="row even"><span class="num">28</span><span class="src">    submissionCount: <span class="nl">0</span>,</span></div>
+<div class="row odd"><span class="num">29</span><span class="src">    receiptId: <span class="kw">null</span></span></div>
+<div class="row even"><span class="num">30</span><span class="src">  });</span></div>
+<div class="row odd"><span class="num">31</span><span class="src"></span></div>
+<div class="row even"><span class="num">32</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">33</span><span class="src">    &lt;form action={formAction} className=<span class="str">"tip-form"</span>&gt;</span></div>
+<div class="row even"><span class="num">34</span><span class="src">      &lt;h3&gt;Confidential Newsroom Whistleblower Vault&lt;/h3&gt;</span></div></div></div></div>
+<p>By leveraging <code>useActionState</code>, the engine handles the pending states directly. This avoids manual boilerplate and immediately provides a resilient foundation. The hook accepts an asynchronous action function and an initial state object. Continuing down the file, we return the JSX needed for the form interface:</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Rendering Interactive Feedback and Non-Blocking Controls';">Rendering Interactive Feedback and Non-Blocking Controls</div>
+      
+    </div>
+  </div>
+</div>
+<p>The third layer connects <code>state</code> and <code>isPending</code> directly into the JSX markup to provide real-time reader feedback. By interrogating the returned state tuple, the user interface reflects server receipts, validation alerts, and submission states with zero boilerplate:</p>
+<div class="editor continues-both has-sticky-note"><div class="sticky-note"><span class="note-filename">ConfidentialTipForm.jsx</span> <span class="note-tag">(continued)</span></div><div class="editor-main"><div class="code"><div class="row odd"><span class="num">35</span><span class="src">      &lt;p className=<span class="str">"submission-counter"</span>&gt;Total Leads Filed <span class="kw">in</span> Session: {state.submissionCount}&lt;/p&gt;</span></div>
+<div class="row even"><span class="num">36</span><span class="src"></span></div>
+<div class="row odd"><span class="num">37</span><span class="src">      {state.status === <span class="str">"error"</span> &amp;&amp; (</span></div>
+<div class="row even"><span class="num">38</span><span class="src">        &lt;p className=<span class="str">"alert-banner alert-error"</span>&gt;{state.error}&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">39</span><span class="src">      )}</span></div>
+<div class="row even"><span class="num">40</span><span class="src">      {state.status === <span class="str">"success"</span> &amp;&amp; (</span></div>
+<div class="row odd"><span class="num">41</span><span class="src">        &lt;p className=<span class="str">"alert-banner alert-success"</span>&gt;</span></div>
+<div class="row even"><span class="num">42</span><span class="src">          Lead securely deposited into vault. Receipt Token: {state.receiptId}</span></div>
+<div class="row odd"><span class="num">43</span><span class="src">        &lt;/p&gt;</span></div>
+<div class="row even"><span class="num">44</span><span class="src">      )}</span></div></div></div></div>
+<p>Notice how <code>state.submissionCount</code> and <code>state.error</code> automatically reflect the latest reducer output without requiring local <code>useState</code> synchronization. To guard against duplicate submissions during active network requests, we bind <code>isPending</code> to our interactive controls:</p>
+<div class="editor continues-top"><div class="editor-main"><div class="code"><div class="row odd"><span class="num">45</span><span class="src">      &lt;button type=<span class="str">"submit"</span> disabled={isPending} className=<span class="str">"btn-submit"</span>&gt;</span></div>
+<div class="row even"><span class="num">46</span><span class="src">        {isPending ? <span class="str">"Encrypting &amp; Transmitting..."</span> : <span class="str">"Transmit Confidential Lead"</span>}</span></div>
+<div class="row odd"><span class="num">47</span><span class="src">      &lt;/button&gt;</span></div>
+<div class="row even"><span class="num">48</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">49</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">50</span><span class="src">}</span></div></div></div></div>
+<p>Binding <code>disabled={isPending}</code> automatically prevents duplicate submissions while the async action runs, switching the button label to indicate progress until React receives the server response and re-enables the control.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Mounting the Form in the Parent Component App';">Mounting the Form in the Parent Component App</div>
+      
+    </div>
+  </div>
+</div>
+<p>Now we render <code>&lt;ConfidentialTipForm /&gt;</code> inside the parent component <code>App.jsx</code>. Because <code>useActionState</code> encapsulates the submission handler, loading flags, and error state entirely inside the child component, the parent requires zero state hooks, zero props, and zero callback plumbing:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> ConfidentialTipForm <span class="kw">from</span> <span class="str">"./ConfidentialTipForm.jsx"</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"></span></div>
+<div class="row odd"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;main className=<span class="str">"vault-portal-container"</span>&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;header className=<span class="str">"vault-header"</span>&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">        &lt;h2&gt;The National Times Secure Whistleblower Channel&lt;/h2&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">        &lt;p className=<span class="str">"vault-subtitle"</span>&gt;End-to-end encrypted dispatch pipeline <span class="kw">for</span> confidential investigative sources.&lt;/p&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;/header&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      &lt;section className=<span class="str">"vault-content"</span>&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">        &lt;ConfidentialTipForm /&gt;</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      &lt;/section&gt;</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    &lt;/main&gt;</span></div>
+<div class="row even"><span class="num">14</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="keep-together">
+<h3>Architectural Comparison: useActionState vs Hand-Rolled State</h3>
+<p>When building asynchronous forms before React 19, developers manually coordinated three separate state variables: one for server data, one for loading indicators, and one for validation errors. This hand-rolled pattern forced engineers to write repetitive try-catch-finally routines inside synthetic event handlers, frequently leaving interfaces in broken states.</p>
+<ol><li><strong>State Triplication vs The Atomic Action Tuple</strong>: Hand-rolled forms declare separate <code>useState</code> hooks for data, pending, and error flags. If an uncaught exception escapes the finally block, buttons freeze in a perpetual loading state. In contrast, <code>useActionState</code> unifies all three concerns into an atomic tuple <span class="code-line-callout"><code>[state, formAction, isPending]</code></span> React guarantees that loading flags and response payloads transition together without intermediate inconsistent renders.</li>
+<li><strong>Stale Closure Hazards vs Reducer Accumulation</strong>: Hand-rolled submission functions that read component state during rapid dispatches risk reading stale closure snapshots. React 19 solves this by shaping action functions as reducers that accept <code>(previousState, formData)</code>. Every submission receives the exact return value of the previous action execution, enabling reliable counters, rolling transaction logs, and resilient optimistic updates.</li>
+<li><strong>Synchronous Blocking vs Automated Transition Scheduling</strong>: Hand-rolled state updates inside <code>handleSubmit</code> run at standard user-blocking priority, potentially causing frame drops during expensive UI rerenders. <code>useActionState</code> automatically executes asynchronous actions inside a React Transition. Background updates yield to urgent user keystrokes, while <code>isPending</code> reflects the active transition state without requiring a separate <code>useTransition</code> hook.</li>
+<li><strong>Synthetic Interception vs Native Form Actions</strong>: Legacy patterns intercept submissions using <code>onSubmit</code> handlers and <code>e.preventDefault()</code>. React 19 pairs <code>useActionState</code> directly with native browser mechanics via <code>&lt;form action={formAction}&gt;</code>. This architecture aligns React with web platform standards, streamlines server component coordination, and avoids synthetic event bubbling overhead.</li></ol>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how useActionState manages form state and pending indicators, deliver this comprehensive technical explanation: "1. Three-Element Tuple: useActionState wraps an action function and returns [state, formAction, isPending]. This eliminates the need to manually coordinate separate useState hooks for loading, error, and response payloads. 2. Asynchronous Reducer Model: The action function accepts (previousState, formData), allowing accumulative updates like submission counters or optimistic history logs based on earlier action returns. 3. Automated Transition Wrapping: Submitting the form executes the action inside a React Transition automatically; isPending becomes true while the async promise is pending without requiring a separate useTransition hook, keeping non-urgent updates from blocking high-priority user interactions."</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul>
+<li>Whistleblower and confidential lead intake desks: Transmitting encrypted reports with real-time receipt generation and submission counters.</li>
+<li>User authentication and onboarding flows: Managing server-side credential verification with inline error messages and disabled submit buttons.</li>
+<li>Multi-step checkout carts: Recalculating shipping taxes and updating cart totals using the previousState accumulator.</li>
+<li>Comment and reaction systems: Submitting reader replies with automated pending spinners and optimistic feedback.</li>
+<li>Account settings editors: Handling profile updates with inline validation alerts and automatic form resets upon success.</li>
+</ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>useActionState Hook</strong>: A React 19 hook that wraps an action function, returning the current action state, a formAction dispatcher, and an isPending flag.</li>
+<li><strong>Action State Tuple</strong>: The three-element array <span class="code-line-callout"><code>[state, formAction, isPending]</code></span> returned by <code>useActionState</code>.</li>
+<li><strong>Previous State Accumulator</strong>: The first parameter passed to the action function, representing the value returned by the prior action execution.</li>
+<li><strong>Automated Pending Flag</strong>: A boolean indicator managed by React transitions that signals whether an asynchronous action is currently running.</li>
+<li><strong>Action Reducer Pattern</strong>: The architecture of deriving new form state from previous state and incoming FormData inside an action function.</li>
+<li><strong>Concurrent Transition Integration</strong>: Automatic execution of action functions inside React Transitions to ensure user interface responsiveness.</li>
+</ul>
+</div>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Managing Action State: The useActionState Hook</strong></p>
+<p>React 19 replaces cumbersome, error-prone form state bookkeeping with <code>useActionState</code>. By returning the latest state, an action dispatcher, and a built-in transition pending flag, <code>useActionState</code> provides a robust, atomic foundation for asynchronous forms that supports accumulative updates and guarantees UI responsiveness.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Core Takeaways of useActionState</span></div>
+<ol><li>Replace manual state triplication with the action tuple.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Read the latest submission result directly from <code>state</code>.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Drive loading spinners and disabled inputs cleanly using the built-in <code>isPending</code> boolean.</li>
+<li>Structure action functions as state reducers.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Accept <code>(previousState, formData)</code> to access previous results.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Return structured result objects representing success or failure states.</li>
+<li>Bind the returned dispatcher directly to forms.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Pass <code>formAction</code> to <code>&lt;form action={formAction}&gt;</code> or submit buttons.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) React executes the action within a Transition, keeping the entire page responsive during async delays.
+➔ ALWAYS use useActionState when a form requires submission results, inline errors, or pending indicators.<br>
+➔ NEVER hand-roll separate useState hooks for loading and error flags next to modern React 19 form actions.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Create manual useState flags and fragile try-finally blocks next to every form.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ManualAsyncForm</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">BadAsyncForm</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">const</span> [loading, setLoading] = <span class="hook">useState</span>(<span class="kw">false</span>);</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">const</span> [error, setError] = <span class="hook">useState</span>(<span class="kw">null</span>);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  <span class="kw">const</span> [data, setData] = <span class="hook">useState</span>(<span class="kw">null</span>);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row even"><span class="num">6</span><span class="src">    e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    <span class="fn">setLoading</span>(<span class="kw">true</span>);</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    <span class="kw">try</span> {</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      <span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">sendData</span>(<span class="kw">new</span> <span class="fn">FormData</span>(e.currentTarget));</span></div>
+<div class="row even"><span class="num">10</span><span class="src">      <span class="fn">setData</span>(res);</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">    } <span class="kw">catch</span> (err) {</span></div>
+<div class="row even"><span class="num">12</span><span class="src">      <span class="fn">setError</span>(err.message);</span></div>
+<div class="row odd"><span class="num">13</span><span class="src">    } <span class="kw">finally</span> {</span></div>
+<div class="row even"><span class="num">14</span><span class="src">      <span class="fn">setLoading</span>(<span class="kw">false</span>);</span></div>
+<div class="row odd"><span class="num">15</span><span class="src">    }</span></div>
+<div class="row even"><span class="num">16</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">17</span><span class="src">  <span class="kw">return</span> &lt;form onSubmit={handleSubmit}&gt;&lt;button disabled={loading}&gt;Submit&lt;/button&gt;&lt;/form&gt;;</span></div>
+<div class="row even"><span class="num">18</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use useActionState to manage action results, previous state, and pending flags in one atomic hook.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ActionStateForm</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">GoodAsyncForm</span>() {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">async</span> <span class="kw">function</span> <span class="fn">handleAction</span>(prevState, formData) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    <span class="kw">return</span> <span class="kw">await</span> <span class="fn">sendData</span>(formData);</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  <span class="kw">const</span> [state, formAction, isPending] = <span class="hook">useActionState</span>(handleAction, <span class="kw">null</span>);</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;form action={formAction}&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">      {state?.error &amp;&amp; &lt;p&gt;{state.error}&lt;/p&gt;}</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">      &lt;button disabled={isPending}&gt;Submit&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">    &lt;/form&gt;</span></div>
+<div class="row odd"><span class="num">11</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+</div>
+<table><thead><tr><th></th><th><strong>HAND-ROLLED USESTATE</strong><br>(manual coordination)</th><th><strong>USEACTIONSTATE</strong><br>(unified React 19 hook)</th></tr></thead><tbody><tr><td><strong>State Management</strong></td><td>Multiple manual hooks for<br>loading, error, and data</td><td>Single atomic hook returns<br><code>[state, action,</code><br><code>isPending]</code></td></tr><tr><td><strong>Action Arguments</strong></td><td>Only receives raw event<br>or manual <code>FormData</code></td><td>Receives <code>(prevState,</code><br><code>formData)</code> as a reducer</td></tr><tr><td><strong>Pending Tracking</strong></td><td>Manual booleans with risk of<br>missing <code>finally</code> cleanup</td><td>Built-in <code>isPending</code> flag<br>managed by React engine</td></tr><tr><td><strong>Transition Support</strong></td><td>Requires explicit call to<br><code>startTransition()</code></td><td>Automatically wrapped in<br>Transitions internally</td></tr><tr><td><strong>Concurrency Safety</strong></td><td>Vulnerable to race conditions<br>and duplicate clicks</td><td>Safe concurrent updates<br>with queue coordination</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,1362 @@
+<!doctype html>
+<html lang="en" data-theme="teal">
+<head>
+<meta charset="utf-8">
+<title>Lecture 13: Responding to Events and Callback Props — Edition v6.2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Merriweather:ital,wght@1,400;1,700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../src/lecture.css">
+<style>
+@page {
+	@bottom-center {
+		content: "Edition v6.2";
+		border-top: 0.5pt solid #e2e8f0;
+		padding-top: 3.5mm;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		font-size: 7.5pt;
+		font-weight: 600;
+		color: #94a3b8;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+}
+</style>
+</head>
+<body class="theme-teal">
+<main>
+<h1>Lecture 13: Responding to Events and Callback Props</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you respond to user events like clicks and typing, and how do callback props communicate back to parents?</p>
+</aside>
+
+<ul>
+<li>James Cooper designs the live wire feed for The National Times investigative desk.</li>
+<li>The wire feed features interactive article cards with nested bookmark and share controls.</li>
+<li>To handle clicks, James writes <code>onClick={saveArticle()}</code> directly inside the bookmark button.</li>
+<li>The function executes immediately on page load, and clicking a bookmark opens the entire article!</li>
+<li>Why did the action fire during rendering, and why did the nested click trigger the parent card?</li>
+<li>React event handlers must be passed as function references, and nested clicks require propagation control.</li>
+<li>Today, you will master event handler syntax, halt unwanted bubbling, and pass callback props cleanly.</li>
+</ul>
+<div class="keep-together">
+<h3>The Invocation Trap and Event Bubbling</h3>
+<p>In React, responding to user interaction requires understanding the difference between passing a function and calling it. When you attach an event handler to a JSX element, React expects a function reference. If you append parentheses to the function name, JavaScript executes that function immediately during the render pass, long before any user touches the keyboard or mouse. Understanding this distinction is essential for writing responsive, bug-free components.</p>
+<p>When developers write <code>onClick={handleClick()}</code>, the function runs as React evaluates the JSX. Its return value (usually <code>undefined</code>) is then assigned to the <code>onClick</code> prop, leaving the button inert when the user actually clicks it. Worse, if <code>handleClick()</code> triggers a state change or an external action, executing it during render can cause an immediate crash or an infinite re-render loop. Look at the naive implementation:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Naive Event Handler and Unchecked Bubbling</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryCard</span>({ story, onSelect }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleBookmark</span>() { console.<span class="fn">log</span>(<span class="str">'Saved:'</span>, story.id); }</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;article onClick={() =&gt; <span class="fn">onSelect</span>(story.id)}&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;h3&gt;{story.title}&lt;/h3&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;button onClick={<span class="fn">handleBookmark</span>()}&gt;Bookmark&lt;/button&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice line 6: <code>onClick={handleBookmark()}</code>. The parentheses cause <code>handleBookmark</code> to execute immediately when <code>StoryCard</code> renders. Furthermore, even if we pass the function reference properly as <code>onClick={handleBookmark}</code>, clicking the button will bubble up through the DOM tree, firing the outer <code>&lt;article&gt;</code>'s <code>onClick</code> handler as well! A user attempting to save a story accidentally triggers navigation to that story.</p>
+<figure class="react-figure rce-figure css-figure">
+
+
+
+
+<style>
+  .eval-window-fig {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .ew-stage {
+    background: #f8fafc;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    box-sizing: border-box;
+  }
+  .ew-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.76rem;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .ew-columns {
+    display: flex;
+    gap: 1rem;
+    position: relative;
+  }
+  .ew-col {
+    flex: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .ew-col-trap {
+    background: #fef2f2;
+    border: 1.5px solid #fca5a5;
+  }
+  .ew-col-declarative {
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    box-shadow: 0 2px 6px rgba(22, 101, 52, 0.08);
+  }
+  .ew-col-title {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ew-col-trap .ew-col-title {
+    background: #fee2e2;
+    color: #991b1b;
+    border-bottom: 1px solid #fca5a5;
+  }
+  .ew-col-declarative .ew-col-title {
+    background: #dcfce7;
+    color: #166534;
+    border-bottom: 1px solid #86efac;
+  }
+  .ew-content {
+    padding: 0.75rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .ew-code-box {
+    background: #1e293b;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 0.6rem;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.74rem;
+    line-height: 1.35;
+  }
+  .ew-code-box .kw { color: #f43f5e; font-weight: 600; }
+  .ew-code-box .fn { color: #38bdf8; font-weight: 600; }
+  .ew-code-box .str { color: #fde047; }
+  .ew-code-box .cm { color: #94a3b8; font-style: italic; }
+  .ew-bubble-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 0.6rem;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+  }
+  .ew-flow-node {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    padding: 0.25rem 0.4rem;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .node-parent { background: #e2e8f0; color: #334155; }
+  .node-child { background: #e0f2fe; color: #0369a1; margin-left: 0.8rem; }
+  .node-badge-alert { background: #fee2e2; color: #b91c1c; font-size: 0.65rem; padding: 2px 5px; border-radius: 3px; }
+  .node-badge-ok { background: #dcfce7; color: #15803d; font-size: 0.65rem; padding: 2px 5px; border-radius: 3px; }
+  .ew-outcome {
+    font-size: 0.75rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  .ew-col-trap .ew-outcome {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  .ew-col-declarative .ew-outcome {
+    background: #dcfce7;
+    color: #166534;
+  }
+</style>
+
+
+<div class="eval-window-fig">
+  <div class="ew-stage">
+    <div class="ew-header">
+      <span>REACT 19 EVENT ARCHITECTURE</span>
+      <span>REFERENCE VS INVOCATION &amp; PROPAGATION</span>
+    </div>
+    <div class="ew-columns">
+      <!-- Trap Column -->
+      <div class="ew-col ew-col-trap">
+        <div class="ew-col-title">
+          <span>THE INVOCATION &amp; BUBBLE TRAP</span>
+          <span>&#10006; Premature / Leaking</span>
+        </div>
+        <div class="ew-content">
+          <div class="ew-code-box">
+            <span class="cm">// Trailing () invokes at render!</span><br>
+            &lt;<span class="kw">button</span> <span class="fn">onClick</span>={<span class="fn">handleClick</span>()}&gt;<br>
+            &nbsp;&nbsp;Save Article<br>
+            &lt;/<span class="kw">button</span>&gt;
+          </div>
+          <div class="ew-bubble-flow">
+            <div class="ew-flow-node node-child">
+              <span>Inner Button Click</span>
+              <span class="node-badge-alert">Bubbles Up &#8593;</span>
+            </div>
+            <div class="ew-flow-node node-parent">
+              <span>Parent StoryCard onClick</span>
+              <span class="node-badge-alert">Accidental Trigger!</span>
+            </div>
+          </div>
+          <div class="ew-outcome">
+            &#9888; Action runs immediately during render; unstopped click opens unwanted article modal.
+          </div>
+        </div>
+      </div>
+
+      <!-- Declarative Column -->
+      <div class="ew-col ew-col-declarative">
+        <div class="ew-col-title">
+          <span>FUNCTION REFERENCE &amp; STOP PROPAGATION</span>
+          <span>&#10004; Controlled / Isolated</span>
+        </div>
+        <div class="ew-content">
+          <div class="ew-code-box">
+            <span class="cm">// Passes function reference cleanly</span><br>
+            &lt;<span class="kw">button</span> <span class="fn">onClick</span>={(<span class="fn">e</span>) =&gt; {<br>
+            &nbsp;&nbsp;<span class="fn">e</span>.<span class="fn">stopPropagation</span>();<br>
+            &nbsp;&nbsp;<span class="fn">onBookmark</span>();<br>
+            }}&gt;Save&lt;/<span class="kw">button</span>&gt;
+          </div>
+          <div class="ew-bubble-flow">
+            <div class="ew-flow-node node-child">
+              <span>Inner Button Click</span>
+              <span class="node-badge-ok">e.stopPropagation()</span>
+            </div>
+            <div class="ew-flow-node node-parent">
+              <span>Parent StoryCard onClick</span>
+              <span class="node-badge-ok">Cleanly Isolated</span>
+            </div>
+          </div>
+          <div class="ew-outcome">
+            &#10004; Handler waits for user gesture; event propagation halts at child boundary.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<figcaption>Fig 13.1: The Invocation Trap and Propagation: contrasting immediate execution against controlled reference passing.</figcaption>
+</figure>
+<aside class="callout callout-wild">
+  <p class="callout-eyebrow">⚡ IN THE WILD</p>
+  <div class="callout-body"><strong>Why does React wrap browser events in SyntheticEvent?</strong> In the browser DOM, event implementations historically varied across browser engines. React normalizes all native events into a unified <code>SyntheticEvent</code> wrapper that matches the W3C event specification. Under the hood in React 19, React attaches event listeners at the root DOM container rather than individual DOM nodes. This event delegation architecture provides identical cross-browser behavior, improves memory efficiency, and ensures methods like <code>e.stopPropagation()</code> and <code>e.preventDefault()</code> work consistently across every platform.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> When asked how React handles events, emphasize that React passes function references, not function invocations. Explain that React uses event delegation at the root container to manage synthetic events efficiently. Clarify that callback props enable unidirectional data flow: parents pass functions downward, and children invoke them upward with parameters. Finally, highlight that stopping propagation (<code>e.stopPropagation()</code>) is critical in nested interactive components to isolate user gestures.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Principles of React: The Core Laws of Event Handling and Callback Communication</h3>
+<p>To prepare for senior technical interviews, we must separate naive scripting habits from React's event architecture and establish the five fundamental laws governing how components handle user gestures, prevent bubbling, and communicate across component boundaries. In React, event handling is governed by declarative function binding, propagation control, and unidirectional callback contracts. We formalize these rules into five standalone principles.</p>
+<aside class="callout callout-principle" data-principle="1">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 1</span></div>
+    <h4 class="principle-title">Pass Event Handlers as Function References, Never Call Them in JSX</h4>
+  </div>
+  <div class="principle-body">
+        <div class="principle-marginalia-glossary">
+      <div class="gloss-entry">
+        <span class="gloss-term">function reference</span>
+        <span class="gloss-def">passing an uninvoked identifier like handleClick to wait for interaction</span>
+      </div>
+      <div class="gloss-entry">
+        <span class="gloss-term">immediate invocation</span>
+        <span class="gloss-def">appending parentheses like handleClick() executing at render time</span>
+      </div>
+    </div>
+    <div class="principle-definition-card">
+      <p class="principle-statement">You must pass event handlers as <strong>direct function references</strong> rather than calling them with parentheses, ensuring they execute only when the user triggers the event.</p>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code>&lt;button onClick={handleClick}&gt;</code></span>
+<code>  Save Article</code>
+<code>&lt;/button&gt;</code></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code>&lt;button onClick={<span class="fn">handleClick</span>()}&gt;</code></span>
+<code>  Save Article</code>
+<code>&lt;/button&gt;</code></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>In senior technical interviews, explaining why event handlers must be passed as references rather than invoked in JSX highlights render lifecycle fundamentals:</p>
+<ol><li><strong>Render-Time Execution:</strong> Appending parentheses (<code>onClick={handleClick()}</code>) executes the function immediately during the render pass, long before any user interacts with the element.</li>
+<li><strong>Return Value Trap:</strong> When a handler runs during render, React receives its return value (typically <code>undefined</code>) as the handler, leaving the button inert when clicked.</li>
+<li><strong>Infinite Loop Prevention:</strong> If the handler updates state or makes network requests, invoking it during render triggers an immediate re-render, creating an instant infinite execution loop.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Principle 1: Passing Handler References</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SaveButton</span>({ onSave }) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Passes function reference without calling it</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;button onClick={onSave}&gt;Save&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-principle" data-principle="2">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 2</span></div>
+    <h4 class="principle-title">Wrap Handlers in Inline Functions When Passing Arguments</h4>
+  </div>
+  <div class="principle-body">
+        <div class="principle-marginalia-glossary">
+      <div class="gloss-entry">
+        <span class="gloss-term">inline arrow handler</span>
+        <span class="gloss-def">an anonymous function wrapper that defers invocation until clicked</span>
+      </div>
+      <div class="gloss-entry">
+        <span class="gloss-term">parameter forwarding</span>
+        <span class="gloss-def">delivering dynamic identifiers or record payloads to handler callbacks</span>
+      </div>
+    </div>
+    <div class="principle-definition-card">
+      <p class="principle-statement">You must wrap event handlers in an <strong>inline arrow function</strong> whenever passing custom arguments, preventing immediate execution while delivering necessary parameters.</p>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><code>&lt;button</code>
+<span class="code-line-callout"><code>  onClick={() =&gt; <span class="fn">handleSelect</span>(id)}&gt;</code></span>
+<code>  Read</code>
+<code>&lt;/button&gt;</code></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><code>&lt;button</code>
+<code>  onClick={handleSelect(id)}&gt;</code>
+<code>  Read</code>
+<code>&lt;/button&gt;</code></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>Interviewers test whether candidates understand parameter forwarding without accidentally triggering render-time execution:</p>
+<ol><li><strong>Evaluation vs Deferral:</strong> Writing <code>handleSelect(id)</code> executes immediately during JSX evaluation. Wrapping it in <code>() =&gt; handleSelect(id)</code> creates a function reference that waits for the user event.</li>
+<li><strong>Closure Scope Capture:</strong> The inline arrow function captures current props and state in its closure, ensuring the handler always receives fresh parameter values upon execution.</li>
+<li><strong>Compiler Optimization:</strong> Modern JavaScript engines and React 19 handle short inline arrow functions efficiently, making them the standard idiom for parameterised event callbacks.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Principle 2: Parameterised Arrow Handlers</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryLink</span>({ id, onSelect }) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Wraps handler in arrow function to pass ID</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;button onClick={() =&gt; <span class="fn">onSelect</span>(id)}&gt;Open&lt;/button&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-principle" data-principle="3">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 3</span></div>
+    <h4 class="principle-title">Stop Event Propagation to Prevent Parent Trigger Collisions</h4>
+  </div>
+  <div class="principle-body">
+        <div class="principle-marginalia-glossary">
+      <div class="gloss-entry">
+        <span class="gloss-term">event bubbling</span>
+        <span class="gloss-def">native DOM traversal where events bubble up from child to ancestors</span>
+      </div>
+      <div class="gloss-entry">
+        <span class="gloss-term">propagation isolation</span>
+        <span class="gloss-def">stopping event traversal at the child boundary using stopPropagation</span>
+      </div>
+    </div>
+    <div class="principle-definition-card">
+      <p class="principle-statement">You must call <code>e.stopPropagation()</code> on nested interactive elements to prevent events from <strong>bubbling up the DOM tree</strong> and firing unwanted parent handlers.</p>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">handleBookmark</span>(e) {</code></span>
+<code>  e.stopPropagation();</code>
+<code>  onBookmark(storyId);</code>
+<code>}</code></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">handleBookmark</span>() {</code></span>
+<span class="code-line-callout"><code>  // Bubbles to parent card!</code></span>
+<code>  onBookmark(storyId);</code>
+<code>}</code></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>Explaining event bubbling in senior technical interviews reveals your command of both the DOM specification and React's synthetic event system:</p>
+<ol><li><strong>Bubbling Traversal:</strong> In both native DOM and React, click events bubble up from the target element through all parent containers until reaching the document root.</li>
+<li><strong>Parent Collision Prevention:</strong> In nested layouts (such as a bookmark button inside a clickable card), failing to call <code>e.stopPropagation()</code> fires both actions simultaneously.</li>
+<li><strong>Synthetic Event Safety:</strong> React wraps native events in a <code>SyntheticEvent</code> wrapper, ensuring <code>e.stopPropagation()</code> operates consistently across all target browsers.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Principle 3: Stopping Event Propagation</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">Bookmark</span>({ id, onSave }) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Stops bubbling before executing bookmark</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleClick</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    e.<span class="fn">stopPropagation</span>();</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">onSave</span>(id);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;button onClick={handleClick}&gt;Save&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-principle" data-principle="4">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 4</span></div>
+    <h4 class="principle-title">Prevent Default Browser Actions Declaratively in Handlers</h4>
+  </div>
+  <div class="principle-body">
+        <div class="principle-marginalia-glossary">
+      <div class="gloss-entry">
+        <span class="gloss-term">default browser action</span>
+        <span class="gloss-def">native browser reactions like page reload on form submit</span>
+      </div>
+      <div class="gloss-entry">
+        <span class="gloss-term">synthetic event interception</span>
+        <span class="gloss-def">preventing native browser actions using preventDefault</span>
+      </div>
+    </div>
+    <div class="principle-definition-card">
+      <p class="principle-statement">You must explicitly call <code>e.preventDefault()</code> inside event handlers to stop default browser behaviors like <strong>form reloads or link navigation</strong>.</p>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</code></span>
+<code>  e.preventDefault();</code>
+<code>  onSearch(query);</code>
+<code>}</code></div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code><span class="kw">function</span> <span class="fn">handleSubmit</span>() {</code></span>
+<span class="code-line-callout"><code>  // Page reloads and wipes state!</code></span>
+<code>  onSearch(query);</code>
+<code>}</code></div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>Handling native browser defaults demonstrates why Single Page Applications rely on event interception:</p>
+<ol><li><strong>Form Reload Prevention:</strong> HTML <code>&lt;form&gt;</code> submissions trigger a full browser page refresh by default; calling <code>e.preventDefault()</code> retains application state in memory.</li>
+<li><strong>Controlled Navigation:</strong> Intercepting link clicks allows client-side routers to render new views instantly without requesting a fresh HTML document from the server.</li>
+<li><strong>Explicit Interception:</strong> Unlike some frameworks where returning <code>false</code> cancels events, React strictly requires calling the standard <code>e.preventDefault()</code> method.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Principle 4: Preventing Default Actions</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">SearchForm</span>({ onSearch }) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Calls preventDefault to stop full-page reload</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSubmit</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    e.<span class="fn">preventDefault</span>();</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">onSearch</span>();</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;form onSubmit={handleSubmit} /&gt;;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<aside class="callout callout-principle" data-principle="5">
+  <div class="principle-header">
+    <div class="principle-ribbon-tab"><span class="principle-num">PRINCIPLE 5</span></div>
+    <h4 class="principle-title">Use Callback Props for Inverse Data Flow from Child to Parent</h4>
+  </div>
+  <div class="principle-body">
+        <div class="principle-marginalia-glossary">
+      <div class="gloss-entry">
+        <span class="gloss-term">unidirectional data flow</span>
+        <span class="gloss-def">React law where data flows down via props and events bubble up</span>
+      </div>
+      <div class="gloss-entry">
+        <span class="gloss-term">inverse callback prop</span>
+        <span class="gloss-def">passing a function downward so a child can emit data upward</span>
+      </div>
+    </div>
+    <div class="principle-definition-card">
+      <p class="principle-statement">You must pass <strong>callback functions downward as props</strong> to allow child components to notify parent containers of user interactions without mutating parent state.</p>
+    </div>
+        <div class="principle-cases-grid">
+      <div class="principle-case principle-case-do">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-badge-check" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">It is best practice to do this:</div>
+        </div>
+        <div class="case-code"><span class="code-line-callout"><code>&lt;StoryCard onSelect={handleSelect} /&gt;</code></span>
+<span class="code-line-callout"><code>onClick={() =&gt; <span class="fn">onSelect</span>(story.id)}</code></span></div>
+        <div class="case-note">Parent passes callback down<br>Child invokes callback on click</div>
+      </div>
+      <div class="principle-case principle-case-warn">
+        <div class="case-header">
+          <div class="case-icon-col"><svg class="case-icon icon-alert-triangle" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg></div>
+          <div class="case-label">Instead of doing this:</div>
+        </div>
+        <div class="case-code"><code>story.isSelected = true;</code></div>
+        <div class="case-note">Child mutates parent directly</div>
+      </div>
+    </div>
+  </div>
+</aside>
+<p>Unidirectional data flow is React's cornerstone architectural pattern, and callback props are its voice:</p>
+<ol><li><strong>Single Source of Truth:</strong> Parents own the state or business logic; children remain pure presentation layers that report user gestures without owning persistent data.</li>
+<li><strong>Encapsulated Notification:</strong> Passing callback props (conventionally named <code>on[Event]</code>, like <code>onSelect</code>) decouples the child's UI from the parent's business implementation.</li>
+<li><strong>Parameterised Upward Flow:</strong> Children can pass arguments back upward through the callback (e.g. <code>onSelect(story.id)</code>), informing the parent exactly what entity was touched.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Principle 5: Inverse Callback Props</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryCard</span>({ story, onSelect }) {</span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 0px;">
+        <span class="text"><b class="tag">RIGHT:</b> Child invokes callback prop to inform parent</span>
+      </div></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    &lt;article onClick={() =&gt; <span class="fn">onSelect</span>(story.id)}&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">      &lt;h3&gt;{story.title}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  );</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+<table class="reference-table cols-4"><thead><tr><th><strong>INTERACTION PATTERN</strong><br>(syntax technique)</th><th><strong>EXECUTION TIMING</strong><br>(when it runs)</th><th><strong>PROPAGATION IMPACT</strong><br>(event traversal)</th><th><strong>INTERVIEW TAKEAWAY</strong><br>(platform rationale)</th></tr></thead><tbody><tr><td><strong>Direct Reference</strong></td><td>On user gesture only</td><td>Traverses parent DOM nodes</td><td>Standard handler passing (<code>onClick=</code><br><code>{handleClick}</code>)</td></tr><tr><td><strong>Inline Arrow Wrapper</strong></td><td>On user gesture only</td><td>Traverses parent DOM nodes</td><td>Delivers parameters cleanly (<code>() =&gt;</code><br><code>onSelect(id)</code>)</td></tr><tr><td><strong>Immediate Call</strong></td><td>During render pass</td><td>No user interaction</td><td>Prohibited trap: runs prematurely, returns undefined</td></tr><tr><td><strong>Stop Propagation</strong></td><td>On user gesture only</td><td>Halts at current element</td><td>Calls <code>e.</code><br><code>stopPropagation()</code> to isolate nested clicks</td></tr><tr><td><strong>Callback Prop</strong></td><td>On user gesture only</td><td>Emits data upward</td><td>Passes functions downward for clean inverse data flow</td></tr></tbody></table>
+</div>
+<div class="keep-together example-section">
+<div class="step-header-card example-header-card">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge example-badge">
+      <span class="step-text">Case</span>
+      <span class="step-num step-word">Study</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Let\'s Design a Practical Example';">Let's Design a Practical Example</div>
+      
+    </div>
+  </div>
+</div>
+<section class="component-explorer component-explorer-no-sidebar" aria-label="Component hierarchy for wire-feed - Rendered UI Canvas">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">wire-feed - Rendered UI Canvas</span>
+	</div>
+	<div class="component-explorer-window">
+		
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>WireFeed</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryCard</span><span class="component-explorer-props">story={story} onSelect={fn} onBookmark={fn}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h3" data-elem="[h3.story-headline]"><div class="ui-elem-content">Tech Stocks Rebound</div></div><div class="ui-elem ui-tag-span" data-elem="[span.story-category]"><div class="ui-elem-content">Markets</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-button"><div class="component-explorer-label"><span>BookmarkButton</span><span class="component-explorer-props">storyId=&quot;s1&quot; onBookmark={fn}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.bookmark-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Bookmark</span></div></div></div></div></div></div><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryCard</span><span class="component-explorer-props">story={story} onSelect={fn} onBookmark={fn}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-h3" data-elem="[h3.story-headline]"><div class="ui-elem-content">Clean Energy Accord Signed</div></div><div class="ui-elem ui-tag-span" data-elem="[span.story-category]"><div class="ui-elem-content">World</div></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-button"><div class="component-explorer-label"><span>BookmarkButton</span><span class="component-explorer-props">storyId=&quot;s2&quot; onBookmark={fn}</span></div><div class="component-explorer-surface surface-render"><div class="ui-elem ui-tag-button" data-elem="[button.bookmark-btn]"><div class="ui-elem-content"><span class="surface-ui-btn">Bookmark</span></div></div></div></div></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="file-explorer" aria-label="wire-feed: File Explorer">
+	<div class="file-explorer-bar">
+		<div class="file-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="file-explorer-title">wire-feed: File Explorer</span>
+	</div>
+	<div class="file-explorer-body">
+		<div class="fe-table">
+			<div class="fe-header-row">
+				<div class="fe-header-cell fe-cell-file">FILE / DIRECTORY</div>
+				<div class="fe-header-cell fe-cell-role">ROLE</div>
+				<div class="fe-header-cell fe-cell-desc">ARCHITECTURAL RESPONSIBILITY</div>
+			</div>
+			
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">src/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">App.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">parent</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Application entry point providing story records and action handlers</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-folder">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot has-children">
+						<svg class="fe-icon fe-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z" fill="#fcd34d" stroke="#d97706"/></svg>
+					</div>
+					<span class="fe-name-text">components/</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-badge-folder">Directory</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text"><span class="fe-muted">Contains component modules</span></div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">WireFeed.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-boundary">boundary</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Maps stories array into StoryCard components and forwards handlers</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-t"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">StoryCard.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Interactive card handling selection and isolating nested bookmark clicks</div>
+			</div>
+		</div>
+		<div class="fe-row fe-row-file">
+			<div class="fe-cell fe-cell-file">
+				<div class="fe-file-name">
+					<span class="fe-seg fe-seg-blank"></span><span class="fe-seg fe-seg-l"></span>
+					<div class="fe-icon-slot ">
+						<svg class="fe-icon fe-icon-react" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="2.2" fill="#0284c7"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>
+					</div>
+					<span class="fe-name-text">BookmarkButton.jsx</span>
+				</div>
+			</div>
+			<div class="fe-cell fe-cell-role">
+				<span class="fe-badge fe-role-generic">child</span>
+			</div>
+			<div class="fe-cell fe-cell-desc">
+				<div class="fe-desc-text">Terminal interactive button stopping propagation and notifying parent</div>
+			</div>
+		</div>
+		</div>
+	</div>
+</section>
+<figure class="react-figure rce-figure css-figure">
+<div class="pipeline-card-figure assembly-steps-figure">
+  <style>
+    .assembly-steps-figure {
+      margin: 0.85rem auto;
+      max-width: 590px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .assembly-steps-figure .step-card {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+    .assembly-steps-figure .step-card:last-child {
+      margin-bottom: 0;
+    }
+    .assembly-steps-figure .card-edge {
+      width: 9px;
+      flex-shrink: 0;
+    }
+    .assembly-steps-figure .card-main {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      align-items: stretch;
+    }
+    .assembly-steps-figure .step-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      min-width: 76px;
+      box-sizing: border-box;
+    }
+    .assembly-steps-figure .step-text {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #1f2937;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .assembly-steps-figure .step-num {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: #111827;
+      line-height: 1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .assembly-steps-figure .card-divider-wrap {
+      display: flex;
+      align-items: center;
+    }
+    .assembly-steps-figure .card-divider {
+      width: 1px;
+      height: 48px;
+      opacity: 0.7;
+    }
+    .assembly-steps-figure .card-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px 18px;
+      flex: 1;
+    }
+    .assembly-steps-figure .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+    }
+    .assembly-steps-figure .card-components {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .assembly-steps-figure .component-tag {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1e293b;
+      letter-spacing: 0.02em;
+    }
+
+    /* Step 1 Colors (Blue) */
+    .assembly-steps-figure .step-1 .card-edge { background: #7495be; }
+    .assembly-steps-figure .step-1 .card-main { background: #d4e1f1; }
+    .assembly-steps-figure .step-1 .card-divider { background: #b0c4dd; }
+
+    /* Step 2 Colors (Teal) */
+    .assembly-steps-figure .step-2 .card-edge { background: #66a49b; }
+    .assembly-steps-figure .step-2 .card-main { background: #d0e6e1; }
+    .assembly-steps-figure .step-2 .card-divider { background: #aed1cb; }
+
+    /* Step 3 Colors (Orange / Amber) */
+    .assembly-steps-figure .step-3 .card-edge { background: #e09f67; }
+    .assembly-steps-figure .step-3 .card-main { background: #f9e0c5; }
+    .assembly-steps-figure .step-3 .card-divider { background: #eac4a1; }
+
+    /* Step 4 Colors (Green) */
+    .assembly-steps-figure .step-4 .card-edge { background: #74ad68; }
+    .assembly-steps-figure .step-4 .card-main { background: #d2ebc9; }
+    .assembly-steps-figure .step-4 .card-divider { background: #b2d5a5; }
+  </style>
+
+  <!-- Step 1 -->
+  <div class="step-card step-1">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">1</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">First, we construct the parent feed container</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;WireFeed.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step-card step-2">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">2</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Next, we build the interactive story card</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;StoryCard.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step-card step-3">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">3</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Then, we declare the nested bookmark button</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;BookmarkButton.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step-card step-4">
+    <div class="card-edge"></div>
+    <div class="card-main">
+      <div class="step-badge">
+        <span class="step-text">Step</span>
+        <span class="step-num">4</span>
+      </div>
+      <div class="card-divider-wrap">
+        <div class="card-divider"></div>
+      </div>
+      <div class="card-content">
+        <div class="card-title">Finally, we mount the application inside App</div>
+        <div class="card-components">
+          <span class="component-tag">&lt;App.jsx&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 13.2: The progressive assembly pipeline: building interactive, event-driven React components.</figcaption>
+</figure>
+<p>To master event handling and witness how callback props enable clean inverse data flow, we will construct the live wire feed for The National Times. We will progress across four sequential steps: constructing the parent feed in <code>src/components/WireFeed.jsx</code>, building the interactive story card in <code>src/components/StoryCard.jsx</code>, declaring the nested bookmark button in <code>src/components/BookmarkButton.jsx</code>, and mounting the application inside <code>src/App.jsx</code>.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-1">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">1</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 1: First, we construct the parent feed container';">First, we construct the parent feed container</div>
+      <div class="card-components"><span class="component-tag">&lt;WireFeed.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>We begin by constructing <code>src/components/WireFeed.jsx</code>. This component acts as the orchestrating container. It accepts a <code>stories</code> array and two callback props: <code>onSelect</code> and <code>onBookmark</code>. It iterates over the stories, rendering a <code>StoryCard</code> for each record and forwarding the callback handlers:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/WireFeed.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> StoryCard <span class="kw">from</span> <span class="str">'./StoryCard.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">WireFeed</span>({ stories, onSelect, onBookmark }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> &lt;section className=<span class="str">"feed-container"</span>&gt;</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;h2&gt;Live Wire Desk&lt;/h2&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">    {stories.<span class="fn">map</span>((story) =&gt; (</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;StoryCard key={story.id} story={story}</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">        onSelect={onSelect} onBookmark={onBookmark} /&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    ))}</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  &lt;/section&gt;;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice lines 7 and 8: <code>WireFeed</code> forwards <code>onSelect</code> and <code>onBookmark</code> downward as props. The parent container owns the business logic for selecting and bookmarking articles, but delegates the interactive presentation to child components.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-2">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">2</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 2: Next, we build the interactive story card';">Next, we build the interactive story card</div>
+      <div class="card-components"><span class="component-tag">&lt;StoryCard.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Now we create <code>src/components/StoryCard.jsx</code>. This component displays the story category, title, and mounts the nested <code>BookmarkButton</code>. Clicking the outer card triggers the <code>onSelect</code> callback with the story's ID:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/StoryCard.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> BookmarkButton <span class="kw">from</span> <span class="str">'./BookmarkButton.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">StoryCard</span>({ story, onSelect, onBookmark }) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  <span class="kw">return</span> (</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    &lt;article className=<span class="str">"story-card"</span> onClick={() =&gt; <span class="fn">onSelect</span>(story.id)}&gt;</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">      &lt;span className=<span class="str">"story-category"</span>&gt;{story.category}&lt;/span&gt;</span></div>
+<div class="row even"><span class="num">6</span><span class="src">      &lt;h3 className=<span class="str">"story-headline"</span>&gt;{story.title}&lt;/h3&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">      &lt;BookmarkButton storyId={story.id} onBookmark={onBookmark} /&gt;</span></div>
+<div class="row even"><span class="num">8</span><span class="src">    &lt;/article&gt;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  );</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice line 4: <code>onClick={() =&gt; onSelect(story.id)}</code>. We wrap <code>onSelect(story.id)</code> inside an inline arrow function. This ensures <code>onSelect</code> is not called during render, but instead executes only when the user clicks the card, passing <code>story.id</code> upward to the parent container.</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-3">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">3</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 3: Then, we declare the nested bookmark button';">Then, we declare the nested bookmark button</div>
+      <div class="card-components"><span class="component-tag">&lt;BookmarkButton.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Next, we build <code>src/components/BookmarkButton.jsx</code>. Because this button sits directly inside the clickable <code>&lt;article&gt;</code> card, clicking it would naturally bubble up and trigger <code>StoryCard</code>'s <code>onClick</code>. To prevent this collision, we intercept the event and call <code>e.stopPropagation()</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/components/BookmarkButton.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">BookmarkButton</span>({ storyId, onBookmark }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">function</span> <span class="fn">handleClick</span>(e) {</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">    e.<span class="fn">stopPropagation</span>();</span></div>
+<div class="row even"><span class="num">4</span><span class="src">    <span class="fn">onBookmark</span>(storyId);</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">  }</span></div>
+<div class="row even"><span class="num">6</span><span class="src">  <span class="kw">return</span> &lt;button className=<span class="str">"bookmark-btn"</span> onClick={handleClick}&gt;</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">    Bookmark</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  &lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+<p>Notice lines 3 and 4: <code>e.stopPropagation()</code> prevents the click from bubbling to the parent <code>StoryCard</code>, ensuring only <code>onBookmark</code> runs. This cleanly isolates nested user gestures while maintaining inverse data flow!</p>
+</div>
+<div class="keep-together step-section">
+<div class="step-header-card step-4">
+  <div class="card-edge"></div>
+  <div class="card-main">
+    <div class="step-badge">
+      <span class="step-text">Step</span>
+      <span class="step-num">4</span>
+    </div>
+    <div class="card-divider-wrap">
+      <div class="card-divider"></div>
+    </div>
+    <div class="card-content">
+      <div class="card-title" style="prince-bookmark-level: 3; prince-bookmark-label: 'Step 4: Finally, we mount the application inside App';">Finally, we mount the application inside App</div>
+      <div class="card-components"><span class="component-tag">&lt;App.jsx&gt;</span></div>
+    </div>
+  </div>
+</div>
+<p>Finally, we complete our scenario in <code>src/App.jsx</code>. We define a mock stories array and implement the concrete callback handlers <code>handleSelect</code> and <code>handleBookmark</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">src/App.jsx</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">import</span> WireFeed <span class="kw">from</span> <span class="str">'./components/WireFeed.jsx'</span>;</span></div>
+<div class="row even"><span class="num">2</span><span class="src"><span class="kw">const</span> STORIES = [</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">  { id: <span class="str">'s1'</span>, title: <span class="str">'Tech Stocks Rebound'</span>, category: <span class="str">'Markets'</span> },</span></div>
+<div class="row even"><span class="num">4</span><span class="src">  { id: <span class="str">'s2'</span>, title: <span class="str">'Clean Energy Accord Signed'</span>, category: <span class="str">'World'</span> },</span></div>
+<div class="row odd"><span class="num">5</span><span class="src">];</span></div>
+<div class="row even"><span class="num">6</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">App</span>() {</span></div>
+<div class="row odd"><span class="num">7</span><span class="src">  <span class="kw">function</span> <span class="fn">handleSelect</span>(id) { console.<span class="fn">log</span>(<span class="str">'Selected:'</span>, id); }</span></div>
+<div class="row even"><span class="num">8</span><span class="src">  <span class="kw">function</span> <span class="fn">handleBookmark</span>(id) { console.<span class="fn">log</span>(<span class="str">'Bookmarked:'</span>, id); }</span></div>
+<div class="row odd"><span class="num">9</span><span class="src">  <span class="kw">return</span> &lt;WireFeed stories={STORIES} onSelect={handleSelect} onBookmark={handleBookmark} /&gt;;</span></div>
+<div class="row even"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Because our event handling is declarative and propagation is controlled, clicking an article card selects it cleanly, while clicking the bookmark button saves the article without triggering card selection.</p>
+</div>
+<div class="keep-together lessons-section">
+<h3 class="lessons-heading">Component Summary</h3>
+<div class="component-code-wrapper" aria-label="Component hierarchy for Summary: The Logic of Nested Components">
+	<div class="component-code-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>WireFeed</span><span class="component-explorer-props">stories={...} onSelect={...} onBookmark={...}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>feed container</strong> orchestrates the live stream. It accepts story collections and event handlers, forwarding them to individual cards. Notice how it decouples parent state management from child layout concerns.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-card"><div class="component-explorer-label"><span>StoryCard</span><span class="component-explorer-props">story={...} onSelect={...} onBookmark={...}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>interactive card</strong> handles article selection. It wraps its callback in an inline arrow function <code>() =&gt; onSelect(story.id)</code> to deliver parameters upon user click without firing during render.</p></div></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-button"><div class="component-explorer-label"><span>BookmarkButton</span><span class="component-explorer-props">storyId={...} onBookmark={...}</span></div><div class="component-explorer-surface surface-render"><div class="surface-ui-role"><p class="surface-ui-role-text">The <strong>nested interactive button</strong> protects parent boundaries. It calls <code>e.stopPropagation()</code> before invoking <code>onBookmark(storyId)</code>, preventing accidental card navigation while reporting clicks upward.</p></div></div></div></div></div></div></div></div>
+</div>
+<figure class="react-figure rce-figure css-figure">
+<div class="architecture-audit-figure">
+  <style>
+    .architecture-audit-figure {
+      margin: 0.2rem auto 0.5rem;
+      width: 100%;
+      box-sizing: border-box;
+      background: transparent;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .architecture-audit-figure .audit-header {
+      margin-bottom: 6px;
+    }
+    .architecture-audit-figure .audit-eyebrow {
+      font-size: 0.70rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .architecture-audit-figure .audit-title {
+      font-size: 1.30rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .audit-subtitle {
+      font-size: 0.80rem;
+      color: #475569;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .architecture-audit-figure table.audit-table,
+    main .architecture-audit-figure table.audit-table,
+    figure .architecture-audit-figure table.audit-table {
+      margin: 8px 0 0 0 !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      border: none !important;
+    }
+    .architecture-audit-figure .audit-table th,
+    main .architecture-audit-figure .audit-table th {
+      border: none !important;
+      border-top: 3px solid #0f172a !important;
+      border-bottom: 1.5px solid #0f172a !important;
+      padding: 7px 12px !important;
+      vertical-align: bottom !important;
+      background: #ffffff;
+      color: #0f172a !important;
+    }
+    .architecture-audit-figure .audit-table th.th-col-layer,
+    main .architecture-audit-figure .audit-table th.th-col-layer {
+      width: 25% !important;
+      text-align: left;
+    }
+    .architecture-audit-figure .audit-table th.th-col-naive,
+    main .architecture-audit-figure .audit-table th.th-col-naive {
+      width: 37.5% !important;
+      text-align: left;
+    }
+    .architecture-audit-figure .audit-table th.th-col-reality,
+    main .architecture-audit-figure .audit-table th.th-col-reality {
+      width: 37.5% !important;
+      text-align: left;
+    }
+    .architecture-audit-figure .th-label {
+      font-size: 0.70rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .th-main {
+      display: block;
+      font-size: 0.70rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .th-sub {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: normal;
+      margin-top: 1px;
+    }
+    .architecture-audit-figure .sub-danger { color: #dc2626; font-weight: 700; }
+    .architecture-audit-figure .sub-teal { color: #0d9488; font-weight: 700; }
+    .architecture-audit-figure .audit-table td,
+    main .architecture-audit-figure .audit-table td {
+      border: none !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      padding: 7px 12px !important;
+      vertical-align: top !important;
+      font-size: 0.78rem;
+      line-height: 1.35;
+      color: #334155;
+    }
+    .architecture-audit-figure .layer-num {
+      display: block;
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 0.78rem;
+    }
+    .architecture-audit-figure .layer-role {
+      display: block;
+      font-size: 0.70rem;
+      color: #64748b;
+    }
+    .architecture-audit-figure .item-title {
+      display: block;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 2px;
+      font-size: 0.78rem;
+    }
+    .architecture-audit-figure .item-desc {
+      display: block;
+      font-size: 0.73rem;
+      color: #475569;
+      line-height: 1.3;
+    }
+    .architecture-audit-figure .text-teal { color: #0f766e; }
+    .architecture-audit-figure .reality-cell { background: rgba(240, 253, 250, 0.45); }
+    .architecture-audit-figure .verdict-row td,
+    main .architecture-audit-figure .verdict-row td {
+      border-top: 1.5px solid #0f172a !important;
+      border-bottom: 2px solid #0f172a !important;
+      padding-top: 8px !important;
+      padding-bottom: 8px !important;
+      background: #fafafa;
+    }
+    .architecture-audit-figure .verdict-label {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #0f172a;
+    }
+    .architecture-audit-figure .verdict-tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .architecture-audit-figure .verdict-danger { background: #fee2e2; color: #991b1b; }
+    .architecture-audit-figure .verdict-teal { background: #ccfbf1; color: #115e59; }
+  </style>
+
+  <div class="audit-header">
+    <div class="audit-eyebrow">Lessons from the Code</div>
+    <div class="audit-title">The Interactive Feed Architecture Audit</div>
+    <p class="audit-subtitle">An architectural comparison contrasting naive event execution against React 19 synthetic event handling and callback props.</p>
+  </div>
+
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th class="th-col-layer">
+          <span class="th-label">Component Layer</span>
+        </th>
+        <th class="th-col-naive">
+          <span class="th-main">Naive Expectation</span>
+          <span class="th-sub sub-danger">(Direct Invocations &amp; Bleeding Bubbles)</span>
+        </th>
+        <th class="th-col-reality">
+          <span class="th-main">What Happened</span>
+          <span class="th-sub sub-teal">(Callback Props &amp; Propagation Control)</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <span class="layer-num">1. The Container</span>
+          <span class="layer-role">(Wire Feed)</span>
+        </td>
+        <td>
+          <span class="item-title">Direct State Mutation</span>
+          <span class="item-desc">Children attempt to modify parent state directly, or global event listeners leak across application boundaries.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Inverse Data Flow</span>
+          <span class="item-desc">Parent passes callback functions like <code>onSelect</code> downward; children notify parents without violating one-way data flow.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">2. The Card Wrapper</span>
+          <span class="layer-role">(Story Card)</span>
+        </td>
+        <td>
+          <span class="item-title">Unchecked Event Bubbling</span>
+          <span class="item-desc">Clicking any nested control bubbles up through parent DOM elements, unintentionally firing the outer card click handler.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Isolated Event Zones</span>
+          <span class="item-desc">Inner controls call <code>e.stopPropagation()</code> to prevent clicks from bubbling to the parent story card container.</span>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <span class="layer-num">3. The Interactive Button</span>
+          <span class="layer-role">(Bookmark Button)</span>
+        </td>
+        <td>
+          <span class="item-title">Immediate Render Invocation</span>
+          <span class="item-desc">Writing <code>onClick={handleSave()}</code> invokes the action during render pass, firing immediately and assigning undefined.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="item-title text-teal">Function Reference Passing</span>
+          <span class="item-desc">Passing <code>onClick={handleSave}</code> or an arrow function waits cleanly for physical user interaction.</span>
+        </td>
+      </tr>
+      <tr class="verdict-row">
+        <td>
+          <span class="verdict-label">Final Verdict</span>
+        </td>
+        <td>
+          <span class="verdict-tag verdict-danger">Broken Execution &amp; State Collisions</span>
+          <span class="item-desc">Actions fire prematurely during rendering and nested clicks trigger unwanted parent actions.</span>
+        </td>
+        <td class="reality-cell">
+          <span class="verdict-tag verdict-teal">Controlled Two-Way Interaction</span>
+          <span class="item-desc">Clean, predictable user interactions with isolated propagation and robust parent notification loops.</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<figcaption>Fig 13.3: The Interactive Feed Architecture Audit: contrasting naive event execution against React 19 synthetic event handling and callback props.</figcaption>
+</figure>
+<p>In our experiment, we replaced premature render invocations and unstopped bubbling with declarative function references, parameterised arrow handlers, and propagation isolation. By passing callback props downward, we preserved unidirectional data flow while enabling children to communicate user interactions back to parents cleanly.</p>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ol><li><strong>Modal and Dropdown Overlays</strong>: Stopping propagation on inner modal containers so clicking inside the dialog does not bubble up to the backdrop and close it.</li>
+<li><strong>Interactive Data Tables</strong>: Wrapping table rows with row-selection clicks while providing independent edit or delete action buttons in child cells.</li>
+<li><strong>Form Submissions</strong>: Intercepting form submission events with <code>e.preventDefault()</code> to validate inputs and transmit data via asynchronous fetch requests without full-page reloads.</li>
+<li><strong>Custom Compound Components</strong>: Passing callback props through tabs, accordions, and menu items to notify the root coordinator when selections change.</li></ol>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul>
+<li><strong>SyntheticEvent</strong>: A cross-browser wrapper around the browser's native event object, normalizing behavior and supporting event delegation.</li>
+<li><strong>Event Delegation</strong>: Attaching a single event listener at the root container to handle events from all descendant nodes efficiently.</li>
+<li><strong>Event Bubbling</strong>: The native process where an event triggered on a child node traverses upward through ancestor DOM nodes until handled or stopped.</li>
+<li><strong>Propagation</strong>: The traversal path of an event through the DOM tree, which can be halted using <code>e.stopPropagation()</code>.</li>
+<li><strong>Callback Prop</strong>: A function passed from parent to child as a prop, invoked by the child to communicate events upward.</li>
+</ul>
+</div>
+<div class="page-break"><h2>Beyond the basics</h2></div>
+<ul>
+<li><strong>Responding to events</strong>: The official React documentation on handling events, passing arguments, and avoiding common traps (see <a href="https://react.dev/learn/responding-to-events">react.dev/learn/responding-to-events</a>).</li>
+<li><strong>Event propagation and bubbling</strong>: How event bubbling works in React and how to stop propagation cleanly (see <a href="https://react.dev/learn/responding-to-events#event-propagation">react.dev/learn/responding-to-events#event-propagation</a>).</li>
+<li><strong>Preventing default behavior</strong>: How to prevent native browser form submissions and navigation using preventDefault (see <a href="https://react.dev/learn/responding-to-events#preventing-default-behavior">react.dev/learn/responding-to-events#preventing-default-behavior</a>).</li>
+<li><strong>Naming event handler props</strong>: Standard conventions for naming event handlers and callback props in component libraries (see <a href="https://react.dev/learn/responding-to-events#naming-event-handler-props">react.dev/learn/responding-to-events#naming-event-handler-props</a>).</li>
+<li><strong>Event delegation in React 19</strong>: How React attaches root-level listeners to optimize performance and memory footprint (see <a href="https://react.dev/reference/react-dom/components/common#react-event-object">react.dev/reference/react-dom/components/common#react-event-object</a>).</li>
+</ul>
+<div class="keep-together summary-section">
+<h3>Summary</h3>
+<p><strong>Architectural Takeaways &amp; Decision Matrix</strong></p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Event Handler Binding</span></div>
+<p class="summary-principle">➔ ALWAYS pass event handlers as function references: <code>onClick={handleClick}</code>.</p>
+<p class="summary-principle">➔ NEVER call event handlers with parentheses in JSX: <code>onClick={handleClick()}</code>.</p>
+<p class="summary-principle">➔ ALWAYS wrap handlers in an inline arrow function when passing arguments: <code>onClick={() =&gt; handleSelect(id)}</code>.</p>
+<div class="summary-subtitle"><span class="summary-symbol">❒</span> <span class="summary-title">Propagation &amp; Defaults</span></div>
+<p class="summary-principle">➔ ALWAYS call <code>e.stopPropagation()</code> when nesting interactive controls inside clickable containers.</p>
+<p class="summary-principle">➔ ALWAYS call <code>e.preventDefault()</code> inside form submit handlers to prevent full-page browser reloads.</p>
+<p class="summary-principle">➔ ALWAYS pass callback props downward (<code>on[Event]</code>) to preserve unidirectional data flow when children notify parents.</p>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> pass a function reference or arrow function to wait for user interaction</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ActionButton</span>({ onSave }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> &lt;button onClick={onSave}&gt;Save&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> call the handler with parentheses in JSX, executing it at render time</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">code.txt</span></div><div class="code"><div class="row odd"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">default</span> <span class="kw">function</span> <span class="fn">ActionButton</span>({ onSave }) {</span></div>
+<div class="row even"><span class="num">2</span><span class="src">  <span class="kw">return</span> &lt;button onClick={<span class="fn">onSave</span>()}&gt;Save&lt;/button&gt;;</span></div>
+<div class="row odd"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+</div>
+<table class="comparison-table"><thead><tr><th></th><th><strong>FUNCTION REFERENCE</strong><br>(Controlled Event)</th><th><strong>FUNCTION INVOCATION</strong><br>(Premature Trap)</th></tr></thead><tbody><tr><td><strong>Syntax</strong></td><td><code>onClick=</code><br><code>{handleClick}</code></td><td><code>onClick=</code><br><code>{handleClick()}</code></td></tr><tr><td><strong>Execution</strong></td><td>Fires only on physical user click</td><td>Runs immediately during component render</td></tr><tr><td><strong>Return Value</strong></td><td>Function object stored for event</td><td>Function return (<code>undefined</code>) assigned</td></tr><tr><td><strong>Nested Behavior</strong></td><td>Can stop bubbling with <code>e.</code><br><code>stopPropagation()</code></td><td>Runs before DOM elements are even mounted</td></tr><tr><td><strong>State Impact</strong></td><td>Safe, controlled state transitions</td><td>Risk of instant infinite re-render loops</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

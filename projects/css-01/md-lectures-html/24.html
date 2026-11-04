@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 24: Dynamic Cascade Theming</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 24: Dynamic Cascade Theming</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">How do CSS custom properties enable runtime theming that preprocessor variables cannot?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>The National Times engineering team prepares to launch a reader-facing dark mode across its digital publication.</li>
+<li>The legacy architecture uses a Sass preprocessor: a <code>$theme: dark</code> build generates a second complete stylesheet with four hundred duplicated selectors.</li>
+<li>Every page load under dark mode flashes the white background for two hundred milliseconds before the alternate stylesheet finishes downloading and executing.</li>
+<li>When marketing introduces an experimental sepia theme for long-form reading, the build pipeline is forced to compile and distribute three separate CSS bundles.</li>
+<li>A staff engineer refactors the entire design system to CSS custom properties, deleting eighteen hundred lines of duplicate selectors and unifying theming into a single bundle.</li>
+<li>The entire publication now switches between light, dark, and high-contrast modes instantaneously at runtime by toggling a single data attribute on the document root.</li>
+<li>Master Rule: Preprocessor variables are static build-time constants baked into fixed CSS values; CSS custom properties live in the browser engine, participating dynamically in the cascade, DOM inheritance, and JavaScript CSSOM APIs.</li></ol>
+</div>
+<div class="keep-together">
+<h3>Static Build-Time Compilation vs Live CSSOM Runtime Cascade</h3>
+<p>To understand why CSS custom properties revolutionized web application theming, one must first recognize the fundamental limitation of preprocessor variables. Tools like Sass, Less, and Stylus were invented when CSS lacked native abstraction mechanisms. Developers wrote <code>$brand-primary: #003366;</code> in their source files, which the compiler evaluated during the local build or continuous integration pipeline.</p>
+<p>The crucial architectural reality of preprocessor variables is that they do not exist inside the browser. By the time a stylesheet is parsed by Google Chrome, Apple Safari, or Mozilla Firefox, the Sass compiler has erased every variable name and replaced it with a static, hardcoded value. When a developer compiles a dark theme using Sass, the compiler cannot dynamically mutate the value of <code>$background</code>.</p>
+<p>Instead, the build system must emit two distinct selector rules for every single component: one rule for the default state (<code>.story-card { background: #ffffff; }</code>) and a second, duplicated descendant override (<code>.theme-dark .story-card { background: #0f172a; }</code>).</p>
+<p>In large-scale publishing platforms like The National Times, this compile-time duplication produces catastrophic stylesheet bloat. Four hundred UI components require eight hundred or twelve hundred rules to support light, dark, and high-contrast themes. Furthermore, switching themes requires either asynchronously downloading a secondary stylesheet over the network (causing a visible flash of unstyled content known as FOUC) or forcing the browser to re-evaluate selector specificity across thousands of overridden rules.</p>
+<p>CSS custom properties eliminate this overhead entirely because they are evaluated at runtime by the browser style engine. Declared with a double hyphen prefix (such as <code>--surface-primary: #ffffff;</code>), custom properties are first-class citizens of the CSS Object Model (CSSOM). The browser stores them in memory, tracks their values along the DOM tree, and recalculates them dynamically whenever an attribute, media query, or JavaScript call alters their definition.</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p><strong>Custom Properties vs CSS Variables:</strong> While industry developers colloquially refer to <code>--name</code> declarations as "CSS variables", the official W3C specification strictly differentiates between <strong>CSS Custom Properties</strong> (the two-dash property declarations such as <code>--surface: #fff;</code>) and the <strong><code>var()</code> CSS function</strong> (the substitution mechanism that evaluates and returns a custom property value). A custom property defines a value in the cascade; the <code>var()</code> function retrieves it. Confusing the property with the evaluation function obscures how custom properties inherit down the DOM tree.</p>
+  </div>
+</aside>
+<p>To see the architectural divergence between compile-time variable baking and live CSSOM evaluation, inspect the HTML markup of a story card:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">theme-card.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;article <span class="kw">class</span>=<span class="str">"story-card"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;h3 <span class="kw">class</span>=<span class="str">"story-title"</span>&gt;Senate Approves Clean Energy Accord&lt;/h3&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  &lt;p <span class="kw">class</span>=<span class="str">"story-summary"</span>&gt;Lawmakers pass sweeping environmental legislation after an all-night debate.&lt;/p&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;button <span class="kw">class</span>=<span class="str">"story-btn"</span> type=<span class="str">"button"</span>&gt;Read Report&lt;/button&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;/article&gt;</span></div></div></div></div>
+<p>This markup represents a standard editorial card. Now examine how custom properties define global tokens at the root level for both light and dark themes:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">root-tokens.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">:root </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">--surface-primary</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Default light background</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">--text-primary</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Default dark slate text</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">--accent-action</span>: <i class="swatch" style="background:#2563eb"></i><span class="clr">#2563eb</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Brand blue action color</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">:root[data-theme="dark"] </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">--surface-primary</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Dark slate background</span></div></div></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="prop">--text-primary</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Off-white text</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src">  <span class="prop">--accent-action</span>: <i class="swatch" style="background:#38bdf8"></i><span class="clr">#38bdf8</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Sky blue action color</span></div></div></div>
+<div class="row"><span class="num">11</span><span class="src">}</span></div></div></div></div>
+<p>In these root rules, switching themes does not require authoring new component selectors. It only requires updating the token values assigned to the root element.</p>
+<p>Now examine the component rules that consume these tokens:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">component-tokens.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.story-card </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">background-color</span>: <span class="fn">var</span>(--surface-primary);</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">color</span>: <span class="fn">var</span>(--text-primary);</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">border</span>: <span class="nl">1px</span> <span class="kw">solid</span> <span class="fn">var</span>(--surface-primary);</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">.story-btn </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">background-color</span>: <span class="fn">var</span>(--accent-action);</span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="prop">color</span>: <span class="fn">var</span>(--surface-primary);</span></div>
+<div class="row"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>Notice the architectural elegance of this design. The <code>.story-card</code> and <code>.story-btn</code> rules are authored exactly once. There are no <code>.theme-dark .story-card</code> or <code>body.dark .story-btn</code> descendant overrides polluting the stylesheet.</p>
+<figure class="css-figure">
+<style>
+  .fig-theming-compare {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-theming-compare .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-theming-compare .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-theming-compare .pill-wrong {
+    background: #fde8e8;
+    border: 1px solid #f9b4b4;
+    color: #b91c1c;
+  }
+  .fig-theming-compare .pill-right {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-theming-compare .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-theming-compare .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-theming-compare .card-wrong {
+    border: 1px solid #f9b4b4;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .fig-theming-compare .card-right {
+    border: 1.5px solid #84e1bc;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-theming-compare .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+  }
+
+  .fig-theming-compare .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .fig-theming-compare .canvas-area {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 10px;
+    box-sizing: border-box;
+    height: 195px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* Code block simulation */
+  .fig-theming-compare .code-snippet {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    line-height: 1.45;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 8px;
+    color: #334155;
+    overflow: hidden;
+  }
+  .fig-theming-compare .tok-kw { color: #8b5cf6; font-weight: 700; }
+  .fig-theming-compare .tok-val { color: #0284c7; font-weight: 600; }
+  .fig-theming-compare .tok-dup { color: #dc2626; font-weight: 700; }
+  .fig-theming-compare .tok-var { color: #059669; font-weight: 700; }
+
+  /* Output metric box */
+  .fig-theming-compare .metric-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+  }
+  .fig-theming-compare .metric-wrong {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+  .fig-theming-compare .metric-right {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  .fig-theming-compare .card-footer {
+    padding: 10px 16px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-theming-compare">
+  <div class="compare-header">
+    <div class="compare-pill pill-wrong">PREPROCESSOR COMPILE-TIME VARIABLES (SASS)</div>
+    <div class="compare-pill pill-right">CSS CUSTOM PROPERTIES (RUNTIME CASCADE)</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Left: Static Preprocessor -->
+    <div class="preview-card card-wrong">
+      <div class="card-body">
+        <span class="stage-label">STATIC BUILD-TIME BAKING</span>
+        <div class="canvas-area">
+          <div class="code-snippet">
+            <span class="tok-kw">/* Compiled CSS Output */</span><br>
+            .card { <span class="tok-kw">background:</span> <span class="tok-val">#ffffff</span>; }<br>
+            .nav { <span class="tok-kw">background:</span> <span class="tok-val">#f8fafc</span>; }<br>
+            <span class="tok-dup">.dark .card</span> { <span class="tok-kw">background:</span> <span class="tok-dup">#0f172a</span>; }<br>
+            <span class="tok-dup">.dark .nav</span> { <span class="tok-kw">background:</span> <span class="tok-dup">#1e293b</span>; }<br>
+            <span class="tok-kw">/* +400 duplicated selector overrides */</span>
+          </div>
+          <div class="metric-box metric-wrong">
+            <span>Compiled Bloat: +400 rules</span>
+            <span>DOM Reactive: NO</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        Preprocessor variables vanish at compile time, forcing teams to duplicate hundreds of selectors with dark-theme prefixes.
+      </div>
+    </div>
+
+    <!-- Right: CSS Custom Properties -->
+    <div class="preview-card card-right">
+      <div class="card-body">
+        <span class="stage-label">LIVE CSSOM CASCADE EVALUATION</span>
+        <div class="canvas-area">
+          <div class="code-snippet">
+            :root { <span class="tok-var">--surface:</span> #fff; <span class="tok-var">--text:</span> #000; }<br>
+            :root[data-theme="dark"] {<br>
+            &nbsp;&nbsp;<span class="tok-var">--surface:</span> #0f172a; <span class="tok-var">--text:</span> #f8fafc;<br>
+            }<br>
+            .card { <span class="tok-kw">background:</span> <span class="tok-var">var(--surface)</span>; }<br>
+            .nav { <span class="tok-kw">background:</span> <span class="tok-var">var(--surface)</span>; }
+          </div>
+          <div class="metric-box metric-right">
+            <span>Rules: Single set</span>
+            <span>DOM Reactive: YES</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        Custom properties live in the browser engine, allowing a single root attribute change to restyle the entire site dynamically.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 24.1: Compile-Time vs Runtime Theming: Sass bakes static hex codes into duplicated descendant selectors, doubling CSS bundle size. Custom properties maintain a single set of component declarations, flipping themes instantly via live cascade token mutations.</figcaption>
+</figure>
+<p>In Figure 24.1, compare the two systems side by side. In the left panel, the Sass compiler generates separate duplicate rules for every single component in dark mode, doubling the CSS bundle size.</p>
+<p>In the right panel of Figure 24.1, custom properties maintain a single set of component rules. When the reader clicks the dark mode toggle on the newspaper masthead, a single line of JavaScript runs: <code>document.documentElement.setAttribute('data-theme', 'dark');</code>.</p>
+<p>The browser engine detects that the selector <code>:root[data-theme="dark"]</code> now matches the root element. It updates the computed values of <code>--surface-primary</code>, <code>--text-primary</code>, and <code>--accent-action</code> in the style tree. The browser automatically recalculates the computed styles of every dependent element and repaints the screen in under four milliseconds, without downloading any additional CSS.</p>
+</div>
+<div class="keep-together">
+<h3>Scope Inheritance: Contextual Theming and Subtree Token Overrides</h3>
+<p>The second major power of CSS custom properties is DOM-scoped inheritance. Unlike programming languages where variables exist in lexical or block scopes, CSS custom properties follow the hierarchical tree structure of HTML documents.</p>
+<p>The official W3C CSS Custom Properties for Cascading Variables Module Level 1 specification codifies this behavior:</p>
+<blockquote>Custom properties are ordinary properties, so they can be declared on any element, are resolved with the normal inheritance and cascade rules, and can be overridden with another value further down the tree. Variables always draw from the computed value of the associated custom property on the same element.</blockquote>
+<p><em>W3C CSS Custom Properties for Cascading Variables Module Level 1, <code>resources/spec/csswg-drafts/css-variables-1/Overview.bs</code></em></p>
+</div>
+<h4>The Mechanism of Contextual Inversion</h4>
+<p>Because custom properties inherit from parent to child, an engineer can change the theme of an isolated subtree simply by redefining tokens on that subtree container element.</p>
+<p>Imagine an editorial layout where ninety percent of the page uses the default light theme, but a featured card requires an inverted dark aesthetic. In a preprocessor architecture, the developer would be forced to write specialized contextual selectors for every element inside that card.</p>
+<p>With CSS custom properties, you do not write a single child override selector. You simply re-declare the semantic tokens on the container:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">subtree-theming.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.story-card--featured </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">--surface-primary</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Scopes dark surface to this container and its descendants</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">--text-primary</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Scopes light text to this container and its descendants</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">--accent-action</span>: <i class="swatch" style="background:#38bdf8"></i><span class="clr">#38bdf8</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Scopes bright action color locally</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<figure class="css-figure">
+<style>
+  .fig-subtree-scope {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-subtree-scope .header-pill {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    margin-bottom: 12px;
+  }
+
+  .fig-subtree-scope .preview-card {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .fig-subtree-scope .card-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    background: #f8fafc;
+  }
+
+  .fig-subtree-scope .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  /* DOM Tree Architecture Display */
+  .fig-subtree-scope .tree-container {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 14px;
+    box-sizing: border-box;
+    display: flex;
+    gap: 16px;
+  }
+
+  /* Root Scope Box */
+  .fig-subtree-scope .root-scope {
+    flex: 1;
+    background: #ffffff;
+    border: 1.5px solid #94a3b8;
+    border-radius: 6px;
+    padding: 10px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .fig-subtree-scope .scope-tag {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+    align-self: flex-start;
+  }
+  .fig-subtree-scope .tag-root { background: #e2e8f0; color: #334155; }
+  .fig-subtree-scope .tag-sub { background: #334155; color: #f8fafc; }
+
+  .fig-subtree-scope .token-list {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    line-height: 1.4;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 6px 8px;
+  }
+
+  /* Component Demo */
+  .fig-subtree-scope .demo-card {
+    border-radius: 4px;
+    padding: 8px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .fig-subtree-scope .card-standard {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+  }
+  .fig-subtree-scope .card-inverted {
+    background: #0f172a;
+    border: 1.5px solid #38bdf8;
+    color: #f8fafc;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
+  }
+
+  .fig-subtree-scope .card-header {
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .fig-subtree-scope .card-text {
+    font-size: 8.5px;
+    opacity: 0.85;
+  }
+  .fig-subtree-scope .card-btn {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 7.5px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    align-self: flex-start;
+    font-weight: 600;
+  }
+  .fig-subtree-scope .btn-light {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+  }
+  .fig-subtree-scope .btn-dark {
+    background: #38bdf8;
+    color: #0f172a;
+    border: none;
+  }
+
+  .fig-subtree-scope .card-footer {
+    padding: 10px 16px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-subtree-scope">
+  <div class="header-pill">
+    DOM SUBTREE INHERITANCE: CONTEXTUAL TOKEN SCOPING
+  </div>
+
+  <div class="preview-card">
+    <div class="card-body">
+      <span class="stage-label">SUBTREE TOKEN OVERRIDES WITHOUT SELECTOR SPECIFICITY WARS</span>
+
+      <div class="tree-container">
+        <!-- Default Root Scope -->
+        <div class="root-scope">
+          <span class="scope-tag tag-root">:root (Global Scope)</span>
+          <div class="token-list">
+            --surface: #ffffff;<br>
+            --text: #0f172a;<br>
+            --accent: #2563eb;
+          </div>
+          <div class="demo-card card-standard">
+            <span class="card-header">Standard Card (Inherited)</span>
+            <span class="card-text">Uses var(--surface) & var(--text) from :root</span>
+            <span class="card-btn btn-light">Read Story</span>
+          </div>
+        </div>
+
+        <!-- Subtree Inverted Scope -->
+        <div class="root-scope" style="background: #0f172a; border-color: #38bdf8;">
+          <span class="scope-tag tag-sub">.card--featured (Subtree Scope)</span>
+          <div class="token-list" style="background: #1e293b; color: #94a3b8; border-color: #334155;">
+            <span style="color: #38bdf8;">--surface: #0f172a;</span><br>
+            <span style="color: #38bdf8;">--text: #f8fafc;</span><br>
+            <span style="color: #38bdf8;">--accent: #38bdf8;</span>
+          </div>
+          <div class="demo-card card-inverted">
+            <span class="card-header" style="color: #f8fafc;">Featured Card (Local Scope)</span>
+            <span class="card-text" style="color: #cbd5e1;">Children automatically consume local tokens</span>
+            <span class="card-btn btn-dark">Premium Analysis</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      Redefining custom properties on a container element scopes new values to that entire subtree. Child components consume the local tokens without writing specialized descendant rules.
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 24.2: Subtree Scope Inheritance: Redefining custom properties on a container element scopes new values to that entire subtree. Child components consume the local tokens without writing specialized descendant rules.</figcaption>
+</figure>
+<h4>How the Browser Traverses the Token Scope</h4>
+<p>In Figure 24.2, observe how the browser resolves tokens for child elements. When the browser renders a <code>.story-btn</code> inside <code>.story-card--featured</code>, it evaluates <code>background-color: var(--accent-action)</code>. It begins an upward traversal of the DOM tree:</p>
+<ol><li>It checks the <code>&lt;button&gt;</code> element itself. No <code>--accent-action</code> is defined here.</li>
+<li>It inspects the parent <code>&lt;article class="story-card story-card--featured"&gt;</code>. It finds <code>--accent-action: #38bdf8;</code>.</li>
+<li>The lookup stops immediately. The button resolves its background color to <code>#38bdf8</code> (sky blue).</li>
+<li>For another button residing in a standard story card elsewhere on the page, the upward traversal continues past the card up to <code>:root</code>, where it resolves <code>--accent-action</code> to <code>#2563eb</code> (brand blue).</li></ol>
+<p>This contextual inheritance enables modular, self-contained component systems. A card, modal, or dropdown menu can be placed into any section of a webpage, automatically inheriting the thematic identity of its parent container without requiring custom class modifiers or CSS overrides.</p>
+<div class="keep-together">
+<h3>Invalid at Computed-Value Time: Why Cascade Fallbacks Break</h3>
+<p>One of the most nuanced and critical topics in senior CSS architecture is the error-handling mechanism of custom properties. Developers who transition from standard CSS to custom properties frequently fall into a dangerous trap: assuming that an invalid custom property will trigger standard cascade fallbacks.</p>
+<p>The official MDN Web Docs reference on <code>var()</code> explicitly explains this failure mode:</p>
+<blockquote>A property containing a var() function is assumed to be valid at parse time, when the browser first reads and interprets the CSS text. It is only syntax-checked at computed-value time, after each var() function has been substituted... If the substituted value is invalid for the property, the property is invalid at computed-value time, and the browser treats the property as if it were set to unset.</blockquote>
+<p><em>MDN Web Docs, var(), <code>resources/web-performance/mdn/files/en-us/web/css/reference/values/var/index.md</code></em></p>
+</div>
+<h4>Standard Parse-Time Error Recovery</h4>
+<p>In standard CSS, error recovery occurs during the parsing phase. The browser reads rules from top to bottom. If it encounters a declaration that contains an unrecognized property name or an invalid value type, the parser discards that single declaration immediately and moves to the next rule:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">standard-fallback.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.story-header </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#1e293b"></i><span class="clr">#1e293b</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Valid hex color; accepted by parser</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">color</span>: color(display-p<span class="nl">3</span> <span class="nl">0.1</span> <span class="nl">0.2</span> <span class="nl">0.8</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Modern wide-gamut color; if unsupported, discarded</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div></div></div></div>
+<p>If a legacy browser does not support <code>color(display-p3)</code>, it discards the second line during parsing. The first line (<code>color: #1e293b</code>) remains in the cascade and takes effect.</p>
+<h4>The Computed-Value Failure Mode</h4>
+<p>Now observe what happens when custom properties enter the equation. Because a custom property can hold literally any sequence of valid CSS tokens (numbers, strings, lengths, identifiers), the CSS parser cannot know at parse time whether <code>var(--brand-color)</code> will resolve to a valid color, a length in pixels, or an arbitrary word.</p>
+<p>Therefore, the W3C specification mandates that any declaration containing a <code>var()</code> reference is considered <strong>valid at parse time</strong>. The declaration wins the cascade and replaces all previous declarations for that property:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">broken-fallback.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">:root </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">--brand-color</span>: <span class="nl">24px</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Developer error: assigned a length instead of a color</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">.story-header </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:red"></i><span class="clr">red</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Overwritten by the cascade rule below</span></div></div></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">color</span>: <span class="fn">var</span>(--brand-color); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Considered valid at parse time; wins cascade</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<figure class="css-figure">
+<style>
+  .fig-invalid-computed {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-invalid-computed .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-invalid-computed .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-invalid-computed .pill-standard {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+  }
+  .fig-invalid-computed .pill-var {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+  }
+
+  .fig-invalid-computed .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-invalid-computed .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: 1px solid #cbd5e1;
+  }
+
+  .fig-invalid-computed .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+  }
+
+  .fig-invalid-computed .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .fig-invalid-computed .timeline-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 195px;
+    justify-content: space-between;
+  }
+
+  .fig-invalid-computed .time-step {
+    border-left: 2.5px solid #94a3b8;
+    padding-left: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .fig-invalid-computed .step-active { border-left-color: #3b82f6; }
+  .fig-invalid-computed .step-fail { border-left-color: #ef4444; }
+  .fig-invalid-computed .step-pass { border-left-color: #10b981; }
+
+  .fig-invalid-computed .step-title {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    font-weight: 800;
+    color: #64748b;
+  }
+  .fig-invalid-computed .step-desc {
+    font-size: 9px;
+    color: #334155;
+    line-height: 1.35;
+  }
+  .fig-invalid-computed .step-code {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    background: #f1f5f9;
+    padding: 2px 4px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  .fig-invalid-computed .result-badge {
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .fig-invalid-computed .badge-standard {
+    background: #f1f5f9;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+  }
+  .fig-invalid-computed .badge-unset {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+
+  .fig-invalid-computed .card-footer {
+    padding: 10px 14px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-invalid-computed">
+  <div class="compare-header">
+    <div class="compare-pill pill-standard">STANDARD CSS PARSE-TIME FALLBACK</div>
+    <div class="compare-pill pill-var">CUSTOM PROPERTY COMPUTED-VALUE FAILURE</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Left: Standard CSS -->
+    <div class="preview-card">
+      <div class="card-body">
+        <span class="stage-label">PARSE-TIME SYNTAX EVALUATION</span>
+        <div class="timeline-box">
+          <div class="time-step step-active">
+            <span class="step-title">1. PARSE PHASE</span>
+            <span class="step-desc">Parser encounters <span class="step-code">color: 20px;</span>. Detects syntax error immediately.</span>
+          </div>
+          <div class="time-step step-pass">
+            <span class="step-title">2. CASCADE FALLBACK</span>
+            <span class="step-desc">Declaration discarded at parse time. Parser falls back to previous rule: <span class="step-code">color: red;</span>.</span>
+          </div>
+          <div class="result-badge badge-standard">
+            Resolved: color = red (Cascade wins)
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        Standard CSS catches invalid property values at parse time, allowing previous cascade declarations to take effect.
+      </div>
+    </div>
+
+    <!-- Right: Custom Properties -->
+    <div class="preview-card" style="border-color: #fca5a5;">
+      <div class="card-body">
+        <span class="stage-label">COMPUTED-VALUE TIME FAILURE</span>
+        <div class="timeline-box">
+          <div class="time-step step-pass">
+            <span class="step-title">1. PARSE PHASE</span>
+            <span class="step-desc">Parser reads <span class="step-code">color: var(--size);</span>. var() syntax is valid; wins cascade!</span>
+          </div>
+          <div class="time-step step-fail">
+            <span class="step-title">2. COMPUTE PHASE</span>
+            <span class="step-desc">Substitutes <span class="step-code">20px</span> into color. Fails type validation. Cannot re-run cascade!</span>
+          </div>
+          <div class="result-badge badge-unset">
+            Resolved: unset &rarr; inherit / initial
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        Custom properties win the cascade before evaluation. If substituted values fail validation, they reset to <code>unset</code>, ignoring previous cascade rules.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 24.3: The Invalid at Computed-Value Time Lifecycle: Standard CSS discards invalid declarations at parse time, falling back to earlier cascade rules. Custom properties win the cascade at parse time; if the substituted value is invalid, the engine resets the property to unset, ignoring earlier rules.</figcaption>
+</figure>
+<p>When the browser reaches the computed-value phase, it substitutes <code>24px</code> into <code>color: 24px;</code>. The style engine discovers that <code>24px</code> is not a valid color.</p>
+<p>Can the browser go back and restore <code>color: red;</code>? No. The cascade has already completed. Re-running the cascade for every failed variable substitution would impose an unacceptable performance penalty on the browser main thread.</p>
+<p>Instead, the specification dictates that the property becomes <strong>invalid at computed-value time</strong>. When this occurs, the browser immediately resets the property to <code>unset</code>. For inherited properties like <code>color</code>, <code>unset</code> evaluates to <code>inherit</code> (inheriting the color of the parent element). For non-inherited properties like <code>background-color</code>, <code>unset</code> evaluates to <code>initial</code> (which is <code>transparent</code>).</p>
+<p>The developer expected the text to be red; instead, the text silently inherits whatever color is on <code>&lt;body&gt;</code>!</p>
+<h4>The Defensive Architecture: var() Fallbacks</h4>
+<p>To protect applications against uninitialized tokens, the <code>var()</code> function provides an optional second argument: a fallback value:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">defensive-tokens.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.story-header </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">color</span>: <span class="fn">var</span>(--brand-color, <i class="swatch" style="background:#1e293b"></i><span class="clr">#1e293b</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Uses #1e293b if --brand-color is uninitialized</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+<p>The fallback value is substituted if and only if the referenced custom property has not been declared on the element or any ancestor. However, remember: the fallback inside <code>var(--prop, fallback)</code> only kicks in if <code>--prop</code> is missing. If <code>--prop</code> is declared as <code>24px</code>, the property has a defined value, so the fallback is not triggered, and the declaration still fails at computed-value time!</p>
+<div class="keep-together">
+<h3>Architectural Token Orchestration: Single-Stylesheet Design Systems</h3>
+<p>In professional engineering organizations, custom properties are structured into a multi-tiered token architecture that separates brand definitions from semantic UI roles.</p>
+</div>
+<h4>The Three-Tier Token Architecture</h4>
+<ol><li><strong>Tier 1: Global Primitive Tokens (Literals)</strong>
+   Primitive tokens represent the raw color palette and spacing scale available in the design system. They are never assigned directly to UI components:
+   ```css
+   :root {
+     --color-slate-900: #0f172a;
+     --color-slate-100: #f1f5f9;
+     --color-blue-600: #2563eb;
+     --color-blue-400: #60a5fa;
+   }
+   ```</li>
+<li><strong>Tier 2: Semantic Theme Tokens (Roles)</strong>
+   Semantic tokens map primitive values to contextual interface responsibilities. These are the tokens that change when the user toggles dark mode:
+   ```css
+   :root {
+     --surface-canvas: var(--color-slate-100);
+     --surface-card: #ffffff;
+     --text-primary: var(--color-slate-900);
+     --border-subtle: #e2e8f0;
+   }
+   :root[data-theme="dark"] {
+     --surface-canvas: #020617;
+     --surface-card: var(--color-slate-900);
+     --text-primary: var(--color-slate-100);
+     --border-subtle: #1e293b;
+   }
+   ```</li>
+<li><strong>Tier 3: Component-Scoped Tokens (Encapsulation)</strong>
+   Component tokens map semantic tokens to individual UI widgets, allowing local overrides without impacting global variables:
+   ```css
+   .story-card {
+     --card-bg: var(--surface-card);
+     --card-border: var(--border-subtle);
+     background-color: var(--card-bg);
+     border: 1px solid var(--card-border);
+   }
+   ```</li></ol>
+<h4>Responding to User System Preferences</h4>
+<p>Modern web standards empower applications to harmonize with the operating system dark mode preference automatically. Using the <code>@media (prefers-color-scheme: dark)</code> media query, developers can set up default dark tokens without executing a single line of JavaScript:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">system-theme.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">:root </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">--surface-page</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">--text-page</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="sel">@media (prefers-color-scheme: dark) </span>{</span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="sel">  :root:not([data-theme="light"]) </span>{</span></div>
+<div class="row"><span class="num">8</span><span class="src">    <span class="prop">--surface-page</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">9</span><span class="src">    <span class="prop">--text-page</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>;</span></div>
+<div class="row"><span class="num">10</span><span class="src">  }</span></div>
+<div class="row"><span class="num">11</span><span class="src">}</span></div>
+<div class="row"><span class="num">12</span><span class="src"></span></div>
+<div class="row"><span class="num">13</span><span class="src"><span class="sel">:root[data-theme="dark"] </span>{</span></div>
+<div class="row"><span class="num">14</span><span class="src">  <span class="prop">--surface-page</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">15</span><span class="src">  <span class="prop">--text-page</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>;</span></div>
+<div class="row"><span class="num">16</span><span class="src">}</span></div></div></div></div>
+<p>This pattern guarantees that new readers immediately experience a theme matching their operating system settings with zero latency and zero layout flashing, while readers who manually toggle the theme have their explicit preference honored.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>The Senior Engineer Interview Formulation:</strong> When asked: <em>"How do CSS custom properties enable runtime theming that preprocessor variables cannot?"</em> deliver your response in four crisp architectural phases:</p>
+  <ol>
+    <li><strong>Compile-Time vs Runtime Execution</strong>: Preprocessor variables are static build-time abstractions that compile into hardcoded values, forcing teams to duplicate hundreds of descendant selectors to support themes. Custom properties live in the browser CSSOM and are resolved dynamically at runtime.</li>
+    <li><strong>Cascade and Scope Inheritance</strong>: Custom properties participate in the cascade and inherit down the DOM tree. Redefining tokens on a root selector (<code>:root[data-theme="dark"]</code>) or a local container (<code>.card--featured</code>) cascades down the entire subtree without writing specialized component overrides.</li>
+    <li><strong>The Invalid at Computed-Value Time Caveat</strong>: Explain that because <code>var()</code> declarations cannot be type-checked at parse time, they win the cascade; if a substituted value fails validation at compute time, the property resets to <code>unset</code> (<code>inherit</code> or <code>initial</code>), bypassing previous cascade fallbacks.</li>
+    <li><strong>Token Tiering Architecture</strong>: Outline the three-tier token hierarchy (primitives to semantics to components) and explain how pairing custom properties with <code>prefers-color-scheme</code> eliminates FOUC and redundant CSS bundles.</li>
+  </ol>
+  </div>
+</aside>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Dark mode and high-contrast theming: toggling publication themes instantaneously by changing a data attribute on the root element.</li>
+<li>Multi-tenant enterprise platforms: injecting tenant branding colors dynamically from database configurations via inline CSS custom properties.</li>
+<li>Contextual editorial banners: inverting cards and sidebars into dark spotlight sections without authoring child selector overrides.</li>
+<li>Responsive typography and spacing scales: modifying base sizing tokens inside media queries to adapt all components globally.</li>
+<li>Interactive user customization: allowing users to adjust font scale or theme accents using client-side JavaScript that updates root tokens.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>CSS Custom Property</strong>: A CSS property prefixed with two hyphens (--name) that stores an arbitrary value for reuse across stylesheets.</li>
+<li><strong>var() Function</strong>: The native CSS function used to evaluate and insert the value of a custom property into a declaration.</li>
+<li><strong>CSSOM (CSS Object Model)</strong>: The set of APIs that allows CSS to be manipulated via JavaScript and inspected dynamically at runtime.</li>
+<li><strong>Scope Inheritance</strong>: The mechanism where custom properties declared on a parent element cascade down to all descendants in that DOM subtree.</li>
+<li><strong>Invalid at Computed-Value Time</strong>: The browser error state where a syntactically valid <code>var()</code> declaration resolves to an incompatible value type, causing the property to reset to <code>unset</code>.</li>
+<li><strong>Three-Tier Token Architecture</strong>: The design system practice of organizing tokens into primitives (raw values), semantics (UI roles), and components (local scopes).</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Dynamic Cascade Theming</strong></p>
+<p>Relying on preprocessor variables for theming is a legacy architectural anti-pattern. Because preprocessor variables vanish during compilation, supporting dark mode or multi-brand themes with Sass or Less requires compiling duplicated rules for every themed component, bloating stylesheet bundles and causing visible flashes of unstyled content during page load.</p>
+<p>CSS custom properties solve this problem by introducing dynamic, runtime-evaluated variables directly into the browser style engine. Custom properties inherit down the DOM tree, enabling instant site-wide theme switching through root attribute changes and localized subtree theming without selector specificity wars. However, engineers must understand that custom properties bypass parse-time error recovery; an invalid substituted value causes the property to become invalid at computed-value time, resetting to <code>unset</code> rather than falling back to earlier cascade rules. Here is your streetwise review.</p>
+<p>❒ Core Theming Principles</p>
+<ol><li>Live CSSOM evaluation.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Preprocessor variables are erased at build time; custom properties persist in the browser engine.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Toggling a theme attribute updates all component styles dynamically in a single frame.</li>
+<li>DOM subtree inheritance.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Tokens inherit down the DOM hierarchy like standard inheritable CSS properties.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Local containers can override tokens to create inverted themes without writing descendant selectors.</li>
+<li>Invalid at computed-value time.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Declarations containing <code>var()</code> win the cascade at parse time regardless of value validity.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Invalid substituted values reset to <code>unset</code> (<code>inherit</code> or <code>initial</code>), not the cascade fallback.</li></ol>
+<p>❒ Theming Best Practices</p>
+<ol><li>Never compile duplicate stylesheets or duplicate component selectors to implement color themes.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Duplicate component selectors with theme prefixes using preprocessors.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.story-card </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">background</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">.theme-dark .story-card </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">background</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>;</span></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Reference semantic custom properties and toggle values at the root or container level.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">:root </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">--surface</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">--text</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">:root[data-theme="dark"] </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">--surface</span>: <i class="swatch" style="background:#0f172a"></i><span class="clr">#0f172a</span>;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">--text</span>: <i class="swatch" style="background:#f8fafc"></i><span class="clr">#f8fafc</span>;</span></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="sel">.story-card </span>{</span></div>
+<div class="row"><span class="num">10</span><span class="src">  <span class="prop">background</span>: <span class="fn">var</span>(--surface);</span></div>
+<div class="row"><span class="num">11</span><span class="src">  <span class="prop">color</span>: <span class="fn">var</span>(--text);</span></div>
+<div class="row"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+</div>
+<p>➔ NEVER rely on standard cascade declarations as fallbacks for custom property type errors.</p>
+<p>➔ ALWAYS structure theming into three tiers: primitive constants, semantic roles, and component tokens.</p>
+<p>➔ IF supporting dark mode THEN pair custom properties with <code>prefers-color-scheme</code> to prevent theme flashing.</p>
+<table><thead><tr><th></th><th><strong>PREPROCESSOR VARIABLES</strong><br>(Sass / Less)</th><th><strong>CSS CUSTOM PROPERTIES</strong><br>(--name &amp; var())</th></tr></thead><tbody><tr><td><strong>Evaluation Stage</strong></td><td>Build time (Compiler on developer/CI machine)</td><td>Runtime (Browser style engine on user device)</td></tr><tr><td><strong>DOM Tree Awareness</strong></td><td>None (Static text replacement during build)</td><td>Full (Inherits down DOM nodes hierarchically)</td></tr><tr><td><strong>Theme Switching</strong></td><td>Requires multiple CSS files or duplicated rules</td><td>Toggles live by updating root attributes or classes</td></tr><tr><td><strong>CSSOM Script Access</strong></td><td>Impossible (Variables do not exist in browser)</td><td>Full API access via <code>getPropertyValue</code> &amp; <code>setProperty</code></td></tr><tr><td><strong>Media Query Reactivity</strong></td><td>Cannot react to client media queries natively</td><td>Adapts dynamically inside <code>@media</code> declarations</td></tr><tr><td><strong>Error Handling</strong></td><td>Compiler throws syntax errors during build</td><td>Evaluated at compute time; resets to <code>unset</code></td></tr><tr><td><strong>Performance Profile</strong></td><td>Zero browser overhead; larger file transfer</td><td>Minimal runtime resolution; tiny file transfer</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 57: SSR-Safe Components and Server Memory Leaks</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 57: SSR-Safe Components and Server Memory Leaks</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> ADVANCED</span>
+  </div>
+  <p class="iq-text">How do you avoid memory leaks and fatal crashes when writing SSR-safe Vue components?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A news desk developer at <em>The National Times</em> launches a live election results tracker.</li>
+<li>Under low traffic in local development, the server renders quickly and every page looks fine.</li>
+<li>On election night, thousands of concurrent readers hit the server and Node.js crashes with an out-of-memory error.</li>
+<li>Meanwhile, a logged-in subscriber sees another user's private account details on their screen.</li>
+<li>Why did background timers consume two gigabytes of server memory in twenty minutes?</li>
+<li>Why did one reader's private data leak into another reader's browser session?</li>
+<li>Today you learn how Node.js executes Vue components, why server memory leaks happen, and how to write crash-proof universal code.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Platform Divide: The Fatal Mistake of Accessing <code>window</code> in Setup</h3>
+<p>In server-side rendering, your code runs in two separate worlds.</p>
+<p>First, a Node.js server executes your component to build the initial HTML string.</p>
+<p>Second, the user browser downloads that HTML and runs your JavaScript bundle to make the page interactive.</p>
+<p>In the browser, global objects like <code>window</code>, <code>document</code>, and <code>localStorage</code> are always available.</p>
+<p>In Node.js, there is no browser window and no HTML document. If your component reads <code>window.innerWidth</code> during setup, Node.js throws <code>ReferenceError: window is not defined</code> and the request crashes immediately.</p>
+<p>Here is how you guard browser globals using client-only lifecycle hooks:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ElectionHeader.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span>, <span class="hook">onMounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> screenWidth = <span class="hook">ref</span>(<span class="nl">1024</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Safe default value for server render</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">7</span><span class="src">  screenWidth.value = window.innerWidth; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Runs only in the browser</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">});</span></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">  &lt;header <span class="kw">class</span>=<span class="str">"election-header"</span>&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">    &lt;div <span class="kw">class</span>=<span class="str">"masthead"</span>&gt;The National Times: Live Election Desk&lt;/div&gt;</span></div>
+<div class="row"><span class="num">14</span><span class="src">    &lt;div <span class="kw">class</span>=<span class="str">"viewport-metric"</span>&gt;Viewport: {{ screenWidth }}px&lt;/div&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src">  &lt;/header&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>In <code>ElectionHeader.vue</code>, notice how each line protects the server boundary:</p>
+<ol><li><code>const screenWidth = ref(1024)</code>: Sets a static fallback number. On the server, <code>renderToString</code> evaluates this ref and outputs <code>&lt;div class="viewport-metric"&gt;Viewport: 1024px&lt;/div&gt;</code> into the HTML string.</li>
+<li><code>onMounted(...)</code>: Waits until the component mounts in the real browser. Because <code>onMounted</code> never runs on Node.js, the server never touches <code>window.innerWidth</code>.</li>
+<li><code>screenWidth.value = window.innerWidth</code>: Reads the real screen size in the browser and updates the reactive ref smoothly after hydration.</li></ol>
+<p>The architectural boundary below illustrates the three defensive layers isolating browser APIs from the Node.js server:</p>
+<figure class="vue-figure css-figure">
+<div class="fig-boundary-guards">
+  <style>
+    .fig-boundary-guards {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .fig-boundary-guards * {
+      box-sizing: border-box;
+    }
+    .fig-boundary-guards .guards-shell {
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .fig-boundary-guards .chrome-bar {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 2px solid #0f172a;
+    }
+    .fig-boundary-guards .chrome-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .fig-boundary-guards .chrome-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .fig-boundary-guards .chrome-dots i:nth-child(1) { background: #ef4444; border: 1px solid #dc2626; }
+    .fig-boundary-guards .chrome-dots i:nth-child(2) { background: #f59e0b; border: 1px solid #d97706; }
+    .fig-boundary-guards .chrome-dots i:nth-child(3) { background: #10b981; border: 1px solid #059669; }
+    .fig-boundary-guards .chrome-title {
+      flex: 1;
+      text-align: center;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding-right: 42px;
+    }
+    .fig-boundary-guards .content-body {
+      padding: 14px 16px;
+      background: #f8fafc;
+      display: flex;
+      gap: 12px;
+    }
+    .fig-boundary-guards .guard-card {
+      flex: 1;
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .fig-boundary-guards .guard-header {
+      padding: 8px 10px;
+      background: #f1f5f9;
+      border-bottom: 1.5px solid #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .fig-boundary-guards .guard-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .fig-boundary-guards .guard-badge {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+    .fig-boundary-guards .guard-body {
+      padding: 10px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .fig-boundary-guards .code-box {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 10.5px;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 8px;
+      border-radius: 4px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    .fig-boundary-guards .code-box .kw { color: #f472b6; font-weight: 600; }
+    .fig-boundary-guards .code-box .fn { color: #60a5fa; }
+    .fig-boundary-guards .code-box .str { color: #34d399; }
+    .fig-boundary-guards .code-box .tag { color: #38bdf8; }
+    .fig-boundary-guards .explanation {
+      font-size: 11px;
+      line-height: 1.35;
+      color: #475569;
+    }
+    .fig-boundary-guards .guard-footer {
+      padding: 6px 10px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      font-size: 10px;
+      font-weight: 700;
+      color: #166534;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  </style>
+
+  <div class="guards-shell">
+    <div class="chrome-bar">
+      <div class="chrome-dots">
+        <i></i><i></i><i></i>
+      </div>
+      <div class="chrome-title">Universal Platform Guards: Three Lines of Defense</div>
+    </div>
+
+    <div class="content-body">
+      <!-- GUARD 1 -->
+      <div class="guard-card">
+        <div class="guard-header">
+          <span class="guard-title">1. Lifecycle Deferral</span>
+          <span class="guard-badge">Component Hook</span>
+        </div>
+        <div class="guard-body">
+          <div class="code-box"><span class="fn">onMounted</span>(() => {
+  <span class="kw">const</span> w = window.innerWidth;
+  window.<span class="fn">addEventListener</span>(
+    <span class="str">'resize'</span>, onResize
+  );
+});</div>
+          <div class="explanation">
+            <strong>Browser-Only Hook:</strong> Vue never invokes <code>onMounted</code> on the Node.js server. Window access is completely safe.
+          </div>
+        </div>
+        <div class="guard-footer">
+          <span>✓ Zero ReferenceErrors on Server</span>
+        </div>
+      </div>
+
+      <!-- GUARD 2 -->
+      <div class="guard-card">
+        <div class="guard-header">
+          <span class="guard-title">2. Runtime Branching</span>
+          <span class="guard-badge">Universal Utils</span>
+        </div>
+        <div class="guard-body">
+          <div class="code-box"><span class="kw">function</span> <span class="fn">getAuthToken</span>() {
+  <span class="kw">if</span> (<span class="kw">typeof</span> window !== <span class="str">'undefined'</span>) {
+    <span class="kw">return</span> localStorage.token;
+  }
+  <span class="kw">return</span> serverCookieToken;
+}</div>
+          <div class="explanation">
+            <strong>Environment Check:</strong> Checks global presence before reading local storage or dispatching client analytics.
+          </div>
+        </div>
+        <div class="guard-footer">
+          <span>✓ Universal Function Safe Anywhere</span>
+        </div>
+      </div>
+
+      <!-- GUARD 3 -->
+      <div class="guard-card">
+        <div class="guard-header">
+          <span class="guard-title">3. Template Boundary</span>
+          <span class="guard-badge">ClientOnly Shell</span>
+        </div>
+        <div class="guard-body">
+          <div class="code-box"><span class="tag">&lt;ClientOnly&gt;</span>
+  <span class="tag">&lt;InteractiveChart /&gt;</span>
+  <span class="tag">&lt;template</span> #fallback<span class="tag">&gt;</span>
+    <span class="tag">&lt;div</span> class="skeleton"<span class="tag">&gt;&lt;/div&gt;</span>
+  <span class="tag">&lt;/template&gt;</span>
+<span class="tag">&lt;/ClientOnly&gt;</span></div>
+          <div class="explanation">
+            <strong>Markup Isolation:</strong> Server renders the skeleton placeholder without running client canvas or map bundles.
+          </div>
+        </div>
+        <div class="guard-footer">
+          <span>✓ Skips Heavy Client Scripts on Server</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 57.1: Universal Platform Guards: three defensive lines isolating browser-specific APIs from the Node.js server runtime.</figcaption>
+</figure>
+<p>When a visitor requests a page, Node.js calls Vue's <code>renderToString</code> function. This function executes your <code>&lt;script setup&gt;</code> block once to determine the starting state.</p>
+<p>Because Node.js runs as a headless server process, <code>window</code> does not exist in memory. Any direct access to <code>window</code> or <code>document</code> aborts the render and returns an HTTP 500 error to the visitor.</p>
+<p>To protect your server, Vue provides a strict guarantee: <strong><code>onMounted</code> never runs on the server.</strong></p>
+<p>Vue executes <code>onMounted</code> only inside the browser, after the HTML is already on the screen. Moving browser-dependent calls into <code>onMounted</code> guarantees that Node.js will never touch them.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">
+  <p>Code in the root of <code>&lt;script setup&gt;</code> runs on both the Node.js server and the browser. Code inside <code>onMounted</code> runs only in the browser.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Server Memory Architecture: Hotel Room vs Private Home</h3>
+<p>To build solid server-rendered applications, you must understand how Node.js handles memory.</p>
+<p>Here are five core concepts every senior developer must know:</p>
+<ol><li><strong>Universal Code</strong>: JavaScript authored to run cleanly in both Node.js and the browser without throwing environment errors.</li>
+<li><strong>Active Handles</strong>: Persistent resources in the Node.js <code>libuv</code> event loop, like open network sockets or active <code>setInterval</code> timers, that keep the Node process running.</li>
+<li><strong>Module Cache</strong>: The Node.js memory registry (<code>require.cache</code>) where loaded files stay cached for the entire lifetime of the server process.</li>
+<li><strong>Cross-Request State Pollution</strong>: A security defect where shared state modified by one user leaks into another user's rendered HTML.</li>
+<li><strong>V8 Heap Limit</strong>: The memory cap for a Node.js process (typically 1.4 to 2 gigabytes). Exceeding this cap causes an immediate process crash.</li></ol>
+<p>To picture how server memory operates in physical reality, compare a client SPA to a private house.</p>
+<p>When you open a browser tab, your computer builds a private house for that website. You can leave dirty dishes on the table or clothes on the floor.</p>
+<p>When you close the browser tab, the browser brings in a bulldozer. It demolishes the entire house and wipes all memory clean. Nobody else will ever live there.</p>
+<p>A Node.js SSR server is very different. It is a single hotel room that thousands of travelers share back-to-back all day long.</p>
+<p>Traveler Alice checks in at 8:00 PM for twenty milliseconds. If Alice writes her private credit card number on the room whiteboard (a module-level store object), she checks out when her HTML is sent.</p>
+<p>At 8:01 PM, Traveler Bob walks into the exact same hotel room. Nobody erased the whiteboard. Bob looks at the wall and reads Alice's private card number. That is <strong>cross-request state pollution</strong>.</p>
+<p>Now imagine Alice puts an alarm clock in the closet that rings every five seconds (<code>setInterval</code> in setup). When Alice leaves, the maid never cleans the closet because server rendering never runs cleanup hooks.</p>
+<p>By morning, five thousand guests have stayed in that room, leaving five thousand alarm clocks ringing in the closet. The noise and heat build up until the ceiling collapses. That is a <strong>server timer memory leak</strong>.</p>
+<p>In early universal JavaScript, developers assumed server-side rendering was just running their existing client app on Node.</p>
+<p>Teams copied browser components straight into backend servers. Within hours, production servers crashed under regular traffic.</p>
+<p>Engineers had to connect Chrome DevTools to live production servers to capture heap snapshots. They found millions of forgotten closures trapped in RAM.</p>
+<p>Timers and global event listeners registered during server rendering held references to entire component trees. Because the server never unmounted components, the garbage collector could never free that memory.</p>
+<p>Teams had to set up cron jobs to reboot their Node servers every two hours. Vue 3 solved this by setting strict rules: stateless server rendering, request-scoped factories, and clean lifecycle boundaries.</p>
+<p>What actually happens inside the computer when Node.js runs <code>renderToString(app)</code>?</p>
+<p>In a browser, Vue mounts a component and creates a reactive Virtual DOM tree. It sets up watchers, registers click handlers, and schedules updates whenever state changes.</p>
+<p>When the user leaves the page, Vue unmounts the component. It runs <code>onBeforeUnmount</code> and <code>onUnmounted</code>, removes event listeners, and frees memory.</p>
+<p>On the server, <code>renderToString</code> does something totally different:</p>
+<ol><li>Node.js runs the component <code>setup()</code> function.</li>
+<li>It calculates initial state and computed values.</li>
+<li>It converts the template directly into an HTML string using direct string concatenation.</li>
+<li>It sends that HTML string out through the HTTP response stream.</li></ol>
+<p>Notice what never happens: <strong>Node.js never creates a live Virtual DOM, never sets up an update loop, and never unmounts the component.</strong></p>
+<p>Because server rendering is a one-pass string generation task, Vue skips <code>onMounted</code>, <code>onUpdated</code>, and <code>onUnmounted</code> entirely.</p>
+<p>If you call <code>setInterval</code> inside <code>setup()</code>, Node registers an active timer handle in its <code>libuv</code> event loop. Because <code>onUnmounted</code> never runs, your code never calls <code>clearInterval</code>. That timer handle stays trapped in server memory forever.</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p>A browser tab is disposable, but a server process is permanent. Any side effect started on the server that does not finish immediately will pile up until the server crashes.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Silent Leak: Lifecycle Asymmetry and the Zombie Timer Problem</h3>
+<p>Now let us look at the most dangerous memory leak in server-rendered Vue: the zombie timer.</p>
+<p>Suppose you build a live poll tracker. You want fresh ballot counts every five seconds. A developer might instinctively put <code>setInterval</code> right inside <code>&lt;script setup&gt;</code>.</p>
+<p>Here is how placing an interval in setup destroys the server, compared to the safe pattern that confines timers to browser hooks:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">PollCounter.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span>, <span class="hook">onMounted</span>, <span class="hook">onUnmounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> pollCount = <span class="hook">ref</span>(<span class="nl">0</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Reactive ballot counter</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">let</span> timerId = <span class="kw">null</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Plain variable stores interval ID</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">8</span><span class="src">  timerId = <span class="fn">setInterval</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">9</span><span class="src">    pollCount.value += <span class="nl">1</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Runs only in the browser</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src">  }, <span class="nl">5000</span>);</span></div>
+<div class="row"><span class="num">11</span><span class="src">});</span></div>
+<div class="row"><span class="num">12</span><span class="src"></span></div>
+<div class="row"><span class="num">13</span><span class="src"><span class="hook">onUnmounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">14</span><span class="src">  <span class="kw">if</span> (timerId) {</span></div>
+<div class="row"><span class="num">15</span><span class="src">    <span class="fn">clearInterval</span>(timerId); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Cleans up timer when component unmounts</span></div></div></div>
+<div class="row"><span class="num">16</span><span class="src">  }</span></div>
+<div class="row"><span class="num">17</span><span class="src">});</span></div>
+<div class="row"><span class="num">18</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">19</span><span class="src"></span></div>
+<div class="row"><span class="num">20</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">21</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"poll-counter"</span>&gt;</span></div>
+<div class="row"><span class="num">22</span><span class="src">    &lt;span <span class="kw">class</span>=<span class="str">"label"</span>&gt;Live Ballots Counted:&lt;/span&gt;</span></div>
+<div class="row"><span class="num">23</span><span class="src">    &lt;span <span class="kw">class</span>=<span class="str">"value"</span>&gt;{{ pollCount }}&lt;/span&gt;</span></div>
+<div class="row"><span class="num">24</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">25</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>In <code>PollCounter.vue</code>, every line manages resources safely:</p>
+<ol><li><code>const pollCount = ref(0)</code>: Reactive number displayed in the template. On the server, <code>renderToString</code> outputs <code>0</code> and exits.</li>
+<li><code>let timerId = null</code>: Declared as a plain non-reactive variable. A timer handle is a numeric ID, so making it reactive would waste memory and trigger useless re-renders.</li>
+<li><code>onMounted(...)</code>: Registers the interval exclusively in the browser after initial hydration completes. Node.js never calls <code>onMounted</code>, so the server never creates a timer handle.</li>
+<li><code>onUnmounted(...)</code>: When the user navigates away, Vue calls <code>clearInterval(timerId)</code>, freeing the browser timer handle.</li></ol>
+<p>The visual comparison below contrasts the clean lifecycle teardown in the browser against the accumulating timer leak on the Node.js server:</p>
+<figure class="vue-figure css-figure">
+<div class="fig-lifecycle-timer-leak">
+  <style>
+    .fig-lifecycle-timer-leak {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .fig-lifecycle-timer-leak * {
+      box-sizing: border-box;
+    }
+    .fig-lifecycle-timer-leak .leak-shell {
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .fig-lifecycle-timer-leak .chrome-bar {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 2px solid #0f172a;
+    }
+    .fig-lifecycle-timer-leak .chrome-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .fig-lifecycle-timer-leak .chrome-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .fig-lifecycle-timer-leak .chrome-dots i:nth-child(1) { background: #ef4444; border: 1px solid #dc2626; }
+    .fig-lifecycle-timer-leak .chrome-dots i:nth-child(2) { background: #f59e0b; border: 1px solid #d97706; }
+    .fig-lifecycle-timer-leak .chrome-dots i:nth-child(3) { background: #10b981; border: 1px solid #059669; }
+    .fig-lifecycle-timer-leak .chrome-title {
+      flex: 1;
+      text-align: center;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding-right: 42px;
+    }
+    .fig-lifecycle-timer-leak .content-body {
+      padding: 14px 16px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .fig-lifecycle-timer-leak .lifecycle-row {
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .fig-lifecycle-timer-leak .lifecycle-row.browser {
+      border-left: 5px solid #10b981;
+    }
+    .fig-lifecycle-timer-leak .lifecycle-row.server {
+      border-left: 5px solid #ef4444;
+    }
+    .fig-lifecycle-timer-leak .row-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .fig-lifecycle-timer-leak .env-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fig-lifecycle-timer-leak .env-badge {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .fig-lifecycle-timer-leak .badge-balanced {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .fig-lifecycle-timer-leak .badge-asymmetric {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .fig-lifecycle-timer-leak .pipeline-steps {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .fig-lifecycle-timer-leak .step-pill {
+      flex: 1;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      text-align: center;
+      border: 1px solid #cbd5e1;
+      background: #f1f5f9;
+      color: #334155;
+    }
+    .fig-lifecycle-timer-leak .step-pill.active-step {
+      background: #e0f2fe;
+      border-color: #7dd3fc;
+      color: #0369a1;
+      font-weight: 600;
+    }
+    .fig-lifecycle-timer-leak .step-pill.missing-step {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #b91c1c;
+      text-decoration: line-through;
+      opacity: 0.75;
+    }
+    .fig-lifecycle-timer-leak .step-arrow {
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .fig-lifecycle-timer-leak .verdict-note {
+      font-size: 11px;
+      line-height: 1.35;
+      color: #475569;
+      background: #f8fafc;
+      padding: 5px 8px;
+      border-radius: 4px;
+      border: 1px dashed #cbd5e1;
+    }
+    .fig-lifecycle-timer-leak .server-impact {
+      background: #1e293b;
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .fig-lifecycle-timer-leak .impact-stat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .fig-lifecycle-timer-leak .impact-label {
+      font-size: 10px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .fig-lifecycle-timer-leak .impact-val {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fca5a5;
+    }
+    .fig-lifecycle-timer-leak .impact-val.safe {
+      color: #86efac;
+    }
+    .fig-lifecycle-timer-leak .oom-warning {
+      background: #ef4444;
+      color: #ffffff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+  </style>
+
+  <div class="leak-shell">
+    <div class="chrome-bar">
+      <div class="chrome-dots">
+        <i></i><i></i><i></i>
+      </div>
+      <div class="chrome-title">The Lifecycle Asymmetry: Browser Teardown vs Node.js Timer Leak</div>
+    </div>
+
+    <div class="content-body">
+      <!-- BROWSER LIFECYCLE -->
+      <div class="lifecycle-row browser">
+        <div class="row-header">
+          <span class="env-title">Browser Client Environment (Single User)</span>
+          <span class="env-badge badge-balanced">Complete Teardown</span>
+        </div>
+        <div class="pipeline-steps">
+          <div class="step-pill active-step">1. <code>setup()</code></div>
+          <span class="step-arrow">➔</span>
+          <div class="step-pill active-step">2. <code>onMounted()</code> (Start Interval)</div>
+          <span class="step-arrow">➔</span>
+          <div class="step-pill active-step">3. <code>onUnmounted()</code> (Clear Interval)</div>
+        </div>
+        <div class="verdict-note">
+          Balanced execution: When the user navigates away, <code>onUnmounted</code> executes <code>clearInterval()</code>. Timers active: <strong>0</strong>.
+        </div>
+      </div>
+
+      <!-- NODE.JS SSR LIFECYCLE -->
+      <div class="lifecycle-row server">
+        <div class="row-header">
+          <span class="env-title">Node.js Server Environment (Shared Process, Thousands of Users)</span>
+          <span class="env-badge badge-asymmetric">Zero Teardown</span>
+        </div>
+        <div class="pipeline-steps">
+          <div class="step-pill active-step">1. <code>setup()</code> (Interval Created!)</div>
+          <span class="step-arrow">➔</span>
+          <div class="step-pill missing-step">2. <code>onMounted()</code> (Never Runs)</div>
+          <span class="step-arrow">➔</span>
+          <div class="step-pill missing-step">3. <code>onUnmounted()</code> (Never Runs)</div>
+        </div>
+        <div class="verdict-note">
+          Fatal trap: Node runs <code>setup()</code> and immediately calls <code>renderToString()</code>. Unmount hooks never fire. Timers stay alive forever in <code>libuv</code>.
+        </div>
+      </div>
+
+      <!-- ACCUMULATION IMPACT -->
+      <div class="server-impact">
+        <div class="impact-stat">
+          <span class="impact-label">1 Request</span>
+          <span class="impact-val safe">1 Orphan Handle (45 MB)</span>
+        </div>
+        <div class="impact-stat">
+          <span class="impact-label">1,000 Requests</span>
+          <span class="impact-val" style="color: #fcd34d;">1,000 Timers Firing (380 MB)</span>
+        </div>
+        <div class="impact-stat">
+          <span class="impact-label">10,000 Requests</span>
+          <span class="impact-val">10,000 Loops Active (1.8 GB)</span>
+        </div>
+        <div class="oom-warning">
+          Fatal: JavaScript heap out of memory
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 57.2: The Lifecycle Asymmetry: orphan timers accumulating inside the Node.js libuv event loop across consecutive requests.</figcaption>
+</figure>
+<p>Follow what happens when a developer calls <code>setInterval</code> directly inside <code>&lt;script setup&gt;</code>:</p>
+<p>When Request 1 arrives, Node.js runs <code>setup()</code>. The <code>setInterval</code> function registers a new timer handle inside the Node.js <code>libuv</code> event loop.</p>
+<p>Node.js finishes rendering, returns the HTML string to Request 1, and ends the HTTP response.</p>
+<p>However, the timer handle inside <code>libuv</code> stays alive. Every five seconds, the Node.js event loop wakes up and runs that callback function.</p>
+<p>The callback function holds onto component variables and props. Because the callback is still referenced by Node's event loop, the V8 garbage collector cannot free any of that memory.</p>
+<p>Ten milliseconds later, Request 2 arrives for another visitor. Node.js runs <code>setup()</code> again and registers a second timer handle.</p>
+<p>Under normal production traffic of 100 requests per second, the math is brutal:</p>
+<ul><li>After 1 minute: 6,000 active intervals firing callbacks inside Node's event loop.</li>
+<li>After 10 minutes: 60,000 active intervals competing for CPU time.</li>
+<li>After 30 minutes: CPU hits 100%, event loop lag spikes, and V8 memory hits the process limit.</li></ul>
+<p>Node.js crashes with an out-of-memory error: <code>FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory</code>. The server process terminates, dropping all live user connections.</p>
+<p>Here is the direct rule from the official Vue documentation:</p>
+<blockquote>You should avoid code that produces side effects that need cleanup in <code>setup()</code> or the root scope of <code>&lt;script setup&gt;</code>. An example of such side effects is setting up timers with <code>setInterval</code>. In client-side only code we may setup a timer and then tear it down in <code>onBeforeUnmount</code> or <code>onUnmounted</code>. However, because the unmount hooks will never be called during SSR, the timers will stay around forever. To avoid this, move your side-effect code into <code>onMounted</code> instead.</blockquote>
+<p><em>Vue 3 Official Documentation (Server-Side Rendering), <code>documentation official/vue/resources/core/docs/src/guide/scaling-up/ssr.md</code></em></p>
+<p>The exact same rule applies to global DOM event listeners. If you write <code>window.addEventListener('scroll', fn)</code> inside <code>setup()</code>, the server crashes or leaks memory. Always move these side effects into <code>onMounted</code>.</p>
+<aside class="callout callout-caution">
+  <p class="callout-eyebrow">Caution</p>
+  <div class="callout-body">
+  <p>Never call <code>setInterval</code>, <code>setTimeout</code>, or <code>addEventListener</code> in the root of <code>&lt;script setup&gt;</code>. Because unmount hooks never run during SSR, these calls create permanent zombie handles that drain server RAM.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Cross-Request State Pollution: Singletons vs Factory Functions</h3>
+<p>The second major danger in server-side rendering is <strong>cross-request state pollution</strong>.</p>
+<p>In a pure client-side application, declaring a global reactive store at the top of a file is convenient. Because each browser tab is isolated, that store belongs to only one user.</p>
+<p>In server-side rendering, that exact same pattern causes a serious security leak.</p>
+<p>Here is the difference between a broken module singleton store and a safe request-scoped factory:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">store.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { <span class="hook">reactive</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">const</span> sharedState = <span class="hook">reactive</span>({ user: <span class="kw">null</span> }); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-wrong">WRONG:</b> Global singleton leaks data across all server requests</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">createStore</span>() {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="kw">return</span> <span class="hook">reactive</span>({</span></div>
+<div class="row"><span class="num">7</span><span class="src">    user: <span class="kw">null</span>, </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Fresh store created for each incoming HTTP request</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">    articles: []</span></div>
+<div class="row"><span class="num">9</span><span class="src">  });</span></div>
+<div class="row"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>In <code>store.js</code>, notice the structural distinction:</p>
+<ol><li><code>export const sharedState = reactive(...)</code>: A dangerous module-level object. Because Node.js caches imported files in <code>require.cache</code>, every HTTP request shares this exact same object instance.</li>
+<li><code>export function createStore()</code>: A factory function that manufactures a fresh reactive object every time it is called.</li></ol>
+<p>Now examine how the server entry file calls this factory for each incoming request:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">entry-server.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { createSSRApp } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { createStore } <span class="kw">from</span> <span class="str">'./store.js'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App.vue'</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">createApp</span>() {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="kw">const</span> app = <span class="fn">createSSRApp</span>(App);</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="kw">const</span> store = <span class="fn">createStore</span>(); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Fresh store instance per request</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src">  app.<span class="hook">provide</span>(<span class="str">'store'</span>, store); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Store provided to components through app-level injection</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src">  <span class="kw">return</span> { app, store };</span></div>
+<div class="row"><span class="num">12</span><span class="src">}</span></div></div></div></div>
+<p>In <code>entry-server.js</code>, every step guarantees request isolation:</p>
+<ol><li><code>export function createApp()</code>: Exports an application factory function instead of a static application object.</li>
+<li><code>const app = createSSRApp(App)</code>: Creates a brand-new Vue application instance for this request.</li>
+<li><code>const store = createStore()</code>: Creates a fresh store instance dedicated exclusively to this request.</li>
+<li><code>app.provide('store', store)</code>: Injects the store into the root of the component tree, ensuring child components access this request's private store via <code>inject('store')</code>.</li>
+<li><code>return { app, store }</code>: Returns both instances so the server handler can call <code>renderToString(app)</code> and serialize <code>store.state</code> into the HTML page.</li></ol>
+<p>The architectural diagram below traces how a module singleton leaks user sessions, contrasted with the clean isolation of the factory pattern:</p>
+<figure class="vue-figure css-figure">
+<div class="fig-state-pollution">
+  <style>
+    .fig-state-pollution {
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .fig-state-pollution * {
+      box-sizing: border-box;
+    }
+    .fig-state-pollution .pollution-shell {
+      background: #ffffff;
+      border: 2px solid #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .fig-state-pollution .chrome-bar {
+      display: flex;
+      align-items: center;
+      padding: 9px 14px;
+      background: linear-gradient(to bottom, #ffffff, #edf1f5);
+      border-bottom: 2px solid #0f172a;
+    }
+    .fig-state-pollution .chrome-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .fig-state-pollution .chrome-dots i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .fig-state-pollution .chrome-dots i:nth-child(1) { background: #ef4444; border: 1px solid #dc2626; }
+    .fig-state-pollution .chrome-dots i:nth-child(2) { background: #f59e0b; border: 1px solid #d97706; }
+    .fig-state-pollution .chrome-dots i:nth-child(3) { background: #10b981; border: 1px solid #059669; }
+    .fig-state-pollution .chrome-title {
+      flex: 1;
+      text-align: center;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding-right: 42px;
+    }
+    .fig-state-pollution .duel-container {
+      display: flex;
+      gap: 14px;
+      padding: 14px 16px;
+      background: #f8fafc;
+    }
+    .fig-state-pollution .duel-card {
+      flex: 1;
+      background: #ffffff;
+      border-radius: 6px;
+      border: 1.5px solid #cbd5e1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .fig-state-pollution .duel-card.danger {
+      border-color: #fca5a5;
+    }
+    .fig-state-pollution .duel-card.safe {
+      border-color: #86efac;
+    }
+    .fig-state-pollution .card-header {
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1.5px solid #cbd5e1;
+    }
+    .fig-state-pollution .duel-card.danger .card-header {
+      background: #fef2f2;
+      border-bottom-color: #fecaca;
+    }
+    .fig-state-pollution .duel-card.safe .card-header {
+      background: #f0fdf4;
+      border-bottom-color: #bbf7d0;
+    }
+    .fig-state-pollution .header-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .fig-state-pollution .badge {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+    .fig-state-pollution .badge-danger {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #f87171;
+    }
+    .fig-state-pollution .badge-safe {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #4ade80;
+    }
+    .fig-state-pollution .card-body {
+      padding: 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .fig-state-pollution .memory-zone {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 5px;
+      padding: 8px 10px;
+    }
+    .fig-state-pollution .zone-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+    .fig-state-pollution .code-preview {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 6px 8px;
+      border-radius: 4px;
+      line-height: 1.4;
+    }
+    .fig-state-pollution .code-preview .kw { color: #f472b6; font-weight: 600; }
+    .fig-state-pollution .code-preview .fn { color: #60a5fa; }
+    .fig-state-pollution .code-preview .str { color: #34d399; }
+    .fig-state-pollution .request-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .fig-state-pollution .flow-step {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 6px 9px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+    .fig-state-pollution .user-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #ffffff;
+      flex-shrink: 0;
+    }
+    .fig-state-pollution .avatar-alice { background: #3b82f6; }
+    .fig-state-pollution .avatar-bob { background: #8b5cf6; }
+    .fig-state-pollution .step-content {
+      flex: 1;
+      line-height: 1.3;
+      color: #334155;
+    }
+    .fig-state-pollution .alert-banner {
+      padding: 8px 10px;
+      border-radius: 5px;
+      font-size: 11px;
+      line-height: 1.35;
+      font-weight: 500;
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+    }
+    .fig-state-pollution .alert-banner.danger {
+      background: #fef2f2;
+      border: 1px solid #f87171;
+      color: #991b1b;
+    }
+    .fig-state-pollution .alert-banner.safe {
+      background: #f0fdf4;
+      border: 1px solid #4ade80;
+      color: #166534;
+    }
+    .fig-state-pollution .alert-banner svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .fig-state-pollution .card-footer {
+      padding: 7px 12px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+
+  <div class="pollution-shell">
+    <div class="chrome-bar">
+      <div class="chrome-dots">
+        <i></i><i></i><i></i>
+      </div>
+      <div class="chrome-title">Server Memory Architecture: Shared Singleton vs Request Isolation</div>
+    </div>
+
+    <div class="duel-container">
+      <!-- DANGEROUS: MODULE SINGLETON -->
+      <div class="duel-card danger">
+        <div class="card-header">
+          <span class="header-title">Module Root Singleton</span>
+          <span class="badge badge-danger">Leak & Privilege Breach</span>
+        </div>
+        <div class="card-body">
+          <div class="memory-zone">
+            <div class="zone-label">Node Process Global Scope (Shared)</div>
+            <div class="code-preview"><span class="kw">export const</span> state = <span class="fn">reactive</span>({ user: <span class="kw">null</span> });</div>
+          </div>
+
+          <div class="request-flow">
+            <div class="flow-step">
+              <span class="user-avatar avatar-alice">A</span>
+              <div class="step-content">
+                <strong>Request 1 (Alice):</strong> Authenticates and writes <code>state.user = 'Alice (Admin)'</code>.
+              </div>
+            </div>
+            <div class="flow-step">
+              <span class="user-avatar avatar-bob">B</span>
+              <div class="step-content">
+                <strong>Request 2 (Bob):</strong> Guest visits. Reads <code>state.user</code> and sees Alice's session!
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-banner danger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <div><strong>Cross-Request State Pollution:</strong> Data from Request 1 leaks into Request 2. Bob gains admin dashboard access.</div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <span>Lifecycle: Survives server lifetime</span>
+          <span>Verdict: Fatal Security Flaw</span>
+        </div>
+      </div>
+
+      <!-- SAFE: REQUEST FACTORY -->
+      <div class="duel-card safe">
+        <div class="card-header">
+          <span class="header-title">App & Store Factory Pattern</span>
+          <span class="badge badge-safe">Isolated Per Request</span>
+        </div>
+        <div class="card-body">
+          <div class="memory-zone">
+            <div class="zone-label">Request Handler Factory Scope</div>
+            <div class="code-preview"><span class="kw">export function</span> <span class="fn">createApp</span>() { <span class="kw">return</span> { app, store: <span class="fn">createStore</span>() }; }</div>
+          </div>
+
+          <div class="request-flow">
+            <div class="flow-step">
+              <span class="user-avatar avatar-alice">A</span>
+              <div class="step-content">
+                <strong>Request 1 (Alice):</strong> Calls <code>createApp()</code>. Store #1 created exclusively for Alice.
+              </div>
+            </div>
+            <div class="flow-step">
+              <span class="user-avatar avatar-bob">B</span>
+              <div class="step-content">
+                <strong>Request 2 (Bob):</strong> Calls <code>createApp()</code>. Store #2 created exclusively for Bob.
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-banner safe">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <div><strong>Total Request Isolation:</strong> Each HTTP request owns a private sandbox. Memory garbage collected when response ends.</div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <span>Lifecycle: Bound to single HTTP request</span>
+          <span>Verdict: 100% Safe Universal SSR</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 57.3: Cross-Request State Pollution: module singletons leaking user sessions versus request-isolated factory instantiations.</figcaption>
+</figure>
+<p>Why does the module singleton fail so badly on the server?</p>
+<p>When Node.js loads a JavaScript file, it executes the file once and saves the exported objects in its internal cache (<code>require.cache</code>).</p>
+<p>If you export a reactive object at the top level of a file, that single object stays in server memory for the entire life of the Node.js process.</p>
+<p>Consider this step-by-step scenario:</p>
+<ol><li>User Alice opens <code>/account</code>. Her request has an authentication cookie proving she is an administrator.</li>
+<li>The server reads her cookie and sets <code>state.user = { name: 'Alice', role: 'admin' }</code>.</li>
+<li>The server renders Alice's page and sends the HTML to her browser.</li>
+<li>One millisecond later, User Bob opens <code>/news</code>. Bob is an unauthenticated guest.</li>
+<li>The server handles Bob's request using the same Node.js process.</li>
+<li>The server renders the navigation bar. The template reads <code>state.user.name</code>.</li>
+<li>Because <code>state</code> was never cleared, Bob's rendered HTML says: <code>"Welcome back, Alice (Admin)"</code>!</li></ol>
+<p>Bob now sees Alice's private profile, confidential drafts, and admin controls. If the server serializes <code>state</code> into the HTML, Bob's browser receives Alice's session token.</p>
+<p>This is a real security breach. It exposes private user data and breaks privacy regulations.</p>
+<p>To prevent cross-request state pollution, you must follow the <strong>Application Factory Pattern</strong>:</p>
+<p>Instead of exporting a single shared copy of your store across all requests (a <strong>singleton</strong>), your files must export a function that manufactures a fresh, isolated copy whenever a new request arrives (an <strong>application factory function</strong>).</p>
+<p>When an HTTP request enters your server, the request handler calls <code>createApp()</code>. This function creates a brand new Vue app, a brand new Pinia store, and a brand new router.</p>
+<p>Because all objects are created inside the request handler, each visitor gets a private sandbox. When the server finishes sending the HTML response, that request scope closes.</p>
+<p>The V8 garbage collector marks those objects as unreachable and sweeps them cleanly from server RAM.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">
+  <p>Never export reactive state, stores, or router instances from the top level of a module. Always wrap them in factory functions that create fresh objects for each incoming request.</p>
+  </div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>The Five Golden Rules of SSR Component Safety</h3>
+<p>Follow these five simple rules to keep your components crash-proof and leak-free in production.</p>
+</div>
+<h4>Rule 1: Never Access Platform Globals in Component Setup</h4>
+<p>Never access <code>window</code>, <code>document</code>, <code>navigator</code>, or <code>localStorage</code> in <code>&lt;script setup&gt;</code> or <code>computed</code> properties.</p>
+<p>If you need to read the screen size or local storage, put that logic inside <code>onMounted</code>. Provide a safe default value for the server render:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">SafeStorage.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span>, <span class="hook">onMounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> theme = <span class="hook">ref</span>(<span class="str">'light'</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 8px; max-width: calc(100% - 76px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Universal default for server render</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="kw">const</span> saved = localStorage.<span class="fn">getItem</span>(<span class="str">'theme'</span>);</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="kw">if</span> (saved) {</span></div>
+<div class="row"><span class="num">9</span><span class="src">    theme.value = saved; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Reads localStorage safely in the browser</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src">  }</span></div>
+<div class="row"><span class="num">11</span><span class="src">});</span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src"></span></div>
+<div class="row"><span class="num">14</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src">  &lt;div :<span class="kw">class</span>=<span class="str">"['app-layout', theme]"</span>&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">    &lt;slot /&gt;</span></div>
+<div class="row"><span class="num">17</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">18</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>In <code>SafeStorage.vue</code>, <code>theme</code> starts as <code>'light'</code>. On the server, <code>renderToString</code> outputs <code>&lt;div class="app-layout light"&gt;</code>. Once the page mounts in the browser, <code>onMounted</code> reads <code>localStorage</code> and updates <code>theme.value</code> without throwing server errors.</p>
+<h4>Rule 2: Clean Up Every Side Effect in Browser Hooks</h4>
+<p>If your component uses a timer, an animation frame, or an event listener, follow two clear steps:</p>
+<ol><li>Start the side effect inside <code>onMounted</code>.</li>
+<li>Clean up the side effect inside <code>onUnmounted</code>.</li></ol>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ClockWidget.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span>, <span class="hook">onMounted</span>, <span class="hook">onUnmounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> currentTime = <span class="hook">ref</span>(<span class="str">''</span>);</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">let</span> timer = <span class="kw">null</span>;</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">8</span><span class="src">  timer = <span class="fn">setInterval</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">9</span><span class="src">    currentTime.value = <span class="kw">new</span> <span class="fn">Date</span>().<span class="fn">toLocaleTimeString</span>();</span></div>
+<div class="row"><span class="num">10</span><span class="src">  }, <span class="nl">1000</span>); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Started on client</span></div></div></div>
+<div class="row"><span class="num">11</span><span class="src">});</span></div>
+<div class="row"><span class="num">12</span><span class="src"></span></div>
+<div class="row"><span class="num">13</span><span class="src"><span class="hook">onUnmounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">14</span><span class="src">  <span class="kw">if</span> (timer) {</span></div>
+<div class="row"><span class="num">15</span><span class="src">    <span class="fn">clearInterval</span>(timer); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Destroyed when component leaves screen</span></div></div></div>
+<div class="row"><span class="num">16</span><span class="src">  }</span></div>
+<div class="row"><span class="num">17</span><span class="src">});</span></div>
+<div class="row"><span class="num">18</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+<p>In <code>ClockWidget.vue</code>, <code>timer</code> is stored in a plain variable. It begins running only after the component mounts in the browser, and <code>onUnmounted</code> guarantees the timer stops when the user navigates away.</p>
+<h4>Rule 3: Use App and Store Factory Functions</h4>
+<p>Always configure Pinia and Vue Router using factory functions. If you use Pinia, call <code>createPinia()</code> inside your <code>createApp</code> factory:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">app.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { createSSRApp } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { createPinia } <span class="kw">from</span> <span class="str">'pinia'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">import</span> App <span class="kw">from</span> <span class="str">'./App.vue'</span>;</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">createApp</span>() {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="kw">const</span> app = <span class="fn">createSSRApp</span>(App);</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="kw">const</span> pinia = <span class="fn">createPinia</span>(); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Fresh Pinia instance per request</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">  app.<span class="fn">use</span>(pinia);</span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="kw">return</span> { app, pinia };</span></div>
+<div class="row"><span class="num">10</span><span class="src">}</span></div></div></div></div>
+<p>In <code>app.js</code>, <code>createPinia()</code> runs inside <code>createApp()</code>. This ensures that every HTTP request gets an isolated Pinia root, preventing user data leaks across requests.</p>
+<h4>Rule 4: Wrap Third-Party Client Libraries in <code>&lt;ClientOnly&gt;</code></h4>
+<p>Many third-party packages (like chart engines, text editors, and interactive maps) access <code>window</code> the instant they are imported or mounted.</p>
+<p>If you try to render them on the server, they crash your app. Wrap them in a <code>&lt;ClientOnly&gt;</code> component and provide a simple skeleton fallback:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">AnalyticsView.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { defineAsyncComponent } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">const</span> HeavyChart = <span class="fn">defineAsyncComponent</span>(() =&gt; <span class="kw">import</span>(<span class="str">'./HeavyChart.vue'</span>));</span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src"></span></div>
+<div class="row"><span class="num">7</span><span class="src">&lt;template&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"analytics-card"</span>&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">    &lt;h3&gt;Real-Time Reader Engagement&lt;/h3&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">    &lt;ClientOnly&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src">      &lt;HeavyChart /&gt;</span></div>
+<div class="row"><span class="num">12</span><span class="src">      &lt;template #fallback&gt;</span></div>
+<div class="row"><span class="num">13</span><span class="src">        &lt;div <span class="kw">class</span>=<span class="str">"chart-skeleton"</span>&gt;Loading interactive chart...&lt;/div&gt;</span></div>
+<div class="row"><span class="num">14</span><span class="src">      &lt;/template&gt;</span></div>
+<div class="row"><span class="num">15</span><span class="src">    &lt;/ClientOnly&gt;</span></div>
+<div class="row"><span class="num">16</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">17</span><span class="src">&lt;/template&gt;</span></div></div></div></div>
+<p>In <code>AnalyticsView.vue</code>, <code>defineAsyncComponent</code> delays loading the heavy chart bundle until needed. The <code>&lt;ClientOnly&gt;</code> component renders the placeholder <code>&lt;div class="chart-skeleton"&gt;</code> into the server HTML string, and mounts <code>HeavyChart</code> only after hydration finishes in the browser.</p>
+<h4>Rule 5: Guard Universal Utilities with Environment Checks</h4>
+<p>If you write shared utility functions that run on both server and client, check the environment before touching platform APIs:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">analytics.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">trackEvent</span>(eventName, payload) {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">if</span> (<span class="kw">typeof</span> window !== <span class="str">'undefined'</span> &amp;&amp; window.gtag) {</span></div>
+<div class="row"><span class="num">3</span><span class="src">    window.<span class="fn">gtag</span>(<span class="str">'event'</span>, eventName, payload); </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Browser analytics dispatched safely</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div></div></div></div>
+<p>In Vite and modern toolchains, you can check <code>import.meta.env.SSR</code>:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">env-check.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">getStorageValue</span>(key) {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">if</span> (<span class="kw">import</span>.meta.env.SSR) {</span></div>
+<div class="row"><span class="num">3</span><span class="src">    <span class="kw">return</span> <span class="kw">null</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text"><b class="tag tag-right">RIGHT:</b> Safe server fallback</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">  }</span></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="kw">return</span> localStorage.<span class="fn">getItem</span>(key);</span></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div></div></div></div>
+<p>Vite replaces <code>import.meta.env.SSR</code> with <code>true</code> on the server and <code>false</code> on the client. During build optimization, dead-code removal strips the unused branches completely.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>To impress the interviewer:</strong> Explain why setting variables to <code>null</code> cannot fix a server timer leak. When you call <code>setInterval</code>, Node adds a timer handle to its internal C++ event loop (<code>libuv</code>). That handle is an active root in the V8 garbage collector graph. Even if your component variables are cleared, the active handle keeps the callback alive in memory. The only way to remove it is to call <code>clearInterval</code>. Because <code>onUnmounted</code> never runs during SSR, the only real fix is to never start timers during setup.</p>
+  </div>
+</aside>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Building high-volume news websites where breaking news traffic spikes can quickly exhaust server RAM.</li>
+<li>Designing multi-tenant dashboards where leaking one customer's private data to another customer is a catastrophic breach.</li>
+<li>Integrating third-party client packages like Leaflet maps, Stripe checkout forms, or Canvas charts into server-rendered pages.</li>
+<li>Hosting universal Vue apps on Kubernetes or AWS ECS where memory limits trigger sudden container restarts when leaks happen.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>Cross-Request State Pollution</strong>: A security bug in SSR where shared state objects survive across multiple HTTP requests, leaking one user's private data to another user.</li>
+<li><strong>Universal Code</strong>: JavaScript authored to run safely in both server runtimes (Node.js) and client runtimes (browsers) without throwing platform errors.</li>
+<li><strong><code>libuv</code> Active Handle</strong>: An active task in Node.js (like a timer or open socket) that keeps the event loop running and holds associated closures in memory.</li>
+<li><strong>Factory Function Pattern</strong>: A pattern where a function returns a fresh, independent instance of an app, store, or router on every call.</li>
+<li><strong><code>&lt;ClientOnly&gt;</code></strong>: A wrapper component that skips server rendering for its children, showing a fallback on the server and mounting the real component only in the browser.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Defending Universal Vue Applications Against Memory Leaks and State Leaks</strong></p>
+<p>Server-side rendering requires a strict separation between universal logic and environment-specific side effects. By isolating state inside request factory functions and keeping browser APIs inside client-only hooks, applications stay stable, secure, and leak-free under heavy traffic.</p>
+<p>❒ The Platform Divide &amp; Lifecycle Asymmetry</p>
+<ol><li>Node.js has no browser global objects.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Accessing window, document, or localStorage in setup throws a fatal ReferenceError.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Move all platform-specific browser calls into onMounted.</li>
+<li>Server rendering executes only the setup phase.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) onMounted, onUpdated, and onUnmounted never execute on the Node.js server.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Timers started in setup become permanent zombie handles in Node.js libuv event loop.</li></ol>
+<p>❒ State Isolation &amp; Universal Defense Patterns</p>
+<ol><li>Never export singleton state from module root scopes.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Node caches modules across requests, causing cross-request state pollution.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Always instantiate applications and Pinia stores using request factory functions.</li>
+<li>Protect third-party client code with boundary wrappers.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Wrap browser-only widgets inside ClientOnly components with skeleton fallbacks.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Guard shared utilities using typeof window checks or import.meta.env.SSR.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Defer browser global access and background interval timers to the onMounted hook.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span>, <span class="hook">onMounted</span>, <span class="hook">onUnmounted</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">const</span> width = <span class="hook">ref</span>(<span class="nl">1024</span>);</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="kw">let</span> timer = <span class="kw">null</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="hook">onMounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  width.value = window.innerWidth;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  timer = <span class="fn">setInterval</span>(() =&gt; {}, <span class="nl">1000</span>);</span></div>
+<div class="row"><span class="num">8</span><span class="src">});</span></div>
+<div class="row"><span class="num">9</span><span class="src"><span class="hook">onUnmounted</span>(() =&gt; {</span></div>
+<div class="row"><span class="num">10</span><span class="src">  <span class="kw">if</span> (timer) <span class="fn">clearInterval</span>(timer);</span></div>
+<div class="row"><span class="num">11</span><span class="src">});</span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Access window or register uncleaned interval timers directly in the setup root scope.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.vue</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script setup&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { <span class="hook">ref</span> } <span class="kw">from</span> <span class="str">'vue'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">const</span> width = <span class="hook">ref</span>(window.innerWidth);</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="fn">setInterval</span>(() =&gt; {}, <span class="nl">1000</span>);</span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;/script&gt;</span></div></div></div></div>
+</div>
+<p>➔ NEVER access browser globals or start background timers in the root scope of component setup. ➔ ALWAYS instantiate applications, routers, and Pinia stores with request-scoped factory functions. ➔ IF third-party widgets require browser APIs, THEN wrap them in ClientOnly with a fallback.</p>
+<table><thead><tr><th></th><th><strong>CLIENT RUNTIME (BROWSER)</strong><br>(single-user sandbox)</th><th><strong>SERVER RUNTIME (NODE.JS)</strong><br>(multi-tenant process)</th></tr></thead><tbody><tr><td><strong>Global Environment</strong></td><td><code>window</code>, <code>document</code>,<br>and <code>localStorage</code> live</td><td><code>process</code>, <code>Buffer</code>,<br>and <code>global</code> live</td></tr><tr><td><strong>Lifecycle Execution</strong></td><td><code>setup()</code>, <code>onMounted()</code>,<br>and <code>onUnmounted()</code> fire</td><td>Only <code>setup()</code> executes;<br>unmount hooks never fire</td></tr><tr><td><strong>Module Lifetime</strong></td><td>Destroyed completely<br>when browser tab closes</td><td>Persists in memory across<br>thousands of HTTP requests</td></tr><tr><td><strong>Timer Handling</strong></td><td>Cleaned up reliably<br>via <code>clearInterval()</code></td><td>Orphan handles stay in<br><code>libuv</code> event loop forever</td></tr><tr><td><strong>State Scope</strong></td><td>Safe as singletons for<br>the current visitor</td><td>Requires factory pattern<br>to prevent state pollution</td></tr><tr><td><strong>Failure Mode</strong></td><td>Tab crash or memory<br>slowdown for one user</td><td>Process OOM crash and<br>cross-user security breach</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

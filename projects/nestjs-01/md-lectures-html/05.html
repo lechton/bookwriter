@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 5: Declaring Custom HTTP Status Codes</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 5: Declaring Custom HTTP Status Codes</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> CORE</span>
+  </div>
+  <p class="iq-text">How do you return a custom HTTP status code?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A developer builds the investigative tip submission form for The National Times website.</li>
+<li>The server marks successful submissions with a green confirmation banner, because whistleblowers need proof their message was delivered.</li>
+<li>A reader submits a blank form with no text.</li>
+<li>The server accepts the blank submission and returns code 201, triggering a green confirmation banner.</li>
+<li>Why does the screen show a green success banner when the submission was completely blank?</li>
+<li>The server routine executed without crashing, so the web engine automatically returned the standard creation number.</li>
+<li>Today you will learn how to override standard numbers and declare exact HTTP response codes.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Meaning of HTTP Status Codes</h3>
+<p>Every HTTP response returned by a web server includes a three-digit numeric status code. This status code acts as the universal communication protocol between backends and clients, informing web browsers, mobile applications, reverse proxies, and monitoring dashboards how the server handled the request.</p>
+<p>HTTP status codes follow strict semantic categories:</p>
+<ul><li><strong>2xx (Success)</strong>: indicates that the client request was successfully received, understood, and accepted.</li>
+<li><strong>4xx (Client Error)</strong>: indicates that the request contains bad syntax, missing fields, or invalid authentication.</li>
+<li><strong>5xx (Server Error)</strong>: indicates that the server encountered an unexpected error while processing a valid request.</li></ul>
+<p>In NestJS, standard response handling applies sensible default status codes out of the box. Any route decorated with <code>@Get()</code>, <code>@Put()</code>, <code>@Patch()</code>, or <code>@Delete()</code> returns an HTTP status of <strong>200 OK</strong> by default. Route handlers decorated with <code>@Post()</code> return an HTTP status of <strong>201 Created</strong> by default.</p>
+<p>These framework defaults cover standard CRUD operations, but real-world architectures require finer precision. For example, queuing a long-running background export should return <strong>202 Accepted</strong>, permanently deleting an article should return <strong>204 No Content</strong>, and rejecting an invalid form requires returning <strong>400 Bad Request</strong>.</p>
+<p>In traditional Express applications, developers manually set status codes by calling library-specific methods on the response stream:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Express Status Call</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { Request, Response } <span class="kw">from</span> <span class="str">'express'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">export</span> <span class="kw">function</span> <span class="fn">submitTipHandler</span>(req: Request, res: Response) {</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">if</span> (!req.body.content) {</span></div>
+<div class="row"><span class="num">5</span><span class="src">    res.<span class="fn">status</span>(<span class="nl">400</span>).<span class="fn">json</span>({ error: <span class="str">'Content required'</span> }); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">WRONG:</b> imperatively calls library-specific status <b class="tag">METHOD</b></span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">    <span class="kw">return</span>;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row"><span class="num">8</span><span class="src">  res.<span class="fn">status</span>(<span class="nl">202</span>).<span class="fn">json</span>({ status: <span class="str">'Queued'</span> }); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">WRONG:</b> ties handler directly to platform <b class="tag">RESPONSE</b></span>
+      </div></div>
+<div class="row"><span class="num">9</span><span class="src">}</span></div></div></div>
+<p>This manual style introduces drawbacks: injecting the raw response object disables NestJS interceptors, breaks portability across alternate engines like Fastify, and mixes low-level transport commands into high-level business logic.</p>
+</div>
+<div class="keep-together">
+<h3>The HttpCode Decorator and HttpStatus Enum</h3>
+<p>To declare custom HTTP status codes cleanly without dropping into low-level response objects, NestJS provides the <strong><code>@HttpCode()</code> decorator</strong> (a method decorator that overrides framework defaults and assigns a specific HTTP status code to successful responses).</p>
+<p>Along with <code>@HttpCode()</code>, NestJS provides the <strong><code>HttpStatus</code> enum</strong> (a standardized TypeScript enumeration exported from <code>@nestjs/common</code> that maps human-readable status names to their official HTTP numeric values).</p>
+<p>Instead of hardcoding raw numeric constants like <code>@HttpCode(202)</code>, using <code>@HttpCode(HttpStatus.ACCEPTED)</code> makes your code self-documenting, readable, and resilient against typos.</p>
+<p>To see this in action on The National Times, our investigative tip intake system coordinates three files. First, <code>submit-tip.dto.ts</code> defines the tip submission payload. Second, <code>tips.controller.ts</code> exposes <code>POST /tips</code> decorated with <code>@HttpCode(HttpStatus.ACCEPTED)</code> to signal that the tip was accepted and queued for editorial investigation. Third, <code>app.module.ts</code> registers the controller into the application module tree.</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times-api — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times-api — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>controllers</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8"/><path d="M8 16h5"/></svg><span>tips.controller.ts</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>modules</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8"/><path d="M8 16h5"/></svg><span>app.module.ts</span></div></li></ul></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>src</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-js" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8 12h8"/><path d="M8 16h5"/></svg><span>submit-tip.dto.ts</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>app.module</span><span class="component-explorer-props">mounts application controllers</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-navigation"><div class="component-explorer-label"><span>tips.controller</span><span class="component-explorer-props">POST /tips</span></div><div class="component-explorer-surface surface-navigation"><i></i><i></i><i></i></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-form"><div class="component-explorer-label"><span>submit-tip.dto</span><span class="component-explorer-props">whistleblower payload</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">{&quot;content&quot;: &quot;Budget discrepancy in City Council&quot;}</span><span class="surface-render-line">Status: <strong>202 Accepted</strong></span></div></div></div></div></div></div></div>
+		</div>
+	</div>
+	</section>
+<p>The component explorer panel above displays this architecture. In the left file tree, <code>submit-tip.dto.ts</code> resides in <code>src/</code>, <code>tips.controller.ts</code> in <code>controllers/</code>, and <code>app.module.ts</code> in <code>modules/</code>. On the right canvas, <code>app.module.ts</code> mounts <code>tips.controller.ts</code>, which nests <code>submit-tip.dto.ts</code>. When a whistleblower submits a tip, the controller emits the observable response: an HTTP 202 Accepted status alongside the confirmation payload.</p>
+<p>Here is <code>submit-tip.dto.ts</code> defining the payload shape:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">submit-tip.dto.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">export</span> <span class="kw">class</span> SubmitTipDto {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  content: string; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> declares tip message property on runtime <b class="tag">DTO</b></span>
+      </div></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div></div></div>
+<p>Here is <code>tips.controller.ts</code> applying <code>@HttpCode()</code>:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">tips.controller.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { Controller, Post, Body, HttpCode, HttpStatus } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { SubmitTipDto } <span class="kw">from</span> <span class="str">'./submit-tip.dto'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">@<span class="fn">Controller</span>(<span class="str">'tips'</span>)</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="kw">export</span> <span class="kw">class</span> TipsController {</span></div>
+<div class="row"><span class="num">6</span><span class="src">  @<span class="fn">Post</span>()</span></div>
+<div class="row"><span class="num">7</span><span class="src">  @<span class="fn">HttpCode</span>(HttpStatus.ACCEPTED)</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="fn">submit</span>(@<span class="fn">Body</span>() submitTipDto: SubmitTipDto) {</span></div>
+<div class="row"><span class="num">9</span><span class="src">    <span class="kw">return</span> {</span></div>
+<div class="row"><span class="num">10</span><span class="src">      status: <span class="str">'Queued for editorial review'</span>,</span></div>
+<div class="row"><span class="num">11</span><span class="src">      receivedAt: <span class="str">'2026-09-10T04:00:00Z'</span>,</span></div>
+<div class="row"><span class="num">12</span><span class="src">    }; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> returns 202 status indicating background <b class="tag">PROCESSING</b></span>
+      </div></div>
+<div class="row"><span class="num">13</span><span class="src">  }</span></div>
+<div class="row"><span class="num">14</span><span class="src">}</span></div></div></div>
+<p>And here is <code>app.module.ts</code> registering the controller:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">app.module.ts</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { Module } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"><span class="kw">import</span> { TipsController } <span class="kw">from</span> <span class="str">'./tips.controller'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">@<span class="fn">Module</span>({</span></div>
+<div class="row"><span class="num">5</span><span class="src">  controllers: [TipsController], </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> mounts tips controller to expose custom <b class="tag">STATUS</b></span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">})</span></div>
+<div class="row"><span class="num">7</span><span class="src"><span class="kw">export</span> <span class="kw">class</span> AppModule {}</span></div></div></div>
+</div>
+<div class="keep-together">
+<h3>Success Status Overrides versus Exception Throwing</h3>
+<p>A critical distinction in NestJS architecture is knowing when to use <code>@HttpCode()</code> and when to throw an HTTP Exception.</p>
+<p>The <code>@HttpCode()</code> decorator is designed specifically for successful execution paths. When your controller method completes its logic normally and returns a value, NestJS stamps the response with the status code declared in <code>@HttpCode()</code>.</p>
+<p>However, if a submission is invalid, such as our opening scenario where a reader submits a blank form, you should not attempt to return a 400 status through <code>@HttpCode()</code>. Using <code>@HttpCode(400)</code> on a method means the method will return 400 even when valid data is submitted.</p>
+<p>For error conditions, the idiomatic NestJS pattern is to throw an <strong><code>HttpException</code></strong> (a built-in framework error class that halts execution and instructs the exception layer to return a specific HTTP error status).</p>
+<p>NestJS exports pre-built exceptions for common HTTP errors, including <code>BadRequestException</code> (400), <code>UnauthorizedException</code> (401), <code>ForbiddenException</code> (403), and <code>NotFoundException</code> (404):</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">Throwing Validation Exceptions</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">import</span> { BadRequestException } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;</span></div>
+<div class="row"><span class="num">2</span><span class="src"></span></div>
+<div class="row"><span class="num">3</span><span class="src"><span class="kw">if</span> (!submitTipDto.content) {</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">BadRequestException</span>(<span class="str">'Tip content must not be blank'</span>); </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 19px;">
+        <span class="text"><b class="tag">RIGHT:</b> halts execution and produces 400 <b class="tag">JSON</b></span>
+      </div></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div></div></div>
+<p>When you throw <code>BadRequestException</code>, NestJS halts handler execution immediately and delegates to the global exception layer. The server returns an HTTP 400 Bad Request status with a standardized JSON error envelope: <code>{"statusCode": 400, "message": "Tip content must not be blank", "error": "Bad Request"}</code>. This prevents the frontend from displaying an incorrect success message.</p>
+</div>
+<div class="keep-together">
+<h3>Common Status Code Patterns in Production</h3>
+<p>When designing production APIs for The National Times, four status patterns appear constantly:</p>
+<ol><li><strong><code>HttpStatus.OK</code> (200)</strong>: The universal standard for successful data retrieval, updates, and non-creation mutations.</li>
+<li><strong><code>HttpStatus.CREATED</code> (201)</strong>: The default for <code>@Post()</code> handlers. Signals that a new database record or resource was successfully minted.</li>
+<li><strong><code>HttpStatus.ACCEPTED</code> (202)</strong>: Used when an operation has been accepted into a processing queue, but computation or validation will finish asynchronously in the background.</li>
+<li><strong><code>HttpStatus.NO_CONTENT</code> (204)</strong>: Standard for successful deletion endpoints. When you apply <code>@HttpCode(HttpStatus.NO_CONTENT)</code>, HTTP protocol rules dictate that no response body can be transmitted. Any return value from the controller method is discarded.</li></ol>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Use @HttpCode() with the HttpStatus enum to override default success status codes declaratively without sacrificing NestJS response lifecycle features.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> Distinguish between when to use <code>@HttpCode()</code> and when to throw an <code>HttpException</code>. Use <code>@HttpCode()</code> (such as <code>@HttpCode(HttpStatus.NO_CONTENT)</code> or <code>HttpStatus.ACCEPTED</code>) when an operation completes successfully on its intended path. Use NestJS built-in exceptions (such as <code>throw new BadRequestException()</code> or <code>NotFoundException()</code>) for client and server error states, allowing global exception filters to format uniform error envelopes.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Background report generation: returning <code>202 Accepted</code> when queuing a long-running PDF export of reader archives.</li>
+<li>Editorial deletion endpoints: applying <code>204 No Content</code> to <code>DELETE /articles/:id</code> when a draft is permanently purged.</li>
+<li>Form validation failures: throwing <code>BadRequestException</code> (400) when a subscriber signup form omits mandatory fields.</li>
+<li>Third-party webhook acknowledgments: replying with <code>200 OK</code> to payment gateway webhooks after receiving subscription events.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>Custom HTTP Status Codes and Semantic Outcomes</strong></p>
+<p>In daily production, delivering semantically accurate HTTP status codes ensures that client applications, reverse proxies, and monitoring systems interpret backend outcomes correctly. While procedural code relies on low-level response methods, NestJS pairs the <code>@HttpCode()</code> decorator with the <code>HttpStatus</code> enum for declarative status management. Here is your streetwise review.</p>
+<p>❒ Declarative Status Overrides with HttpCode</p>
+<ol><li>Avoid <strong>manually injecting response objects solely to change success status codes</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO NOT DO THIS:</strong> Injecting <code>@Res()</code> to call <code>res.status()</code> couples your route handler directly to the underlying HTTP server.
+<div class="mini-code wrong">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 0 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 0 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Post</span>()</div><div><span class="fn">create</span>(@<span class="fn">Res</span>() res: any) {</div><div>  res.<span class="fn">status</span>(<span class="nl">202</span>).<span class="fn">json</span>({ ok: <span class="kw">true</span> });</div><div>}</div></code></div>
+</div>
+&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Use the <code>@HttpCode()</code> decorator paired with the <code>HttpStatus</code> enum.
+<div class="mini-code right">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Post</span>()</div><div>@<span class="fn">HttpCode</span>(HttpStatus.ACCEPTED)</div><div><span class="fn">create</span>() {</div><div>  <span class="kw">return</span> { ok: <span class="kw">true</span> };</div><div>}</div></code></div>
+</div></li>
+<li>Use <strong>204 No Content for deletion endpoints</strong> that return empty bodies.<br>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO NOT DO THIS:</strong> Returning empty objects with 200 OK status codes wastes bandwidth and ignores HTTP semantics.
+<div class="mini-code wrong">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 0 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 0 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Delete</span>(<span class="str">':id'</span>)</div><div><span class="fn">remove</span>(@<span class="fn">Param</span>(<span class="str">'id'</span>) id: string) {</div><div>  <span class="kw">return</span> {};</div><div>}</div></code></div>
+</div>
+&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Declare <code>@HttpCode(HttpStatus.NO_CONTENT)</code> to communicate successful deletion cleanly.
+<div class="mini-code right">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div>@<span class="fn">Delete</span>(<span class="str">':id'</span>)</div><div>@<span class="fn">HttpCode</span>(HttpStatus.NO_CONTENT)</div><div><span class="fn">remove</span>(@<span class="fn">Param</span>(<span class="str">'id'</span>) id: string) {</div><div>  <span class="kw">return</span>;</div><div>}</div></code></div>
+</div></li></ol>
+<p>❒ Success Statuses versus Exception Handling</p>
+<ol><li>Distinguish between <strong>successful completion overrides and error state exceptions</strong>.<br>&nbsp;&nbsp;&nbsp;&nbsp;<strong>DO THIS:</strong> Throw built-in HTTP exceptions for validation errors rather than returning error objects manually.
+<div class="mini-code right">
+  <div class="mini-code-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.3rem; height: 1.3rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div>
+  <div class="mini-code-content"><code><div><span class="kw">if</span> (!payload.text) {</div><div>  <span class="kw">throw</span> <span class="kw">new</span> <span class="fn">BadRequestException</span>(<span class="str">'Text required'</span>);</div><div>}</div></code></div>
+</div></li></ol>
+<p>➔ NEVER use <code>@HttpCode()</code> on a controller method to handle client error conditions.</p>
+<p>➔ ALWAYS use the <code>HttpStatus</code> enum instead of raw numbers to enhance readability and prevent typos.</p>
+<p>➔ IF an action runs asynchronously in the background THEN <strong>return <code>HttpStatus.ACCEPTED</code> (202)</strong>.</p>
+<table><thead><tr><th></th><th><strong>DEFAULT STATUS</strong><br>(Framework Standard)</th><th><strong>CUSTOM STATUS</strong><br>(@HttpCode &amp; HttpStatus)</th></tr></thead><tbody><tr><td><strong>GET / PUT / DELETE</strong></td><td>Automatically defaults to 200 OK</td><td>Overridden with<br><code>@HttpCode(204)</code><br>for No Content</td></tr><tr><td><strong>POST default</strong></td><td>Automatically defaults to 201 Created</td><td>Overridden with<br><code>@HttpCode(202)</code><br>for Accepted</td></tr><tr><td><strong>Code readability</strong></td><td>Implicit behavior assumed by framework</td><td>Explicit intent declared with <code>HttpStatus</code> enum</td></tr><tr><td><strong>Error handling</strong></td><td>Unhandled errors fall back to 500 error</td><td>Handled cleanly by throwing <code>HttpException</code></td></tr><tr><td><strong>Response body</strong></td><td>Serializes returned data to JSON</td><td>Discards body if status is 204 No Content</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

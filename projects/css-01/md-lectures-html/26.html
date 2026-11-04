@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 26: The Viewport Scrollbar Collision</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 26: The Viewport Scrollbar Collision</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">Why does setting width: 100vw often introduce unwanted horizontal scrollbars?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>The National Times front page features a full-bleed breaking news banner designed to span the complete width of the reader screen.</li>
+<li>The developer styles the banner with <code>width: 100vw;</code> to ensure it stretches edge-to-edge across the browser window.</li>
+<li>On macOS laptops using trackpad overlay scrollbars, the banner renders cleanly without any visible layout defects.</li>
+<li>When testing on Windows computers, Linux desktops, or Macs with an external mouse plugged in, an ugly horizontal scrollbar appears at the bottom of the page.</li>
+<li>Swiping or scrolling vertically causes the entire page to wobble sideways by seventeen pixels, exposing an awkward white gap along the right margin.</li>
+<li>A junior developer attempts to hide the defect by adding <code>overflow-x: hidden;</code> to the root document, which accidentally breaks <code>position: sticky</code> on the navigation masthead.</li>
+<li>Master Rule: Viewport width units (<code>vw</code>) are calculated by the browser engine assuming scrollbars do not exist; on operating systems with classic space-reserving scrollbars, <code>100vw</code> exceeds the layout viewport by exactly the width of the vertical scrollbar.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Viewport Metric Contract: Why 100vw Ignores Dynamic Scrollbars</h3>
+<p>To understand why <code>width: 100vw</code> reliably introduces horizontal scrollbars across millions of desktop computers, one must examine the mathematical definition of viewport-percentage length units established by the World Wide Web Consortium. When developers first discover the <code>vw</code> unit, they naturally assume that <code>100vw</code> means "one hundred percent of the visible page width". In reality, the CSS specification enforces a very specific rule regarding browser window chrome and scrollbars.</p>
+<p>Under the W3C CSS visual formatting model, the browser maintains two distinct coordinate spaces: the <strong>Initial Containing Block (ICB)</strong>, which bounds the root <code>&lt;html&gt;</code> element, and the <strong>viewport</strong>, which represents the visible window frame. When a vertical scrollbar appears, the browser must decide whether viewport units shrink to accommodate that scrollbar.</p>
+<p>The official W3C CSS Values and Units Module Level 4 specification provides the exact answer:</p>
+<blockquote>"In all cases, if the value of overflow or scrollbar-gutter on the root element in either axis would cause scrollbars to appear (or space to be reserved for them) unconditionally (for example, overflow: scroll, but not overflow: auto), the computed values of the viewport-percentage lengths in that axis are reduced in accordance with the initial containing block. Otherwise, and always in the case of media queries, the viewport-percentage lengths are sized assuming that scrollbars do not exist (even if this diverges from the initial containing block)."<br><br><em>W3C CSS Working Group, CSS Values and Units Module Level 4 (<code>resources/spec/csswg-drafts/css-values-4/Overview.bs</code>)</em></blockquote>
+</div>
+<h4>The Circular Dependency Layout Loop</h4>
+<p>Why did the CSS Working Group mandate that viewport units must assume scrollbars do not exist? The browser engine enforces this rule to prevent a catastrophic layout deadlock known as a <strong>circular dependency loop</strong> or <strong>layout thrashing</strong>.</p>
+<p>Imagine what would happen if the size of <code>100vw</code> dynamically contracted whenever a vertical scrollbar appeared:</p>
+<ol><li>A news article loads on screen with short content that fits within the display height. Because the content does not overflow, no vertical scrollbar is needed.</li>
+<li>A hero banner on the page declares <code>width: 100vw</code>. The browser engine sizes the banner to match the full width of the window, say 1920 pixels.</li>
+<li>Next, the user opens an interactive comment drawer or dynamic article text finishes streaming over the network. The total document height now exceeds the screen height.</li>
+<li>The browser recognizes that the page content overflows vertically, so it inserts a vertical scrollbar on the right edge of the screen.</li>
+<li>If <code>100vw</code> reacted dynamically to that scrollbar, its width would immediately contract from 1920 pixels down to 1903 pixels to make room for the 17-pixel scrollbar track.</li>
+<li>Shrinking the banner width by seventeen pixels forces long headline sentences inside it to re-wrap onto three lines instead of two lines.</li>
+<li>In reverse, if shrinking an element reduces total page height just enough that vertical overflow disappears, the engine would remove the vertical scrollbar.</li>
+<li>Removing the vertical scrollbar would immediately expand <code>100vw</code> back to 1920 pixels, which expands the content, which spawns the scrollbar again.</li></ol>
+<p>The browser would oscillate violently between rendering with a scrollbar and rendering without one on every single frame. To eliminate this infinite recalculation loop, the CSS specification established a strict rule: <strong>viewport units are calculated assuming scrollbars do not exist</strong>.</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">breaking-banner.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;header <span class="kw">class</span>=<span class="str">"masthead"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;div <span class="kw">class</span>=<span class="str">"breaking-banner naive-vw"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">    &lt;span <span class="kw">class</span>=<span class="str">"banner-badge"</span>&gt;BREAKING&lt;/span&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">    &lt;p <span class="kw">class</span>=<span class="str">"banner-text"</span>&gt;Supreme Court Hands Down Landmark Digital Privacy Ruling&lt;/p&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;/div&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">&lt;/header&gt;</span></div></div></div></div>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">breaking-banner.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.breaking-banner.naive-vw </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">width</span>: <span class="nl">100vw</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Includes vertical scrollbar track in width calculation</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">background-color</span>: <i class="swatch" style="background:#ef4444"></i><span class="clr">#ef4444</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Bright crimson emergency alert background</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Crisp white readable typography</span></div></div></div>
+<div class="row"><span class="num">5</span><span class="src">  <span class="prop">padding</span>: <span class="nl">12px</span> <span class="nl">24px</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Interior breathing room for alert text</span></div></div></div>
+<div class="row"><span class="num">6</span><span class="src">}</span></div>
+<div class="row"><span class="num">7</span><span class="src"></span></div>
+<div class="row"><span class="num">8</span><span class="src"><span class="sel">.breaking-banner.safe-layout </span>{</span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="prop">width</span>: <span class="nl">100%</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Bounds strictly to containing block inside scrollbar</span></div></div></div>
+<div class="row"><span class="num">10</span><span class="src">  <span class="prop">background-color</span>: <i class="swatch" style="background:#ef4444"></i><span class="clr">#ef4444</span>;</span></div>
+<div class="row"><span class="num">11</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>;</span></div>
+<div class="row"><span class="num">12</span><span class="src">  <span class="prop">padding</span>: <span class="nl">12px</span> <span class="nl">24px</span>;</span></div>
+<div class="row"><span class="num">13</span><span class="src">}</span></div></div></div></div>
+<figure class="css-figure">
+<style>
+  .fig-viewport-anatomy {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-viewport-anatomy .header-pill {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    margin-bottom: 12px;
+  }
+
+  .fig-viewport-anatomy .preview-card {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .fig-viewport-anatomy .card-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    background: #f8fafc;
+  }
+
+  .fig-viewport-anatomy .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  /* Anatomy diagram container */
+  .fig-viewport-anatomy .window-schematic {
+    background: #ffffff;
+    border: 1.5px solid #64748b;
+    border-radius: 6px;
+    padding: 16px 12px;
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Measurement bars */
+  .fig-viewport-anatomy .measure-track {
+    display: flex;
+    align-items: center;
+    position: relative;
+    height: 36px;
+  }
+
+  .fig-viewport-anatomy .bar-100vw {
+    width: 100%;
+    height: 28px;
+    background: #fee2e2;
+    border: 1.5px solid #ef4444;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    box-sizing: border-box;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #b91c1c;
+    position: relative;
+  }
+
+  .fig-viewport-anatomy .bar-100pct {
+    width: calc(100% - 28px);
+    height: 28px;
+    background: #dcfce7;
+    border: 1.5px solid #10b981;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+    box-sizing: border-box;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #065f46;
+  }
+
+  /* Scrollbar strip */
+  .fig-viewport-anatomy .scrollbar-zone {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 28px;
+    background: #e2e8f0;
+    border-left: 1.5px solid #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+  }
+  .fig-viewport-anatomy .thumb {
+    width: 12px;
+    height: 60px;
+    background: #94a3b8;
+    border-radius: 6px;
+  }
+  .fig-viewport-anatomy .scroll-label {
+    position: absolute;
+    bottom: 6px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 7px;
+    font-weight: 700;
+    color: #475569;
+    text-align: center;
+  }
+
+  /* Overflow callout indicator */
+  .fig-viewport-anatomy .overflow-callout {
+    position: absolute;
+    right: 0;
+    top: -8px;
+    background: #ef4444;
+    color: #ffffff;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 3px;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+    z-index: 10;
+  }
+
+  .fig-viewport-anatomy .card-footer {
+    padding: 10px 16px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-viewport-anatomy">
+  <div class="header-pill">
+    THE VIEWPORT UNIT CONTRACT VS CONTAINING BLOCK LAYOUT
+  </div>
+
+  <div class="preview-card">
+    <div class="card-body">
+      <span class="stage-label">WHY 100vw EXCEEDS THE LAYOUT BOUNDARY BY THE SCROLLBAR WIDTH</span>
+
+      <div class="window-schematic">
+        <!-- 100vw bar -->
+        <div class="measure-track">
+          <div class="bar-100vw">
+            <span>width: 100vw (100% of Window Width)</span>
+            <span style="color: #ef4444;">Overlaps Scrollbar &rarr;</span>
+          </div>
+          <div class="overflow-callout">+17px OVERFLOW</div>
+        </div>
+
+        <!-- 100% bar -->
+        <div class="measure-track">
+          <div class="bar-100pct">
+            <span>width: 100% (Containing Block Width)</span>
+            <span>Fits Inside &bull; Zero Overflow</span>
+          </div>
+        </div>
+
+        <!-- Vertical scrollbar representation -->
+        <div class="scrollbar-zone">
+          <div class="thumb"></div>
+          <span class="scroll-label">17px Bar</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      W3C spec rule: Viewport units (<code>vw</code>) are calculated assuming scrollbars do not exist. In contrast, <code>100%</code> evaluates against the layout viewport which excludes the 17px scrollbar.
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 26.1: The Viewport Metric Contract: 100vw spans the entire browser window including the space under the vertical scrollbar. In contrast, 100% stops at the inner edge of the scrollbar, fitting the layout viewport with zero overflow.</figcaption>
+</figure>
+<p>In Figure 26.1, examine the physical difference between the two sizing units. The top red measurement bar demonstrates <code>width: 100vw</code>. Because viewport units are blind to scrollbars, the red bar stretches across the entire browser window, pushing seventeen pixels directly beneath and past the vertical scrollbar.</p>
+<p>In contrast, the green measurement bar demonstrates <code>width: 100%</code>. A percentage width resolves against its parent <strong>containing block</strong>. For the root element, the containing block is bounded by the inner edge of the vertical scrollbar. The green bar stops cleanly at the scrollbar boundary, occupying every available pixel of layout space with zero overflow.</p>
+<div class="keep-together">
+<h3>The 17-Pixel Arithmetic Collision: Containing Block Divergence</h3>
+<p>To witness the physical bug on a real workstation, we must trace the layout arithmetic inside the browser engine on a desktop computer.</p>
+<p>Consider a desktop monitor operating at a display resolution of 1920 by 1080 pixels. On Windows and Linux systems, the operating system uses <strong>classic space-reserving scrollbars</strong>. Unlike floating touch scrollbars, a classic scrollbar is a permanent physical user-interface widget that occupies dedicated layout space inside the window frame.</p>
+</div>
+<h4>Tracing the Engine Calculation</h4>
+<p>Let us trace the step-by-step arithmetic performed by the browser layout engine when rendering an article:</p>
+<ol><li><strong>Available Window Frame Width</strong>: 1920 pixels.</li>
+<li><strong>Physical Vertical Scrollbar Width</strong>: 17 pixels.</li>
+<li><strong>Layout Viewport Width</strong>: Subtracting the scrollbar gives <math class="math-inline"><mrow><mn>1920</mn><mspace width="0.16em"/><mtext>px</mtext><mo lspace="0.22em" rspace="0.22em">−</mo><mn>17</mn><mspace width="0.16em"/><mtext>px</mtext><mo lspace="0.22em" rspace="0.22em">=</mo><mn>1903</mn><mspace width="0.16em"/><mtext>px</mtext></mrow></math>. This 1903-pixel region represents the maximum usable width of the Initial Containing Block.</li>
+<li><strong>Element styled with <code>width: 100%</code></strong>: Evaluates relative to its containing block (<code>&lt;body&gt;</code>), which is 1903 pixels wide. The rendered element width computes to exactly 1903 pixels. It fits inside the screen with zero overflow.</li>
+<li><strong>Element styled with <code>width: 100vw</code></strong>: Evaluates relative to the entire viewport assuming scrollbars do not exist. The rendered element width computes to exactly 1920 pixels.</li></ol>
+<p>Because the banner element is 1920 pixels wide, but the available space between the left edge of the screen and the vertical scrollbar is only 1903 pixels, the element protrudes past the right boundary of the page by seventeen pixels:</p>
+<div class="math-block"><math display="block" class="math-display"><mrow><mtext>Horizontal Overflow</mtext><mo lspace="0.22em" rspace="0.22em">=</mo><mn>100</mn><mspace width="0.16em"/><mtext>vw</mtext><mo lspace="0.22em" rspace="0.22em">−</mo><mn>100</mn><mo>%</mo><mo lspace="0.22em" rspace="0.22em">=</mo><mn>1920</mn><mspace width="0.16em"/><mtext>px</mtext><mo lspace="0.22em" rspace="0.22em">−</mo><mn>1903</mn><mspace width="0.16em"/><mtext>px</mtext><mo lspace="0.22em" rspace="0.22em">=</mo><mn>17</mn><mspace width="0.16em"/><mtext>px</mtext></mrow></math></div>
+<p>Under standard CSS visual formatting rules, whenever any box extends beyond the scrollable overflow rectangle of the root container, the browser engine is required by specification to spawn an <strong>unwanted horizontal scrollbar</strong> at the bottom of the window.</p>
+<figure class="css-figure">
+<style>
+  .fig-wobble-sim {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-wobble-sim .header-pill {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+    margin-bottom: 12px;
+  }
+
+  .fig-wobble-sim .browser-window {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  }
+
+  .fig-wobble-sim .browser-header {
+    background: #f1f5f9;
+    padding: 6px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .fig-wobble-sim .window-dots {
+    display: flex;
+    gap: 4px;
+  }
+  .fig-wobble-sim .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .fig-wobble-sim .dot-r { background: #f87171; }
+  .fig-wobble-sim .dot-y { background: #fbbf24; }
+  .fig-wobble-sim .dot-g { background: #34d399; }
+
+  .fig-wobble-sim .browser-url {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 2px 10px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+    color: #64748b;
+    flex-grow: 1;
+    text-align: center;
+  }
+
+  /* Browser Viewport Area */
+  .fig-wobble-sim .browser-viewport {
+    height: 190px;
+    background: #f8fafc;
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .fig-wobble-sim .page-canvas {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    gap: 8px;
+    position: relative;
+  }
+
+  .fig-wobble-sim .regular-content {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 9.5px;
+    color: #475569;
+  }
+
+  /* Bursting banner */
+  .fig-wobble-sim .breaking-banner {
+    background: #ef4444;
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 10.5px;
+    width: calc(100% + 24px); /* Simulating 100vw bursting past layout viewport */
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .fig-wobble-sim .banner-burst {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    background: #b91c1c;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  /* Vertical scrollbar */
+  .fig-wobble-sim .vertical-bar {
+    width: 20px;
+    background: #e2e8f0;
+    border-left: 1px solid #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .fig-wobble-sim .vert-thumb {
+    width: 10px;
+    height: 70px;
+    background: #94a3b8;
+    border-radius: 5px;
+  }
+
+  /* Bottom horizontal scrollbar defect */
+  .fig-wobble-sim .horizontal-bar {
+    height: 18px;
+    background: #fee2e2;
+    border-top: 1.5px solid #ef4444;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    position: relative;
+  }
+  .fig-wobble-sim .horiz-thumb {
+    width: 80px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 4px;
+  }
+  .fig-wobble-sim .defect-flag {
+    position: absolute;
+    right: 12px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8px;
+    font-weight: 800;
+    color: #991b1b;
+  }
+
+  .fig-wobble-sim .card-footer {
+    padding: 10px 16px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-wobble-sim">
+  <div class="header-pill">
+    DEFECT DEMONSTRATION: UNWANTED HORIZONTAL SCROLLBAR SPAWN
+  </div>
+
+  <div class="browser-window">
+    <div class="browser-header">
+      <div class="window-dots"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span></div>
+      <div class="browser-url">nationaltimes.com/breaking-news</div>
+    </div>
+
+    <div class="browser-viewport">
+      <div class="page-canvas">
+        <div class="regular-content">
+          Standard Story Column (width: 100% &bull; Stays within layout viewport)
+        </div>
+        <!-- Breaking banner with 100vw bursting past layout viewport -->
+        <div class="breaking-banner">
+          <span>BREAKING NEWS: ELECTION AUDIT REPORT</span>
+          <span class="banner-burst">width: 100vw (+17px)</span>
+        </div>
+        <div class="regular-content">
+          Article Text: Entire layout wobbles horizontally when user swipes.
+        </div>
+      </div>
+      <div class="vertical-bar">
+        <div class="vert-thumb"></div>
+      </div>
+    </div>
+
+    <!-- Horizontal scrollbar triggered by 100vw overflow -->
+    <div class="horizontal-bar">
+      <div class="horiz-thumb"></div>
+      <span class="defect-flag">&times; UNWANTED HORIZONTAL SCROLLBAR (17px OVERFLOW)</span>
+    </div>
+
+    <div class="card-footer">
+      Because <code>100vw</code> ignores the presence of the vertical scrollbar, the breaking banner extends 17px past the container edge, forcing the browser to spawn an ugly horizontal scrollbar.
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 26.2: Defect Demonstration: The 17px Horizontal Wobble. Because 100vw ignores the vertical scrollbar, the breaking banner extends 17px past the container edge, forcing the browser to spawn an unwanted horizontal scrollbar.</figcaption>
+</figure>
+<p>In Figure 26.2, observe the destructive consequence inside a simulated browser window. The regular news story column stays safely within the 1903-pixel layout viewport. However, the crimson breaking news banner declaring <code>width: 100vw</code> punches through the right edge of the page.</p>
+<p>At the bottom of the window, the browser creates a horizontal scrollbar. When readers scroll vertically with a mouse wheel or trackpad, slight diagonal movements cause the entire newspaper layout to wobble back and forth horizontally. This seventeen-pixel shift creates an unprofessional, broken user experience.</p>
+<h4>Why Mac Developers Consistently Miss the Bug</h4>
+<p>This layout defect is famous throughout the tech industry because it frequently slips past quality assurance teams in software agencies where all designers and frontend engineers work on Apple MacBooks.</p>
+<p>On macOS, the operating system defaults to <strong>overlay scrollbars</strong>. When a developer scrolls using a MacBook trackpad, the scrollbar appears as a semi-transparent floating capsule that hovers above the content without consuming any physical layout space. Because an overlay scrollbar has a physical width of zero pixels (<math class="math-inline"><mrow><msub><mi>W</mi><mrow><mtext>scrollbar</mtext></mrow></msub><mo lspace="0.22em" rspace="0.22em">=</mo><mn>0</mn><mspace width="0.16em"/><mtext>px</mtext></mrow></math>), the layout viewport and the full window width are identical:</p>
+<div class="math-block"><math display="block" class="math-display"><mrow><mn>100</mn><mspace width="0.16em"/><mtext>vw</mtext><mo lspace="0.22em" rspace="0.22em">−</mo><mn>100</mn><mo>%</mo><mo lspace="0.22em" rspace="0.22em">=</mo><mn>1920</mn><mspace width="0.16em"/><mtext>px</mtext><mo lspace="0.22em" rspace="0.22em">−</mo><mn>1920</mn><mspace width="0.16em"/><mtext>px</mtext><mo lspace="0.22em" rspace="0.22em">=</mo><mn>0</mn><mspace width="0.16em"/><mtext>px</mtext></mrow></math></div>
+<p>On the developer laptop, the banner renders perfectly with zero horizontal scrollbars. However, the moment a user connects a traditional USB or Bluetooth mouse to that exact same Mac, macOS automatically disables overlay scrollbars and switches to classic space-reserving scrollbars.</p>
+<p>Suddenly, the seventeen-pixel collision appears on the Mac as well. Thousands of paying readers on Windows, Linux, and mouse-equipped desktop computers experience a broken, wobbling layout that the developer never saw during local testing.</p>
+<div class="keep-together">
+<h3>The Destructive Anti-Pattern: Why overflow-x: hidden Breaks position: sticky</h3>
+<p>When a junior developer discovers that <code>100vw</code> creates a horizontal scrollbar on desktop computers, their immediate reflex is to reach for a quick CSS band-aid:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">destructive-hack.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">html, body </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">overflow-x</span>: <span class="kw">hidden</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Dangerous quick fix that creates severe layout regressions</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+<p>Applying <code>overflow-x: hidden;</code> to the root <code>&lt;html&gt;</code> or <code>&lt;body&gt;</code> element does indeed hide the horizontal scrollbar. However, it introduces severe architectural side effects that can break the interactive structure of the entire website.</p>
+</div>
+<h4>How overflow-x Silently Destroys Sticky Positioning</h4>
+<p>The most damaging consequence of <code>overflow-x: hidden;</code> is the silent failure of sticky navigation bars and table headers styled with <code>position: sticky</code>.</p>
+<p>According to the official W3C CSS Positioned Layout Module Level 3 specification, an element with <code>position: sticky</code> positions itself relative to its nearest ancestor that establishes a <strong>scrolling box</strong> (any element whose computed <code>overflow</code> is set to <code>auto</code>, <code>scroll</code>, or <code>hidden</code>).</p>
+<p>Furthermore, the CSS specification dictates that the <code>overflow</code> property is an axis-coupled property: if you set <code>overflow-x: hidden</code> while <code>overflow-y</code> is set to <code>visible</code>, the browser engine is legally required to compute <code>overflow-y</code> to <code>auto</code>!</p>
+<p>By declaring <code>overflow-x: hidden;</code> on <code>&lt;html&gt;</code> or <code>&lt;body&gt;</code>, you mutate the root element into an active clipping scroll container. Now consider what happens to a newspaper navigation masthead styled with <code>position: sticky; top: 0;</code>:</p>
+<ol><li>The sticky header searches upward through the DOM tree to locate its scrolling ancestor reference frame.</li>
+<li>Under normal conditions, the scrolling reference frame is the global viewport window. The header sticks firmly to the top of the screen as the reader scrolls down the article.</li>
+<li>With <code>overflow-x: hidden;</code> applied to <code>&lt;body&gt;</code>, the body element itself becomes the clipping boundary. The sticky header attempts to stick relative to the body container rather than the viewport window.</li>
+<li>Because the body container scrolls along with the document content, the sticky header loses its anchor. It scrolls off the top of the screen and vanishes into thin air.</li></ol>
+<p>Development teams routinely spend entire days debugging why their sticky headers, pinned author bylines, or sticky stock tickers suddenly stopped working, completely unaware that a colleague added <code>overflow-x: hidden</code> three weeks earlier to hide a <code>100vw</code> scrollbar defect.</p>
+<h4>Mobile Scrolling and Gesture Lockup</h4>
+<p>Beyond breaking sticky positioning, declaring <code>overflow-x: hidden</code> on the root document disrupts native mobile scrolling physics on iOS Safari and Android Chrome.</p>
+<p>Modern mobile operating systems rely on hardware-accelerated momentum scrolling. When a user flicks their finger on a phone screen, the browser page glides smoothly to a stop with realistic physical inertia. Adding overflow clipping to <code>&lt;body&gt;</code> can disconnect this native momentum curve, making scrolling feel sluggish and unresponsive.</p>
+<p>Additionally, mobile browsers automatically collapse their top URL address bar when a user scrolls down a long article. Setting <code>overflow-x: hidden</code> on the root container can trick the mobile browser into believing the document is an application frame rather than a standard webpage, preventing the address bar from collapsing and stealing valuable screen space from the reader.</p>
+<div class="keep-together">
+<h3>Modern Architectural Solutions: Breakout Grids and scrollbar-gutter</h3>
+<p>How do professional web architectures build edge-to-edge full-bleed interface components without triggering horizontal scrollbars or relying on destructive overflow hacks?</p>
+<aside class="callout callout-wisdom">
+  <p class="callout-eyebrow"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:1.05rem;height:1.05rem;display:inline-block;vertical-align:-0.15rem;margin-right:0.35rem;"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9z"/></svg>Pearls of Wisdom</p>
+  <div class="callout-body">
+  <p><strong>Component Encapsulation versus Document Flow:</strong> In modern design systems, articles are typically wrapped inside a centered container with a maximum readability width (such as <code>max-width: 1200px; margin: 0 auto;</code>). When an art director demands a "full-bleed" breaking news banner or interactive map that stretches across the entire screen, naive developers use negative margins paired with <code>100vw</code> (<code>margin-left: calc(50% - 50vw); width: 100vw;</code>) to pull the banner out of its container. This negative margin hack is the primary cause of horizontal overflow defects in production. Modern CSS solves this cleanly by shifting container constraints from inner wrappers to named CSS Grid tracks on the page container itself.</p>
+  </div>
+</aside>
+</div>
+<h4>Solution 1: The Modern CSS Grid Breakout Pattern</h4>
+<p>The industry standard architecture for full-bleed layouts is CSS Grid with named column tracks. Instead of wrapping the page in a narrow <code>&lt;div&gt;</code> and forcing children to burst out with negative margins, the page container itself acts as the grid:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">grid-breakout.html</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;div <span class="kw">class</span>=<span class="str">"page-grid"</span>&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"content-block"</span>&gt;</span></div>
+<div class="row"><span class="num">3</span><span class="src">    &lt;p&gt;Standard editorial paragraphs centered within a readable text column.&lt;/p&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src">  &lt;/article&gt;</span></div>
+<div class="row"><span class="num">5</span><span class="src">  &lt;aside <span class="kw">class</span>=<span class="str">"banner"</span>&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">    &lt;h3&gt;Election Night Live Coverage&lt;/h3&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  &lt;/aside&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  &lt;article <span class="kw">class</span>=<span class="str">"content-block"</span>&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">    &lt;p&gt;Subsequent editorial paragraphs <span class="kw">continue</span> within the readable text column.&lt;/p&gt;</span></div>
+<div class="row"><span class="num">10</span><span class="src">  &lt;/article&gt;</span></div>
+<div class="row"><span class="num">11</span><span class="src">&lt;/div&gt;</span></div></div></div></div>
+<p>Now examine the CSS grid architecture that powers this responsive layout:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">grid-breakout.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.page-grid </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">display</span>: <span class="kw">grid</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  grid-template-columns:</span></div>
+<div class="row"><span class="num">4</span><span class="src"><span class="sel">    [full-start] 1fr</span></span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">    [content-start] 1200px [content-end]</span></span></div>
+<div class="row"><span class="num">6</span><span class="src">    1fr [full-end]; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 46px; max-width: calc(100% - 114px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Named tracks for content and full-bleed banners</span></div></div></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">width</span>: <span class="nl">100%</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Bounds to layout viewport; zero scrollbar overflow</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div>
+<div class="row"><span class="num">9</span><span class="src"></span></div>
+<div class="row"><span class="num">10</span><span class="src"><span class="sel">.content-block </span>{</span></div>
+<div class="row"><span class="num">11</span><span class="src">  <span class="prop">grid-column</span>: content; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Centers standard editorial text inside 1200px</span></div></div></div>
+<div class="row"><span class="num">12</span><span class="src">}</span></div>
+<div class="row"><span class="num">13</span><span class="src"></span></div>
+<div class="row"><span class="num">14</span><span class="src"><span class="sel">.banner </span>{</span></div>
+<div class="row"><span class="num">15</span><span class="src">  <span class="prop">grid-column</span>: full; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Stretches banner edge-to-edge across the screen</span></div></div></div>
+<div class="row"><span class="num">16</span><span class="src">  <span class="prop">background-color</span>: <i class="swatch" style="background:#ef4444"></i><span class="clr">#ef4444</span>;</span></div>
+<div class="row"><span class="num">17</span><span class="src">  <span class="prop">color</span>: <i class="swatch" style="background:#ffffff"></i><span class="clr">#ffffff</span>;</span></div>
+<div class="row"><span class="num">18</span><span class="src">  <span class="prop">padding</span>: <span class="nl">24px</span>;</span></div>
+<div class="row"><span class="num">19</span><span class="src">}</span></div></div></div></div>
+<figure class="css-figure">
+<style>
+  .fig-fullbleed-grid {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .fig-fullbleed-grid .compare-header {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .fig-fullbleed-grid .compare-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+  .fig-fullbleed-grid .pill-hack {
+    background: #fde8e8;
+    border: 1px solid #f9b4b4;
+    color: #b91c1c;
+  }
+  .fig-fullbleed-grid .pill-grid {
+    background: #def7ec;
+    border: 1px solid #84e1bc;
+    color: #03543f;
+  }
+
+  .fig-fullbleed-grid .compare-grid {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .fig-fullbleed-grid .preview-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fig-fullbleed-grid .card-hack {
+    border: 1px solid #f9b4b4;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+  .fig-fullbleed-grid .card-grid {
+    border: 1.5px solid #84e1bc;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  }
+
+  .fig-fullbleed-grid .card-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background: #f8fafc;
+  }
+
+  .fig-fullbleed-grid .stage-label {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .fig-fullbleed-grid .canvas-area {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 10px;
+    box-sizing: border-box;
+    height: 195px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .fig-fullbleed-grid .code-box {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 8.5px;
+    line-height: 1.45;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 8px;
+    color: #334155;
+  }
+  .fig-fullbleed-grid .tok-prop { color: #8b5cf6; font-weight: 700; }
+  .fig-fullbleed-grid .tok-warn { color: #dc2626; font-weight: 700; }
+  .fig-fullbleed-grid .tok-pass { color: #059669; font-weight: 700; }
+
+  .fig-fullbleed-grid .status-box {
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9px;
+  }
+  .fig-fullbleed-grid .status-hack {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+  }
+  .fig-fullbleed-grid .status-grid {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  .fig-fullbleed-grid .card-footer {
+    padding: 10px 16px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #475569;
+    border-top: 1px solid #e2e8f0;
+    background: #ffffff;
+  }
+</style>
+
+<div class="fig-fullbleed-grid">
+  <div class="compare-header">
+    <div class="compare-pill pill-hack">100vw NEGATIVE MARGIN HACK</div>
+    <div class="compare-pill pill-grid">NAMED CSS GRID TRACK BREAKOUT</div>
+  </div>
+
+  <div class="compare-grid">
+    <!-- Left: 100vw Hack -->
+    <div class="preview-card card-hack">
+      <div class="card-body">
+        <span class="stage-label">CALC(50% - 50VW) NEGATIVE MARGINS</span>
+        <div class="canvas-area">
+          <div class="code-box">
+            .banner {<br>
+            &nbsp;&nbsp;<span class="tok-prop">width:</span> <span class="tok-warn">100vw</span>;<br>
+            &nbsp;&nbsp;<span class="tok-prop">margin-left:</span> <span class="tok-warn">calc(50% - 50vw)</span>;<br>
+            }<br>
+            html { <span class="tok-warn">overflow-x: hidden;</span> }
+          </div>
+          <div class="status-box status-hack">
+            &times; Breaks position: sticky; 17px horizontal overflow
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        The <code>100vw</code> breakout hack forces developers to add <code>overflow-x: hidden</code>, which silently destroys <code>position: sticky</code> on all descendant elements.
+      </div>
+    </div>
+
+    <!-- Right: Named CSS Grid Breakout -->
+    <div class="preview-card card-grid">
+      <div class="card-body">
+        <span class="stage-label">FULL-BLEED NAMED GRID TRACKS</span>
+        <div class="canvas-area">
+          <div class="code-box">
+            .page-grid {<br>
+            &nbsp;&nbsp;<span class="tok-prop">display:</span> grid;<br>
+            &nbsp;&nbsp;<span class="tok-prop">grid-template-columns:</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;[full-start] 1fr [content-start] 1200px [content-end] 1fr [full-end];<br>
+            }<br>
+            .banner { <span class="tok-pass">grid-column: full;</span> }
+          </div>
+          <div class="status-box status-grid">
+            &#10003; Zero overflow; position: sticky remains 100% functional
+          </div>
+        </div>
+      </div>
+      <div class="card-footer">
+        A named CSS grid breakout lets elements stretch to the true layout edge with <code>width: 100%</code>, respecting scrollbar boundaries and preserving sticky scrolling.
+      </div>
+    </div>
+  </div>
+</div>
+
+<figcaption>Fig 26.3: The Modern Breakout Architecture: The 100vw hack forces overflow-x: hidden and breaks sticky headers. Named CSS Grid tracks allow components to stretch edge-to-edge using width: 100%, respecting scrollbars and preserving sticky scrolling.</figcaption>
+</figure>
+<p>In Figure 26.3, compare the two engineering approaches. On the left, the legacy hack uses <code>width: 100vw</code> with <code>margin-left: calc(50% - 50vw)</code>. It forces the team to add <code>overflow-x: hidden</code>, which triggers horizontal overflow and breaks <code>position: sticky</code>.</p>
+<p>On the right, the modern CSS Grid architecture sets <code>width: 100%</code> on <code>.page-grid</code>. Standard article copy is assigned to <code>grid-column: content</code>, locking it within the 1200-pixel central column. When a breaking news alert appears, it is assigned to <code>grid-column: full</code>. The alert spans from <code>[full-start]</code> to <code>[full-end]</code>, stretching across the entire width of the page. Because <code>.page-grid</code> uses <code>width: 100%</code>, it respects the inner boundary of the vertical scrollbar with zero overflow, zero horizontal scrollbars, and full <code>position: sticky</code> compatibility.</p>
+<h4>Solution 2: Reserving Space with scrollbar-gutter: stable</h4>
+<p>For user interfaces where content height fluctuates dynamically (such as paginated data tables, search filters, or collapsible accordion menus), the sudden appearance of a vertical scrollbar causes an annoying horizontal layout jump.</p>
+<p>When a reader clicks to expand a long article section, the content overflows vertically, prompting the browser to insert a 17-pixel vertical scrollbar. This scrollbar squeezes the page layout by seventeen pixels, causing text and navigation links to visibly twitch sideways.</p>
+<p>To eliminate this layout shift without using fixed overflow, modern CSS introduced the <strong><code>scrollbar-gutter</code></strong> property:</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">scrollbar-gutter.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">html </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">scrollbar-gutter</span>: stable; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Reserves scrollbar space even when content is short</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">}</span></div></div></div></div>
+<p>Declaring <code>scrollbar-gutter: stable;</code> on the root <code>&lt;html&gt;</code> element instructs the browser engine to permanently reserve a 17-pixel space along the right edge of the screen, even when the current page content is too short to require scrolling.</p>
+<p>When dynamic content causes the page to overflow, the vertical scrollbar appears inside the pre-allocated gutter without shifting a single pixel of layout geometry. If you want symmetrical spacing on both sides of centered layouts, you can declare <code>scrollbar-gutter: stable both-edges;</code>, which reserves an identical 17-pixel breathing space on the left margin as well.</p>
+<h4>Solution 3: The Viewport Inline Unit (100vi) and Container Queries</h4>
+<p>Modern CSS also introduced logical viewport units that align with document writing modes. The <strong><code>100vi</code></strong> unit represents one hundred percent of the viewport inline axis.</p>
+<p>In horizontal writing modes such as English, the inline axis corresponds to horizontal width. While <code>100vi</code> in the root document still follows the W3C scrollbar-free sizing rule, modern frontend systems combine logical units with <strong>CSS Container Queries</strong> (<code>@container</code>):</p>
+<div class="editor"><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">container-query-unit.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.page-shell </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">container-type</span>: inline-size; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Establishes a responsive container boundary</span></div></div></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">width</span>: <span class="nl">100%</span>; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Respects vertical scrollbar bounds</span></div></div></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="sel">.full-width-card </span>{</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">width</span>: <span class="nl">100</span>cqi; </span>
+      <div class="cmt-row" style="flex-basis: 100%; display: flex; align-items: flex-start;"><span class="num"></span><div class="cmt-bubble" style="margin-left: 27px; max-width: calc(100% - 95px);"><i class="cmt-tail" style="left: 16px;"></i><span class="text">Spans 100% of the container inline query size</span></div></div></div>
+<div class="row"><span class="num">8</span><span class="src">}</span></div></div></div></div>
+<p>By querying the inline size of a parent shell using <code>100cqi</code> (container query inline unit), child components can span the full available width of their parent container with complete mathematical immunity to scrollbar overflow.</p>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body">
+  <p><strong>The Senior Engineer Interview Formulation:</strong> When an interviewer asks: <em>"Why does setting width: 100vw often introduce unwanted horizontal scrollbars?"</em> deliver your response in four crisp architectural phases:</p>
+  <ol>
+    <li><strong>The W3C Viewport Unit Contract</strong>: Explain that under W3C CSS Values Level 4, <code>vw</code> units are calculated assuming scrollbars do not exist. The CSS Working Group mandated this rule to prevent infinite circular layout loops where elements expand and contract as scrollbars toggle.</li>
+    <li><strong>The 17-Pixel Arithmetic Overflow</strong>: State that on operating systems with classic space-reserving scrollbars (Windows, Linux, and Macs with external mice), the vertical scrollbar consumes 15px to 17px of the window width. Because <code>100vw</code> includes the scrollbar track while <code>100%</code> is bounded by the layout viewport, setting <code>width: 100vw</code> creates a 17px horizontal overflow, forcing the browser to spawn an unwanted horizontal scrollbar.</li>
+    <li><strong>The Destructive Root Overflow Anti-Pattern</strong>: Emphasize that attempting to mask the bug using <code>overflow-x: hidden</code> on <code>&lt;html&gt;</code> or <code>&lt;body&gt;</code> is a dangerous anti-pattern. Converting the root into an active clipping container silently breaks <code>position: sticky</code> on headers and sidebars and impairs native mobile momentum scrolling.</li>
+    <li><strong>The Standard Architectural Solution</strong>: Recommend modern CSS Grid named breakout tracks (<code>[full-start] 1fr [content-start] 1200px [content-end] 1fr [full-end]</code>) using <code>width: 100%</code> as the robust standard for full-bleed layouts, paired with <code>scrollbar-gutter: stable</code> to eliminate layout shifts.</li>
+  </ol>
+  </div>
+</aside>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>Full-bleed breaking news alerts: expanding emergency announcement bars across edge-to-edge desktop viewports.</li>
+<li>Interactive media showcases: building full-width photo galleries and video banners that break out of centered article columns.</li>
+<li>Sticky navigation headers: debugging why masthead menus mysteriously detach from the top of the viewport after layout changes.</li>
+<li>Cross-platform quality assurance: identifying why layouts that test cleanly on developer MacBooks break on Windows subscriber computers.</li>
+<li>Dynamic data dashboards: eliminating horizontal layout jitter when expanding collapsible tables and filter sidebars.</li></ul>
+</div>
+<div class="keep-together glossary-section">
+<h3>Glossary</h3>
+<ul><li><strong>100vw</strong>: A CSS viewport-percentage unit representing one hundred percent of the total browser window width, calculated assuming scrollbars do not exist.</li>
+<li><strong>100%</strong>: A CSS percentage length unit that evaluates relative to the width of the element parent containing block, stopping cleanly at the inner edge of any vertical scrollbar.</li>
+<li><strong>Initial Containing Block (ICB)</strong>: The root rectangular reference frame that bounds the <code>&lt;html&gt;</code> document, sized to the layout viewport.</li>
+<li><strong>Classic Space-Reserving Scrollbar</strong>: An operating system scrollbar (standard on Windows and Linux) that occupies physical layout width inside the browser window frame.</li>
+<li><strong>Overlay Scrollbar</strong>: A temporary, floating scrollbar (standard on touch devices and macOS trackpads) that hovers above rendered content without consuming layout width.</li>
+<li><strong>Circular Dependency Loop</strong>: A layout thrashing defect where an element size triggers a scrollbar, which alters the element size, which removes the scrollbar in an infinite loop.</li>
+<li><strong>scrollbar-gutter</strong>: A modern CSS property that reserves layout space for scrollbars in advance, preventing layout shifts when content height expands.</li>
+<li><strong>Breakout Grid</strong>: A CSS Grid architecture that uses named column tracks to allow specific child components to span full-bleed across the screen without leaving normal document flow.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p><strong>The Viewport Scrollbar Collision</strong></p>
+<p>Using <code>width: 100vw</code> to create full-bleed interface components is a dangerous anti-pattern in modern web development. Because the W3C specification calculates viewport units assuming scrollbars do not exist, <code>100vw</code> evaluates to the entire width of the browser window. On operating systems with classic non-overlay scrollbars, the vertical scrollbar consumes physical space in the layout viewport, making an element styled with <code>100vw</code> exactly seventeen pixels wider than its containing block and forcing the browser to spawn an unwanted horizontal scrollbar.</p>
+<p>Attempting to hide this overflow by declaring <code>overflow-x: hidden</code> on the root element is equally destructive: it establishes an ancestral overflow clipping box that permanently breaks <code>position: sticky</code> on headers and sidebars while degrading mobile scrolling momentum. Professional web architectures avoid viewport width units for document flow sizing, relying instead on named CSS Grid tracks (<code>grid-column: full</code>) with <code>width: 100%</code> and leveraging <code>scrollbar-gutter: stable</code> to guarantee seamless, full-bleed layouts across all platforms. Here is your streetwise review.</p>
+<p>❒ Core Overflow Principles</p>
+<ol><li>The <code>vw</code> specification rule.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Viewport units are calculated assuming vertical scrollbars do not exist.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Designed to eliminate circular layout dependency loops during page rendering.</li>
+<li>The 17px layout collision.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Classic scrollbars consume physical layout width on Windows, Linux, and mouse-equipped Macs.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) <code>100vw</code> exceeds <code>100%</code> containing block width by the scrollbar width, causing horizontal scrollbars.</li>
+<li>The sticky positioning hazard.<br>&nbsp;&nbsp;&nbsp;&nbsp;(a) Declaring <code>overflow-x: hidden</code> on <code>&lt;html&gt;</code> or <code>&lt;body&gt;</code> creates an active clipping ancestor.<br>&nbsp;&nbsp;&nbsp;&nbsp;(b) Descendant elements with <code>position: sticky</code> immediately fail and scroll off-screen.</li></ol>
+<p>❒ Overflow Best Practices</p>
+<ol><li>Never use <code>100vw</code> or negative margin hacks to create full-bleed layout breakout containers.</li></ol>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO NOT DO THIS:</strong> Use 100vw for full-bleed banners, forcing horizontal overflow and masking with overflow-x.</p>
+  <div class="editor wrong"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 0 1 1.06 0L12 10.94l5.47-5.47a.75.75 0 1 1 1.06 1.06L13.06 12l5.47 5.47a.75.75 0 1 1-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 0 1-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.breaking-banner </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">width</span>: <span class="nl">100vw</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">margin-left</span>: <span class="fn">calc</span>(<span class="nl">50%</span> - <span class="nl">50vw</span>);</span></div>
+<div class="row"><span class="num">4</span><span class="src">}</span></div>
+<div class="row"><span class="num">5</span><span class="src"><span class="sel">html </span>{</span></div>
+<div class="row"><span class="num">6</span><span class="src">  <span class="prop">overflow-x</span>: <span class="kw">hidden</span>;</span></div>
+<div class="row"><span class="num">7</span><span class="src">}</span></div></div></div></div>
+</div>
+<div class="snippet-unit" style="page-break-inside: avoid; break-inside: avoid;">
+  <p style="page-break-after: avoid; break-after: avoid;"><strong>DO THIS:</strong> Use named CSS Grid tracks with width: 100% to create full-bleed layouts with zero overflow.</p>
+  <div class="editor right"><div class="editor-indicator"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.5rem; height: 1.5rem;"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" /></svg></div><div class="editor-main"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">styles.css</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="sel">.page-grid </span>{</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="prop">display</span>: <span class="kw">grid</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src">  <span class="prop">grid-template-columns</span>: [full-start] <span class="nl">1fr</span> [content-start] <span class="nl">1200px</span> [content-end] <span class="nl">1fr</span> [full-end];</span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="prop">width</span>: <span class="nl">100%</span>;</span></div>
+<div class="row"><span class="num">5</span><span class="src">}</span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="sel">.breaking-banner </span>{</span></div>
+<div class="row"><span class="num">7</span><span class="src">  <span class="prop">grid-column</span>: full;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  <span class="prop">width</span>: <span class="nl">100%</span>;</span></div>
+<div class="row"><span class="num">9</span><span class="src">}</span></div></div></div></div>
+</div>
+<p>➔ NEVER add <code>overflow-x: hidden</code> to <code>&lt;html&gt;</code> or <code>&lt;body&gt;</code> to mask horizontal scrollbar defects.</p>
+<p>➔ ALWAYS use <code>width: 100%</code> or CSS Grid full-bleed tracks to ensure elements respect scrollbars.</p>
+<p>➔ IF scrollbar appearance shifts layout alignment THEN declare <code>scrollbar-gutter: stable</code> on <code>:root</code>.</p>
+<table><thead><tr><th></th><th><strong>100VW VIEWPORT UNIT</strong><br>(window percentage)</th><th><strong>100% LAYOUT WIDTH</strong><br>(containing block)</th></tr></thead><tbody><tr><td><strong>Calculation Basis</strong></td><td>Entire browser window width;<br>assumes scrollbars absent</td><td>Available layout viewport width;<br>excludes vertical scrollbar</td></tr><tr><td><strong>Scrollbar Awareness</strong></td><td>Blind to vertical scrollbars;<br>includes scrollbar area</td><td>Respects vertical scrollbars;<br>stops at inner scrollbar edge</td></tr><tr><td><strong>Horizontal Overflow</strong></td><td>Overflows by 15px to 17px<br>on Windows/Linux systems</td><td>Zero horizontal overflow;<br>fits containing block perfectly</td></tr><tr><td><strong>Platform Sensitivity</strong></td><td>Appears fine on trackpad Macs;<br>breaks on desktop mice</td><td>Completely uniform behavior<br>across all operating systems</td></tr><tr><td><strong>Sticky Compatibility</strong></td><td>Requires <code>overflow-x: hidden</code>,<br>destroying sticky positioning</td><td>Fully compatible with sticky<br>headers and pinned sidebars</td></tr><tr><td><strong>Full-Bleed Strategy</strong></td><td>Brittle negative margin hacks:<br><code>margin-left:</code><br><code>calc(50% - 50vw)</code></td><td>Robust named CSS Grid tracks:<br><code>grid-column:</code><br><code>full-start /</code><br><code>full-end</code></td></tr><tr><td><strong>Alignment Stability</strong></td><td>Jumps when scrollbar toggles<br>unless scrollbar-gutter used</td><td>Jumps when scrollbar toggles<br>unless scrollbar-gutter used</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>

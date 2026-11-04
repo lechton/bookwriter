@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lecture 36: Nested Reactivity in $state</title>
+<link rel="stylesheet" href="../src/lecture.css">
+</head>
+<body>
+<main>
+<h1>Lecture 36: Nested Reactivity in $state</h1>
+<aside class="interview-question">
+  <div class="iq-header">
+    <p class="iq-eyebrow">Interview Question</p>
+    <span class="iq-typology"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 1px;"><polyline points="9 18 15 12 9 6"></polyline></svg> MORE</span>
+  </div>
+  <p class="iq-text">How does $state handle reactivity inside nested objects and arrays?</p>
+</aside>
+
+<div class="hook-ladder">
+<p class="hook-ladder-lead">Imagine this scenario:</p>
+<ol><li>A journalist opens their profile page on the National Times website to update their current city.</li>
+<li>The profile displays a location badge on screen, showing London from journalist.location.city.</li>
+<li>The journalist selects Geneva, updating journalist.location.city = 'Geneva' in the profile data.</li>
+<li>Why did London stay as the registered location, even after the update?</li>
+<li>Readers still see London on the published website while the journalist reports breaking news from Geneva.</li>
+<li>The city text changed inside the data object, but the badge on screen never received the update.</li>
+<li>Today you learn how deep reactivity works in Svelte and how to keep nested data connected to the screen.</li></ol>
+</div>
+<div class="keep-together">
+<h3>The Stale Screen and the Mystery of Nested State</h3>
+<p>In Lecture 24, we discovered that Svelte 5 introduces deep reactivity for objects and arrays (see Lecture 24). When you store structured data in <code>$state</code>, Svelte wraps the container in a native JavaScript <code>Proxy</code>, an internal wrapper that intercepts operations like property reads and assignments. In standard examples, changing an item's property or pushing a new record into an array causes the screen to update immediately and surgically.</p>
+<p>Yet developers frequently encounter an unsettling mystery in production applications. A developer writes <code>journalist.location.city = 'Geneva'</code>, or updates a nested property inside profile data, and the user interface refuses to budge. The browser console confirms that the property holds the new string in memory. No runtime error appears in the terminal. But the HTML element rendered on the screen stays stuck on the old value.</p>
+<p>To understand why this happens, you must look closely at the boundary where Svelte's reactive wrapping begins and ends. Deep reactivity is not magic; it relies on precise runtime mechanics governed by object references, JavaScript data types, and signal subscriptions. On the National Times website, journalists maintain a public profile page showing their assigned bureau city. The page displays the journalist's name and current location, allowing them to switch cities when moving between assignments.</p>
+<p>Before inspecting how nested reactivity works in code, examine the component hierarchy. <code>ProfileView.svelte</code> serves as the container shell managing the journalist profile data, while <code>LocationBadge.svelte</code> renders the location badge on screen.</p>
+<section class="component-explorer" aria-label="Component hierarchy for national-times — Component Explorer">
+	<div class="component-explorer-bar">
+		<div class="component-explorer-dots"><i></i><i></i><i></i></div>
+		<span class="component-explorer-title">national-times — Component Explorer</span>
+	</div>
+	<div class="component-explorer-window">
+		<aside class="component-explorer-sidebar">
+			<div class="component-explorer-sidebar-title">Project Files</div>
+			<ul class="component-explorer-tree"><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-folder" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5.5C2 4.119 3.119 3 4.5 3h4.764c.732 0 1.425.327 1.887.89l1.698 2.072A1.5 1.5 0 0 0 13.91 6.5H19.5C20.881 6.5 22 7.619 22 9v10.5c0 1.381-1.119 2.5-2.5 2.5h-15C3.119 22 2 20.881 2 19.5v-14z"/></svg><span>components</span></div><ul class="component-explorer-tree"><li><div class="component-explorer-tree-label active"><svg class="component-explorer-icon component-explorer-svelte" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8a4 4 0 1 1 -8 0"/><path d="M15 16a4 4 0 1 1 -8 0"/><path d="M15 8v8"/><path d="M11 8v8"/></svg><span>LocationBadge.svelte</span></div></li><li><div class="component-explorer-tree-label"><svg class="component-explorer-icon component-explorer-svelte" viewBox="0 0 24 24" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 8a4 4 0 1 1 -8 0"/><path d="M15 16a4 4 0 1 1 -8 0"/><path d="M15 8v8"/><path d="M11 8v8"/></svg><span>ProfileView.svelte</span></div></li></ul></li></ul>
+		</aside>
+		<div class="component-explorer-stage">
+			<div class="component-explorer-canvas"><div class="component-explorer-node component-kind-shell"><div class="component-explorer-label"><span>ProfileView</span><span class="component-explorer-props">manages profile data and location state</span></div><div class="component-explorer-children"><div class="component-explorer-node component-kind-badge"><div class="component-explorer-label"><span>LocationBadge</span><span class="component-explorer-props">renders journalist location badge on screen</span></div><div class="component-explorer-surface surface-render"><span class="surface-render-line">Journalist: <strong>Elena Rostova</strong></span><span class="surface-render-line">Location: <strong>London, UK</strong></span></div></div></div></div></div>
+		</div>
+	</div>
+</section>
+</div>
+<div class="keep-together">
+<h3>Deep State Proxies and Property Traps</h3>
+<p>When you pass an object or array to <code>$state</code>, Svelte does not modify the source object in place. Instead, it creates and returns a native JavaScript <code>Proxy</code>. A proxy is a built-in browser object that wraps around a target data structure, using internal functions called traps to intercept read and write operations. When your template reads a property, the proxy's <code>get</code> trap intercepts the access to record a dependency. When your script assigns a new value, the proxy's <code>set</code> trap catches the assignment, records the change, and schedules a DOM update.</p>
+<p>Svelte applies this wrapping recursively. When your application accesses <code>journalist.location</code>, Svelte's proxy intercepts that access and returns a nested proxy for the location object. When you subsequently mutate <code>journalist.location.city = 'Geneva'</code>, you are writing through that nested proxy's <code>set</code> trap. The nested proxy catches the new string and triggers a targeted update for any DOM element reading that exact city property.</p>
+<p>Here is <code>LocationBadge.svelte</code>. It receives the <code>journalist</code> object through <code>$props()</code> (see Lecture 9) and renders the nested location properties directly into the template.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LocationBadge.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">let</span> { journalist, onRelocate } = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">3</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">4</span><span class="src"></span></div>
+<div class="row"><span class="num">5</span><span class="src">&lt;article <span class="kw">class</span>=<span class="str">"location-badge"</span>&gt;</span></div>
+<div class="row"><span class="num">6</span><span class="src">  &lt;h3&gt;Journalist: {journalist.name}&lt;/h3&gt;</span></div>
+<div class="row"><span class="num">7</span><span class="src">  &lt;p <span class="kw">class</span>=<span class="str">"city-tag"</span>&gt;Location: {journalist.location.city}, {journalist.location.country}&lt;/p&gt;</span></div>
+<div class="row"><span class="num">8</span><span class="src">  &lt;button onclick={() =&gt; <span class="fn">onRelocate</span>(<span class="str">'Geneva'</span>)}&gt;Relocate to Geneva&lt;/button&gt;</span></div>
+<div class="row"><span class="num">9</span><span class="src">&lt;/article&gt;</span></div></div></div>
+<p>When the journalist clicks the relocation button, the component invokes the <code>onRelocate</code> callback. As long as that callback mutates the property through Svelte's proxy, the location badge updates immediately without requiring any full-page reload or parent component re-render.</p>
+</div>
+<div class="keep-together">
+<h3>The Raw Reference Trap: Mutating Unwrapped Data</h3>
+<p>Now we can answer the opening mystery: why does mutating <code>journalist.location.city</code> fail to update the screen in real-world code? The most frequent culprit is the raw reference trap, meaning your code accidentally mutates the original unproxied object rather than the proxy wrapper created by <code>$state</code>.</p>
+<p>Consider how data enters a real frontend application. Data rarely starts as an inline object literal; it typically arrives from an external API payload, a network request, or an imported default dataset:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src"><span class="kw">const</span> rawProfile = {</span></div>
+<div class="row"><span class="num">2</span><span class="src">  name: <span class="str">'Elena Rostova'</span>,</span></div>
+<div class="row"><span class="num">3</span><span class="src">  location: { city: <span class="str">'London'</span>, country: <span class="str">'UK'</span> }</span></div>
+<div class="row"><span class="num">4</span><span class="src">};</span></div>
+<div class="row"><span class="num">5</span><span class="src"></span></div>
+<div class="row"><span class="num">6</span><span class="src"><span class="kw">let</span> journalist = <span class="rune">$state</span>(rawProfile);</span></div></div></div>
+<p>A common misconception is that passing <code>rawProfile</code> into <code>$state</code> alters <code>rawProfile</code> itself. It does not. JavaScript proxies never mutate their underlying targets. In memory, <code>rawProfile</code> remains a plain, inert JavaScript object. Svelte creates an entirely separate proxy instance and binds it to <code>journalist</code>. This means <code>journalist !== rawProfile</code>, and <code>journalist.location !== rawProfile.location</code>.</p>
+<p>If an asynchronous data fetch, an external event listener, or a helper function retains a reference to <code>rawProfile</code> and mutates <code>rawProfile.location.city = 'Geneva'</code>, the write occurs strictly in raw memory. Because <code>rawProfile</code> has no proxy traps, Svelte receives zero notification. The signal never fires, and the badge on screen stays stuck on London.</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">ProfileView.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">import</span> LocationBadge <span class="kw">from</span> <span class="str">'./LocationBadge.svelte'</span>;</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">const</span> rawProfile = {</span></div>
+<div class="row"><span class="num">5</span><span class="src">    name: <span class="str">'Elena Rostova'</span>,</span></div>
+<div class="row"><span class="num">6</span><span class="src">    location: { city: <span class="str">'London'</span>, country: <span class="str">'UK'</span> }</span></div>
+<div class="row"><span class="num">7</span><span class="src">  };</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="kw">let</span> journalist = <span class="rune">$state</span>(rawProfile);</span></div>
+<div class="row"><span class="num">10</span><span class="src"></span></div>
+<div class="row"><span class="num">11</span><span class="src">  <span class="kw">function</span> <span class="fn">syncLocationBroken</span>(newCity) {</span></div>
+<div class="row"><span class="num">12</span><span class="src">    rawProfile.location.city = newCity; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">WRONG:</b> Mutating raw input bypasses the <b class="tag">PROXY</b> entirely.</span>
+      </div></div>
+<div class="row"><span class="num">13</span><span class="src">  }</span></div>
+<div class="row"><span class="num">14</span><span class="src"></span></div>
+<div class="row"><span class="num">15</span><span class="src">  <span class="kw">function</span> <span class="fn">syncLocationWorking</span>(newCity) {</span></div>
+<div class="row"><span class="num">16</span><span class="src">    journalist.location.city = newCity; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> Mutating proxied state triggers surgical <b class="tag">UPDATES</b>.</span>
+      </div></div>
+<div class="row"><span class="num">17</span><span class="src">  }</span></div>
+<div class="row"><span class="num">18</span><span class="src">&lt;/script&gt;</span></div>
+<div class="row"><span class="num">19</span><span class="src"></span></div>
+<div class="row"><span class="num">20</span><span class="src">&lt;main <span class="kw">class</span>=<span class="str">"profile-shell"</span>&gt;</span></div>
+<div class="row"><span class="num">21</span><span class="src">  &lt;h2&gt;Journalist Profile&lt;/h2&gt;</span></div>
+<div class="row"><span class="num">22</span><span class="src">  &lt;LocationBadge {journalist} onRelocate={syncLocationWorking} /&gt;</span></div>
+<div class="row"><span class="num">23</span><span class="src">&lt;/main&gt;</span></div></div></div>
+<p>Always ensure your mutation logic targets the reactive variable returned by <code>$state</code>, never the raw data payload used to initialize it.</p>
+</div>
+<div class="keep-together">
+<h3>The Non-Plain Object Boundary: Classes and Built-Ins</h3>
+<p>The second major boundary where nested reactivity stops is non-plain objects. Svelte's recursive proxying is deliberate and selective: it only recurses into plain objects, meaning objects created with curly braces <code>{}</code> or <code>Object.prototype</code>, and standard arrays created with brackets <code>[]</code>.</p>
+<p>Svelte deliberately stops recursive proxification whenever it encounters:</p>
+<ul><li>Class instances created with <code>new MyClass()</code>, such as SDK models or ORM records.</li>
+<li>Built-in complex JavaScript objects such as <code>Date</code>, <code>RegExp</code>, <code>Map</code>, or <code>Set</code>.</li>
+<li>Prototype-less objects created with <code>Object.create(null)</code> or objects frozen with <code>Object.freeze()</code>.</li></ul>
+<p>Svelte halts at class instances to protect your code. Wrapping arbitrary third-party class instances in proxies can break private fields (declared with <code>#field</code>), disrupt prototype inheritance chains, and cause runtime crashes in third-party libraries. If <code>journalist.location</code> is an instance of a <code>LocationRecord</code> class, Svelte stores that instance as an opaque, unproxied reference. Writing <code>journalist.location.city = 'Geneva'</code> mutates the class property in memory, but no proxy trap exists on that class instance, so Svelte never detects the change.</p>
+<p>To make class instances reactive, you have two clear paths: either keep your data as plain object literals, or define reactive class fields using <code>$state</code> inside the class constructor itself (which we will explore in Lecture 39). For built-in collections like <code>Map</code> and <code>Set</code>, import Svelte's specialized reactive equivalents from <code>svelte/reactivity</code> (which we will cover in Lecture 40).</p>
+</div>
+<div class="keep-together">
+<h3>The Destructuring Fallacy with Primitive Leaf Values</h3>
+<p>A third frequent reason for stuck screens is destructuring primitive values. In JavaScript, primitive data types including strings, numbers, and booleans are passed and assigned strictly by value, not by reference.</p>
+<p>When you destructure a primitive property from a reactive object, you sever the connection to the proxy:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">LocationBadge.svelte</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">&lt;script&gt;</span></div>
+<div class="row"><span class="num">2</span><span class="src">  <span class="kw">let</span> { journalist } = <span class="rune">$props</span>();</span></div>
+<div class="row"><span class="num">3</span><span class="src"></span></div>
+<div class="row"><span class="num">4</span><span class="src">  <span class="kw">function</span> <span class="fn">renameCityBroken</span>(newCity) {</span></div>
+<div class="row"><span class="num">5</span><span class="src">    <span class="kw">let</span> { city } = journalist.location; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">WRONG:</b> Copies a disconnected <b class="tag">PRIMITIVE</b> string value.</span>
+      </div></div>
+<div class="row"><span class="num">6</span><span class="src">    city = newCity; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text">Modifies only local variable; proxy is completely untouched.</span>
+      </div></div>
+<div class="row"><span class="num">7</span><span class="src">  }</span></div>
+<div class="row"><span class="num">8</span><span class="src"></span></div>
+<div class="row"><span class="num">9</span><span class="src">  <span class="kw">function</span> <span class="fn">renameCityWorking</span>(newCity) {</span></div>
+<div class="row"><span class="num">10</span><span class="src">    journalist.location.city = newCity; </span>
+      <div style="flex-basis: 100%; height: 0;"></div>
+      <span class="num"></span>
+      <div class="cmt-bubble" style="--indent-offset: 38px;">
+        <span class="text"><b class="tag">RIGHT:</b> Writes to property on the <b class="tag">PROXY</b> to trigger updates.</span>
+      </div></div>
+<div class="row"><span class="num">11</span><span class="src">  }</span></div>
+<div class="row"><span class="num">12</span><span class="src">&lt;/script&gt;</span></div></div></div>
+<p>Notice the vital distinction between destructuring an object versus destructuring a primitive. If you write <code>let { location } = journalist</code>, the variable <code>location</code> holds a reference to the nested proxy returned by Svelte. Mutating <code>location.city = 'Geneva'</code> successfully triggers the proxy's <code>set</code> trap and updates the DOM. But if you destructure <code>let { city } = journalist.location</code>, <code>city</code> is merely a plain string copy. Reassigning <code>city = 'Geneva'</code> alters only that temporary local variable, leaving the proxy and the screen completely unaffected.</p>
+</div>
+<div class="keep-together">
+<h3>Granular Dependency Signals and Tree Replacement</h3>
+<p>Why does Svelte invest in recursive proxies instead of re-rendering the whole component on any change? The answer lies in granular dependency tracking.</p>
+<p>In Svelte 5, reactivity is powered by fine-grained signals. When <code>LocationBadge.svelte</code> renders <code>&lt;p class="city-tag"&gt;Location: {journalist.location.city}&lt;/p&gt;</code>, Svelte tracks a dependency specifically on the signal representing the <code>city</code> property. It does not subscribe the paragraph to the parent <code>journalist</code> object or to sibling properties like <code>journalist.name</code>. If another profile process updates <code>journalist.name = 'Elena Rostova-Vance'</code>, the DOM element displaying the city is completely bypassed during the update cycle.</p>
+<p>Furthermore, Svelte handles complete branch replacements effortlessly. If you replace the entire location object at once:</p>
+<div class="editor"><div class="bar"><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><span class="tab">App.js</span></div><div class="code"><div class="row"><span class="num">1</span><span class="src">journalist.location = { city: <span class="str">'Berlin'</span>, country: <span class="str">'Germany'</span> };</span></div></div></div>
+<p>Svelte's top-level proxy catches the assignment to the <code>location</code> property. It automatically wraps the new object in a fresh nested proxy, links its internal signals, and immediately updates the DOM expressions that depend on <code>location</code> and its children. You never need to call special cloning methods or manual notification hooks.</p>
+<aside class="callout callout-key">
+  <p class="callout-eyebrow">Key Takeaway</p>
+  <div class="callout-body">Passing an object to $state recursively proxies plain objects and arrays; mutating raw unproxied source references or class instances without runes bypasses reactivity completely.</div>
+</aside>
+<aside class="callout callout-tip">
+  <p class="callout-eyebrow">Interview Tip</p>
+  <div class="callout-body"><strong>To impress the interviewer:</strong> Explain that Svelte 5 achieves deep reactivity through recursive JavaScript Proxies, wrapping nested plain objects and arrays on access. Emphasize three distinct failure modes where mutating a nested property fails to update the screen: first, mutating a retained reference to the raw, unproxied input object rather than the proxy returned by $state; second, attempting to mutate properties on non-plain objects like class instances or Object.create() records, which Svelte deliberately excludes from proxying to protect internal prototypes; and third, destructuring primitive leaf values, which severs reactivity due to JavaScript pass-by-value semantics. Finally, highlight that Svelte's fine-grained tracking attaches dependencies to individual property signals rather than whole objects, ensuring surgical DOM updates without virtual DOM overhead.</div>
+</aside>
+</div>
+<div class="keep-together">
+<h3>Where you will meet this</h3>
+<ul><li>The National Times profile page updates journalist city assignments across bureaus without re-rendering author bylines.</li>
+<li>A sports scoreboard updates individual quarter scores nested inside team game records while preserving player statistic tables.</li>
+<li>A user account settings form receives profile payloads from an API client and binds directly to deeply nested billing address inputs.</li>
+<li>An analytics dashboard pushes incoming event objects into deeply nested time-series arrays without triggering unnecessary chart redraws.</li></ul>
+</div>
+<div class="keep-together">
+<h3>Summary</h3>
+<p>Svelte 5 handles nested objects and arrays through recursive JavaScript Proxies, intercepting property reads and writes to trigger surgical DOM updates. While standard mutations update the screen automatically, failures occur when developers mutate retained references to the original raw input object, mutate unproxied non-plain objects like class instances, or reassign destructured primitive variables. Mutating directly on the proxy ensures granular signals update only the exact elements bound to the modified properties.</p>
+<ul><li>Passing plain objects and arrays to <code>$state</code> creates deeply reactive JavaScript Proxies.</li>
+<li>Mutating the original unproxied object in memory bypasses proxy traps and leaves the screen stale.</li>
+<li>Svelte stops deep proxying at non-plain objects such as class instances, Dates, and Maps.</li>
+<li>Destructuring primitive properties copies values and severs the connection to the reactive proxy.</li>
+<li>Reassigning an entire nested object branch automatically wraps the new structure in a fresh proxy.</li>
+<li>Svelte tracks dependencies at the property signal level, updating only the exact DOM nodes reading that path.</li></ul>
+<table><thead><tr><th></th><th><strong>PROXIED STATE</strong><br>(reactive)</th><th><strong>RAW REFERENCE</strong><br>(inert)</th></tr></thead><tbody><tr><td><strong>Object identity</strong></td><td>Created and returned by <code>$state(data)</code></td><td>Original object passed into <code>$state</code></td></tr><tr><td><strong>Nested mutation</strong></td><td><code>journalist.location.city = 'Geneva'</code><br>triggers DOM updates instantly</td><td><code>raw.location.city = 'Geneva'</code><br>leaves the screen completely stale</td></tr><tr><td><strong>Proxy interception</strong></td><td>Property writes hit Svelte <code>set</code> traps</td><td>Direct memory writes bypass all signals</td></tr><tr><td><strong>Non-plain objects</strong></td><td>Class instances and built-ins<br>are excluded from deep proxying</td><td>Plain objects and arrays only<br>are proxified recursively</td></tr><tr><td><strong>Primitive extraction</strong></td><td>Destructuring leaves creates disconnected<br>primitive values copied by value</td><td>Property access must remain on the proxy<br>to maintain reactive tracking</td></tr></tbody></table>
+</div>
+
+</main>
+</body>
+</html>
