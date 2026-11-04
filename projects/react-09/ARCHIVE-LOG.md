@@ -760,3 +760,14 @@ Retirements performed inside react-08 itself are logged below.
 - 2026-10-24 20:43 | archive Q6 | archive before simplifying headings | 01-02-md-LECTURES/v2/06.md -> 01-02-md-LECTURES/v2/archive/06-2026-10-24-2043.md
 - 2026-10-24 20:43 | archive Q7 | archive before simplifying headings | 01-02-md-LECTURES/v2/07.md -> 01-02-md-LECTURES/v2/archive/07-2026-10-24-2043.md
 - 2026-10-24 20:43 | archive Q8 | archive before simplifying headings | 01-02-md-LECTURES/v2/08.md -> 01-02-md-LECTURES/v2/archive/08-2026-10-24-2043.md
+- 2026-10-25 00:14 | archive Q9 | archive 09.md before adding two-way essence and box diagrams | 01-02-md-LECTURES/v2/09.md -> 01-02-md-LECTURES/v2/archive/09-2026-10-25-0014.md
+- 2026-10-25 01:01 | archive Q9 | archive 09.md before adding Principle 2 and 3 opening essence | 01-02-md-LECTURES/v2/09.md -> 01-02-md-LECTURES/v2/archive/09-2026-10-25-0101.md
+- 2026-10-25 01:39 | archive Q1 | Before adding Opening Essence and removing info bombs in 01.md | 01-02-md-LECTURES/v2/01.md -> 01-02-md-LECTURES/v2/archive/01-2026-10-25-0139.md
+- 2026-10-25 10:02 | archive Q2 | Before adding Opening Essence and removing info bombs in 02.md | 01-02-md-LECTURES/v2/02.md -> 01-02-md-LECTURES/v2/archive/02-2026-10-25-1002.md
+- 2026-10-25 10:37 | archive Q3 | Archive 03.md before adding Opening Essence and removing info bombs | 01-02-md-LECTURES/v2/03.md -> 01-02-md-LECTURES/v2/archive/03-2026-10-25-1037.md
+- 2026-10-25 10:50 | archive Q4 | Archive 04.md before adding Opening Essence and removing info bombs | 01-02-md-LECTURES/v2/04.md -> 01-02-md-LECTURES/v2/archive/04-2026-10-25-1050.md
+- 2026-10-25 10:57 | archive Q5 | Pre-opening-essence and info-bomb-removal upgrade backup | 01-02-md-LECTURES/v2/05.md -> 01-02-md-LECTURES/v2/archive/05-2026-10-25-1057.md
+- 2026-10-25 11:03 | archive Q6 | Pre-opening-essence and info-bomb-removal upgrade backup | 01-02-md-LECTURES/v2/06.md -> 01-02-md-LECTURES/v2/archive/06-2026-10-25-1103.md
+- 2026-10-25 11:14 | archive Q7 | Pre-opening-essence and info-bomb-removal upgrade backup | 01-02-md-LECTURES/v2/07.md -> 01-02-md-LECTURES/v2/archive/07-2026-10-25-1114.md
+- 2026-10-25 11:17 | archive Q8 | Pre-opening-essence and info-bomb-removal upgrade backup | 01-02-md-LECTURES/v2/08.md -> 01-02-md-LECTURES/v2/archive/08-2026-10-25-1117.md
+- 2026-10-25 11:23 | archive Q10 | Before adding Opening Essence and removing info bombs in River v2 lecture 10 | 01-02-md-LECTURES/v2/10.md -> 01-02-md-LECTURES/v2/archive/10-2026-10-25-1123.md
