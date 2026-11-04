@@ -51,7 +51,7 @@ The documentation corpus (formerly the in-repo `documentation official/` folder)
 ## Workspace Hygiene
 
 - Link integrity gate: `node tools/check-links.mjs` must report zero broken path links (MISSING entries are planned-but-unauthored lecture files; GENERATED entries are gitignored build outputs).
-- Generated outputs (`md-lectures-html/`, `md-lectures-pdf/`, `*.pdf`, etc.) are gitignored; rebuild them with each project's own pipeline.
+- Generated PDFs (`md-lectures-pdf/`, `*.pdf`, etc.) are gitignored. Generated HTML (`md-lectures-html/`, `01-03-md-lectures-HTML/`, the `*-md-revised-*-html/` folders, etc.) is committed so it is available on GitHub. Rebuild both with each project's own pipeline.
 - Historical materials (legacy Pencil pipeline, experiment labs, superseded instructions, the pre-restructure tree) live in the archive configured under the `archive` key — outside this repo.
 
 ## Control Directives
