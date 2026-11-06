@@ -1,0 +1,157 @@
+---
+name: map-principles-v1
+description: "River Version (v1) principle map for `01-01-map-principles/v1/{NN}.md`, written by Opus. Reads the question bank, the syllabus card, and the official React corpus, and writes a fact sheet: scope, verified behavior, root distinctions, real bugs, interview points, bridges, example steps, and code names. Argon writes every sentence the reader reads, first in the first draft and then in the simplified lecture."
+---
+
+# River Version (`v1`) Principle Map (`01-01-map-principles/v1/{NN}.md`)
+
+## 1. The map's place in the River pipeline #2026_10_24_01_group_1
+
+| Step | File | Written by |
+| --- | --- | --- |
+| 1. Principle map | `01-01-map-principles/v1/{NN}.md` | Opus |
+| 2. First draft | `01-01-md-DRAFT-lectures/v1/{NN}.md` | Argon, under the lecture skills |
+| 3. Lecture | `01-02-md-LECTURES/v1/{NN}.md` | Argon in a fresh thread, under [simplify/SKILL.md](../simplify/SKILL.md) |
+| 4. Runtime check | `lab/reports/{NN}.md`, with fixes in the lecture | Opus in a fresh thread, under [verification/SKILL.md](../verification/SKILL.md) Stage C |
+| 5. Later corrections | `01-02-md-LECTURES/v1/{NN}.md` only, then rebuilt | Any thread, under [lecture-structure/SKILL.md](../lecture-structure/SKILL.md) Section 5 #2026_11_06_01_group_5 |
+
+The map decides **what is true and what the lesson covers**. The first draft is the whole lecture, written from the map. The lecture is the first draft simplified for maximum clarity. #2026_10_24_02_group_1 The runtime check runs the lecture's own code in `lab/` and corrects the lecture where React does something else, so the facts are tested on the text the reader reads. #2026_11_05_02_group_1
+
+## 2. The map is a fact sheet, not a draft of the lecture #2026_10_24_01_group_2
+
+Argon writes the River voice; the map's writer does not. When a map held story sentences, the lecture copied them, and the copied sentences came out compressed and full of code names. Lecture 06's rejected first paragraph came almost word for word from its map's beginner-mistake field.
+
+So the map gives facts in lists, and it never writes a sentence meant for the reader:
+- A story becomes a numbered list of events, one event per line, in the order they happen.
+- Exact names, files, strings, and error messages go in a separate **Code names** line, so they are easy to find and never glued into a story.
+- Rules, boxes, previews, and spoken answers are not drafted here. The map lists the points they must cover.
+
+### PROPER (Format sample: facts as events, code names on their own line)
+
+This is a sample of the format, not of the reader's voice. Its facts are the facts of Lecture 06, Principle 3.
+
+```markdown
+- **Real Beginner Mistake (events, in order)**:
+  1. The list file creates the section name as a local variable and shows it above the card.
+  2. The header file tries to show the same section name.
+  3. The page goes blank, because a function cannot see a variable created inside another function.
+  4. To stop the crash, a developer copies the variable into both files.
+  5. Later, a teammate changes the header file's copy and forgets the list file's copy.
+  6. The page loads with no Console error, but the header and the list show two different section names.
+- **Code names**: `ArticleList.jsx`, `SiteHeader.jsx`, `category`, `'City News'`, `'Local News'`, `Uncaught ReferenceError: category is not defined`
+```
+
+### COUNTER-EXAMPLE (The Lecture 06 map, whose wording the rejected lecture draft copied; one em-dash replaced by a colon)
+
+```markdown
+- **Real Beginner Mistake (Daily Coding)**:
+  1. Trying to read `category` inside `SiteHeader.jsx` when `const category = 'Local News'` was declared inside `ArticleList.jsx` (which crashes with `ReferenceError: category is not defined` because sibling functions have separate local scopes), OR
+  2. Copying `const category = 'Local News'` into both `SiteHeader.jsx` and `ArticleList.jsx`, and later updating one file to `'City News'` so the header says `Latest Articles: City News` while the list below it still says `Category: Local News`!
+```
+
+*Why this fails*: Each item glues four events, six code names, and an aside into one sentence. A writer who starts from it starts from a compressed story.
+
+## 3. Four verification pillars #2026_10_24_01_group_2
+
+The map is written from the official React documentation corpus. Never read the Original Version maps, pre-lectures, or lectures of `projects/react-09` for it.
+
+1. **Corpus (`## Sources Read`)**:
+   - Read `questions/questions.md` row `{NN}` and the syllabus card `01-01-map/{NN}.md`.
+   - Resolve the corpus with `node ../../tools/resolve.mjs corpus` and read every `learn/` and `reference/` page for the topic, including every `<Pitfall>`, `<DeepDive>`, `<Recap>`, and `<Challenge>`.
+   - Quote every Console warning or error, Elements panel node, and Vite build behavior exactly as the corpus gives it, with the page it comes from. When the corpus gives the behavior but not the exact string, record the behavior and mark the string `unconfirmed`; the runtime check of the lecture runs it in `lab/` and writes the real string into the lecture. #2026_11_05_02_group_1
+2. **Scope routing (`## Candidate Ledger`)**: every candidate fact gets a row with one of seven dispositions: `Principle`, `Merged`, `Supporting`, `Prerequisite`, `Preview`, `Deferred`, or `Dropped`. Every `Prerequisite`, `Preview`, and `Deferred` row names its owning question (`QNN #topic_tag`), so no lesson takes a later chapter's topic.
+3. **Terms (`## Terms`)**: every React, browser, JavaScript, or general term the lesson uses gets a row with its `kind`, `status` (`Recall` or `New`), `first lesson`, `refresher` (`yes` or `no`), and `first needed in`. Every `New` term and every `refresher: yes` term is scheduled into the Runway Plan.
+4. **Interview points (`## Interview Points`)**: the points a complete spoken answer to the bank question must cover, one per line, in principle order. Argon writes the spoken answer itself in the lecture's `## For the Interview` section.
+
+## 4. What each principle records #2026_10_24_01_group_2
+
+### 4.1 Order: cause before effect
+
+When one principle explains how something is made, defined, or exported, and another explains how it is used, read, or imported, the making comes first.
+
+- *PROPER (Lecture 05)*: Principle 2, one default export or many named exports in a file, comes before Principle 3, matching the import to the export. Once the reader has seen a card file with one default export and a badge file with two named exports, the rules for curly braces and renaming make sense at once.
+- *COUNTER-EXAMPLE*: teaching curly braces and renaming in Principle 2 before the reader learns in Principle 3 that a file can have one default export and many named ones. Principle 2 then has to export a lone component by name for no visible reason.
+
+### 4.2 The fields of a principle
+
+Each `### Principle N` in `## Principles` records these fields as short facts:
+
+- **Handle**: a few words that name the principle.
+- **Rule**: the rule in one plain line, with its condition.
+- **Opening Essence**: the furniture-free snippet and human image that unlock this principle before the project files appear, plus the exact nuance of confusion to state out loud (*"Yes, it is the exact same thing!"* or *"It may look the same, or work the same at first, but it is NOT the same thing!"*), as governed by [opening-essence/SKILL.md](../opening-essence/SKILL.md).
+- **Root Distinction**: the two things a junior developer sees as one (*Junior blurred view*) and the separation a senior developer keeps (*Senior grounding*), each as one line. Example: *junior*: "I wrote the card function, so the card should appear"; *senior*: declaring the function and placing its tag are two separate steps.
+- **Real Beginner Mistake (events, in order)**: what developers really do wrong in daily coding, as numbered events. Never invent a mistake to force a comparison.
+- **Interview Depth**: what a senior interviewer probes as a follow-up, one point per line, kept apart from the daily mistake.
+- **Bridges**: every place where a second piece of code uses a name, parameter, or value that the first piece never wrote, such as `import StoryCard` when the card file never says `StoryCard`, `children` in a child when the parent tag never wrote `children=`, or `e` in a handler when `onClick` never passed it. For each, record what the reader will not find in the first piece, who invents or supplies it, and what JavaScript or React does, as numbered steps.
+- **React Does**: the runtime facts for this principle from the corpus: what appears on the page, in the Console, and in the Elements panel, with each exact string quoted from the corpus or marked `unconfirmed`. #2026_11_05_02_group_1
+- **Example Step**: what this lesson's example, chosen under Section 5B, adds in this principle, which files change, and which new page element enters here and nowhere earlier in the lesson. #2026_10_24_03_group_1
+- **Code names**: every file, variable, tag, string, and error message this principle uses.
+- **Visual idea**: what a figure or preview could compare, in one line. The first draft decides whether a figure helps.
+
+### 4.3 Real beginner mistake and interview depth stay apart
+
+- *PROPER (Lecture 04, Principle 1)*: the daily mistake is writing the card function and forgetting to place its tag, so the page is empty. The interview depth is why we write the tag instead of calling the function ourselves, and why the component tag never appears in the Elements panel.
+- *COUNTER-EXAMPLE*: recording calling the component function with parentheses inside the markup as the main beginner bug. Developers rarely write it; it is an interview question.
+
+### 4.4 Bridges are recorded as steps, not as a summary
+
+- *PROPER (facts behind Lecture 05, Principle 3)*:
+  - **Reader will not find**: `StoryCard` anywhere in the card file, where the function is still `ArticleCard`.
+  - **Who supplies it**: the main file invents `StoryCard` as a new local name.
+  - **What JavaScript does**: 1. With no curly braces, it does not search the card file by name. 2. It takes the single default export, `ArticleCard`. 3. It gives that function the local name `StoryCard` in the main file.
+- *COUNTER-EXAMPLE*: "Why a default export has only one default component so `App.jsx` can import it under any name (`import StoryCard`), whereas `Badges.jsx` has multiple named exports so `ArticleCard.jsx` must rename with `as`." It states the syntax rule and never records that the reader cannot find `StoryCard` in the first file.
+
+## 5. The Runway Plan #2026_10_24_01_group_2
+
+`## General Concepts Introduction (Runway Plan)` lists, as facts:
+- **Opening Essence**: the naked, furniture-free code and everyday human image that open Zone 1 before any project file is shown, plus the exact nuance of confusion to elaborate out loud, under [opening-essence/SKILL.md](../opening-essence/SKILL.md).
+- **Theme**: the real page problem that motivates the chapter, in one line, such as twenty article cards that should not be copied and pasted twenty times.
+- **Ways**: when developers really choose between two to four approaches for the same job, the approaches and when each fits. Otherwise, `Ways: none`.
+- **Recall**: the exact facts from earlier lessons this chapter stands on, each with its lesson number.
+- **Runway topics**: the general JavaScript, browser, or HTML ideas the principles need, one per line, from the `New` and `refresher: yes` rows of the Terms table, plus how the project files are organized.
+- **Example**: the page chosen for this lesson under Section 5B, small enough to read in a little browser window, and believable to a junior and a senior developer alike. One line says why the concept is the reason this page exists, and one line names the other pages considered. #2026_10_24_03_group_1
+
+## 5B. The example is chosen anew for every lesson #2026_10_24_03_group_1
+
+Each lesson chooses its own example. The page of the lesson before is one candidate among others, and it returns only when nothing simpler teaches this lesson's concept. The example still grows from Principle 1 to Principle N, but inside this lesson, not from one lesson to the next.
+
+Choose it for two things. It fits the story of the chapter: the concept is the reason the example exists, so the reader sees why this page needs this idea. And it is radically simple: the page is made of things everyone recognizes from everyday use of the web, such as a button, a title, a counter, a list of names, or a text box, and the user's actions are the ones everyone does without thinking: click, type, add, remove. If the reader must be told what a part is or why it is there, it is not simple enough. When a principle teaches what breaks, the broken thing is big on the page and breaks on an action everyone knows.
+
+**PROPER** (the three principles of Lecture 1, rechosen in revision 3, from summary-edition Section 03B):
+
+> a shopping cart shows its count in two places, "Items: 2" and a "Buy 2 items" button. The shopper clicks "Add to cart", and both places must show 3. The plain JavaScript attempt is two lines, `const items = document.getElementById('items');` and `items.textContent = 'Items: 3';`, and the button keeps "Buy 2 items". A note box joins the cart only in the section on typed text, where "Gift wrap, please" survives React's update and is lost to `innerHTML`.
+
+**PROPER** (Lecture 11's keys, from summary-edition Section 03B): an inbox, where the cost of a wrong key is seen at once:
+
+> a tick that lands on an email we never read, and the Delete button that then deletes it, is seen and felt at once.
+
+**COUNTER-EXAMPLE** (River maps 07 to 10): every map carried on the page of the lesson before it. Map 07's example field reads "The city news page from Lectures 05 and 06", map 08's reads "The city news page from Lectures 06 and 07", and map 10's reads "The city news page from Lecture 09". Mounting a root, props, children, and conditional rendering were all taught on the same article cards, and no map asked which page would make its own concept easiest to see.
+
+**COUNTER-EXAMPLE** (Lecture 1, first revision 3, from summary-edition Section 03B):
+
+> the signed-in user Mary adds her family name in her profile and becomes Mary Brooks while "elections" sits in a search box, and the change is made by editing the file. The principle boxes switch to `Greeting` and John, so the reader meets three sets of names.
+
+The map records the choice in the Runway Plan's **Example** line.
+## 6. Section order of `01-01-map-principles/v1/{NN}.md` #2026_10_24_01_group_2
+
+1. `# Q{NN} Principle Map (River Version v1): [Chapter Title]` with the `Version`, `Bank Row`, `Topic Tag`, and `Interview Question` bullets
+2. `## Authorized Scope`
+3. `## General Concepts Introduction (Runway Plan)`
+4. `## Principle Thread`: `Anchor`, `Axis`, `Why This Axis`
+5. `## Sources Read`
+6. `## Candidate Ledger`
+7. `## Terms`
+8. `## Principles`: `### Principle 1..N`, each with the fields of Section 4.2
+9. `## Interview Points`
+10. `## Reported Conflicts`
+11. `## Open Issues`
+12. `## Completion Gate`
+
+## 7. Completion Gate #2026_10_24_01_group_2
+
+- [ ] Is every runtime claim taken from the corpus, and is every exact string quoted from it or marked `unconfirmed`? #2026_11_05_02_group_1
+- [ ] Does every candidate fact have a ledger row, and does every deferred row name its owner?
+- [ ] Is every story a list of events, with its code names on their own line?
+- [ ] Does every principle record its root distinction, real mistake, interview depth, bridges, and example step?
+- [ ] Was the example chosen anew under Section 5B, with the reason it fits this lesson's story and the other pages considered? #2026_10_24_03_group_1
+- [ ] Is the map free of drafted lecture sentences, drafted principle boxes, and drafted spoken answers?
