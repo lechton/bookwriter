@@ -35,7 +35,6 @@
   const FRAME_CSS = `
     body { padding-bottom: 45vh; }
     .rp-voiced { cursor: pointer; border-radius: 10px; transition: opacity .45s ease, background-color .45s ease, box-shadow .45s ease; }
-    .rp-voiced:hover { box-shadow: 0 0 0 2px rgba(147, 64, 44, .22); }
     body.rp-reading .container > * { transition: opacity .45s ease; }
     body.rp-reading .container > *:not(.rp-focus) { opacity: .35; }
     .rp-focus { background-color: var(--terra-wash, #f6e6e0); box-shadow: 0 0 0 12px var(--terra-wash, #f6e6e0); opacity: 1; }
