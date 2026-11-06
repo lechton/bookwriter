@@ -1,6 +1,6 @@
 # React Player
 
-A Svelte reader for the React 10 lectures. It shows every chapter of `../react-10/01-03-md-lectures-HTML/v1/NN.html` (the main design only, not the `-old` or `-earth01` variants) as a book with a table of contents, opens Lecture 21 by default, and plays a chapter's audio from a fixed bar at the bottom of the page. While the audio plays, the block being spoken is focused and scrolled to the middle of the page; clicking a voiced block jumps the audio to it.
+A Svelte reader for the React 10 lectures. It shows every chapter of `../react-10/01-03-md-lectures-HTML/v1/NN.html` (the main design only, not the `-old` or `-earth01` variants) as a book, opens Lecture 20 by default, and plays a chapter's audio from a fixed bar at the bottom of the page. A breadcrumb at the top (`Index / 20. title`) leads to the Index, which lists every chapter. Inside a chapter, the left sidebar lists that chapter's sections and highlights the one being read, whether the reader scrolls or the audio plays; clicking a section jumps to it (and moves the audio there while it plays). While the audio plays, the block being spoken is focused and scrolled to the middle of the page; clicking a voiced block jumps the audio to it.
 
 The chapters are never copied or edited: the Vite dev server serves them at `/chapters/`, and `npm run build` copies them into `dist/`.
 
@@ -26,4 +26,8 @@ The spoken version keeps the chapter's own sentences and adds breaths and pauses
 
 ## Status
 
-Lecture 21 is fully voiced: 349 blocks in 16 parts, 2 hours 3 minutes, voice Enzo, style `breath` (part 1 is the approved ten-block pilot). The other chapters have no audio yet.
+Lecture 20 is fully voiced: 279 blocks in 260 entries and 18 parts, voice Enzo, style `breath`. The other chapters have no audio yet.
+
+## Archive
+
+When a chapter is rewritten or archived in react-10, its audio no longer matches the HTML. Its audio text, takes, mp3, and timing are then moved into `archive/NN-YYYY-MM-DD-HHMM/`, which is gitignored and stays on this machine only. The earlier Lecture 21 audio lives there (`archive/21-2026-11-06-2351/`); its texts also remain in the git history.

@@ -6,9 +6,11 @@
     Object.values(import.meta.glob('./audio/*.timing.json', { eager: true, import: 'default' })).map((t) => [t.chapter, t]),
   );
 
-  const DEFAULT_CHAPTER = '21';
+  const DEFAULT_CHAPTER = '20';
+  const INDEX = 'index';
   const fromHash = () => {
     const n = location.hash.replace(/^#\/?/, '');
+    if (n === INDEX) return INDEX;
     return chapters.some((c) => c.num === n) ? n : DEFAULT_CHAPTER;
   };
 
@@ -18,7 +20,11 @@
   let playing = $state(false);
   let time = $state(0);
   let activeIndex = $state(-1);
+  let sections = $state([]);
+  let activeSection = $state(-1);
+  let sectionLinks = [];
 
+  const isIndex = $derived(current === INDEX);
   const chapter = $derived(chapters.find((c) => c.num === current));
   const timing = $derived(timings[current] ?? null);
   const duration = $derived(timing?.duration ?? 0);
@@ -39,6 +45,8 @@
     doc = frame.contentDocument;
     entryEls = [];
     activeIndex = -1;
+    sections = [];
+    activeSection = -1;
     const container = doc?.querySelector('.container');
     if (!container) return;
     const style = doc.createElement('style');
@@ -57,11 +65,47 @@
       return els;
     });
 
+    sections = blocks
+      .filter((b) => b.id.startsWith('h2-') || b.id.startsWith('h3-'))
+      .map((b) => ({
+        id: b.id,
+        el: b.el,
+        level: b.id.startsWith('h2-') ? 2 : 3,
+        kicker: b.el.querySelector('.section-kicker')?.textContent.trim() ?? '',
+        label: (b.el.querySelector('.h2-title') ?? b.el).textContent.trim(),
+        entry: (timing?.blocks ?? []).findIndex((e) => e.ids.includes(b.id)),
+      }));
+    doc.defaultView.addEventListener('scroll', updateActiveSection, { passive: true });
+    updateActiveSection();
+
     doc.addEventListener('click', (e) => {
       const el = e.target.closest?.('[data-rp-entry]');
       if (el) seekToEntry(Number(el.dataset.rpEntry));
     });
     doc.addEventListener('keydown', onKey);
+  }
+
+  // The section being read is the last heading above the reading line, which sits a little above the
+  // middle of the page because the spoken block is centered there.
+  function updateActiveSection() {
+    if (!frame || !sections.length) return;
+    const line = frame.clientHeight * 0.45;
+    let k = -1;
+    for (let j = 0; j < sections.length; j++) {
+      if (sections[j].el.getBoundingClientRect().top <= line) k = j;
+      else break;
+    }
+    if (k !== activeSection) activeSection = k;
+  }
+
+  $effect(() => {
+    sectionLinks[activeSection]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+
+  function goToSection(j) {
+    const s = sections[j];
+    if (playing && s.entry >= 0) seekToEntry(s.entry);
+    else s.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function seekToEntry(i) {
@@ -142,6 +186,9 @@
     playing = false;
     time = 0;
     activeIndex = -1;
+    sections = [];
+    activeSection = -1;
+    doc = null;
     current = num;
     history.replaceState(null, '', `#/${num}`);
   }
@@ -154,50 +201,77 @@
 
 <svelte:window onkeydown={onKey} onhashchange={() => open(fromHash())} />
 
-<div class="shell">
-  <nav class="toc" aria-label="Table of contents">
-    <div class="toc-head">
-      <div class="toc-kicker">React 10 · River Version</div>
-      <div class="toc-title">React 19 Production Lectures</div>
-    </div>
-    <ol>
-      {#each chapters as c (c.num)}
-        <li>
-          <a href={`#/${c.num}`} class:active={c.num === current} aria-current={c.num === current ? 'page' : undefined} onclick={(e) => { e.preventDefault(); open(c.num); }}>
-            <span class="num">{c.num}</span>
-            <span class="name">{c.title}</span>
-            {#if timings[c.num]}<span class="badge" title="This chapter has audio">audio</span>{/if}
-          </a>
-        </li>
-      {/each}
-    </ol>
-  </nav>
-
-  <main class="reader">
-    {#key current}
-      <iframe bind:this={frame} src={`${import.meta.env.BASE_URL}chapters/${current}.html`} title={chapter?.title} onload={onFrameLoad}></iframe>
-    {/key}
-  </main>
-
-  <footer class="bar">
-    <button type="button" class="progress" aria-label="Seek" disabled={!timing} onclick={seekBar}>
-      <span style:width={duration ? `${(time / duration) * 100}%` : '0%'}></span>
-    </button>
-    <div class="bar-left">
-      <span class="bar-num">{current}</span>
-      <span class="bar-title">{chapter?.title}</span>
-    </div>
-    <button type="button" class="play" onclick={toggle} disabled={!timing} aria-label={playing ? 'Pause' : 'Play'} title={timing ? (playing ? 'Pause (space)' : 'Play (space)') : 'No audio for this chapter yet'}>
-      {#if playing}
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
-      {:else}
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>
+<div class="shell" class:index-view={isIndex}>
+  <header class="crumbs">
+    <nav aria-label="Breadcrumb">
+      <a href="#/index" class:here={isIndex} aria-current={isIndex ? 'page' : undefined} onclick={(e) => { e.preventDefault(); open(INDEX); }}>Index</a>
+      {#if !isIndex}
+        <span class="sep" aria-hidden="true">/</span>
+        <span class="here" aria-current="page">{Number(current)}. {chapter?.title}</span>
       {/if}
-    </button>
-    <div class="bar-right">
-      {#if timing}{clock(time)} / {clock(duration)}{:else}No audio yet{/if}
-    </div>
-  </footer>
+    </nav>
+    <div class="crumbs-kicker">React 10 · River Version</div>
+  </header>
+
+  {#if isIndex}
+    <main class="index">
+      <h1>React 19 Production Lectures</h1>
+      <ol>
+        {#each chapters as c (c.num)}
+          <li>
+            <a href={`#/${c.num}`} onclick={(e) => { e.preventDefault(); open(c.num); }}>
+              <span class="num">{c.num}</span>
+              <span class="name">{c.title}</span>
+              {#if timings[c.num]}<span class="badge" title="This chapter has audio">audio</span>{/if}
+            </a>
+          </li>
+        {/each}
+      </ol>
+    </main>
+  {:else}
+    <nav class="toc" aria-label="Sections of this chapter">
+      <div class="toc-head">
+        <div class="toc-kicker">Lecture {Number(current)}</div>
+        <div class="toc-title">{chapter?.title}</div>
+      </div>
+      <ol>
+        {#each sections as s, j (s.id)}
+          <li>
+            <a bind:this={sectionLinks[j]} href={`#/${current}`} class="lvl{s.level}" class:active={j === activeSection} aria-current={j === activeSection ? 'location' : undefined} onclick={(e) => { e.preventDefault(); goToSection(j); }}>
+              {#if s.kicker}<span class="kicker">{s.kicker}</span>{/if}
+              <span class="name">{s.label}</span>
+            </a>
+          </li>
+        {/each}
+      </ol>
+    </nav>
+
+    <main class="reader">
+      {#key current}
+        <iframe bind:this={frame} src={`${import.meta.env.BASE_URL}chapters/${current}.html`} title={chapter?.title} onload={onFrameLoad}></iframe>
+      {/key}
+    </main>
+
+    <footer class="bar">
+      <button type="button" class="progress" aria-label="Seek" disabled={!timing} onclick={seekBar}>
+        <span style:width={duration ? `${(time / duration) * 100}%` : '0%'}></span>
+      </button>
+      <div class="bar-left">
+        <span class="bar-num">{current}</span>
+        <span class="bar-title">{activeSection >= 0 ? sections[activeSection].label : chapter?.title}</span>
+      </div>
+      <button type="button" class="play" onclick={toggle} disabled={!timing} aria-label={playing ? 'Pause' : 'Play'} title={timing ? (playing ? 'Pause (space)' : 'Play (space)') : 'No audio for this chapter yet'}>
+        {#if playing}
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+        {:else}
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>
+        {/if}
+      </button>
+      <div class="bar-right">
+        {#if timing}{clock(time)} / {clock(duration)}{:else}No audio yet{/if}
+      </div>
+    </footer>
+  {/if}
 </div>
 
 {#if timing}
