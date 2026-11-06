@@ -75,9 +75,10 @@
     return timing.blocks.findIndex((b) => t >= b.start && t < b.end);
   }
 
-  // Applied whenever the spoken entry changes: the entry's blocks are focused and brought to the middle.
+  // While the voice reads, its entry is focused and the rest of the page dims; on pause the page goes
+  // back to plain reading, and on resume the focus returns to the entry being read.
   $effect(() => {
-    const i = activeIndex;
+    const i = playing ? activeIndex : -1;
     if (!doc) return;
     doc.body.classList.toggle('rp-reading', i >= 0);
     for (const el of doc.querySelectorAll('.rp-focus')) el.classList.remove('rp-focus');
