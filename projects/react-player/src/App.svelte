@@ -20,6 +20,10 @@
   let playing = $state(false);
   let time = $state(0);
   let activeIndex = $state(-1);
+  const SPEEDS = [1, 1.5, 2];
+  let speed = $state(SPEEDS.includes(Number(localStorage.getItem('rp-speed'))) ? Number(localStorage.getItem('rp-speed')) : 1);
+  $effect(() => localStorage.setItem('rp-speed', String(speed)));
+  const stepSpeed = (d) => (speed = SPEEDS[Math.min(SPEEDS.length - 1, Math.max(0, SPEEDS.indexOf(speed) + d))]);
   let sections = $state([]);
   let activeSection = $state(-1);
   let sectionLinks = [];
@@ -267,7 +271,12 @@
         {/if}
       </button>
       <div class="bar-right">
-        {#if timing}{clock(time)} / {clock(duration)}{:else}No audio yet{/if}
+        <span class="clock">{#if timing}{clock(time)} / {clock(duration)}{:else}No audio yet{/if}</span>
+        <div class="speed" role="group" aria-label="Reading speed">
+          <button type="button" aria-label="Slower" disabled={!timing || speed === SPEEDS[0]} onclick={() => stepSpeed(-1)}>−</button>
+          <span class="speed-value" aria-live="polite">×{speed}</span>
+          <button type="button" aria-label="Faster" disabled={!timing || speed === SPEEDS.at(-1)} onclick={() => stepSpeed(1)}>+</button>
+        </div>
       </div>
     </footer>
   {/if}
@@ -275,6 +284,6 @@
 
 {#if timing}
   {#key current}
-    <audio bind:this={audio} src={`${import.meta.env.BASE_URL}${timing.audio}`} preload="auto" onplay={() => (playing = true)} onpause={() => (playing = false)} onended={onEnded}></audio>
+    <audio bind:this={audio} bind:playbackRate={speed} src={`${import.meta.env.BASE_URL}${timing.audio}`} preload="auto" onplay={() => (playing = true)} onpause={() => (playing = false)} onended={onEnded}></audio>
   {/key}
 {/if}
