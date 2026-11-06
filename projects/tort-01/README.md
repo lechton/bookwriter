@@ -15,5 +15,7 @@ node src/build-lectures.mjs
 
 - [notes/notes-01.md](notes/notes-01.md) — Project notes, chronological case list, sample case card format, and authoring prompt.
 - [md-lectures/01-chapter-01.md](md-lectures/01-chapter-01.md) — Chapter 1 full lecture presentation and the 20 foundational UK tort law case summaries.
+- [skills/audio-lecture/SKILL.md](skills/audio-lecture/SKILL.md) — Experimental skillset for transforming written UK tort law chapters into spoken audio lectures, with [skills/audio-lecture/spoken-demos.md](skills/audio-lecture/spoken-demos.md) and [skills/RULE-TAGS.md](skills/RULE-TAGS.md).
+- [write_audio_lecture.md](write_audio_lecture.md) — Prompt for transforming Chapter 01 into an audio-friendly lecture.
 - [src/build-lectures.mjs](src/build-lectures.mjs) — Algorithmic Markdown-to-HTML compiler inspired by the Lex Stemma theme.
 - [md-lectures-html/01-chapter-01.html](md-lectures-html/01-chapter-01.html) — Generated HTML output.
