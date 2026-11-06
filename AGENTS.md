@@ -20,6 +20,7 @@ All operations, shell commands, file inspections, and project workflows are root
 | `react 08` | `projects/react-08` | React 19 Production Lectures v8 (experiment copied from react-07; react-07 frozen) |
 | `react 09` | `projects/react-09` | React 19 Production Lectures v9 (`v1` = **Original Version**, `v2` = **River Version**; frozen, continued in react-10) |
 | `react 10` | `projects/react-10` | React 19 Production Lectures v10 (`v1` = **River Version**, copied from react-09 `v2`; the default React project) |
+| `react player` | `projects/react-player` | Svelte reader for the react-10 chapters with synced audio (Lecture 21 fully voiced) |
 | `vue 01` | `projects/vue-01` | Vue 3 Core & Architecture |
 | `css 01` | `projects/css-01` | CSS Interview Lectures |
 | `accessibility 01` / `a11y 01` | `projects/accessibility-01` | Accessibility & Performance Lectures |
@@ -41,7 +42,7 @@ This workspace is shared across machines. Machine-specific locations MUST NEVER 
 - `bookwriter-project.json` — committed template with placeholder values and the key schema.
 - `bookwriter-project.local.json` — gitignored; each collaborator fills their real absolute paths here.
 
-Config keys: `corpus` (documentation corpus folder), `gdrive` (Google Drive `bookwriter-google` folder), `archive` (bookwriter-old archive), `external.svelte` / `external.svelteDev2026` (external source repos), `screenshots` (local screenshots folder).
+Config keys: `corpus` (documentation corpus folder), `gdrive` (Google Drive `bookwriter-google` folder), `archive` (bookwriter-old archive), `external.svelte` / `external.svelteDev2026` (external source repos), `external.videomax` (VideoMax repo with the TTS and alignment tools), `screenshots` (local screenshots folder).
 
 Resolve any key: `node tools/resolve.mjs <key>` (e.g. `node tools/resolve.mjs corpus`). Scripts read config through the same mechanism (see `tools/shot.mjs` for the pattern). Agents asked to open the corpus, archive, or external repo MUST resolve the key first instead of guessing paths.
 
