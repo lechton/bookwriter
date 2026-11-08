@@ -14,3 +14,135 @@ The `archive/` subfolders of the `v1` folders were copied unchanged from the rea
 - 2026-11-06 20:35 | archive Q20 | rewrite under skills v10.3 | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-06-2035.pdf
 - 2026-11-06 20:35 | archive Q20 | rewrite under skills v10.3 | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-06-2035.pdf
 - 2026-11-06 20:35 | archive Q20 | rewrite under skills v10.3 | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-06-2035.pdf
+- 2026-11-06 23:06 | archive Q20 | manual | 01-01-map-principles/v1/20.md -> 01-01-map-principles/v1/archive/20-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q20 | manual | 01-01-md-DRAFT-lectures/v1/20.md -> 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q20 | manual | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-06-2306.pdf
+- 2026-11-06 23:06 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-06-2306.pdf
+- 2026-11-06 23:06 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-06-2306.pdf
+- 2026-11-06 23:06 | archive Q21 | manual | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q21 | manual | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q21 | manual | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21-earth01.html -> 01-03-md-lectures-HTML/v1/archive/21-earth01-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21-old.html -> 01-03-md-lectures-HTML/v1/archive/21-old-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/21-earth01-2026-11-06-2306.pdf
+- 2026-11-06 23:06 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21-old.pdf -> 01-04-md-lectures-PDF/v1/archive/21-old-2026-11-06-2306.pdf
+- 2026-11-06 23:06 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-06-2306.pdf
+
+- 2026-11-06 23:11 · moved lab/reports/20.md -> lab/reports/archive/20-2026-11-06-2311.md and lab/cases/20/ -> lab/cases/archive/20-2026-11-06-2311/ by hand, the script does not cover the lab; reason: rewrite of lesson 20 with skills v10.4
+
+- 2026-11-07 00:25 · moved lab/reports/21.md -> lab/reports/archive/21-2026-11-07-0025.md and lab/cases/21/ -> lab/cases/archive/21-2026-11-07-0025/ by hand, the script does not cover the lab; reason: rewrite of lesson 21 with skills v10.4
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-0120.md
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-0120.html
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-0120.html
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-0120.html
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-0120.pdf
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-0120.pdf
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-0120.pdf
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-0243.md
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-0243.html
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-0243.html
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-0243.html
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-0243.pdf
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-0243.pdf
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-0243.pdf
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-0304.md
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-0304.html
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-0304.html
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-0304.html
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-0304.pdf
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-0304.pdf
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-0304.pdf
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-0359.md
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-0359.html
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-0359.html
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-0359.html
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-0359.pdf
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-0359.pdf
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-0359.pdf
+- 2026-11-07 14:33 | archive Q20 | manual | 01-01-map-principles/v1/20.md -> 01-01-map-principles/v1/archive/20-2026-11-07-1433.md
+- 2026-11-07 14:33 | archive Q20 | manual | 01-01-md-DRAFT-lectures/v1/20.md -> 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-07-1433.md
+- 2026-11-07 14:33 | archive Q20 | manual | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-1433.md
+- 2026-11-07 14:33 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-1433.html
+- 2026-11-07 14:33 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-1433.html
+- 2026-11-07 14:33 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-1433.html
+- 2026-11-07 14:33 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-1433.pdf
+- 2026-11-07 14:33 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-1433.pdf
+- 2026-11-07 14:33 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-1433.pdf
+- 2026-11-07 16:20 | archive Q20 | manual | 01-01-map-principles/v1/20.md -> 01-01-map-principles/v1/archive/20-2026-11-07-1620.md
+- 2026-11-07 16:20 | archive Q20 | manual | 01-01-md-DRAFT-lectures/v1/20.md -> 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-07-1620.md
+- 2026-11-07 16:20 | archive Q20 | manual | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-1620.md
+- 2026-11-07 16:20 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-1620.html
+- 2026-11-07 16:20 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-1620.html
+- 2026-11-07 16:20 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-1620.html
+- 2026-11-07 16:20 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-1620.pdf
+- 2026-11-07 16:20 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-1620.pdf
+- 2026-11-07 16:20 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-1620.pdf
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-01-map-principles/v1/20.md -> 01-01-map-principles/v1/archive/20-2026-11-07-1657.md
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-01-md-DRAFT-lectures/v1/20.md -> 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-07-1657.md
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-1657.md
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-1657.html
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-1657.html
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-1657.html
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-1657.pdf
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-1657.pdf
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-1657.pdf
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-01-map-principles/v1/archive/20-2026-11-07-1620.md -> 01-01-map-principles/v1/20.md
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-07-1620.md -> 01-01-md-DRAFT-lectures/v1/20.md
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-02-md-LECTURES/v1/archive/20-2026-11-07-1620.md -> 01-02-md-LECTURES/v1/20.md
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-1620.html -> 01-03-md-lectures-HTML/v1/20.html
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-1620.html -> 01-03-md-lectures-HTML/v1/20-earth01.html
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-1620.html -> 01-03-md-lectures-HTML/v1/20-old.html
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-1620.pdf -> 01-04-md-lectures-PDF/v1/20.pdf
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-1620.pdf -> 01-04-md-lectures-PDF/v1/20-earth01.pdf
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-1620.pdf -> 01-04-md-lectures-PDF/v1/20-old.pdf
+- 2026-11-07 17:07 | archive Q21 | manual | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-07-1707.md
+- 2026-11-07 17:07 | archive Q21 | manual | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-07-1707.md
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-07-2106.md
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-07-2106.md
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-07-2106.md
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21-earth01.html -> 01-03-md-lectures-HTML/v1/archive/21-earth01-2026-11-07-2106.html
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21-old.html -> 01-03-md-lectures-HTML/v1/archive/21-old-2026-11-07-2106.html
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-07-2106.html
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/21-earth01-2026-11-07-2106.pdf
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21-old.pdf -> 01-04-md-lectures-PDF/v1/archive/21-old-2026-11-07-2106.pdf
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-07-2106.pdf
+
+- 2026-11-07 21:06 · moved lab/reports/21.md -> lab/reports/archive/21-2026-11-07-2106.md and lab/cases/21/ -> lab/cases/archive/21-2026-11-07-2106/ by hand, the script does not cover the lab; reason: from-scratch rewrite of lesson 21 with skills v10.5, all steps Opus
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-07-2233.md
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-07-2233.md
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-07-2233.md
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21-earth01.html -> 01-03-md-lectures-HTML/v1/archive/21-earth01-2026-11-07-2233.html
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21-old.html -> 01-03-md-lectures-HTML/v1/archive/21-old-2026-11-07-2233.html
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-07-2233.html
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/21-earth01-2026-11-07-2233.pdf
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21-old.pdf -> 01-04-md-lectures-PDF/v1/archive/21-old-2026-11-07-2233.pdf
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-07-2233.pdf
+
+- 2026-11-07 22:33 · moved lab/reports/21.md -> lab/reports/archive/21-2026-11-07-2233.md and lab/cases/21/ -> lab/cases/archive/21-2026-11-07-2233/ by hand, the script does not cover the lab; reason: second from-scratch rewrite of lesson 21 under the updated skills v10.5, all steps Opus
+- 2026-11-07 23:13 | archive Q21 | manual | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-07-2313.md
+- 2026-11-07 23:13 | archive Q21 | manual | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-07-2313.md
+- 2026-11-07 23:13 | archive Q21 | manual | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-07-2313.md
+- 2026-11-07 23:13 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21-earth01.html -> 01-03-md-lectures-HTML/v1/archive/21-earth01-2026-11-07-2313.html
+- 2026-11-07 23:13 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21-old.html -> 01-03-md-lectures-HTML/v1/archive/21-old-2026-11-07-2313.html
+- 2026-11-07 23:13 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-07-2313.html
+- 2026-11-07 23:13 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/21-earth01-2026-11-07-2313.pdf
+- 2026-11-07 23:13 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21-old.pdf -> 01-04-md-lectures-PDF/v1/archive/21-old-2026-11-07-2313.pdf
+- 2026-11-07 23:13 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-07-2313.pdf
+
+- 2026-11-08 00:23 · moved lab/reports/21.md -> lab/reports/archive/21-2026-11-08-0023.md and lab/cases/21/ -> lab/cases/archive/21-2026-11-08-0023/ by hand, the script does not cover the lab; reason: third from-scratch rewrite of lesson 21 under skills v10.5, final lecture by Argon high
+- 2026-11-08 02:49 | copy Q21 | kept in place; copy saved before the bookfix correction of the word picture (audit 21_2026_11_08_001) | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-08-0249.md
+- 2026-11-08 02:49 | copy Q21 | kept in place; copy saved before the bookfix correction of the word picture (audit 21_2026_11_08_001) | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-08-0249.html
+- 2026-11-08 02:49 | copy Q21 | kept in place; copy saved before the bookfix correction of the word picture (audit 21_2026_11_08_001) | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-08-0249.pdf
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-02-md-LECTURES/v1/22.md -> 01-02-md-LECTURES/v1/archive/22-2026-11-08-0505.md
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-03-md-lectures-HTML/v1/22-earth01.html -> 01-03-md-lectures-HTML/v1/archive/22-earth01-2026-11-08-0505.html
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-03-md-lectures-HTML/v1/22-old.html -> 01-03-md-lectures-HTML/v1/archive/22-old-2026-11-08-0505.html
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-03-md-lectures-HTML/v1/22.html -> 01-03-md-lectures-HTML/v1/archive/22-2026-11-08-0505.html
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-04-md-lectures-PDF/v1/22-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/22-earth01-2026-11-08-0505.pdf
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-04-md-lectures-PDF/v1/22-old.pdf -> 01-04-md-lectures-PDF/v1/archive/22-old-2026-11-08-0505.pdf
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-04-md-lectures-PDF/v1/22.pdf -> 01-04-md-lectures-PDF/v1/archive/22-2026-11-08-0505.pdf
+- 2026-11-08 05:05 · moved lab/reports/22.md -> lab/reports/archive/22-2026-11-08-0505.md and lab/cases/22/ -> lab/cases/archive/22-2026-11-08-0505/ by hand, the script does not cover the lab; reason: Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High
