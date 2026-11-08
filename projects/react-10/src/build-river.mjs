@@ -1139,10 +1139,23 @@ function parseAndRender(md, theme = 'book') {
     // Unordered list
     if (/^-\s+/.test(line)) {
       const items = [];
-      while (i < lines.length && /^-\s+/.test(lines[i])) {
-        items.push(lines[i++].replace(/^-\s+/, ''));
+      while (i < lines.length && (/^-\s+/.test(lines[i]) || /^\s+-\s+/.test(lines[i]))) {
+        if (/^-\s+/.test(lines[i])) {
+          items.push({ text: lines[i++].replace(/^-\s+/, ''), sub: [] });
+        } else {
+          const subText = lines[i++].replace(/^\s+-\s+/, '');
+          if (items.length) items[items.length - 1].sub.push(subText);
+        }
       }
-      out.push(`<ul>${items.map((it) => `<li>${inline(it)}</li>`).join('')}</ul>`);
+      const lis = items
+        .map((it) => {
+          const subHtml = it.sub.length
+            ? `<ul>${it.sub.map((s) => `<li>${inline(s)}</li>`).join('')}</ul>`
+            : '';
+          return `<li>${inline(it.text)}${subHtml}</li>`;
+        })
+        .join('');
+      out.push(`<ul>${lis}</ul>`);
       continue;
     }
 
@@ -1478,19 +1491,19 @@ ${bodyOldHtml}
     `[River ${VERSION}] Built 01-03-md-lectures-HTML/${VERSION}/${name}.html (book theme), ${name}-earth01.html (earth01 theme) & ${name}-old.html (old theme) from 01-02-md-LECTURES/${VERSION}/${file} (${bookFigs} box-to-boxes figures).`
   );
   console.log(
-    `[River ${VERSION}] River Prose Surveillance (${file}): ${parenViolations.length} parenthesis violations, ${codeInProseViolations.length} code-in-prose violations, ${orphanHighlightViolations.length} orphan-highlight violations, ${longSentenceViolations.length} sentences > 28 words.`
+    `[River ${VERSION}] River Prose Surveillance (${file}): ${parenViolations.length} parenthesis violations, ${codeInProseViolations.length} code-in-prose hints, ${orphanHighlightViolations.length} orphan-highlight violations, ${longSentenceViolations.length} long-sentence hints.`
   );
   if (parenViolations.length) {
     console.warn('Parenthesis violations:\n' + parenViolations.join('\n'));
   }
   if (codeInProseViolations.length) {
-    console.warn('Code-in-prose violations (use plain human words in prose; move syntax to code blocks):\n' + codeInProseViolations.join('\n'));
+    console.warn('Code-in-prose hints (change a sentence only if a tired reader would stumble on it):\n' + codeInProseViolations.join('\n'));
   }
   if (orphanHighlightViolations.length) {
     console.warn('Orphan ~token~ or comment-only violations in code blocks:\n' + orphanHighlightViolations.join('\n'));
   }
   if (longSentenceViolations.length) {
-    console.warn('Long sentence warnings:\n' + longSentenceViolations.join('\n'));
+    console.warn('Long sentence hints (a long sentence that reads in one breath stays):\n' + longSentenceViolations.join('\n'));
   }
 
   if (!noPdf) {
