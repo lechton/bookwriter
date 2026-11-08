@@ -2,9 +2,9 @@ import { useState } from 'react';
 
 export default function ContactForm() {
   const [name, setName] = useState('');
-  const [topic, setTopic] = useState('order');
+  const [topic, setTopic] = useState('delivery');
   const [message, setMessage] = useState('');
-  const [sent, setSent] = useState(false);
+  const [wantsReply, setWantsReply] = useState(false);
 
   function handleMessageChange(e) {
     if (e.target.value.length <= 200) {
@@ -14,27 +14,27 @@ export default function ContactForm() {
 
   function handleSend(e) {
     e.preventDefault();
-    console.log('Sending message from', name.trim());
-    setSent(true);
+    console.log('Sent:', name, topic, message, wantsReply);
     setName('');
-    setTopic('order');
+    setTopic('delivery');
     setMessage('');
+    setWantsReply(false);
   }
 
   return (
-    <>
+    <section>
       <h1>Contact Us</h1>
       <form onSubmit={handleSend}>
         <label>
-          Your name
+          Name
           <input value={name} onChange={e => setName(e.target.value)} />
         </label>
         <label>
           Topic
           <select value={topic} onChange={e => setTopic(e.target.value)}>
-            <option value="order">My order</option>
             <option value="delivery">Delivery</option>
-            <option value="refund">Refund</option>
+            <option value="payment">Payment</option>
+            <option value="other">Other</option>
           </select>
         </label>
         <label>
@@ -42,9 +42,12 @@ export default function ContactForm() {
           <textarea value={message} onChange={handleMessageChange} />
         </label>
         <p>{message.length} / 200</p>
+        <label>
+          <input type="checkbox" checked={wantsReply} onChange={e => setWantsReply(e.target.checked)} />
+          Email me a reply
+        </label>
         <button type="submit">Send</button>
       </form>
-      {sent && <p>Thanks! Your message was sent.</p>}
-    </>
+    </section>
   );
 }

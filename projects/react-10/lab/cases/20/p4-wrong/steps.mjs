@@ -1,12 +1,15 @@
-const fields = (page) => page.evaluate(() => [...document.querySelectorAll('input,textarea,select')].map((el) => {
-  const kind = el.tagName.toLowerCase() + (el.tagName === 'INPUT' && el.getAttribute('type') ? '[' + el.type + ']' : '');
-  if (el.type === 'checkbox') return kind + ': ' + (el.checked ? 'checked' : 'unchecked');
-  if (el.tagName === 'SELECT') return kind + ': ' + JSON.stringify(el.value) + ' shows ' + el.options[el.selectedIndex].text;
-  return kind + ': ' + JSON.stringify(el.value);
-}));
-const show = async (page, label) => { console.log('== Fields ' + label); console.log((await fields(page)).join('\n')); };
-const mark = (page, text) => page.evaluate((t) => console.log('--- ' + t), text);
-
+import { both, typeInto, pick, tick, clickButton, mark } from '../_lib.mjs';
 export default async function ({ page, sleep, snap }) {
-  await show(page, 'after load');
+  await both(page, snap, 'after load');
+  await typeInto(page, 'Name', 'Anna'); await pick(page, 'Topic', 'payment'); await sleep(200);
+  await both(page, snap, 'after typing Anna and picking Payment');
+  await tick(page, 'Email me a reply'); await sleep(200);
+  await both(page, snap, 'after the first click on the tick box');
+  await tick(page, 'Email me a reply'); await sleep(200);
+  await both(page, snap, 'after the second click on the tick box');
+  await tick(page, 'Email me a reply'); await sleep(200);
+  await both(page, snap, 'after the third click on the tick box');
+  await mark(page, 'Send');
+  await clickButton(page, 'Send'); await sleep(200);
+  await both(page, snap, 'after Send');
 }

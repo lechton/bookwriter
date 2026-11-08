@@ -1,26 +1,20 @@
-import { useState } from 'react';
-
 export default function ContactForm() {
-  const [message, setMessage] = useState('');
-  const [sent, setSent] = useState(false);
+  let message = '';
 
-  function handleSend(e) {
-    e.preventDefault();
-    setSent(true);
-    setMessage('');
+  function handleMessageChange(e) {
+    message = e.target.value;
   }
 
   return (
-    <>
+    <section>
       <h1>Contact Us</h1>
-      <form onSubmit={handleSend}>
+      <form>
         <label>
           Message
-          <textarea defaultValue="" />
+          <textarea onChange={handleMessageChange} />
         </label>
-        <button type="submit">Send</button>
+        <p>{message.length} / 200</p>
       </form>
-      {sent && <p>Thanks! Your message was sent.</p>}
-    </>
+    </section>
   );
 }

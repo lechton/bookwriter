@@ -2,11 +2,10 @@ import { useState } from 'react';
 
 export default function ContactForm() {
   const [name, setName] = useState('');
-  const [topic, setTopic] = useState('order');
+  const [topic, setTopic] = useState('delivery');
   const [message, setMessage] = useState('');
   const [wantsReply, setWantsReply] = useState(false);
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
 
   function handleMessageChange(e) {
     if (e.target.value.length <= 200) {
@@ -16,29 +15,28 @@ export default function ContactForm() {
 
   function handleSend(e) {
     e.preventDefault();
-    console.log('Sending message from', name.trim());
-    setSent(true);
+    console.log('Sent:', name, topic, message, wantsReply, email);
     setName('');
-    setTopic('order');
+    setTopic('delivery');
     setMessage('');
     setWantsReply(false);
     setEmail('');
   }
 
   return (
-    <>
+    <section>
       <h1>Contact Us</h1>
       <form onSubmit={handleSend}>
         <label>
-          Your name
+          Name
           <input value={name} onChange={e => setName(e.target.value)} />
         </label>
         <label>
           Topic
           <select value={topic} onChange={e => setTopic(e.target.value)}>
-            <option value="order">My order</option>
             <option value="delivery">Delivery</option>
-            <option value="refund">Refund</option>
+            <option value="payment">Payment</option>
+            <option value="other">Other</option>
           </select>
         </label>
         <label>
@@ -53,12 +51,11 @@ export default function ContactForm() {
         {wantsReply && (
           <label>
             Email
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+            <input value={email} onChange={e => setEmail(e.target.value)} />
           </label>
         )}
         <button type="submit">Send</button>
       </form>
-      {sent && <p>Thanks! Your message was sent.</p>}
-    </>
+    </section>
   );
 }
