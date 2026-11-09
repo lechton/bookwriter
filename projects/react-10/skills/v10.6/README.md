@@ -17,7 +17,9 @@ Lectures 17 to 19 read best, and they were written by teaching with examples. So
 | Skill | Who uses it | What it covers |
 | --- | --- | --- |
 | [lecture](lecture/SKILL.md) | Every writer | Who you write for, which move to pick, how to write each sentence, the parts of a lecture, and the final read |
-| [opening-essence](opening-essence/SKILL.md) | Every writer | How the start of a lecture and of each principle opens: the four moves, the seven examples, and Back to the basics |
+| [opening-essence](opening-essence/SKILL.md) | Every writer | How the start of a lecture and of each principle opens: the four moves, the nine examples, and Back to the basics |
+| [examples](examples/SKILL.md) | Every writer | Full passages: a PROPER example beside a COUNTER-EXAMPLE, why the counter-example fails, and what is at stake, one entry per chapter #2026_11_09_02_group_2 |
+| [clarity](clarity/SKILL.md) | Every writer | The owner's checklist for maximum clarity, with before and after examples: numbering, grounding, what is going on, the clearest image, no AI slop, a summary before a complex path, common vocabulary #2026_11_09_04_group_1, and real DO and DO NOT DO examples, not toy ones #2026_11_09_07_group_1 |
 | [moves](moves/) | Every writer | Five moves: [Smallest code first](moves/smallest-code-first.md), [Side by side](moves/side-by-side.md), [Everyday image](moves/everyday-image.md), [Steps for a surprise](moves/steps-for-a-surprise.md), [Both orders first](moves/both-orders-first.md) |
 | [figures](figures/SKILL.md) | Every writer | The exact syntax of code blocks, highlights, `tree` figures, browser previews, columns, file panels, and principle cards |
 | [map](map/SKILL.md) | Opus | The principle map: facts, the example page, and the move each principle uses |

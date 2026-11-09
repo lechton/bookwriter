@@ -21,6 +21,10 @@ If the owner cannot follow a rule on the first read, the rule is badly written. 
 4. **Say the full case.** Write "If the reader would not expect what happens on the screen", not "When the result surprises". A short phrase saves words for the writer and costs time for the reader.
 5. **Do not invent labels.** Words such as "the Angle", "the cut test", or "ping-pong" mean nothing to a new reader. If you must use a label, explain it in the same sentence where it first appears.
 
+## The owner's words are legal text #2026_11_09_05_group_1
+
+Every edit that carries the owner's words follows the Tech-Lawyer Rule, Principle 6 in the workspace [AGENTS.md](../../../../../AGENTS.md): quote the owner, group the quote, interpret it with fidelity, add no new spin without approval, list your own sentences under the diff, and show the diff first.
+
 ## How to edit a skill
 
 1. **Fix before you add.** When a lecture goes wrong, find the rule that caused it, and change or remove that rule. Add a new rule only when no rule covers the problem.

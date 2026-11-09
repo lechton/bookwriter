@@ -1311,7 +1311,11 @@ function auditMarkdownProse(mdText) {
     // 1. Check for parentheses outside code/mock fences (exempting the verbatim bank question header)
     const isVerbatimQuestion =
       unquoted.startsWith('INTERVIEW QUESTION |') || unquoted.startsWith('**The Interview Question:**');
-    const lineForParenCheck = inFence === 'files' ? line.replace(/`[^`]+`/g, '') : line;
+    const lineForParenCheck = inFence === 'files'
+      ? line.replace(/`[^`]+`/g, '')
+      : inFence
+        ? line
+        : line.replace(/\([^()]*\b(?:Lesson|Lecture)s? \d+[^()]*\)/g, '');
     if (!isVerbatimQuestion && /[()]/.test(lineForParenCheck)) {
       parenViolations.push(`Line ${idx + 1}: ${line}`);
     }

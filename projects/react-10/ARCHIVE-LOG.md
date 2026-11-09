@@ -146,3 +146,74 @@ The `archive/` subfolders of the `v1` folders were copied unchanged from the rea
 - 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-04-md-lectures-PDF/v1/22-old.pdf -> 01-04-md-lectures-PDF/v1/archive/22-old-2026-11-08-0505.pdf
 - 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-04-md-lectures-PDF/v1/22.pdf -> 01-04-md-lectures-PDF/v1/archive/22-2026-11-08-0505.pdf
 - 2026-11-08 05:05 · moved lab/reports/22.md -> lab/reports/archive/22-2026-11-08-0505.md and lab/cases/22/ -> lab/cases/archive/22-2026-11-08-0505/ by hand, the script does not cover the lab; reason: Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-08-2300.md
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-08-2300.html
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-08-2300.html
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-08-2300.html
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-08-2300.pdf
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-08-2300.pdf
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-08-2300.pdf
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-02-md-LECTURES/v1/22.md -> 01-02-md-LECTURES/v1/archive/22-2026-11-09-0121.md
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/22-earth01.html -> 01-03-md-lectures-HTML/v1/archive/22-earth01-2026-11-09-0121.html
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/22-old.html -> 01-03-md-lectures-HTML/v1/archive/22-old-2026-11-09-0121.html
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/22.html -> 01-03-md-lectures-HTML/v1/archive/22-2026-11-09-0121.html
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/22-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/22-earth01-2026-11-09-0121.pdf
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/22-old.pdf -> 01-04-md-lectures-PDF/v1/archive/22-old-2026-11-09-0121.pdf
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/22.pdf -> 01-04-md-lectures-PDF/v1/archive/22-2026-11-09-0121.pdf
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-09-0224.md
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-09-0224.html
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-09-0224.html
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-09-0224.html
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-09-0224.pdf
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-09-0224.pdf
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-09-0224.pdf
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-02-md-LECTURES/v1/22.md -> 01-02-md-LECTURES/v1/archive/22-2026-11-09-0314.md
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/22-earth01.html -> 01-03-md-lectures-HTML/v1/archive/22-earth01-2026-11-09-0314.html
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/22-old.html -> 01-03-md-lectures-HTML/v1/archive/22-old-2026-11-09-0314.html
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/22.html -> 01-03-md-lectures-HTML/v1/archive/22-2026-11-09-0314.html
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/22-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/22-earth01-2026-11-09-0314.pdf
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/22-old.pdf -> 01-04-md-lectures-PDF/v1/archive/22-old-2026-11-09-0314.pdf
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/22.pdf -> 01-04-md-lectures-PDF/v1/archive/22-2026-11-09-0314.pdf
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-02-md-LECTURES/v1/26.md -> 01-02-md-LECTURES/v1/archive/26-2026-11-09-0344.md
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/26-earth01.html -> 01-03-md-lectures-HTML/v1/archive/26-earth01-2026-11-09-0344.html
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/26-old.html -> 01-03-md-lectures-HTML/v1/archive/26-old-2026-11-09-0344.html
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/26.html -> 01-03-md-lectures-HTML/v1/archive/26-2026-11-09-0344.html
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/26-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/26-earth01-2026-11-09-0344.pdf
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/26-old.pdf -> 01-04-md-lectures-PDF/v1/archive/26-old-2026-11-09-0344.pdf
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/26.pdf -> 01-04-md-lectures-PDF/v1/archive/26-2026-11-09-0344.pdf
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-02-md-LECTURES/v1/26.md -> 01-02-md-LECTURES/v1/archive/26-2026-11-09-0425.md
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/26-earth01.html -> 01-03-md-lectures-HTML/v1/archive/26-earth01-2026-11-09-0425.html
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/26-old.html -> 01-03-md-lectures-HTML/v1/archive/26-old-2026-11-09-0425.html
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/26.html -> 01-03-md-lectures-HTML/v1/archive/26-2026-11-09-0425.html
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/26-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/26-earth01-2026-11-09-0425.pdf
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/26-old.pdf -> 01-04-md-lectures-PDF/v1/archive/26-old-2026-11-09-0425.pdf
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/26.pdf -> 01-04-md-lectures-PDF/v1/archive/26-2026-11-09-0425.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-02-md-LECTURES/v1/33-GPT.md -> 01-02-md-LECTURES/v1/archive/33-GPT-2026-11-09-1605.md
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-02-md-LECTURES/v1/33-gemini.md -> 01-02-md-LECTURES/v1/archive/33-gemini-2026-11-09-1605.md
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-GPT-earth01.html -> 01-03-md-lectures-HTML/v1/archive/33-GPT-earth01-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-GPT-old.html -> 01-03-md-lectures-HTML/v1/archive/33-GPT-old-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-GPT.html -> 01-03-md-lectures-HTML/v1/archive/33-GPT-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/33-gemini-earth01-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/33-gemini-old-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-gemini.html -> 01-03-md-lectures-HTML/v1/archive/33-gemini-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-GPT-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/33-GPT-earth01-2026-11-09-1605.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-GPT-old.pdf -> 01-04-md-lectures-PDF/v1/archive/33-GPT-old-2026-11-09-1605.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-GPT.pdf -> 01-04-md-lectures-PDF/v1/archive/33-GPT-2026-11-09-1605.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/33-gemini-earth01-2026-11-09-1605.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/33-gemini-old-2026-11-09-1605.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/33-gemini-2026-11-09-1605.pdf
+- 2026-11-09 19:42 | archive Q34 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/34.md -> 01-02-md-LECTURES/v1/archive/34-2026-11-09-1942.md
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-02-md-LECTURES/v1/12-gemini.md -> 01-02-md-LECTURES/v1/archive/12-gemini-2026-11-09-2037.md
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/12-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-earth01-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/12-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-old-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/12-gemini.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/12-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-earth01-2026-11-09-2037.pdf
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/12-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-old-2026-11-09-2037.pdf
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/12-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-2026-11-09-2037.pdf
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-09-2037.md
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/13-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-earth01-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/13-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-old-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/13-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-earth01-2026-11-09-2037.pdf
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/13-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-old-2026-11-09-2037.pdf
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/13-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-2026-11-09-2037.pdf

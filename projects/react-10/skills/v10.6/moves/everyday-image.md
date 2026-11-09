@@ -7,7 +7,7 @@ description: "The move for a new word, such as declarative or spread: one everyd
 
 ## When to use it
 
-Use it when the lesson brings a new word that sounds academic, such as *imperative*, *declarative*, *spread*, or *controlled*.
+Use it when the lesson brings a new word that sounds academic, such as *imperative*, *declarative*, *spread*, or *controlled*. It unlocks a word. It does not open a chapter: the chapter opens on a real screen, as [Opening Essence](../opening-essence/SKILL.md) Example 9 shows. #2026_11_08_04_group_1
 
 ## How to do it
 

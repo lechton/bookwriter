@@ -29,14 +29,14 @@ Before a chapter or a principle touches the lesson's project files, open with it
 
 1. **Start from the lesson's question, and show the naked idea first, with zero project baggage**:
    The naked idea takes one of two forms:
-   - **When a few lines of code show the idea**, show that smallest code. This covers a syntax, such as `children`, `{...article}`, or curly braces, and also a way of working whose short code gives a result the reader does not expect, such as `console.log` printing `0` right after `setCount` in Lecture 15. Use the smallest, most familiar names possible, such as `<MyComponent>`, `John`, `article`, `count`, or `<p>`. Take as many lines or cases as the idea naturally has: sometimes two lines side by side, sometimes three steps in a chain, sometimes four ways to write a condition. Never force a false binary when the topic has multiple natural paths.
-   - **When the idea is the shape of a way of working, and no short code shows it with a surprise**, such as how a click changes the page, say it in plain words first: an everyday case the reader knows, the ways to do the job, and the React way as its steps. The handlers, setters, and DOM commands come later, in the principles. Examples 3 and 8 open this way. #2026_11_08_03_group_1
+   - **When a few lines of code show the idea**, show that smallest code. This covers a syntax, such as `children`, `{...article}`, or curly braces, and also a way of working whose short code gives a result the reader does not expect, such as `console.log` printing `0` right after `setCount` in Lecture 15. Use the smallest, most familiar names possible, such as `<MyComponent>`, `John`, `article`, `count`, or `<p>`. Take as many lines or cases as the idea naturally has: sometimes two lines side by side, sometimes three steps in a chain, sometimes four ways to write a condition. Never force a false binary when the topic has multiple natural paths. When the opening example has enough on-screen parts to make a browser preview meaningful, such as a list of players and a count line above it, show that browser preview directly before the code. Skip the preview when the code only passes props or renders a single word such as `John` that has nothing extra to show on a screen. #2026_11_09_03_group_1
+   - **When the idea is the shape of a way of working, and no short code shows it with a surprise**, such as how a click changes the page, say it in plain words first: a screen the reader has used on a real app or website, what the user does on it, and the question that screen raises for the developer, then the ways to do the job, and the React way as its steps. The reader meets the problem as a user before meeting it as a developer. The screen has the fewest parts that make the point, and the lecture keeps building on it, as [One real screen, one idea](../lecture/SKILL.md) says. #2026_11_09_01_group_1 The handlers, setters, and DOM commands come later, in the principles. Examples 3, 8, and 9 open this way. #2026_11_08_03_group_1 #2026_11_08_04_group_1
 2. **Elaborate every nuance of confusion in direct language (*"Yes, it is the exact same thing!"* OR *"It may look the same, or work the same at first, but it is NOT the same thing!"*)**:
    Whenever a concept, a notion, or a piece of syntax sounds mysterious or confusing, stop and address what the reader is wondering in plain, direct words:
    - When a new syntax is simply a shortcut or another way of writing code the reader already knows, such as `{...article}` versus writing `title={article.title} subtitle={article.subtitle} content={article.content}` by hand, or unpacking `{ name, age }` versus reading `props.name` and `props.age`, put both side by side and tell the reader outright: ***"Yes, it is the exact same thing!"***
    - When two things look alike, or even appear to work the same way on the first render, but behave differently under the hood, such as defining a component inside another component versus at the top level, calling `MyComponent()` versus rendering `<MyComponent />`, or passing `null` versus `undefined` to a default parameter, put them side by side and tell the reader outright: ***"It may look the same, or seem to work the same at first, but it is NOT the same thing!"*** Then walk through the exact nuance that separates them.
 3. **Unlock the technical word through its everyday human image, then draw it in a `tree` figure**:
-   Never drop a technical term as cold jargon. Connect the word to the physical picture inside it: an **empire** giving step-by-step commands for *imperative*, **spreading** packed items out on a table instead of taking them out one by one by hand for *spread*, or everything sitting inside the parent tag between opening and closing tags for *children*. Follow the prose immediately with a `tree` Box-to-Boxes diagram.
+   Never drop a technical term as cold jargon. Connect the word to the physical picture inside it: an **empire** giving step-by-step commands for *imperative*, **spreading** packed items out on a table instead of taking them out one by one by hand for *spread*, or everything sitting inside the parent tag between opening and closing tags for *children*. Follow the prose immediately with a `tree` Box-to-Boxes diagram. The image unlocks one word, in one or two sentences, after the screen has given the problem, as the walkie-talkie does in Example 9. It never takes the place of the screen as the start of the chapter. #2026_11_08_04_group_1
 4. **Never drop an info bomb — lay out every piece and every possible arrangement before the verdict**:
    - **Never state a bug before showing the two shapes that cause it**: Never say *"if you pass `parkStory={parkStory}` without the three dots, top-level props arrive as `undefined`"* out of nowhere. First show `<MyComponent article={article} />` versus `<MyComponent {...article} />` side by side, and show what sits inside `props` in each case: without the three dots, the closed `article` box sits inside `props.article`, so the title is tucked inside `props.article.title` and `props.title` does not exist (`undefined`).
    - **Never say *"putting A after B is better than putting A before B"* without first introducing that A and B can be combined and laying out both orders (`A` first vs. `B` first)**:
@@ -66,7 +66,7 @@ This keeps what the reader already knows, names the real difference exactly, and
 
 ## 3. Living Examples of the Opening Essence
 
-Read the eight full examples below for their pacing, their breathing room, and how they demystify each concept before any project file appears.
+Read the nine full examples below for their pacing, their breathing room, and how they demystify each concept before any project file appears.
 
 ---
 
@@ -517,13 +517,80 @@ In React, this variable is a **state variable**. A theme has only two values, li
 What is at stake is that the user sees one answer at a time. When we change elements directly, we have to remove every old message by hand, and forgetting even one leaves an old error next to a new welcome line. When the form depends on `status`, changing `status` replaces the whole answer at once. Readers usually go wrong by thinking in commands, "now show this line, now hide that one", and then forgetting one hide.
 ````
 
-The theme button is Lecture 21's own case. Another lesson finds its everyday case in its own question.
+The theme button is Lecture 21's own case: a screen every reader has used, and one click on it. Another lesson finds its own screen in its own question, as Example 9 does.
+
+---
+
+### Example 9: How a Child Asks Its Parent for a Change, Opened on a Real Screen (Lecture 23 Opening) #2026_11_08_04_group_1
+
+The essence of Lecture 23 is a way of working: a child cannot change its parent's state, so it calls a function the parent gave it. No short code shows this with a surprise, so the opening starts from a screen the reader has used.
+
+#### Why the old opening failed
+
+**COUNTER-EXAMPLE** (the Lecture 23 opening, 2026-11-08):
+
+> Think of a doctor's office that keeps your file. You cannot walk behind the desk and change your file yourself, because the file belongs to the office. So the office gives you its phone number and says: call us back when something changes.
+
+*Why this fails*: The reader does not know what the chapter is about until they translate a doctor's office back into a web page.
+
+#### PROPER OPENING ESSENCE (the owner's approved Lecture 23 opening)
+
+````markdown
+## How a Child Asks Its Parent for a Change
+
+### The Remove button in the row vs. the total at the top of the cart
+
+Picture a checkout cart on Amazon. Every item sits in its own **isolated row** with a **Remove button**.
+
+Click Remove on a pair of headphones, and **three things** happen at once:
+* The **headphones row** vanishes.
+* The **subtotal** at the bottom drops by $200.
+* The **cart badge** at the top ticks down from 3 to 2.
+
+Here is the puzzle. That Remove button is trapped inside one small **row component**. It does not know the subtotal or the cart badge even exists.
+
+How does a click inside a tiny **child component** update distant parts of the page?
+
+It doesn't. A row never reaches across the screen to edit the total.
+
+Instead, the **parent Cart** owns the single **master list** of products in its **state**. The rows, the subtotal, and the badge are all calculated from that one list.
+
+Only the parent can change its own state. So the parent hands each row a **function** as a **prop**, named `onRemove`.
+
+Think of it as handing the child a **walkie-talkie**: *"You cannot edit the list yourself. Call me when the user clicks Remove, and tell me your ID."*
+
+When you click the button, the row calls `onRemove(id)`. The parent receives the ID, removes that item from its **state**, and triggers a **fresh render**.
+
+Because the rows, the subtotal, and the badge all read from the same **updated list**, they update in **lockstep**. They *cannot* disagree.
+
+A function passed down like this is called a **callback**. The child literally **calls the parent** back.
+
+Without this pattern, your UI splits its brain. Imagine if a row simply **hid itself** on click:
+* The headphones would vanish from the list.
+* The top badge would still read 3.
+* The checkout total would still charge you $200.
+
+Your page would give **two different answers** to the same question.
+
+In this lesson, we will build this cart.
+````
+
+What this opening does, in order:
+1. It opens on a screen the reader has used, and one click on it.
+2. It lists what the user sees change, and only the changes the idea needs: the row, the subtotal, the badge.
+3. It asks the one question that screen raises, and answers it at once: "It doesn't."
+4. It names the React pieces only now, each one on the screen already shown: the parent, its state, the function prop.
+5. The everyday image comes after the screen and unlocks one word, callback.
+6. It shows the broken case on the same screen: the row is gone, and the badge still says 3.
+7. It stays on the same screen: the lesson builds this cart. #2026_11_09_01_group_1
+
+Another lesson finds its own screen. For a lesson on refs, the owner's words of 2026-11-08: "Imagine you open a chat application like WhatsApp. When you open a conversation, it slides straight down to your last message. How can the web application remember that exact position?"
 
 ---
 
 ## 4. Checklist for `opening-essence`
 
-- [ ] Does the start of the lecture open with the **Opening Essence** of the chapter, starting from the lesson's question and showing the naked idea: simple, furniture-free code (`<MyComponent>`, `John`, `article`, `count`) when a few lines show it, or plain words when the idea is the shape of a way of working, and a `tree` Box-to-Boxes figure, before introducing the lesson's multi-file project? #2026_11_08_03_group_1
+- [ ] Does the start of the lecture open with the **Opening Essence** of the chapter, starting from the lesson's question and showing the naked idea: simple, furniture-free code (`<MyComponent>`, `John`, `article`, `count`) when a few lines show it, or plain words that start from a real screen, what the user sees change on it, and the question it raises, when the idea is the shape of a way of working, and a `tree` Box-to-Boxes figure, before introducing the lesson's multi-file project? #2026_11_08_03_group_1 #2026_11_08_04_group_1
 - [ ] Does each Principle open with the naked essence of that principle before growing the project files?
 - [ ] Whenever a concept, a notion, or a syntax sounds mysterious or confusing, does the text elaborate the exact nuance of confusion in direct, everyday language, showing both sides and stating explicitly whether ***"Yes, it is the exact same thing!"*** (such as `{...article}` vs. writing each attribute by hand, or `{ name, age }` vs. `props.name` and `props.age`) or ***"It may look the same, or work the same at first, but it is NOT the same thing!"*** (such as defining a component inside another component vs. at the top level, `null` vs. `undefined` in default props, or `<MyComponent />` vs. `MyComponent()`)?
 - [ ] Is every technical term (*imperative*, *declarative*, *spreading*, *children*, *props*, *destructuring*) unlocked through its everyday human meaning **before** or **as** it is introduced, never used as circular jargon to define itself?

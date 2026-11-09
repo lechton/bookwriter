@@ -12,7 +12,7 @@ Use it for step 1 of the [Opening Essence](../opening-essence/SKILL.md) when a f
 ## How to do it
 
 1. Show the idea in the fewest lines that show it. Use simple names such as `MyComponent`, `John`, or `count`.
-2. When the idea shows on a page, show the browser first, then the code, then the browser after each thing the user does.
+2. When the example has enough information on the screen for a browser preview to help, such as a list and a count line or a form control, show the browser directly before the code, and again after a user action when the screen changes. Skip the browser when the example has too little to show on a screen, such as one `<p>{text}</p>` line or an attribute on `<MyComponent />`. #2026_11_09_03_group_1
 3. Only then move to the lesson's example page.
 
 ## A good and a bad example

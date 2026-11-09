@@ -60,7 +60,7 @@ When an idea spans two files, a `tree` hides too much. Use two columns, Section 
 
 ## 4. Browser previews #2026_11_06_02_group_1
 
-A browser preview shows what the reader would see in a real browser. It shows exactly what the code next to it renders, nothing more and nothing less. A value that lives only in state is not on the page, so it goes in the text, not in the preview.
+A browser preview shows what the reader would see in a real browser. It shows exactly what the code next to it renders, nothing more and nothing less. A value that lives only in state is not on the page, so it goes in the text, not in the preview. Fill it as [One real screen, one idea](../lecture/SKILL.md) says: short real names such as `John`, several items as a list, and a list before and a list after for a change of order. #2026_11_09_01_group_1
 
 **` ```page `**, a general page:
 - Text: `heading: Contact Us`, `section: Today`, `line: Thanks! Your message was sent. | good`, `empty: no card on the page`, or `blank`. In a line, `[Remove]` draws a real button: `line: 3. Night Train [Move up] [Remove]`.
@@ -82,7 +82,7 @@ A browser preview shows what the reader would see in a real browser. It shows ex
 - Every state of the same page keeps the same width, so the reader sees only what changed.
 - `size=mini` makes the inside of the frame more compact. It does not change the width.
 
-**PROPER** (Lecture 20 opening, the owner's correction of 2026-11-06). The browser comes first, then the code, then the browser after typing:
+**PROPER** (how to draw the previews only, from the Lecture 20 opening of 2026-11-06; Lecture 20 itself is not a model). The browser comes first, then the code, then the browser after typing:
 
 ````markdown
 ```page width=text caption="A small page with three name boxes, all showing John when the page opens."

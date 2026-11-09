@@ -87,6 +87,15 @@ When any AI agent creates, reviews, or modifies instructions, prompts, or skills
 3. *General Standards Over Micro-Regulations*: Insist on broad standards of clarity, rhythm, and physical reality rather than micromanaging word counts, sentence counts, or mechanical templates. Let the shape follow the content: plain sentences are the normal shape, and bullets appear only where the reader must tell two look-alike things apart.
 4. *Name Things as the Reader Sees Them*: Use the name in the code first and say who provides it (the browser, React, or our code). Add a human label such as *The Listener* only when two code names look alike and confuse the reader, as `currentTarget` and `target` do.
 5. *Name the Exact Platform Defect*: Eliminate hand-waving developer filler jargon ("preventing broken lookups", "ensuring robustness"). State the exact physical runtime consequence ("returns undefined", "clears client memory on reload", "causes duplicate renders in StrictMode").
+6. *The Owner's Words Are Legal Text (The Tech-Lawyer Rule)*: The owner's words, 2026-11-09: "Treat what I write as legal text to be respected. Make only a minor polish: smooth out grammatical and syntactic errors. Then publish it in a granular way, in paragraphs, and then in logical steps or explanations, as an interpretation of the owner's instructions and intent. It is a good way to retain a concrete communication between us. Isolate what I write in groups, polish it a bit, and add extra clarity based on what I say, like a tech-lawyer interpreting with fidelity, without adding a new spin without explicit approval. This is the tech-lawyer interpretation of the owner's intent in the skills. And always show the diff in HTML format for approval."
+
+   What this asks, step by step:
+   1. **Quote.** Put the owner's words into the instruction as a quote labelled "The owner's words" with the date. Fix only grammar and spelling.
+   2. **Group.** Split the quote into groups, one group for each demand.
+   3. **Interpret.** Under each group, explain in paragraphs or numbered steps what it asks, using only what the owner said.
+   4. **No new spin.** Add no rule, ban, "never", "always", limit, or example that the owner did not give, unless the owner approves it explicitly.
+   5. **Name your words.** Under the diff, list every sentence that is yours and not the owner's.
+   6. **Show the diff.** Show it in HTML before any edit, and edit only after approval.
 
 ## Project Law
 

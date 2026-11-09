@@ -12,6 +12,7 @@ Write for a reader who is tired and in a hurry. The reader knows what the earlie
 - Do not teach an earlier lesson again. If Lesson 12 taught `useState`, use it without explaining it.
 - Do not tell the code again in a paragraph. The reader can read the code.
 - Start each new idea from something the reader already knows.
+- Write every paragraph by the checklist in [Clarity](../clarity/SKILL.md).
 
 ## Pick a move for each idea
 
@@ -33,7 +34,7 @@ A move is a way of explaining that worked in an approved lecture. Each move has 
 4. **Say what is missing.** When something does not happen, say what is not there: "There is no mechanism in place to update it."
 5. **Let code comments carry the results.** A comment such as "the page stays on John" says what a line does on the page. The sentence next to the block says what the step is for. It does not say the result again.
 6. **Name each version by its one difference, every time.** Write "With `defaultValue`", not "box B", "Way 1", or "the left column".
-7. **Use plain words.** No parentheses in prose, no em dashes, and never break a paragraph across lines.
+7. **Use plain words.** No parentheses in prose, except to point to an earlier lesson, such as "(as seen in Lesson 32)". No em dashes, and never break a paragraph across lines.
 
 **PROPER** (the owner's own rewrite, 2026-11-07):
 
@@ -50,6 +51,50 @@ A move is a way of explaining that worked in an approved lecture. Each move has 
 > No line of our code removes the letters. So who removes them? React does. Here is what happens on every key, in order:
 
 *Why this fails*: The question comes before the answer, so the reader must wait while holding `message`, the box, and the key in mind.
+
+## One real screen, one idea #2026_11_09_01_group_1
+
+The lecture is practical advice to developers who will use React at work. So choose the screen where developers really meet this question, in its simplest form. This holds for niche questions too: show the niche case developers really meet, made as small as possible. A toy that only shows the mechanism misleads, even when it works. A parachute course does not teach jumping from a chair, because nobody who uses a parachute jumps from a chair.
+
+Ask: would a developer reach for this tool on this screen at work? If not, find the screen where they would.
+
+Build every example, in the opening and in every principle, on one screen everyone knows: a shopping cart, a like button, a chat, an inbox. Give it the fewest parts that make the point, and none fewer. The reader should get the example at first sight.
+
+1. **Keep one screen.** The lecture opens on the screen it builds. Do not open on one screen and then build another.
+2. **Use the shortest real content.** A name box holds `John`, not "This is my article about the new park". Give names or titles only when the idea needs them.
+3. **Show it on the screen, not in a sentence.** Several names or emails go in a list inside the browser preview. To show a change of order, show the list before and the list after.
+4. **When a title is needed, make it one a user would open.** A demo email reads "Get your next month for $0.99", not "Test email 1".
+5. **Say only what a user would say about the screen.** Short sentences, one fact each. No jargon and no new labels.
+
+**PROPER** (the owner's words, 2026-11-09): a name box holds `John`, not "This is my article about the new park".
+
+**PROPER** (the owner's words, 2026-11-09): a demo email titled "Get your next month for $0.99".
+
+**PROPER** (the owner's words, 2026-11-09, for reaching a DOM node with a ref):
+
+> When you open a chat app, it immediately scrolls to the latest message. Because JSX only describes what appears on the screen, not actions like scrolling, you cannot express this behavior in markup alone. Instead, as the React documentation recommends, you attach a ref to the final message and call the browser's native `scrollIntoView()` method directly on that DOM element.
+
+**PROPER** (the owner's words, 2026-11-09, for keeping a value between renders with `useRef`):
+
+> When you use a stopwatch app, tapping "Start" initiates a background timer, and tapping "Stop" must cancel that exact timer later. Because every tick of the clock updates state and re-renders the component, storing the timer's interval ID in a regular variable would wipe it out on the very next render. Instead, you store the interval ID in a ref, allowing it to persist across every render so the "Stop" button can always find and clear the active timer.
+
+**COUNTER-EXAMPLE** (the Lecture 22 opening, 2026-11-09):
+
+> Picture the Members screen of a Slack channel with 10 members. At the top sits a Search members box and a counter line that reads `Showing 10 of 10 members`, below that sits one row per member with a Make admin button and a Remove button, and at the bottom sits a line that reads `Admin: Mia`. Type the letter `a` into the Search members box, and then click Remove on Mia's row: …
+
+*Why this fails*: The reader must hold ten members, a search box, a counter, two buttons per row, and an admin line, then four changes from one click, before the idea starts; and the lecture then builds a different screen, a team page.
+
+**COUNTER-EXAMPLE** (the Lecture 20 opening, 2026-11-09):
+
+> Picture a customer-support Contact Us screen on an online store such as Amazon. It has a Message box, a character counter under it that reads `0 / 200`, and a Send button. Type the 19-character question `Where is my parcel?` into the Message box, and then click Send. …
+
+*Why this fails*: A simple idea, state decides what the box shows, arrives after a store, a counter that ticks letter by letter, a 19-character question, three React pieces, and a whiteboard; and the lecture then builds a bigger form with a name box, a menu, and a tick box.
+
+**COUNTER-EXAMPLE** (the Lecture 32 opening, 2026-11-09):
+
+> Think of a counter on a page that counts the seconds by itself. When the counter appears, it shows zero and goes up by one every second. When the user hides it, it stops.
+
+*Why this fails*: Nobody builds a counter that counts by itself; developers write an Effect to stay connected to something outside React, such as a chat server while the chat is on the screen, which is the case React's docs use.
 
 ## Only the words of React and the web #2026_11_08_01_group_1
 
@@ -80,6 +125,28 @@ An everyday word is fine in its everyday sense. When it starts to stand for some
 > A form has a small set of named pictures. A click or a timer only changes which name is current.
 
 *Why this fails*: "Picture" is in neither react.dev nor MDN. React's docs say "visual state", and the code says `status` with its values `'typing'`, `'error'`, `'submitting'`, and `'success'`. The lecture used "picture" 94 times, and the reader had to translate it every time.
+
+### A key image for a hard idea #2026_11_09_06_group_1
+
+The owner's words, 2026-11-09:
+
+> You are allowed to introduce a key metaphor IF there is inherent complexity that the reader would benefit from visualisation, e.g. it's very complex to explain late fetches coming first in the user interface, a zombie is not dropped casually, it addresses a key theme. But it is openly recognised as such, not smuggled in.
+
+An image passes only when both are true:
+1. **Inherent complexity.** The idea is a key theme of the lesson, and hard to see without the image.
+2. **Openly recognised.** The first time the image appears, the text says it is an image and what it stands for.
+
+**PROPER** (the owner's rewrite of Lecture 33, 2026-11-09):
+
+> When the user moves from Bob to Taylor, Bob's in-flight request becomes a **zombie request**: work that is still running, but whose answer is no longer wanted.
+
+**COUNTER-EXAMPLE** (Lecture 33, rejected by the owner, 2026-11-09):
+
+> On the user's glass, both approaches look identical: Taylor's profile appears without being clobbered by Bob.
+
+*Why this fails*: "The user's glass" is dropped casually on an idea that is not hard, and it adds a puzzle of its own.
+
+The Lecture 21 "picture" above fails the second test: the text never said "picture" was an image, so the owner read it as a technical word on the screen.
 ## The parts of a lecture
 
 **The start**
@@ -106,6 +173,7 @@ Read the whole lecture as the tired reader, and ask:
 2. Does any passage make the reader wait for the answer?
 3. Is every new word of this lesson explained at the moment the reader needs it?
 4. Does every browser preview show exactly what its code renders?
+5. Does every paragraph pass the checklist in [Clarity](../clarity/SKILL.md)?
 
 ## Lectures to read for their sound
 

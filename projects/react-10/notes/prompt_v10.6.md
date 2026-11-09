@@ -20,6 +20,7 @@ skill version SV = v10.6
 - **Skills to load**:
   - `skills/{SV}/map/SKILL.md`
   - `skills/{SV}/lecture/SKILL.md`
+  - `skills/{SV}/examples/SKILL.md`
 - **Inputs to read**:
   - Bank row `{NN}` in `questions/questions.md`
   - Syllabus card `01-01-map/{NN}.md` (if the card does not exist, work from the bank row and note that in the report)
@@ -43,6 +44,8 @@ skill version SV = v10.6
 > - `skills/{SV}/README.md`
 > - `skills/{SV}/lecture/SKILL.md`
 > - `skills/{SV}/opening-essence/SKILL.md`
+> - `skills/{SV}/examples/SKILL.md` (read the entry closest to this lesson before writing the opening)
+> - `skills/{SV}/clarity/SKILL.md` (write every paragraph by its checklist)
 > - `skills/{SV}/moves/` (all five files)
 > - `skills/{SV}/figures/SKILL.md`
 > - `skills/{SV}/check/SKILL.md` (Step A)
@@ -75,6 +78,8 @@ skill version SV = v10.6
 > - `skills/{SV}/README.md`
 > - `skills/{SV}/lecture/SKILL.md`
 > - `skills/{SV}/opening-essence/SKILL.md`
+> - `skills/{SV}/examples/SKILL.md` (read the entry closest to this lesson before writing the opening)
+> - `skills/{SV}/clarity/SKILL.md` (write every paragraph by its checklist)
 > - `skills/{SV}/moves/` (all five files)
 > - `skills/{SV}/figures/SKILL.md`
 > - `skills/{SV}/check/SKILL.md` (Step B)
