@@ -109,3 +109,4 @@ Each project's full authoring law, briefs, checklists, figure systems, and skill
 - Typology tagging: every interview question carries its curriculum typology (`❱ CORE`, `❱❱ MORE`, `❱❱❱ ADVANCED`), formatted as `> INTERVIEW QUESTION | ❱ CORE | [Question text]`.
 - Zero code comments in summary snippets; use `right`/`wrong` fence tags with `**DO THIS:**` / `**DO NOT DO THIS:**` headers above the block.
 - Zero em-dashes. Zero hard-wraps.
+- Before every chat reply to the owner, read [.factory/skills/chat-response/SKILL.md](.factory/skills/chat-response/SKILL.md).
