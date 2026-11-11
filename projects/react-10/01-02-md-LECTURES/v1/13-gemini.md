@@ -3,86 +3,44 @@
 
 ---
 
-## The Decoupled Pipeline: Why State Setters Never Touch the DOM Directly
+## What Happens Between `setCount` and the New Number on the Screen
 
-### Trigger, Render, and Commit: The Three Distinct Phases of Every Update
+### What this question is really about
 
-When a user clicks a button to add a ticket on a box office page, the number on the screen changes from `Tickets: 1` to `Tickets: 2` in a fraction of a millisecond.
+Picture a box office page where a buyer orders concert tickets. The page shows how many tickets are in the order, a box for a seat note, and a button to add one more ticket:
 
-Because the screen updates almost instantly, developers naturally assume that calling `setCount(count + 1)` reaches straight into the browser DOM and rewrites the paragraph on that exact line of code.
-
-State setters do not touch the browser DOM on that line.
-
-If you query the live DOM element on the line immediately following `setCount(count + 1)`, the paragraph on the screen still displays `Tickets: 1`:
-
-```jsx title="Calling setCount and querying the DOM on the very next line"
-function TicketCounter() {
-  const [count, setCount] = useState(1);
-
-  function handleAdd() {
-    ~setCount(count + 1)~; // 1. Queues an update request in React memory
-    console.log(~document.querySelector('.count-text').textContent~); // 2. Logs "Tickets: 1"!
-  }
-
-  return <p className="count-text">Tickets: {count}</p>;
-}
+```page width=text caption="The box office page of this lesson: the ticket count, the seat note box, and the Add ticket button."
+heading: City Box Office
+card: title=Concert Tickets | text=Tickets: 1 | typed=Window seat
+line: [Add ticket]
 ```
 
-The DOM still holds the old text because updating the user interface in React is never a single monolithic operation.
+You click `Add ticket`, and the number goes from 1 to 2. It looks like one instant move. It is not.
 
-React decouples every screen update into three separate phases in order, followed by the browser painting pixels at the end:
-1. **Phase 1: Triggering a render**: An event signals that the screen must update. Calling `setCount(count + 1)` does not mutate the DOM; it places an update request into React's internal queue.
-2. **Phase 2: Rendering the components**: React calls your component functions in memory to calculate what JSX markup should appear on screen. This is a pure in-memory calculation that touches zero DOM nodes.
-3. **Phase 3: Committing to the DOM**: React compares the newly calculated JSX against the previous render, identifies what changed, and applies only those specific mutations to the real browser DOM.
-4. **Epilogue: Browser Paint**: Once React finishes mutating the DOM, the browser recalculates layout geometry and repaints pixels on the screen.
+When you call `setCount`, React runs your component function again. That sounds risky, and it raises three questions every beginner has:
 
-The official React documentation compares this pipeline to a restaurant kitchen:
-- **Trigger** is the waiter taking the guest's order at the table and clipping the ticket into the kitchen queue.
-- **Render** is the chef in the kitchen preparing the dish in memory without touching the guest's table yet.
-- **Commit** is the waiter bringing the finished dish to the table and replacing only the plate that changed, leaving glasses, silverware, and notepads untouched.
-- **Browser Paint** is the guest seeing the newly served table under the dining room lights.
+1. When does the page actually change: on the `setCount` line, or later?
+2. Does React run the whole app again, or only this component?
+3. Does React rebuild the page, so the text the user typed in the `Seat note` box disappears?
 
-```tree dir=right caption="Every screen update in React passes through Trigger, Render, and Commit before the browser paints the screen."
-The three-phase update lifecycle in React
-- +Phase 1: Trigger [`root.render` or `setCount`] | Asynchronous dispatch | Places a render request in React queue; live DOM is untouched
-- +Phase 2: Render [React calls component functions] | Pure in-memory calculation | Invokes component functions to produce new JSX objects with 0 DOM mutations
-- +Phase 3: Commit [React mutates the DOM] | Targeted DOM updates | Appends all nodes on mount, or updates only changed text and attributes on re-render
-- +After Commit: Browser Paint [Browser paints screen] | Host browser rasterization | Recalculates layout and paints pixels so the user sees the update
-```
+**The short answer: React never changes the page in one move. It works in three steps, and the page changes only in the last one.**
 
-### The Two Update Triggers: Initial Mount vs. Scheduled State Dispatch
+1. **Trigger.** `setCount` changes nothing on the page. It asks React for an update, and React waits until your click code finishes.
+2. **Render.** React calls your component function again, and the functions of the components inside it. It does not call `App` above it. All of this happens in memory, so the page still shows the old number.
+3. **Commit.** React compares the new result with the old one, and changes on the page only what is different: the number. The heading, the button, and the typed `Window seat` stay exactly as they were.
 
-A component never renders on its own. In all of React, there are only two ways a render is ever triggered:
+Then the browser draws the new number on the screen.
 
-```jsx title="The only two ways to trigger a render in React"
-const root = createRoot(document.getElementById('root'));
-~root.render(<App />)~; // Trigger 1: Initial render when the app first starts up
+### Why the three steps have names
 
-function handleAdd() {
-  ~setCount(count + 1)~; // Trigger 2: Re-render when state updates in a mounted component
-}
-```
+Interviewers ask for these names. But the names do a real job too: each one tells you what is true at that moment.
 
-Every render in a React application comes from one of these two triggers:
-1. **The Initial Render on Startup**: When your application boots, `src/main.jsx` invokes `createRoot` and calls `root.render(<App />)`. This triggers the initial render, directing React to evaluate your entire component tree from top to bottom and construct the initial DOM hierarchy.
-2. **A Re-Render on State Update**: Once a component is mounted on screen, user interactions trigger event handlers that call a `useState` setter such as `setCount`. Calling the setter schedules an update pass for after the current handler finishes execution.
+- During Trigger and Render, the page still shows the old number.
+- Only Commit touches the page, and it touches as little as possible. This is why running a component again is safe for what the user typed.
 
-```tree caption="The only two reasons a React component ever renders."
-Two ways to trigger a render in React
-- +Trigger 1: Initial Render [`root.render(<App />)`] | Fires once on application startup | Evaluates the full component tree and builds the initial DOM
-- +Trigger 2: State Re-Render [`setCount(count + 1)`] | Fires after component is mounted | Queues an update pass that executes after the event handler yields
-```
+### Our example page: a ticket counter
 
-### The Three Runtime Dilemmas: Stale Reads, Subtree Boundaries, and Node Identity
-
-When developers treat a state update as an instantaneous DOM rewrite instead of a three-phase pipeline, three practical bugs trip them up:
-1. **The Stale DOM Read**: Querying `document.querySelector` on the line immediately following `setCount` returns the old count of `Tickets: 1` because the event handler is still executing synchronously while React's commit phase has not occurred yet.
-2. **The Subtree Boundary**: Developers wonder whether a state update inside a child component re-runs the entire application from `App` down or only that single function. React recursively evaluates the updated component and its returned child subtree, while skipping unaffected parent components.
-3. **The Preserved Node Identity**: Developers fear that re-executing a component function from top to bottom destroys and recreates all underlying DOM elements, blowing away an uncontrolled `<input>` and wiping out text typed by the user. React preserves unchanged DOM nodes across re-renders.
-
-### Project Architecture: The Box Office Counter
-
-Our box office page is split across five small files. The HTML page and the startup file sit at the top of the project. The main application file sits in the source folder, and our two ticket components live inside the components subfolder:
+We build this box office page in this lesson. Each principle answers one of the three questions on it. The page is split across five small files:
 
 ```files title="box-office: File Explorer" caption="How our five project files are organized across index.html, src/, and src/components/."
 index.html | entry | The HTML page with the empty `#root` div where React commits the DOM
@@ -94,56 +52,35 @@ src/
     OrderSummary.jsx | child | Receives `{ count }` as a prop and returns `<p className="count-text">Tickets: {count}</p>`
 ```
 
-### The Three Invariants of the Update Lifecycle
-
-**PRINCIPLES:** Every update in React follows the same strict timeline from Phase 1 to Phase 3:
-1. **Principle 1: Asynchronous Dispatch: State Setters Queue Work Rather Than Mutating the DOM**: A render starts only when the app first mounts on startup or when a state setter queues a re-render in a mounted component. The state setter waits for the event handler to finish first. Querying the live DOM on the next line of the handler still sees the old page text.
-2. **Principle 2: Pure In-Memory Calculation: Rendering Invokes Component Functions Without Touching DOM Nodes**: Rendering means React calling your component functions in memory to calculate what the user interface should look like. On startup, React calls the root component and every child down the tree. On a state update, React calls the component whose state changed and every child inside it. It skips parent components above it and touches zero DOM nodes.
-3. **Principle 3: Targeted DOM Reconciliation: Commit Mutates Changed Nodes While Preserving Element Identity**: After rendering finishes in memory, React commits the result to the browser DOM. On startup, it inserts every newly created DOM node. On a re-render, it updates only the DOM nodes that changed from the previous render. Unchanged elements such as an input box keep their typed text, and then the browser paints the screen.
-
-Here is the complete overview of all three principles before we walk through each one:
-
-| # | Principle | Why It Matters in Debugging and Interviews | The React Rule |
-| :--- | :--- | :--- | :--- |
-| **Principle 1** | **Asynchronous Dispatch: State Setters Queue Work Rather Than Mutating the DOM** | Reading a DOM node on the line right after calling a state setter inside a click handler returns the old DOM text. | Trigger a render on startup or with a state setter on update; store the next value in a plain variable if you need it inside the handler. |
-| **Principle 2** | **Pure In-Memory Calculation: Rendering Invokes Component Functions Without Touching DOM Nodes** | Reading the DOM inside a component body during render returns null on startup and stale text on re-renders; interviewers ask which components run on a state update. | Keep rendering a pure calculation in memory; initial render calls the root component down the tree, while a state re-render calls the updated component and its children recursively. |
-| **Principle 3** | **Targeted DOM Reconciliation: Commit Mutates Changed Nodes While Preserving Element Identity** | Developers fear re-rendering will wipe out an input box, or confuse React rendering with browser painting. | Let React commit only the changed DOM nodes while preserving unchanged sibling nodes and their typed input text, after which the browser paints. |
-
 ---
 
-## 1. Principle 1: Asynchronous Dispatch: State Setters Queue Work Rather Than Mutating the DOM
+## 1. Principle 1: `setCount` Asks for an Update, and the Page Changes After Your Click Code Ends
 
-### Synchronous Script Execution vs. Scheduled Reconciler Work
+### The Only Two Ways to Start an Update
 
-Before opening our project files, look closely at these two lines inside a click handler when `count` starts at `1`:
+Nothing happens in Render or Commit until something starts an update. In all of React, only two things do:
 
-```jsx title="Calling setCount and reading the DOM on the very next line"
+```jsx title="The only two ways to trigger a render in React"
+const root = createRoot(document.getElementById('root'));
+~root.render(<App />)~; // Trigger 1: Initial render when the app first starts up
+
 function handleAdd() {
-  ~setCount(count + 1)~; // 1. Queues a request to render with 2
-  console.log(~document.querySelector('.count-text').textContent~); // 2. Still logs "Tickets: 1"!
+  ~setCount(count + 1)~; // Trigger 2: Re-render when state updates in a mounted component
 }
 ```
 
-When you click the button, the number on the screen changes right away. It looks like `setCount` updates the DOM on that exact line, but it is not the same thing.
+1. **The initial render on startup**: When your app first opens, the startup file calls `createRoot` and `root.render`. React calls your whole component tree from top to bottom and builds the first page.
+2. **A re-render on a state update**: Once your component is on the page, the user clicks, and your click code calls a `useState` setter such as `setCount`. `setCount` asks for a re-render, and React runs it after your click code finishes.
 
-Calling `setCount` is an asynchronous dispatch that pushes an update request onto React's internal queue; it never touches the DOM while the event handler occupies the JavaScript call stack.
-
-Think back to the waiter at the restaurant table. While a guest is still speaking to order another dish, that dish is not sitting on the table yet.
-
-Instead, the waiter clips the order slip into the kitchen queue and finishes listening to the guest first.
-
-In React, calling `setCount` is Step 1, the Trigger. All it does is queue a render for React to perform after `handleAdd` finishes running. While `handleAdd` is still running on the next line, Step 2 and Step 3 have not started yet. So the browser DOM still holds `Tickets: 1`:
-
-```tree dir=right caption="Why reading the DOM on the line after setCount still sees the old text."
-What happens when `handleAdd` runs on click
-- +1. Inside `handleAdd` [`setCount` with `count + 1`] | **Step 1: Trigger** queues a render for count `2` | The live DOM is **not touched yet** and still says **`"Tickets: 1"`**
-- +2. Next line of `handleAdd` [`textContent` of `.count-text`] | Runs **before** `handleAdd` finishes | Reads the existing DOM node, which still holds **`"Tickets: 1"`**
-- +3. After `handleAdd` finishes [Step 2 Render -> Step 3 Commit] | React calls `TicketCounter` with `2` and commits to the DOM | Only now does the DOM paragraph change to **`"Tickets: 2"`**
+```tree caption="The only two reasons a React component ever renders."
+Two ways to trigger a render in React
+- +Trigger 1: Initial render [`root.render`] | Runs **once**, when the app starts | React calls the whole tree and builds the first page
+- +Trigger 2: Re-render [`setCount`] | Runs after the component is **already on the page** | React waits until your click code **finishes**
 ```
 
-### Mounting the Root and Attaching the Click Dispatcher
+### Build the Page: `root.render` Puts the Counter on the Screen
 
-Let us build the first step of our box office page and see both triggers in action. First, the HTML file provides the empty root container on the page:
+Now let's build the first version of our box office page and watch both triggers work. In the HTML file, place an empty `#root` div where React will mount the page:
 
 ```html title="index.html" startLine="1"
 <!doctype html>
@@ -155,7 +92,7 @@ Let us build the first step of our box office page and see both triggers in acti
 </html>
 ```
 
-Next, when the application starts up, our startup file creates the React root and triggers the initial render:
+In the startup file, call `createRoot` on that `#root` div and call `root.render` to trigger the initial render:
 
 ```jsx title="src/main.jsx" startLine="1"
 import { createRoot } from 'react-dom/client';
@@ -165,7 +102,7 @@ const root = createRoot(document.getElementById('root'));
 ~root.render(<App />)~; // Trigger 1: Triggers the initial render on startup
 ```
 
-Inside our main application file, the root component returns the box office heading and places the ticket counter tag below it:
+In the main application file, return the box office heading and render `<TicketCounter />` underneath it:
 
 ```jsx title="src/App.jsx" startLine="1"
 import TicketCounter from './components/TicketCounter.jsx';
@@ -180,7 +117,7 @@ export default function App() {
 }
 ```
 
-Inside the ticket counter file, the component starts the ticket count at one and returns the section heading, the ticket count paragraph, and the button:
+In the ticket counter file, start `count` at `1` with `useState`, and wire the button's `onClick` prop to `handleAdd` so clicking the button calls `setCount`:
 
 ```jsx title="src/components/TicketCounter.jsx" startLine="1"
 import { useState } from 'react';
@@ -204,104 +141,101 @@ export default function TicketCounter() {
 }
 ```
 
-When the page loads in the browser, the initial trigger puts our box office counter on the screen with one ticket:
+When you open the page in the browser, `root.render` triggers the initial render, and React puts the box office counter on screen with `Tickets: 1`:
 
-```page caption="What the user sees on initial page load after root.render triggers the first render."
+```page width=text caption="What the user sees on initial page load after root.render triggers the first render."
 heading: City Box Office
-card: title=Concert Tickets | text=Tickets: 1 | button=Add ticket
+card: title=Concert Tickets | text=Tickets: 1
+line: [Add ticket]
 ```
 
-### The Stale Read Trap: Querying the DOM Before the Handler Yields the Call Stack
+### The Click Code Still Sees the Old Number
 
-The developer console displays stale data while the screen remains un-updated: querying the DOM immediately after `setCount` returns `Tickets: 1`.
+**Beware! While your click code runs, nothing has changed yet: the page still shows 1, and `count` still holds 1.** If that code sends the number to a server, the server gets the wrong number.
 
-Suppose a developer wants to log the updated ticket text from the page as soon as the buyer clicks the button. Inside the click handler, the developer updates the ticket count and reads the paragraph text from the DOM on the very next line:
+Suppose the box office saves the number of tickets on its server after every click. Add a `saveTickets` function at the top of the ticket counter file, and call it in `handleAdd` right after `setCount`:
 
-```jsx title="src/components/TicketCounter.jsx" startLine="6"
+```jsx title="src/components/TicketCounter.jsx" startLine="1"
+import { useState } from 'react';
+
+function saveTickets(tickets) {
+  console.log('Server receives:', tickets); // Stands in for a request to the box office server
+}
+
+export default function TicketCounter() {
+  const [count, setCount] = useState(1);
+
   function handleAdd() {
     setCount(count + 1);
-    console.log(
-      'DOM right after setCount:',
-      ~document.querySelector('.count-text').textContent~ // **WRONG:** reads the DOM during Step 1 before React renders or commits!
-    );
+    ~saveTickets(count)~; // **WRONG:** count still holds 1 while handleAdd runs!
   }
 ```
 
-When you click `Add ticket` once in the browser, look at what happens on the screen versus in the Console:
-1. **On the page**: The paragraph updates to `Tickets: 2`.
-2. **In the Console panel**: The log still prints `Tickets: 1`!
+On our page, `saveTickets` only logs the number, so we can see what a real server would receive. Click `Add ticket` once and compare the page with the Console:
+1. **On the page**: The paragraph changes to `Tickets: 2`.
+2. **In the Console**: The server receives `1`!
 
 ```devconsole
-x DOM right after setCount: Tickets: 1
+x Server receives: 1
 ```
 
-Calling a state setter does not mutate the DOM; it schedules a render pass that executes only after the current event handler yields the JavaScript call stack.
+The page now shows one number, and the server holds another. Here is what happens step by step when you click `Add ticket`:
+1. You click the button, and React calls `handleAdd`.
+2. `setCount` runs with `1 + 1`. This is Step 1, the Trigger. React puts the new count `2` in its queue and returns at once. The page does not change.
+3. The next line runs. In this run of `handleAdd`, `count` is still `1`, so `saveTickets` sends `1`. (Lesson 15 explains why `count` keeps the old value.)
+4. `handleAdd` reaches its closing brace and finishes.
+5. Only now does React run Step 2, Render, and Step 3, Commit. The page shows `Tickets: 2`.
 
-Follow what JavaScript and React do in order when you click `Add ticket`:
-1. You click the button, and React invokes `handleAdd`.
-2. Inside the handler, `setCount` runs with `1 + 1`. That call is Step 1, the Trigger. It places the new state value `2` into React's update queue and returns right away without touching the DOM.
-3. The very next line of `handleAdd` runs and reads the `.count-text` paragraph from the DOM. Because React has not run Step 2 or Step 3 yet, the paragraph in the DOM still holds `Tickets: 1`.
-4. Now `handleAdd` reaches its closing brace and finishes running, yielding the JavaScript call stack.
-5. Only after `handleAdd` finishes does React execute Step 2 (Render) and Step 3 (Commit). That is when the DOM text changes to `Tickets: 2`.
+### Compute the New Number First, Then Use It Everywhere
 
-### Local State Buffering: Capturing the Next Value in a Local Variable
+Save `count + 1` in a plain variable named `nextCount` first. Then give `nextCount` to both `setCount` and `saveTickets`:
 
-When your click handler needs to use or log the new ticket count right away, compute and store the new number in a local variable first, and pass that variable both to the state setter and to your log:
-
-```jsx title="src/components/TicketCounter.jsx" startLine="6"
+```jsx title="src/components/TicketCounter.jsx" startLine="10"
   function handleAdd() {
-    const ~nextCount = count + 1~; // 1. Compute the next ticket count in a plain variable first
-    setCount(~nextCount~); // 2. Queue the re-render with nextCount
-    console.log(
-      'Trigger: handleAdd read DOM right after setCount:',
-      document.querySelector('.count-text').textContent
-    );
-    console.log('Trigger: handleAdd nextCount variable:', ~nextCount~); // 3. Uses nextCount right away inside handleAdd
+    const ~nextCount = count + 1~; // 1. Compute the new number first
+    setCount(~nextCount~); // 2. Ask React to show nextCount
+    saveTickets(~nextCount~); // 3. The server receives the same number the page will show
   }
 ```
 
-Compare what the DOM holds during the Trigger step against `nextCount` and the final committed screen:
+Compare the two versions after one click:
 
-::: row caption="Clicking Add ticket once: reading the live DOM inside handleAdd still sees Tickets: 1, while nextCount holds 2 and the DOM updates to Tickets: 2 after Commit."
-::: col title="Inside handleAdd: Step 1 Trigger" tag="DOM still says Tickets: 1" tone=bad
+::: row caption="Clicking Add ticket once: with count, the server receives 1 while the page shows 2; with nextCount, the server and the page both say 2."
+::: col title="Using count after setCount" tag="server receives 1, page shows 2" tone=bad
 ```jsx title="src/components/TicketCounter.jsx" bad="3"
   function handleAdd() {
     setCount(count + 1);
-    console.log(document.querySelector('.count-text').textContent);
+    saveTickets(count);
   }
 ```
 ```devconsole
-x Tickets: 1
+x Server receives: 1
 ```
-Calling `setCount` only queues a render. While `handleAdd` is still running, the DOM has not changed yet.
+`count` still holds `1` while `handleAdd` runs, so the server receives the old number.
 :::
-::: col title="Using nextCount + Waiting for Commit" tag="nextCount is 2, then Commit updates DOM" tone=good
-```jsx title="src/components/TicketCounter.jsx" good="2,3,8"
+::: col title="Using nextCount" tag="server and page both say 2" tone=good
+```jsx title="src/components/TicketCounter.jsx" good="2,3,4"
   function handleAdd() {
     const nextCount = count + 1;
     setCount(nextCount);
-    console.log(
-      'Trigger: handleAdd read DOM right after setCount:',
-      document.querySelector('.count-text').textContent
-    );
-    console.log('Trigger: handleAdd nextCount variable:', nextCount);
+    saveTickets(nextCount);
   }
 ```
 ```devconsole
-+ Trigger: handleAdd read DOM right after setCount: Tickets: 1
-+ Trigger: handleAdd nextCount variable: 2
++ Server receives: 2
 ```
 ```page size=mini
 heading: City Box Office
-card: title=Concert Tickets | text=Tickets: 2 | button=Add ticket | good
+card: title=Concert Tickets | text=Tickets: 2 | good
+line: [Add ticket]
 ```
-Inside the click handler, `nextCount` holds two tickets while the DOM still says `Tickets: 1`. After the handler finishes, React renders and commits `Tickets: 2` to the page.
+`nextCount` holds `2` from the start, so the server receives the same number the page shows after Commit.
 :::
 :::
 
-When you call `setCount`, React inspects whether the value actually changed before scheduling any work:
-- **Choice A: New state value (`setCount(count + 1)`):** React compares the new value against current state using `Object.is`. Because the values differ, React queues a render pass and proceeds to the Render and Commit phases.
-- **Choice B: Identical state value (`setCount(count)`):** React compares the values using `Object.is` and sees that both are identical. React triggers its same-value bailout optimization, completely bypassing component re-evaluation and touching zero DOM nodes.
+Before React queues a re-render, it checks whether the new state value is actually different from the current one:
+- **Passing a new value such as `count + 1`:** React compares the new number against the current `count` with `Object.is`. Because `2` and `1` are different, React queues a re-render and runs the Render and Commit phases.
+- **Passing the same value such as `count`:** React compares the two numbers with `Object.is` and sees that they are identical. React stops right there: it skips re-rendering the component and its children, and it touches zero DOM nodes.
 
 ```tree caption="What happens in Step 1 when you call setCount with a new value vs. the exact same value."
 Calling `setCount` inside an event handler
@@ -310,11 +244,11 @@ Calling `setCount` inside an event handler
 ```
 
 > [!PRINCIPLE]
-> **Principle 1: Asynchronous Dispatch: State Setters Queue Work Rather Than Mutating the DOM**
+> **Principle 1: `setCount` Asks for an Update, and the Page Changes After Your Click Code Ends**
 >
 > *A component renders only when `root.render` starts the app or when a state setter queues a re-render for after the event handler finishes.*
 >
-> When you call `setCount` inside a click handler, React does not rewrite the page on that line. Calling `setCount` is Step 1, the Trigger phase: it hands a render request to React's queue and lets your event handler finish executing on the JavaScript call stack first. On the line right after `setCount`, the variable `count` still holds the old number from before the click. If you send `count` to the server there, with a function such as `saveTickets`, the server receives 1 while the screen shows 2. When you need the new number inside the handler, save `count + 1` in a `nextCount` variable first and use that variable.
+> Calling `setCount` inside a click handler never changes the page on that line. Instead, `setCount` is Step 1, the Trigger phase: it puts a render request into React's queue and lets your event handler finish running first. On the line right after `setCount`, the `count` variable still holds the old number, and the DOM still shows the old text. If you pass `count` to `saveTickets` on that line, you send `1` to the server while the screen updates to `2`. To use the new number inside the handler, store `count + 1` in a `nextCount` variable first and pass `nextCount` to both functions.
 >
 > **DO THIS:**
 > ```jsx
@@ -335,13 +269,13 @@ Calling `setCount` inside an event handler
 
 ---
 
-## 2. Principle 2: Pure In-Memory Calculation: Rendering Invokes Component Functions Without Touching DOM Nodes
+## 2. Principle 2: React Calls Your Component and Its Children Again, but Not `App`
 
-### Full-Tree Initial Mount vs. Subtree Recursive Re-Rendering
+### Startup Calls Every Component, and an Update Starts at the Component That Changed
 
-Once Step 1 triggers an update, React moves to Step 2: Render.
+Once Step 1 queues an update and your event handler finishes, React starts Step 2: Render.
 
-Look at this small three-level component tree where the root component renders the ticket counter, and the ticket counter renders the order summary:
+Look at this three-level component tree. At the top, `App` renders `TicketCounter`, and `TicketCounter` renders `OrderSummary`:
 
 ```jsx title="A three-level component tree: App -> TicketCounter -> OrderSummary"
 function ~App~() { // 1. Top-level root component
@@ -363,15 +297,15 @@ function ~OrderSummary~({ count }) { // 3. Child component returned by TicketCou
 }
 ```
 
-Rendering in React means one specific operation: React invoking your component functions in memory to calculate what JSX markup they return.
+In React, rendering does not mean drawing pixels on the screen. Rendering simply means React calling your component functions in memory to see what JSX they return.
 
-When tracing Step 2, two fundamental rules govern execution:
-1. **The Re-render Boundary**: On the initial render, React starts at the very top of the tree. It calls `App` first, then calls `TicketCounter`, and finally calls the child component `OrderSummary`. On a re-render, React starts at the component whose state updated, which is `TicketCounter`. It skips `App` above it, calls `TicketCounter`, and recursively evaluates its returned child subtree (`OrderSummary`).
-2. **Zero DOM Changes During Render**: While the counter and summary components run with the new count of `2`, the live DOM on the page still holds `Tickets: 1`. Step 2 only calculates JSX in memory.
+Two rules govern what happens during Step 2:
+1. **Which components React calls**: On the initial render, React starts at the top of the tree and calls `App`, then `TicketCounter`, and then `OrderSummary`. On a state update, React starts at the component whose state changed. When `TicketCounter` updates `count`, React skips `App` above it, calls `TicketCounter`, and then calls its child `OrderSummary`.
+2. **The DOM stays untouched during Render**: While `TicketCounter` and `OrderSummary` run with the new count of `2`, React does not touch the page. The browser DOM still shows `Tickets: 1` on screen, and reading the DOM inside the component body returns that old text.
 
-Two technical concepts explain how Step 2 operates:
-- **Recursive Subtree Traversal**: When `TicketCounter` returns `<OrderSummary count={count} />`, React calls `OrderSummary` next. If `OrderSummary` returned another child component, React would call that child as well. React continues recursively down the tree until only built-in HTML tags remain.
-- **Pure Calculation**: A calculation is pure when it takes inputs, such as props and state, and computes JSX in memory without modifying external variables, reading the live DOM, or creating side effects. Step 2 computes React element objects in memory and touches zero DOM nodes.
+Two terms describe how React runs your components in Step 2:
+- **Calling children down the tree**: When `TicketCounter` returns `<OrderSummary />`, React calls `OrderSummary` next. If `OrderSummary` returned another component, React would call that child too. React keeps calling child components down the tree until only HTML tags like `<p>` and `<button>` remain.
+- **Pure calculation**: A function is pure when it takes inputs like `props` and `state` and returns JSX without changing outside variables or touching the browser DOM. Given the same inputs, it always returns the same JSX. If your component changes `document.title` or reads a DOM node while rendering, it acts on a page that React has not updated yet.
 
 ```tree caption="Which component functions React calls in Step 2 on the initial render versus on a state re-render."
 Step 2: Which component functions does React call?
@@ -379,11 +313,11 @@ Step 2: Which component functions does React call?
 - +State re-render [`setCount` inside `TicketCounter`] | Starts at the **component whose state updated** | **Skips `App`**, calls **`TicketCounter`**, and recursively calls its child **`OrderSummary`**
 ```
 
-### The Subtree Hierarchy: App, TicketCounter, and OrderSummary
+### Add `OrderSummary` and Log Every Component Call
 
-Now let us move the ticket count paragraph into its own child component so our page has three levels. We also add a log at the top of each component so we can watch Step 2 in the Console.
+Now let's move the ticket count paragraph into its own `OrderSummary` child component so our project has three levels. Add a `console.log` at the top of each component to see which functions React calls in Step 2.
 
-First, we create the order summary file, which logs when it renders and returns the ticket count paragraph:
+First, create the order summary file. Log the `count` prop whenever React calls `OrderSummary`, and return the ticket count paragraph:
 
 ```jsx title="src/components/OrderSummary.jsx" startLine="1"
 export default function ~OrderSummary~({ count }) { // 1. Receives { count } from TicketCounter
@@ -392,7 +326,7 @@ export default function ~OrderSummary~({ count }) { // 1. Receives { count } fro
 }
 ```
 
-Second, in our main application file, we add a log at the top of the root component so we can see whenever React calls it:
+Second, in the main application file, add a `console.log` at the top of `App` so the Console prints a line whenever React calls `App`:
 
 ```jsx title="src/App.jsx" startLine="1"
 import TicketCounter from './components/TicketCounter.jsx';
@@ -408,11 +342,15 @@ export default function ~App~() { // Root component at the top of the tree
 }
 ```
 
-Third, in the ticket counter file, we import the order summary component and place its tag inside the ticket box:
+Third, in the ticket counter file, import `OrderSummary` and pass the `count` prop to `<OrderSummary />` inside the section:
 
 ```jsx title="src/components/TicketCounter.jsx" startLine="1"
 import { useState } from 'react';
 import ~OrderSummary~ from './OrderSummary.jsx'; // 1. Import the child component
+
+function saveTickets(tickets) {
+  console.log('Server receives:', tickets);
+}
 
 export default function TicketCounter() {
   const [count, setCount] = useState(1);
@@ -420,11 +358,7 @@ export default function TicketCounter() {
   function handleAdd() {
     const nextCount = count + 1;
     setCount(nextCount);
-    console.log(
-      'Trigger: handleAdd read DOM right after setCount:',
-      document.querySelector('.count-text').textContent
-    );
-    console.log('Trigger: handleAdd nextCount variable:', nextCount);
+    saveTickets(nextCount);
   }
 
   return (
@@ -439,19 +373,19 @@ export default function TicketCounter() {
 }
 ```
 
-On initial render, React evaluates every component from the root down; on a state update, React executes only the updated component and recursively re-evaluates its returned child subtree, completely skipping unaffected parent components.
+**On startup, React calls every component from `App` down; on a state update, React skips `App` and calls only the updated component and its children.**
 
-Follow what React does during Step 2 in both situations:
-1. **On initial page load**, `root.render` tells React to start at the root. React calls `App` and sees `<TicketCounter />` in its returned JSX. Next, React calls `TicketCounter` and sees `<OrderSummary count={1} />`. Finally, React calls `OrderSummary` with one ticket.
-2. **When you click the button**, `setCount` ran inside `TicketCounter`, so React starts there. In Step 2, React skips `App` completely and calls `TicketCounter` first. Because the counter returns `<OrderSummary count={2} />`, React then calls `OrderSummary` with two tickets.
+Compare what React calls during Step 2 in each case:
+1. **On initial page load**: `root.render` starts at the top of the tree. React calls `App`, sees `<TicketCounter />` in the returned JSX, and calls `TicketCounter`. Inside `TicketCounter`, React sees `<OrderSummary />` with a `count` of `1` and calls `OrderSummary` with `1`.
+2. **When you click `Add ticket`**: Because `setCount` ran inside `TicketCounter`, React starts the re-render at `TicketCounter` and skips `App` above it. React calls `TicketCounter` with `2`, sees `<OrderSummary />` with a `count` of `2` in the returned JSX, and calls `OrderSummary` with `2`.
 
-### The Render-Phase DOM Trap: Elements Are Nonexistent on Mount and Stale on Update
+### During Render, the Page Is Empty on Startup and Old on Every Update
 
-Reading the live DOM during render fails completely: the element is null on initial mount and stale on re-render.
+**Beware! Never read the browser DOM inside the body of a component.** During Step 2, React has not updated the page yet, so the DOM element is `null` on startup and holds old text on every re-render.
 
-Let us add a log at the top of the ticket counter component that queries the paragraph element from the DOM directly during render:
+To see this happen, read `.count-text` from the DOM at the top of `TicketCounter` right while the component renders:
 
-```jsx title="src/components/TicketCounter.jsx" startLine="4"
+```jsx title="src/components/TicketCounter.jsx" startLine="8"
 export default function TicketCounter() {
   const [count, setCount] = useState(1);
 
@@ -459,9 +393,9 @@ export default function TicketCounter() {
   ~console.log('Render: TicketCounter count =', count, '| DOM during render:', domText)~; // Logs count vs. what is in the DOM right now
 ```
 
-Look at what happens in the Console on initial page load, and then when you click `Add ticket` once:
-1. **On initial page load**, the ticket count is one, and the DOM log prints `null`. During the initial Render phase, React is still evaluating component functions in memory to determine what HTML elements to build. Step 3 has not run yet, so `<p class="count-text">` does not exist in the browser DOM.
-2. **When you click the button**, `App` does not log at all. `TicketCounter` runs with the new count of two, and the DOM log prints `Tickets: 1`. While the counter and summary components execute with the new state in memory, the live DOM on the page still displays `Tickets: 1` from the previous render.
+Watch what the Console prints when the page first loads, and then when you click `Add ticket` once:
+1. **On initial page load**: `count` is `1`, but `domText` is `null`. Why? React is still calling your component functions in memory during Step 2. Step 3, Commit, has not run yet, so the `.count-text` paragraph does not exist in the browser DOM.
+2. **When you click `Add ticket`**: `App` does not run at all. `TicketCounter` runs with the new `count` of `2`, yet `domText` prints `Tickets: 1`. While `TicketCounter` and `OrderSummary` calculate the new JSX in memory, the browser DOM still shows `Tickets: 1` from the first render.
 
 ::: row caption="Initial render calls App, TicketCounter, and OrderSummary, while a state update in TicketCounter skips App and calls only TicketCounter and OrderSummary."
 ::: col title="1. On Initial Page Load" tag="calls App -> TicketCounter -> OrderSummary" tone=good
@@ -475,12 +409,11 @@ Look at what happens in the Console on initial page load, and then when you clic
 - +`TicketCounter` [Called 2nd with `count = 1`] | DOM is `null` during render
   - +`OrderSummary` [Called 3rd with `count = 1`] | Returns `<p>Tickets: 1</p>`
 ```
-On startup, React calls all three components from top to bottom before creating the DOM nodes in Step 3.
+On startup, React calls all three components in memory from top to bottom. Because Step 3 has not created the DOM nodes yet, reading the DOM during render returns `null`.
 :::
 ::: col title="2. On Clicking Add ticket Once" tag="skips App; calls TicketCounter -> OrderSummary" tone=good
 ```devconsole
-+ Trigger: handleAdd read DOM right after setCount: Tickets: 1
-+ Trigger: handleAdd nextCount variable: 2
++ Server receives: 2
 + Render: TicketCounter count = 2 | DOM during render: Tickets: 1
 + Render: OrderSummary count = 2
 ```
@@ -489,18 +422,18 @@ On startup, React calls all three components from top to bottom before creating 
 - +`TicketCounter` [Called 1st with `count = 2`] | DOM still holds `Tickets: 1` during render
   - +`OrderSummary` [Called 2nd with `count = 2`] | Returns `<p>Tickets: 2</p>`
 ```
-On state update, React skips `App` above the counter. It calls `TicketCounter` and its child `OrderSummary` in memory, and updates the DOM afterward in Step 3.
+When `count` updates, React skips `App` and calls `TicketCounter` and `OrderSummary` in memory. During this render pass, the DOM still holds `Tickets: 1` until Step 3 commits the new text.
 :::
 :::
 
-Because Step 2 only calculates JSX in memory, your component body must always be a pure calculation. Given identical props and state, it returns JSX without modifying variables or querying the live DOM. Calling child components like `OrderSummary` in memory produces plain JavaScript objects, which modern JavaScript engines evaluate in microseconds. You do not need to avoid child re-renders unless profiling reveals heavy computations inside that child (where optimization tools such as `memo` apply, as seen in Lesson 57).
+Because Step 2 runs in memory before the DOM updates, keep your component body pure. Take `props` and `state` in, and return JSX out. Do not read DOM nodes or change the page directly inside the component body. Also, do not worry when a parent re-renders a simple child like `OrderSummary`. Calling a child function in memory only creates a small JavaScript object, which takes microseconds. You only need to skip child re-renders when a child runs a slow calculation (as seen in Lesson 57).
 
 > [!PRINCIPLE]
-> **Principle 2: Pure In-Memory Calculation: Rendering Invokes Component Functions Without Touching DOM Nodes**
+> **Principle 2: React Calls Your Component and Its Children Again, but Not `App`**
 >
 > *In the Render phase, React calls your component functions in memory: from `App` down on startup, and from the updated component down its children on a re-render.*
 >
-> Never confuse React rendering with changing the browser DOM. During Step 2, React is only calling your JavaScript functions in memory to ask what JSX elements they return. On the first load, React starts at `App` and calls every component down the tree, while the `#root` div in the DOM is still completely empty. When `TicketCounter` updates its state, React skips `App` above it. It calls `TicketCounter` and recursively calls its child `OrderSummary`. Throughout the entire Render phase, the live browser DOM still shows the old screen until Step 3 commits the new result.
+> Do not confuse React rendering with painting pixels in the browser. During Step 2, React only calls your JavaScript functions in memory to see what JSX they return. On startup, React starts at `App` and calls every component down the tree while `#root` in the browser DOM is still completely empty. When `TicketCounter` updates its state, React skips `App` above it, calls `TicketCounter`, and then calls its child `OrderSummary`. Throughout Step 2, the browser DOM still shows the old page. If you change `document.title` or read a DOM node during render, your code touches the page before Step 3 commits the update.
 >
 > **DO THIS:**
 > ```jsx
@@ -526,13 +459,13 @@ Because Step 2 only calculates JSX in memory, your component body must always be
 
 ---
 
-## 3. Principle 3: Targeted DOM Reconciliation: Commit Mutates Changed Nodes While Preserving Element Identity
+## 3. Principle 3: React Changes Only the Number, and the Typed Text Stays
 
-### JSX Description Regeneration vs. Real DOM Node Preservation
+### Your Component Returns `<input />` Again, but React Keeps the Same Box
 
-Now we reach Step 3: Commit, followed by Browser Paint.
+Once Step 2 finishes calculating the new JSX in memory, React moves to Step 3: Commit, and then the browser paints the screen.
 
-Suppose we add a seat note `<input>` box right inside `TicketCounter` between the order summary and the button:
+Suppose we place a seat note `<input>` box inside `TicketCounter` right between the order summary and the button:
 
 ```jsx title="TicketCounter returning four elements on every render"
   return (
@@ -545,17 +478,17 @@ Suppose we add a seat note `<input>` box right inside `TicketCounter` between th
   );
 ```
 
-On every click, `TicketCounter` runs from top to bottom and returns all four tags again. Returning `<input />` again creates a new JavaScript object in memory, but it does not destroy the existing DOM node on screen.
+Every time the buyer clicks `Add ticket`, `TicketCounter` runs from top to bottom and returns all four JSX tags again. Developers often worry that returning `<input />` again will destroy the input box in the DOM and erase whatever the buyer typed. It does not. Returning `<input />` in Step 2 only creates a lightweight JavaScript object in memory, while the real `<input>` DOM node on screen stays right where it is.
 
-Consider the contrast between destructive container replacement and React's targeted reconciliation:
-- **Choice A: Destructive Container Replacement (`innerHTML`)**: Plain JavaScript approaches frequently replace `element.innerHTML`. Doing so demolishes all existing child DOM nodes, tears down form inputs, wipes user-typed text, discards keyboard focus, and triggers costly layout recalculation.
-- **Choice B: Targeted DOM Reconciliation (React Commit)**: React compares previous and next JSX descriptions. When it detects that the `<input>` element occupies the same position with identical attributes, it preserves the existing DOM node reference (`===`). React retains input text and focus, updating only the specific text node that changed.
+Compare what happens when you replace HTML with `innerHTML` in plain JavaScript versus when React commits a re-render:
+- **Replacing a container with `innerHTML` in plain JavaScript**: Setting `element.innerHTML` destroys every child DOM node inside the container and builds brand-new ones from scratch. If the user was typing inside an `<input>` box, the browser deletes that box, wipes out the typed text, and drops the keyboard cursor.
+- **Committing only what changed in React**: React compares the new JSX objects from Step 2 against the JSX objects from the previous render. When React sees that the `<input>` tag sits in the same spot with the same attributes, it keeps the exact same DOM node in memory. The buyer's typed text and cursor focus stay untouched, and React updates only the ticket count text that changed.
 
-What React performs in Step 3 depends on whether this is the initial render or a re-render:
-1. **On the initial render**, the `#root` container on the page is empty. React creates the real browser DOM nodes for every element in the tree and inserts them into `#root` using the browser's `appendChild` DOM method.
-2. **On a re-render**, React compares the new JSX descriptions from Step 2 against the previous render. It sees that the section, the heading, the input box, and the button have not changed at all. Only the number inside `<p className="count-text">` changed from one to two.
-3. So React commits only that single text change to the real DOM and leaves the existing `<input>` DOM node and its `Window seat` text untouched.
-4. **Epilogue: Browser Paint**: Once React finishes mutating the DOM, the host browser recalculates geometry and repaints pixels on screen. That final step is executed by the host browser engine, not by React.
+What React does in Step 3 depends on whether the page is loading for the first time or re-rendering after a state update:
+1. **On the initial render**: The `#root` div in the HTML page is empty. React creates real browser DOM nodes for every tag from `App` down and inserts them into `#root` with the browser's `appendChild` method.
+2. **On a re-render**: React compares the new JSX from Step 2 with the previous render. It sees that `<section>`, `<h2>`, `<input>`, and `<button>` did not change at all, and only the text inside the `.count-text` paragraph changed from `Tickets: 1` to `Tickets: 2`.
+3. **Targeted DOM update**: React changes only that single text node in the browser DOM. It leaves the `<input>` DOM node and its typed text `"Window seat"` completely alone.
+4. **After Commit, Browser Paint**: Once React finishes updating the DOM, the browser recalculates the layout and paints the new pixels onto the screen. The browser performs this final paint step, not React.
 
 ```tree caption="How Step 3 Commit handles the initial render vs. a re-render, and how both differ from Browser Paint."
 Step 3: Commit to the DOM and Browser Paint
@@ -564,17 +497,9 @@ Step 3: Commit to the DOM and Browser Paint
 - +Browser Paint [After React finishes Commit] | Performed by the **browser**, not React | Draws the updated DOM pixels onto the screen
 ```
 
-### Uncontrolled Input Elements Inside a Re-Rendering Component
+### Add the Seat Note Box Without Any Extra Code
 
-When developers fear re-rendering will erase the buyer's note, they sometimes try to avoid React state updates by mutating the DOM by hand:
-
-```jsx title="Mistake: Fighting React with manual DOM mutation out of fear of re-rendering"
-  function handleAddWrong() {
-    ~document.querySelector('.count-text').textContent = 'Tickets: 2'~; // **WRONG:** bypasses React's Trigger-Render-Commit lifecycle!
-  }
-```
-
-You never need to bypass React. Let us place the seat note input box directly inside the ticket counter file and let the state setter re-render the component normally:
+Place the `<input>` box directly inside `TicketCounter`, and call `setCount` as before. You write no extra code to protect what the buyer types:
 
 ```jsx title="src/components/TicketCounter.jsx" startLine="1"
 import { useState } from 'react';
@@ -601,25 +526,26 @@ export default function TicketCounter() {
 }
 ```
 
-### Selective Text Updates vs. Destructive Container Re-creation
+### The Typed Text Survives Two Clicks
 
-The user's typed input is completely preserved across re-renders without special state synchronization.
+**The buyer's typed text stays safe in the `<input>` box across every re-render, even without a state variable attached to it.**
 
-We did not attach a state variable to the input box, and we wrote no special code to protect it when `count` changes.
+We did not wire the `<input>` box to `useState`, and we wrote no extra code to save its text when `count` changes.
 
-Re-rendering recalculates JSX objects in memory, but React's Commit phase mutates only changed attributes and text nodes, preserving DOM element references and user-typed input state.
+Why does the text stay in the box? In Step 2, React only creates new JSX objects in memory. In Step 3, React updates only the text node that changed and leaves the existing `<input>` DOM node alone.
 
-Follow what happens in the browser when the buyer types `Window seat` into the input box and then clicks the button twice:
-1. The buyer clicks into the seat note input box and types `Window seat`. The browser stores that text directly on the live `<input>` DOM node.
-2. The buyer clicks the button twice so the count rises to three. On each click, Step 1 queues the new count, and Step 2 calls `TicketCounter` and `OrderSummary` in memory.
-3. In Step 3, React compares the new render tree against the previous render tree. It sees that the `<input>` tag sits in the exact same spot with the exact same attributes.
-4. Because nothing about `<input>` changed in the JSX, React does not touch the `<input>` DOM node at all. Every element on the page, including the `<section>` card and the `<input>` box, is still the exact same DOM node reference (`===`) in browser memory as before. Only the text inside `<p className="count-text">` changed to `Tickets: 3`:
+Here is what happens step by step when the buyer types `Window seat` into the box and clicks `Add ticket` twice:
+1. The buyer clicks the seat note box and types `Window seat`. The browser stores those letters directly inside the live `<input>` DOM node on the page.
+2. The buyer clicks `Add ticket` twice to raise the count to `3`. On each click, Step 1 queues the update, and Step 2 calls `TicketCounter` and `OrderSummary` in memory.
+3. In Step 3, React compares the new JSX tree from Step 2 against the previous JSX tree. It sees that the `<input>` tag is still in the exact same place with the exact same attributes.
+4. Because the `<input>` tag did not change, React leaves the live `<input>` DOM node untouched. Every unchanged tag on the page, including `<section>` and `<input>`, keeps the exact same DOM node in browser memory, and only the text inside the `.count-text` paragraph changes to `Tickets: 3`:
 
 ::: row caption="Typing Window seat into the input box and clicking Add ticket twice: Step 3 updates only the text inside <p class='count-text'> and leaves the <input> DOM node and its typed text untouched."
 ::: col title="Before Clicking Add ticket" tag="count is 1; user types Window seat" tone=good
 ```page size=mini
 heading: City Box Office
-card: title=Concert Tickets | text=Tickets: 1 | typed=Window seat | button=Add ticket | good=typed
+card: title=Concert Tickets | text=Tickets: 1 | typed=Window seat | good=typed
+line: [Add ticket]
 ```
 ```dom
 <div id="root">
@@ -634,12 +560,13 @@ card: title=Concert Tickets | text=Tickets: 1 | typed=Window seat | button=Add t
   </main>
 </div>
 ```
-The buyer types `Window seat` into the live `<input>` DOM node while the count is one.
+While `count` is `1`, the buyer types `Window seat`, and the browser stores that text inside the live `<input>` DOM node.
 :::
 ::: col title="After Clicking Add ticket Twice" tag="count is 3; Window seat is still there" tone=good
 ```page size=mini
 heading: City Box Office
-card: title=Concert Tickets | text=Tickets: 3 | typed=Window seat | button=Add ticket | good=typed
+card: title=Concert Tickets | text=Tickets: 3 | typed=Window seat | good=typed
+line: [Add ticket]
 ```
 ```dom
 <div id="root">
@@ -654,35 +581,100 @@ card: title=Concert Tickets | text=Tickets: 3 | typed=Window seat | button=Add t
   </main>
 </div>
 ```
-After two re-renders, the paragraph shows `Tickets: 3`, and the exact same `<input>` DOM node still holds the buyer's note.
+After two clicks and two re-renders, React updates the paragraph to `Tickets: 3` and leaves the `<input>` DOM node and `"Window seat"` untouched.
 :::
 :::
 
-Here is the complete four-step journey of a single click, from the button press to the new number on screen:
+### When the Typed Text Does Disappear: a Component Defined Inside Another
 
-```tree dir=right caption="The complete lifecycle of clicking Add ticket on our box office page."
-What happens from button click to screen pixels
-- +1. Trigger [`setCount` with `nextCount`] | Queues a re-render for `TicketCounter` | Live DOM still shows **`Tickets: 1`** while `handleAdd` finishes
-- +2. Render [`TicketCounter` -> `OrderSummary`] | React calls both functions in memory with the new `count` | Computes new JSX objects; live DOM **still untouched**
-- +3. Commit [Minimal DOM update] | Compares old and new JSX trees | Updates **only `<p class="count-text">`**; keeps `<input>` and **`"Window seat"`** intact
-- +4. Browser Paint [Screen redraw] | Browser paints the updated DOM | User sees **`Tickets: 3`** above **`"Window seat"`**
+**Beware! React keeps the box only when it finds the same component in the same place. If you define a component inside `TicketCounter`, the buyer's note disappears on every click.**
+
+This mistake is common because the code looks tidy. Suppose you move the seat note box into its own small component, and you write that component inside `TicketCounter`, close to the code it belongs to:
+
+```jsx title="SeatNote defined inside TicketCounter"
+export default function TicketCounter() {
+  const [count, setCount] = useState(1);
+
+  function ~SeatNote~() { // **WRONG:** creates a brand-new SeatNote function on every render of TicketCounter!
+    return <input className="note-input" placeholder="Seat note" />;
+  }
+
+  return (
+    <section className="ticket-box">
+      <h2>Concert Tickets</h2>
+      <OrderSummary count={count} />
+      ~<SeatNote />~ {/* React finds a different component here after every click */}
+      <button className="add-btn" onClick={handleAdd}>
+        Add ticket
+      </button>
+    </section>
+  );
+}
 ```
 
+The buyer types `Window seat` and clicks `Add ticket`. The number goes to 2, and the box is empty again.
+
+Here is what happens in each step:
+1. **Render**: React calls `TicketCounter` again. This run creates a new `SeatNote` function. It looks exactly like the old one, but for JavaScript it is a different function.
+2. **Commit**: React compares the new result with the old one. In the place of the box, it finds a different component. So React removes the old `<input>` from the page and inserts a new, empty one.
+3. **Browser Paint**: The browser draws a box with no text. `Window seat` is gone.
+
+The fix is to define `SeatNote` at the top level of the file, outside `TicketCounter` (as seen in Lesson 04). Then every render returns the same `SeatNote` in the same place, and React keeps the box and its text. (Lesson 25 explains the full rule for when React keeps a component and when it starts it again.)
+
+::: row caption="Typing Window seat and clicking Add ticket once: a SeatNote defined inside TicketCounter loses the note, while a SeatNote defined at the top level keeps it."
+::: col title="SeatNote inside TicketCounter" tag="note wiped out on every click" tone=bad
+```jsx title="src/components/TicketCounter.jsx" bad="4,5,6"
+export default function TicketCounter() {
+  const [count, setCount] = useState(1);
+
+  function SeatNote() {
+    return <input className="note-input" placeholder="Seat note" />;
+  }
+```
+```page size=mini
+heading: City Box Office
+card: title=Concert Tickets | text=Tickets: 2 | input=Seat note | bad=input
+line: [Add ticket]
+```
+Each render creates a new `SeatNote`, so Commit replaces the box with an empty one.
+:::
+::: col title="SeatNote at the top level" tag="note still there" tone=good
+```jsx title="src/components/TicketCounter.jsx" good="1,2,3"
+function SeatNote() {
+  return <input className="note-input" placeholder="Seat note" />;
+}
+
+export default function TicketCounter() {
+  const [count, setCount] = useState(1);
+```
+```page size=mini
+heading: City Box Office
+card: title=Concert Tickets | text=Tickets: 2 | typed=Window seat | good=typed
+line: [Add ticket]
+```
+Every render returns the same `SeatNote`, so Commit leaves the box and its text alone.
+:::
+:::
+
 > [!PRINCIPLE]
-> **Principle 3: Targeted DOM Reconciliation: Commit Mutates Changed Nodes While Preserving Element Identity**
+> **Principle 3: React Changes Only the Number, and the Typed Text Stays**
 >
 > *In the Commit phase, React inserts all nodes with `appendChild` on startup, and on a re-render updates only the changed DOM nodes before the browser paints.*
 >
-> When your component function runs again from top to bottom, it returns all of its JSX tags again. In Step 2, your component only returns lightweight JavaScript objects in memory; it does not destroy existing DOM elements. In Step 3, the Commit phase, React compares those new objects with the previous render and updates only the exact DOM text or attribute that changed. Every unchanged element, such as our seat note input box and the text typed inside it, stays in the DOM untouched. After Commit finishes, the browser paints the updated screen.
+> When a state update re-runs your component function from top to bottom, the function returns all of its JSX tags again. Do not worry that this will recreate your DOM elements or wipe out form inputs. In Step 2, your component only returns lightweight JavaScript objects in memory. In Step 3, Commit, React compares those new objects against the previous render and changes only the exact DOM text or attribute that differs. React leaves every unchanged element, such as our seat note `<input>` box and the text typed inside it, right where it is in the DOM. This works only when React finds the same component in the same place, so define every component at the top level of the file. Once React finishes Commit, the browser paints the updated screen.
 >
 > **DO THIS:**
 > ```jsx
+> function SeatNote() {
+>   return <input className="note-input" placeholder="Seat note" />;
+> }
+>
 > export default function TicketCounter() {
 >   const [count, setCount] = useState(1);
 >   return (
 >     <section className="ticket-box">
 >       <OrderSummary count={count} />
->       ~<input className="note-input" placeholder="Seat note" />~ {/* Kept intact in the DOM when count updates! */}
+>       ~<SeatNote />~ {/* The same component on every render: React keeps the box and its text */}
 >       <button onClick={() => setCount(count + 1)}>Add ticket</button>
 >     </section>
 >   );
@@ -691,18 +683,22 @@ What happens from button click to screen pixels
 >
 > **DO NOT DO THIS:**
 > ```jsx
-> function handleAdd() {
->   ~document.querySelector('.count-text').textContent = 'Tickets: 2'~; // **WRONG:** never mutate React-managed DOM nodes manually!
+> export default function TicketCounter() {
+>   const [count, setCount] = useState(1);
+>   function ~SeatNote~() { // **WRONG:** a new component on every render, so React replaces the box and the note is lost!
+>     return <input className="note-input" placeholder="Seat note" />;
+>   }
+>   return <section className="ticket-box"><OrderSummary count={count} /><SeatNote /></section>;
 > }
 > ```
 
 ---
 
-## Architectural Synthesis: The Complete Trigger-Render-Commit Lifecycle
+## Putting All 3 Principles Together
 
 ### The complete project files
 
-Here are all five files of our box office application working together. First, the HTML page holds the empty root container where React mounts the application during the initial commit:
+Here are all five files of our box office app working together. First, in the HTML file, place the empty `#root` div where React inserts the DOM nodes during the initial commit:
 
 ```html title="index.html" startLine="1"
 <!doctype html>
@@ -714,7 +710,7 @@ Here are all five files of our box office application working together. First, t
 </html>
 ```
 
-Second, the startup file creates the React root and triggers the initial render on startup:
+Second, in the startup file, create the React root and call `root.render` to trigger the initial render on startup:
 
 ```jsx title="src/main.jsx" startLine="1"
 import { createRoot } from 'react-dom/client';
@@ -724,7 +720,7 @@ const root = createRoot(document.getElementById('root'));
 ~root.render(<App />)~; // Step 1: Trigger 1 starts the initial render
 ```
 
-Third, the main application file renders the top-level heading and the ticket counter tag:
+Third, in the main application file, log when `App` renders and return the page heading and `<TicketCounter />`:
 
 ```jsx title="src/App.jsx" startLine="1"
 import TicketCounter from './components/TicketCounter.jsx';
@@ -740,7 +736,7 @@ export default function ~App~() { // Step 2: Called on initial render, skipped o
 }
 ```
 
-Fourth, the order summary file receives the ticket count prop and returns the ticket count paragraph:
+Fourth, in the order summary file, receive `{ count }` from `TicketCounter`, log the render, and return the ticket count paragraph:
 
 ```jsx title="src/components/OrderSummary.jsx" startLine="1"
 export default function ~OrderSummary~({ count }) { // Step 2: Called recursively whenever TicketCounter renders
@@ -749,11 +745,15 @@ export default function ~OrderSummary~({ count }) { // Step 2: Called recursivel
 }
 ```
 
-Fifth, the ticket counter file holds the ticket count state and queues re-renders in the click handler. It returns the heading, the order summary, the seat note input box, and the button:
+Fifth, the ticket counter file holds `count` in state and passes `nextCount` to both `setCount` and `saveTickets`. It returns the heading, the order summary, the seat note box, and the button:
 
 ```jsx title="src/components/TicketCounter.jsx" startLine="1"
 import { useState } from 'react';
 import OrderSummary from './OrderSummary.jsx';
+
+function saveTickets(tickets) {
+  console.log('Server receives:', tickets);
+}
 
 export default function ~TicketCounter~() { // Step 2: Entry point of the re-render when count updates
   const [count, setCount] = useState(1);
@@ -764,11 +764,7 @@ export default function ~TicketCounter~() { // Step 2: Entry point of the re-ren
   function handleAdd() {
     const nextCount = count + 1;
     ~setCount(nextCount)~; // Step 1: Trigger 2 queues a re-render for after handleAdd finishes
-    console.log(
-      'Trigger: handleAdd read DOM right after setCount:',
-      document.querySelector('.count-text').textContent
-    );
-    console.log('Trigger: handleAdd nextCount variable:', nextCount);
+    saveTickets(nextCount);
   }
 
   return (
@@ -784,14 +780,14 @@ export default function ~TicketCounter~() { // Step 2: Entry point of the re-ren
 }
 ```
 
-### End-to-End Execution Flow: From Click Handler to Screen Pixels
+### What Happens From the Click to the New Number on the Screen
 
-When the page loads, the buyer types `Window seat` into the input box and clicks `Add ticket` twice. The page updates cleanly to `Tickets: 3` while keeping `Window seat` in the input box:
+When the page loads, the buyer types `Window seat` into the input box and clicks `Add ticket` twice. React updates the paragraph to `Tickets: 3` and leaves `Window seat` inside the input box:
 
-```page caption="The finished box office page after typing Window seat and clicking Add ticket twice."
+```page width=text caption="The finished box office page after typing Window seat and clicking Add ticket twice."
 heading: City Box Office
-card: title=Concert Tickets | text=Tickets: 3 | typed=Window seat | button=Add ticket | good=typed
-console: Trigger: handleAdd -> Render: TicketCounter -> Render: OrderSummary -> Commit: <p class="count-text"> | good
+card: title=Concert Tickets | text=Tickets: 3 | typed=Window seat | good=typed
+line: [Add ticket]
 ```
 
 ```tree dir=right caption="How the initial render and state re-renders flow through Trigger, Render, Commit, and Browser Paint."
@@ -802,15 +798,15 @@ The complete React lifecycle on our box office page
 - +After Commit: Browser Paint [Pixels on screen] | Browser recalculates layout and paints the updated DOM | User sees `Tickets: 3` and `"Window seat"` on screen
 ```
 
-### Summary Comparison: Common Misconceptions vs. Physical React Rules
+### What People Think vs. What React Does
 
 | Lifecycle Step | The Common Misconception | The React Rule |
 | :--- | :--- | :--- |
-| **Step 1: Trigger** | Calling `setCount` immediately rewrites the DOM before the next line of the event handler runs | `setCount` only queues a render request; the event handler finishes against the existing DOM first |
-| **Step 1: Same-value setter call** | Calling `setCount` with the current `count` value always runs a full subtree re-render and DOM update | React compares the next value with `Object.is` and skips re-rendering the component and its children when the value is unchanged |
-| **Step 2: Render** | Rendering means drawing pixels on screen, or a state update in a child re-runs `App` at the top | Rendering is React calling component functions in memory: from `App` down on startup, and from the updated component down its children on re-render |
-| **Step 3: Commit** | Re-rendering a component destroys and recreates all of its HTML DOM nodes and wipes `<input>` text | Initial commit inserts nodes with `appendChild`; re-render commit mutates only the DOM nodes that changed and keeps unchanged nodes intact |
-| **After Commit: Browser Paint** | React rendering and browser rendering are the same step | Browser painting happens after React finishes committing DOM changes, when the browser draws the pixels on screen |
+| **Step 1: Trigger** | Calling `setCount` rewrites the DOM right on that line before the rest of the click handler runs | `setCount` only puts a render request in React's queue; your click handler finishes running first while the DOM still shows the old text |
+| **Step 1: Same-value setter call** | Calling `setCount` with the current `count` value still re-renders the component and updates the DOM | React compares the new value with `Object.is`; when the value has not changed, React stops and skips re-rendering the component and its children |
+| **Step 2: Render** | Rendering draws pixels on screen, and updating state in a child re-runs `App` at the top of the tree | In Render, React calls component functions in memory without touching the DOM: from `App` down on startup, and from the updated component down its children on a state update |
+| **Step 3: Commit** | Re-running a component function destroys all of its HTML DOM nodes and wipes out text typed into an `<input>` | On startup, React inserts all nodes with `appendChild`; on a re-render, React updates only the DOM nodes that changed and leaves unchanged nodes like `<input>` alone |
+| **After Commit: Browser Paint** | React rendering and browser painting are the same thing | After React finishes updating the DOM in Commit, the browser recalculates the layout and paints the pixels on screen |
 
 ---
 
@@ -821,23 +817,17 @@ The complete React lifecycle on our box office page
 ### How to Answer Clearly in 30 Seconds
 
 "Every screen update in React flows through three phases in order: **Trigger**, **Render**, and **Commit**, followed by **Browser Paint** at the end.
-1. **Step 1 is Trigger**: Only two things trigger a render. The **initial render** runs when the app starts via `createRoot` and `root.render`. A **re-render** runs when a mounted component calls a `useState` setter like `setCount`. Calling `setCount` only queues a render request for after the event handler finishes. It does not mutate the DOM on that line.
-2. **Step 2 is Render**: Rendering in React means React calling your component functions to compute JSX elements in memory. On the initial render, React calls the root component `App` and every nested child down the tree. On a state-triggered re-render, React starts at the component whose state updated and recursively calls the child components it returns, skipping unaffected parent components above it. Rendering is a pure calculation in memory that touches zero DOM nodes.
-3. **Step 3 is Commit, followed by Browser Paint**: In the Commit phase, React applies the result to the real browser DOM. On the initial render, it inserts all newly created DOM nodes into the container using `appendChild`. On a re-render, it compares the new render output with the previous render output and mutates only the specific DOM nodes or attributes that actually changed. Unchanged sibling elements like an `<input>` and its typed text stay untouched. Only after Commit finishes does the browser repaint the screen in **Browser Paint**."
+1. **Step 1 is Trigger**: Only two things trigger a render. When the app starts, calling `createRoot` and `root.render` triggers the **initial render**. Once the component is on screen, calling a `useState` setter like `setCount` triggers a **re-render**. Calling `setCount` never changes the DOM on that line. It only puts a render request into React's queue and waits for your event handler to finish, so the next lines of your handler still see the old page.
+2. **Step 2 is Render**: In the Render phase, React calls your component functions in memory to see what JSX they return. On startup, React calls `App` at the top and every child down the tree. On a state update, React skips the parent components above, calls the component whose state changed, and calls every child component inside it. This step is a pure calculation in memory that touches zero DOM nodes.
+3. **Step 3 is Commit, followed by Browser Paint**: In the Commit phase, React writes the result to the real browser DOM. On startup, React inserts all newly created DOM nodes into `#root` with `appendChild`. On a re-render, React compares the new JSX with the previous render and updates only the specific DOM nodes or attributes that changed. It leaves unchanged elements like an `<input>` box and the user's typed text untouched. Once React finishes Commit, the browser repaints the pixels on screen in **Browser Paint**."
+
+React's own docs compare these steps to a restaurant. Trigger is the waiter taking the order. Render is the chef cooking the dish in the kitchen. Commit is the waiter bringing only the new dish to the table. If the interviewer uses this picture, you can answer with it.
 
 ### Three Classic Follow-Up Questions Interviewers Ask
 
-1. **"If you call `setCount` in a click handler and read the DOM on the next line, what does it return? What if you pass the same value?"**
-   Reading the DOM on the next line of the click handler returns the old DOM text, such as `Tickets: 1`. That happens because calling `setCount` is only Step 1: Trigger. It queues a render request in React and returns immediately without touching the DOM. React waits for the event handler to finish before running Step 2 and Step 3. If you call `setCount` with the exact same value that is already in state, React compares the two values with `Object.is`. Because they match, React bails out and skips re-rendering the component and its children.
+1. **"Does `setCount` change the page on the line where you call it? What if you pass the same value?"**
+   No. Calling `setCount` is only Step 1, Trigger: it puts a render request in React's queue and returns right away. React waits for your click handler to finish before it runs Step 2 and Step 3, so the rest of the handler still sees the old page and the old `count`. If you need the new number inside the handler, store `count + 1` in a `nextCount` variable first and use it everywhere. And if you pass the exact same value that is already in state, React compares the two values with `Object.is`, sees that they match, and skips re-rendering the component and its children.
 2. **"When a child component like `TicketCounter` calls `setCount`, does React re-render `App` above it, or only `TicketCounter`?"**
-   Neither `App` nor only `TicketCounter`. React starts the re-render at the component whose state updated, so `App` above it is not called. React calls `TicketCounter` and looks at the JSX elements it returns. Then it recursively calls any child components inside that returned JSX, such as `OrderSummary`, until only built-in HTML tags remain.
+   Neither. React starts the re-render at the component whose state changed, so React skips `App` above it. React calls `TicketCounter` first and checks the JSX it returns. Because `TicketCounter` returns `<OrderSummary />`, React then calls `OrderSummary` too, and keeps calling any nested child components until only HTML tags remain.
 3. **"Is 'React rendering' the same thing as 'browser rendering', and why doesn't re-rendering `TicketCounter` wipe out text typed into an `<input>` inside it?"**
-   No. React rendering is Step 2, where React calls your component functions in JavaScript to calculate JSX objects in memory. Browser rendering, or Browser Paint, happens after Step 3, when the browser draws pixels on the screen after React commits changes to the DOM. Re-rendering `TicketCounter` does not wipe out an `<input>` inside it because Step 2 only creates a lightweight JavaScript object in memory. In Step 3, React compares the previous and next element trees and sees that `<input />` is at the same spot with the same attributes. So React leaves the existing `<input>` DOM node and its typed text untouched, and updates only the text node that changed.
-
-```tree dir=right caption="Interview comparison: what happens in Trigger, Render, Commit, and Browser Paint."
-The four stages of a React screen update in an interview
-- +1. Trigger [`root.render` or `setCount`] | **Initial mount** or **state setter** | Queues a render; reading the DOM on the next line still sees the **old DOM**
-- +2. Render [React calls component functions] | **Pure calculation** in memory with **0 DOM changes** | Calls `App` down on mount; calls **updated component + its children** on re-render
-- +3. Commit [React updates the DOM] | `appendChild` on mount; **minimal DOM diff** on re-render | Mutates **only changed nodes** and preserves unchanged `<input>` nodes
-- +4. Browser Paint [Browser draws pixels] | Distinct from **React rendering** | Browser repaints the screen **after** React finishes Commit
-```
+   No. React rendering is Step 2, where React calls your component functions in memory to create JSX objects without touching the DOM. Browser rendering, or Browser Paint, happens after Step 3, when the browser draws pixels on the screen after React updates the DOM. Re-rendering `TicketCounter` never wipes out an `<input>` inside it because returning `<input />` in Step 2 only creates a small JavaScript object in memory. In Step 3, React compares the old and new JSX trees, sees that `<input />` sits in the same spot with the same attributes, and leaves the live `<input>` DOM node and its typed text alone while updating only the ticket count text.
