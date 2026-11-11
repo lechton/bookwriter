@@ -1,0 +1,1402 @@
+# Lecture 19: Updating Arrays in State
+> INTERVIEW QUESTION | ❱ CORE | How do you add, remove, insert, and reorder items in a state array?
+
+---
+
+## The Collision Between In-Place Array Mutation and Identity-Based Reconciliation
+
+### Reference Identity vs. In-Place Mutation: Why React Rejects push
+
+Suppose a small page shows a list of three names, Cara, Anna, and Ben, with an **Add Dan** button under it:
+
+```page width=text caption="A small page with a list of three names and an Add Dan button."
+heading: Names
+line: 1. Cara
+line: 2. Anna
+line: 3. Ben
+line: [Add Dan]
+console: quiet
+```
+
+The three names live in state, and the page draws one list row for each name. The button runs a click handler named `handleAdd`:
+
+```jsx title="The page: one list row per name and one button"
+const [names, setNames] = useState(['Cara', 'Anna', 'Ben']);
+
+<ol>
+  {names.map(name => <li key={name}>{name}</li>)}
+</ol>
+<button ~onClick={handleAdd}~>Add Dan</button> {/* Runs handleAdd on every click */}
+```
+
+There are two ways you might write `handleAdd`. First, look at Way A, which pushes the new name into the existing state array and passes that same array back to the setter:
+
+```jsx title="Way A: Pushing 'Dan' into the existing names array"
+const [names, setNames] = useState(['Cara', 'Anna', 'Ben']);
+
+function handleAdd() {
+  ~names.push('Dan');~ // 1. Adds 'Dan' inside the existing names array
+  ~setNames(names);~ // 2. Hands that exact same names array back to React -> page stays on 3 names!
+}
+```
+
+Second, compare Way A with Way B, which uses three dots `...` inside square brackets to build a brand-new array with the new name at the end:
+
+```jsx title="Way B: Passing a brand-new array to setNames"
+const [names, setNames] = useState(['Cara', 'Anna', 'Ben']);
+
+function handleAdd() {
+  ~setNames([...names, 'Dan']);~ // Creates a brand-new array with 'Dan' at the end -> page shows 4 names!
+}
+```
+
+Here is the page after one click on **Add Dan**, once with each way:
+
+::: row caption="The names page after one click on Add Dan, when handleAdd pushes into names vs. when it passes a brand-new array."
+::: col title="Way A: push" tag="stuck on 3 names, 0 errors" tone=bad
+```page size=mini
+heading: Names
+line: 1. Cara
+line: 2. Anna
+line: 3. Ben | bad
+line: [Add Dan]
+console: quiet
+```
+:::
+::: col title="Way B: new array" tag="Dan appears at once" tone=good
+```page size=mini
+heading: Names
+line: 1. Cara
+line: 2. Anna
+line: 3. Ben
+line: 4. Dan | good
+line: [Add Dan]
+console: quiet
+```
+:::
+:::
+
+With Way A, the screen stays stuck on the original three names, and the Console stays quiet! With Way B, the fourth name appears right away.
+
+Look at the four silent confusions that trip developers up whenever an array lives in state:
+1. **First confusion**: Pushing Dan into `names` and calling the setter looks like passing an updated list, **but it is NOT the same thing**! Both arrays hold four names, yet Way A changes the existing array from the inside and hands React the very same array it already holds. Way B builds a brand-new array in memory and hands that new array to React.
+2. **Second confusion**: Arrays look different from objects because they use square brackets and numbered positions, **but to JavaScript and React an array is the exact same thing as an object**! React never opens an array to count or read its items. Instead, React checks only the outside box with `Object.is` (as seen in Lesson 13), like a librarian scanning the barcode on the cover of a book. Writing a fourth name inside the same book leaves the same barcode on the cover, so React files nothing new and skips the render.
+3. **Third confusion**: The method names `slice` and `splice` differ by only one letter, so they look like the same word, **but they are NOT the same thing**! In everyday life, to **splice** means to cut a movie film reel or a rope and tape a piece directly into the original reel. In JavaScript, `splice` cuts and changes the original array itself. By contrast, to **slice** means to take a slice of bread to keep. In JavaScript, `slice` copies part of the array onto a new sheet while the original array stays whole.
+4. **Fourth confusion**: Calling `sort` or `reverse` on an array returns the reordered list, so it looks as if it returns a brand-new array, **but it is NOT a new array**! Both methods rearrange the original array in place and hand that very same original array right back.
+
+To keep JavaScript's array methods straight, picture two tools sitting on an office desk, a **pen** and a **photocopier**:
+1. **The pen writes directly on the original sheet of paper**: Adding with `push` or `unshift` writes directly into the original array. Removing from either end with `pop` or `shift` also changes the original array in place. Cutting into the list with `splice`, or overwriting a slot by index, rewrites that same array too. And calling `sort` or `reverse` rearranges the original array in place. Because every pen tool mutates the existing array box, we avoid calling any of them directly on a state array.
+2. **The photocopier leaves the original sheet untouched and hands back a fresh sheet**: Spreading into new square brackets with `[...arr]`, or calling `concat`, builds a brand-new array with the added items. Calling `filter` or `slice` returns a brand-new array containing only the items you want to keep. Calling `map` returns a brand-new array where you can replace an item with a fresh copy. And when you need to sort or reverse, you copy the array first and reorder that new copy. Even then, remember that a photocopy of a guest list is **shallow**. The sheet of paper is new, yet the guests named on that sheet are still the exact same people.
+
+```tree caption="The two groups of JavaScript array operations: the pen that mutates the existing array vs. the photocopier that returns a brand-new array."
+Two kinds of array tools in JavaScript
+- !The Pen: Mutates the original array [`push` `splice` `sort` `reverse`] | ~Do **NOT** call directly on a state array | Rewrites the **same array box** in place | `Object.is` sees the **same array** and **skips the render**
+- +The Photocopier: Returns a new array [`[...arr]` `filter` `slice` `map`] | +**DO** use to build the next state array | Leaves the old array untouched and returns a **new array box** | `Object.is` sees a **different array** and **re-renders the page**
+```
+
+Here is the complete table from the official React documentation showing which tool to avoid and which tool to prefer for every array job:
+
+| Operation | Avoid: Mutates the Array | Prefer: Returns a New Array |
+| :--- | :--- | :--- |
+| **Adding** | `push`, `unshift` | `concat`, `[...arr]` spread syntax |
+| **Removing** | `pop`, `shift`, `splice` | `filter`, `slice` |
+| **Replacing** | `splice`, `arr[i] = ...` assignment | `map` |
+| **Sorting** | `reverse`, `sort` | Copy the array first, then sort or reverse the copy |
+
+### What Is at Stake: The Frozen Queue and Corrupted Undo State
+
+What is at stake is twofold: an interface that refuses to update when clicked, and historical snapshots that get silently corrupted by shared references.
+
+To see every array operation in a real interface, we will build the **Up Next** queue of a music player.
+
+The player displays frozen UI and broken history: clicking queue controls fails to update the screen, while liking a song corrupts past states so clicking Undo leaves the button permanently stuck on Liked.
+
+**A music player queue requires interactive array updates on every user action: adding, removing, inserting, reordering, and updating song status must produce fresh array containers to trigger UI updates without mutating historical snapshots.**
+1. The listener clicks **Add to queue** to put a suggested song at the bottom of the list.
+2. The listener clicks **Remove** next to a song they want to skip, or clicks **Undo** if they removed the wrong song by mistake.
+3. The listener clicks **Play next** to slip the suggested song right below the song playing now, at the second spot in the list.
+4. The listener clicks **Move up** to bump a song one row higher in the queue.
+5. The listener clicks **Like** on a favorite song to mark it as **Liked**.
+
+When a developer writes those five buttons by mutating the state array or its song objects in place, the player breaks in two distinct ways:
+1. Clicking **Add to queue**, **Remove**, **Play next**, or **Move up** changes the array in memory. Yet the list on the screen stays frozen, and the Console prints zero errors.
+2. Even trickier, suppose the developer copies the array before marking a song as **Liked**, and then mutates the song object inside that copy. The **Liked** label appears on screen right away. Yet when the listener clicks **Undo** to take the like back, the button stays stuck on **Liked**! The saved array for **Undo** still points at that same mutated song object.
+
+```tree caption="What the listener expects in the Up Next music queue vs. what happens when handlers mutate the state array or its song objects."
+Updating the `Up Next` music queue
+- +What the listener expects | Every add, remove, insert, and move updates the queue **right away** | Clicking `Undo` after `Like` restores the song to **`Like`**
+- !What happens when handlers mutate state | `push`, `splice`, and direct swaps leave the queue **frozen on screen** | Mutating a song inside a copied array makes `Undo` stay stuck on **`Liked`!**
+```
+
+### Architectural Toolkit: Six Non-Mutating Array Transformation Patterns
+
+Whenever you update an array in state, you pick the recipe that builds a brand-new array for the job at hand. Five of the six ways are plain JavaScript recipes. Here they are side by side:
+
+```jsx title="Five plain JavaScript recipes that build a brand-new array"
+function QueueRecipes({ queue, newSong, id }) {
+  const addedEnd = ~[...queue, newSong]~; // 1. Add at the end with spread
+  const removed = ~queue.filter(s => s.id !== id)~; // 2. Remove by test with filter
+  const inserted = ~[...queue.slice(0, 1), newSong, ...queue.slice(1)]~; // 3. Insert at index 1 with two slices
+  const next = ~[...queue]~; // 4. Copy first before swapping, sorting, or reversing
+  const updated = ~queue.map(s => s.id === id ? { ...s, liked: !s.liked } : s)~; // 5. Replace one changed item with map
+}
+```
+
+Together with an optional helper library for deep state, six tools cover every array update in React:
+1. **Array spread `[...queue, song]` or `[song, ...queue]`, or `concat`**: Best for adding a new item at the very end or the very start of the list.
+2. **`filter`**: Best for removing one or more items by keeping every item that passes a test.
+3. **Two `slice` calls with spread**: Best for inserting a new item at a specific position in the middle of the list.
+4. **Copying first with `[...queue]`, then swapping, sorting, or reversing the copy**: Best for reordering items when the operation itself mutates in place. Newer JavaScript methods like `toSorted` and `toReversed` copy and reorder in one call.
+5. **`map` returning a new object for the changed item**: Best for updating a property on one item inside the array while leaving every other item untouched.
+6. **Immer**: An optional helper library for deeply nested state that lets you write mutating-looking code on a temporary draft while it builds the new copies behind the scenes.
+
+```tree caption="How to choose the right non-mutating array recipe for each queue operation."
+Which recipe builds the new array?
+- +Add at the end or start [`[...queue, song]` `[song, ...queue]`] | Spreads the old items into a new array and places the new song after or before them
+- +Remove an item [`queue.filter`] | Keeps every song where the test is `true` and leaves the old array untouched
+- +Insert in the middle [two `queue.slice` calls + spread] | Places the new song between a slice of the items before the insert spot and a slice of the rest
+- +Reorder items [`[...queue]` then swap or `sort`] | Copies the array first so mutating the copy never touches existing state
+- +Change one item's field [`queue.map` with `{ ...s }`] | Returns a new song object for the changed row and keeps all other songs as they are
+```
+
+### Application Architecture: The Up Next Music Queue Structure
+
+Our music player project uses four files across the project root, the source folder, and the components folder. The HTML page provides the empty root div, and the entry file mounts `App` inside `<StrictMode>`. Then our main file renders `PlayQueue` from the queue file. Inside that component, `queue` and `previous` hold the state for the **Up Next** list:
+
+```files title="music-queue: File Explorer" caption="How the files of our Up Next music player queue sit inside src/ and src/components/."
+index.html | entry | The HTML page with the empty root div where React mounts
+src/
+  main.jsx | boundary | Imports `App` from `./App.jsx` and mounts it inside `<StrictMode>`
+  App.jsx | parent | Exports `App` as default and imports `PlayQueue` from `./components/PlayQueue.jsx`
+  components/
+    PlayQueue.jsx | state | Holds the `queue` and `previous` state and renders the `Up Next` queue
+```
+
+### The Five Invariants of Updating Arrays in State
+
+**PRINCIPLES:** React decides whether a state array changed by checking whether you passed a different array box to the setter, never by reading the items inside it. Every operation on a state array must therefore build a new array and leave the old array untouched, down to the item objects inside it:
+1. **Principle 1: A Changed Array Is the Same Array, So Adding Means a New Array**: Calling `push` or `unshift` changes the existing array in place, so the state check sees the same array and skips the render. Build a new array with spread, placing the new item at the end or the start.
+2. **Principle 2: `filter` Removes a Song into a New Array and Leaves the Old Array Whole**: Cutting an item out with `splice` mutates the state array in place. Removing from either end with `pop` or `shift` mutates it too. Use `filter` to keep every item except the removed one in a brand-new array, leaving the old array whole so features like **Undo** can restore it.
+3. **Principle 3: Inserting in the Middle Is Two Slices and the New Song Between Them**: Never use `splice` to insert into a state array. Build a new array that spreads a `slice` of the items before the insert position, writes the new item, and spreads a `slice` of the remaining items.
+4. **Principle 4: Reordering Happens on a Copy: Copy First, Then Move, Sort, or Reverse the Copy**: Methods like `sort` and `reverse` and index swaps mutate the array they are called on. Make a copy with spread first, reorder that fresh copy through local mutation, and pass the copy to the setter.
+5. **Principle 5: A Copied Array Still Holds the Same Songs, So Changing One Song Means a New Song Object**: Copying an array is shallow, so the copied array still points at the exact same item objects as the old array. Use `map` to return a brand-new object for the changed item while returning every other item as it is.
+
+Here is the complete overview of all five principles before we build each step on stage:
+
+| # | Principle | Why It Matters in Debugging and Interviews | The React Rule |
+| :--- | :--- | :--- | :--- |
+| **Principle 1** | **Adding: Build a New Array with Spread** | Pushing into the state array and passing it to the setter leaves the screen unchanged with zero Console errors, until an unrelated update suddenly reveals the pushed items. | Treat every state array as read-only; never call `push` or `unshift` on state, and pass a new spread array with the new item at the end or start. |
+| **Principle 2** | **Removing: Filter into a New Array** | Deleting an item with `splice`, `pop`, or `shift` mutates the existing array in place so the removed row stays on screen. | Call `filter` to return a brand-new array without the removed item, leaving the old array untouched for history or Undo. |
+| **Principle 3** | **Inserting: Two `slice` Calls Around the New Item** | Confusing `splice` with `slice` either mutates the state array in place or throws away an unused copy. | Spread two `slice` copies with the new item between them inside new square brackets and pass that new array to the setter. |
+| **Principle 4** | **Reordering: Copy First, Then Mutate the Copy** | Swapping items by index or calling `sort` or `reverse` directly on state mutates the original array and returns that same array. | Copy the array first with spread, swap or sort inside that fresh copy, and pass the copy to the setter. |
+| **Principle 5** | **Updating an Item: `map` with a New Item Object** | Mutating a property on an item inside a copied array corrupts the shared item object still held by earlier snapshots and Undo. | Use `map` to return a brand-new copied object for the target item and return every unchanged item as it is. |
+
+---
+
+## 1. Principle 1: Identity Rejection: In-Place push Reuses References and Bypasses Reconciliation
+
+### Reference Identity in JavaScript: Why Object.is Bypasses Mutated Arrays
+
+At the start of this lesson, pushing Dan into `names` left the screen on three names, while spreading `names` into new square brackets showed all four. Before we open the music player files, let us check both ways with `Object.is` (as seen in Lesson 13) in plain JavaScript.
+
+First, look at Way A, which pushes the fourth name into the existing array and checks whether the array box changed:
+
+```js title="Way A: Mutating the existing names array with push"
+const names = ['Cara', 'Anna', 'Ben'];
+~names.push('Dan');~ // 1. Writes 'Dan' into the existing names array in place
+
+console.log(~Object.is(names, names)~); // 2. true -> still the exact same array box!
+```
+
+Second, compare Way A with Way B, which uses three dots `...` inside new square brackets to build a brand-new array:
+
+```js title="Way B: Creating a brand-new array with spread"
+const names = ['Cara', 'Anna', 'Ben'];
+const nextNames = ~[...names, 'Dan']~; // 1. Builds a brand-new array holding all 4 names
+
+console.log(~Object.is(names, nextNames)~); // 2. false -> two different array boxes in memory!
+```
+
+Look at two key facts about those two snippets:
+1. **First, calling `push` and spreading `[...names, 'Dan']` both leave four names, so they look as if they do the same job, but they are NOT the same thing!** In Way A, `names` is still the exact same array box as before, so `Object.is` returns true and React ignores it. In Way B, `nextNames` is a brand-new array box, so `Object.is` returns false and React re-renders the page.
+2. **Second, spreading an array inside square brackets and spreading an object inside curly braces use the exact same three dots!** When you write `...names` inside new square brackets, JavaScript opens the `names` box and lays out Cara, Anna, and Ben in order inside the new array.
+
+To add an item at the very start of the list instead of the end, use the exact same spread recipe with the order reversed. When you put `...names` and `'Dan'` together inside new square brackets, there are two ways to order them:
+1. **Order 1**: `...names` comes **before** `'Dan'`. That means the old names come **first** on the left, and `'Dan'` comes **last** on the right, at the end of the new array.
+2. **Order 2**: `'Dan'` comes **before** `...names`. That means `'Dan'` comes **first** on the left, at the start of the new array, and the old names come **last** on the right.
+
+Look at both orders side by side:
+
+```js title="Adding at the end vs. adding at the start with spread"
+const names = ['Cara', 'Anna', 'Ben'];
+
+const atEnd = ~[...names, 'Dan']~; // Order 1: ...names first, 'Dan' last -> ['Cara', 'Anna', 'Ben', 'Dan']
+const atStart = ~['Dan', ...names]~; // Order 2: 'Dan' first, ...names last -> ['Dan', 'Cara', 'Anna', 'Ben']
+```
+
+JavaScript reads the items inside `[ ]` from left to right. In Order 1, the old names are laid out first and Dan lands at the end, replacing `push`. In Order 2, Dan is placed first and the old names follow after, replacing `unshift`. Calling `concat` on `names` also returns a brand-new array with the new item at the end. Spread syntax is even handier because the same three dots can add an item at either end:
+
+```tree caption="Why push is ignored by React's Object.is check, while spreading into new square brackets triggers a re-render."
+How to add `'Dan'` to `names` in React state
+- !Mutate with `push` or `unshift` [`names.push`] | ~Do **NOT** call on a state array | Writes `'Dan'` inside the **existing array box** | `Object.is` returns **`true`** and React **skips the render**
+- +Spread with `'Dan'` last [`[...names, 'Dan']`] | +**DO** use to add at the end | Lays out old items in a **new array**, then adds `'Dan'` at the **end** | `Object.is` returns **`false`** and React **re-renders**
+- +Spread with `'Dan'` first [`['Dan', ...names]`] | +**DO** use to add at the start | Places `'Dan'` at the **start** of a **new array**, then lays out old items | `Object.is` returns **`false`** and React **re-renders**
+```
+
+### Component Architecture: Initializing the Up Next Music Queue
+
+Now let us set up our music player project. First, our main application file imports and renders the queue component:
+
+```jsx title="src/App.jsx" startLine="1"
+import ~PlayQueue~ from './components/PlayQueue.jsx'; // 1. Imports PlayQueue from the components folder
+
+export default function App() {
+  return ~<PlayQueue />~; // 2. Renders the Up Next queue component on the page
+}
+```
+
+At the top of our queue file, we import `useState` and start an ID counter at four for new songs. Right below that counter, we define the starting list of three songs:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="1"
+import { useState } from 'react';
+
+let ~nextId = 4~; // Counter for the next added song's unique id
+
+const ~initialQueue~ = [ // Starting list of three songs
+  { id: 1, title: 'Sunny Road', liked: false },
+  { id: 2, title: 'Blue Bicycle', liked: false },
+  { id: 3, title: 'Night Train', liked: false },
+];
+```
+
+### The Frozen State Trap: Mutating the Queue Array Leaves the UI Stuck
+
+Here is the page we are building. It shows the **Up Next** heading, a suggested song with an **Add to queue** button, and the three starting songs, with the first one marked as playing now:
+
+```page width=text caption="The Up Next page when it opens, with the three starting songs and the Add to queue button."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue]
+line: 1. Sunny Road · Now playing
+line: 2. Blue Bicycle
+line: 3. Night Train
+console: quiet
+```
+
+Now we want to add the suggested song, Rainy Window, to the bottom of the list when the listener clicks **Add to queue**. Suppose a developer writes the click handler using the plain JavaScript habit of pushing the new song into the existing array and passing that array to the setter:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="11"
+export default function PlayQueue() {
+  const [queue, setQueue] = useState(initialQueue);
+
+  function handleAddToQueue() {
+    ~queue.push({ id: nextId++, title: 'Rainy Window', liked: false });~ // **WRONG:** mutates the existing queue array in place!
+    ~setQueue(queue);~ // **WRONG:** hands React the exact same queue array, so React skips the render!
+  }
+```
+
+Below the handler, the component returns the **Up Next** heading, the suggested song line, and an ordered list where the first row shows **Now playing**:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="19"
+  return (
+    <section>
+      <h1>Up Next</h1>
+      <p>
+        Suggested: Rainy Window{' '}
+        <button ~onClick={handleAddToQueue}~>Add to queue</button> {/* Runs handleAddToQueue on click */}
+      </p>
+      <ol>
+        {queue.map((song, index) => (
+          <li key={song.id}>
+            {song.title}
+            {~index === 0 &&~ ' · Now playing'} {/* Marks the first song as playing now */}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+```
+
+The screen stays frozen on three items: clicking Add to queue writes the song to array memory, but the list fails to update on screen with zero console errors or warnings.
+
+Look at what happens when the listener clicks **Add to queue**:
+1. The listener clicks **Add to queue** once. The list on the screen still shows only three songs: Sunny Road, Blue Bicycle, and Night Train.
+2. The Console panel shows zero errors and zero warnings.
+3. The listener clicks **Add to queue** a second time, and the screen still shows only three songs!
+
+```page width=text caption="The Up Next page after two clicks on Add to queue, when the handler pushes into queue."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue]
+line: 1. Sunny Road · Now playing
+line: 2. Blue Bicycle
+line: 3. Night Train | bad
+console: quiet
+```
+
+**React bailouts rely on fast reference equality: passing an identical array pointer causes `Object.is` to return `true`, silently aborting component reconciliation.**
+1. Calling `queue.push` wrote the fourth song directly into the existing array that `queue` already points at.
+2. Calling `setQueue` with `queue` handed that exact same array box back to React.
+3. Inside the setter, React compared the array it received with the array already in state using `Object.is` (as seen in Lesson 13), which returned `true`.
+4. Because `Object.is` returned `true`, React decided nothing had changed and skipped re-rendering the component!
+
+React never opens an array to count or inspect its items on a state update. A state array in a real app can hold thousands of items, and checking every item on every update would degrade performance. When developers treat state arrays as immutable, comparing array reference pointers with `Object.is` takes sub-microsecond time.
+
+Even worse, those pushed Rainy Window songs are not gone. After two clicks, the `queue` array in memory holds five songs, while the screen still shows the three songs of the last render. Suppose the player also kept a second piece of state, such as the volume level. The moment the listener moves the volume, React renders `PlayQueue` again for the new volume. That render reads `queue`, finds five songs, and both hidden Rainy Window rows appear at once, long after the clicks that added them!
+
+Calling `push` without calling `setQueue` at all also leaves the screen unchanged, because nothing ever asks React to re-render.
+
+### Spread Transformation: Producing New Array Instances for Immediate Updates
+
+To make **Add to queue** update the screen right away, we spread `queue` into a brand-new array with the new song at the end:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="14"
+  function handleAddToQueue() {
+    ~setQueue([...queue, { id: nextId++, title: 'Rainy Window', liked: false }]);~ // Builds a brand-new array with the new song at the end
+  }
+```
+
+Look closely at that line inside the click handler. You do not see Sunny Road, Blue Bicycle, or Night Train written anywhere in it!
+
+**Array spread creates fresh container instances: `[...queue, newSong]` allocates a new array in memory, populates it with existing element pointers, and appends the new item at the end.**
+1. The square brackets `[ ]` create a brand-new, empty array in memory.
+2. JavaScript's three dots `...queue` lay the three existing song objects from `queue` into the first three slots of the new array in order.
+3. After the comma, the new Rainy Window object is placed in the fourth slot at the end, and `nextId++` gives it ID `4`.
+4. Inside `setQueue`, React compares the brand-new array of four songs with the old array of three songs. Because they are two different array boxes in memory, `Object.is` returns `false`. React renders the component again, and `queue.map` draws four rows with Rainy Window at the bottom!
+
+```page width=text caption="The Up Next page after one click on Add to queue, when the handler passes a brand-new array with spread."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue]
+line: 1. Sunny Road · Now playing
+line: 2. Blue Bicycle
+line: 3. Night Train
+line: 4. Rainy Window | good
+console: quiet
+```
+
+Here is how `setQueue` responds to the mutated array versus the brand-new spread array:
+
+```tree dir=right caption="How React's setter responds to a pushed array versus a brand-new spread array."
+What you pass to `setQueue` when adding a song
+- !Same array after `queue.push` [pass `queue` to `setQueue`] | `Object.is` compares the array with itself and gets **`true`** | React **skips the render** and the screen stays on **3 songs**
+- +Brand-new array with spread [`[...queue, song]`] | `Object.is` compares the old array and new array and gets **`false`** | React **re-renders `PlayQueue`** and displays **4 songs**
+```
+
+> [!PRINCIPLE]
+> **Principle 1: A Changed Array Is the Same Array, So Adding Means a New Array**
+>
+> *To add an item to a state array, never call `push` or `unshift` on state; pass a brand-new spread array to the setter.*
+>
+> In JavaScript, an array is just another kind of object. When you push an item into a state array and pass it to the setter, you hand React the exact same array box it already holds. React checks only whether the outside array box changed with `Object.is`, never the items inside it, so it skips the render and your new item never appears! Instead, open new square brackets, spread the old items inside, and place the new item at the end or the start so React receives a brand-new array.
+>
+> **DO THIS:**
+> ```jsx
+> function handleAddToQueue() {
+>   ~setQueue([...queue, { id: nextId++, title: 'Rainy Window', liked: false }]);~ // New array with the new song at the end
+> }
+> ```
+>
+> **DO NOT DO THIS:**
+> ```jsx
+> function handleAddToQueue() {
+>   ~queue.push({ id: nextId++, title: 'Rainy Window', liked: false });~ // **WRONG:** mutates the existing state array in place!
+>   ~setQueue(queue);~ // **WRONG:** same array reference, so React skips the render!
+> }
+> ```
+
+---
+
+## 2. Principle 2: Non-Destructive Filtering: filter Preserves Prior Array References for Undo
+
+### Non-Destructive Array Extraction: Pure Sieve Filtering vs. In-Place Splicing
+
+Suppose our `names` array holds Cara, Anna, and Ben, and we want to remove Anna. Compare two ways of removing Anna in plain JavaScript.
+
+First, look at Way A, which calls `filter` to keep every name except Anna in a new array:
+
+```js title="Way A: Removing 'Anna' into a new array with filter"
+const names = ['Cara', 'Anna', 'Ben'];
+const fewer = ~names.filter(name => name !== 'Anna')~; // 1. Returns a new array ['Cara', 'Ben']
+
+console.log(~fewer~); // 2. ['Cara', 'Ben'] -> new array of 2 names
+console.log(~names~); // 3. ['Cara', 'Anna', 'Ben'] -> original array still has all 3 names!
+```
+
+Second, compare Way B, which calls `splice` at index 1 to cut one item out of the original array:
+
+```js title="Way B: Deleting 'Anna' from the original array with splice"
+const names = ['Cara', 'Anna', 'Ben'];
+~names.splice(1, 1);~ // 1. Cuts 'Anna' directly out of the original names array!
+
+console.log(~names~); // 2. ['Cara', 'Ben'] -> the original names array itself was changed!
+```
+
+Look at the two confusions that catch developers when removing an item:
+1. **First, calling `names.filter` and calling `names.splice` both leave Cara and Ben, so they look like two ways to do the same job, but they are NOT the same thing!** Calling `splice` acts like a knife that cuts Anna out of the original `names` array in place. Calling `pop` or `shift` cuts an item off the end or start of the original array in the same mutating way. Calling `filter` never touches `names` at all: it returns a brand-new array holding Cara and Ben, while the original array still holds all three names.
+2. **Second, in everyday speech removing an item sounds like reaching into a box and taking something out, but with `filter` nothing is taken out of the old array!** Think of `filter` as pouring a bowl of items through a sieve into a clean second bowl. Every item where your test returns `true` passes through the sieve into the new bowl. Any item where your test returns `false` is held back and left out of the new bowl, while the original list stays completely whole:
+
+```tree caption="Removing an item into a new array with filter versus cutting it out in place with splice, pop, or shift."
+Two ways to remove `'Anna'` from `['Cara', 'Anna', 'Ben']`
+- +`names.filter` with `name !== 'Anna'` [The Sieve] | +**DO** use for state arrays | Returns a **brand-new array** `['Cara', 'Ben']` | Leaves `names` **untouched** with all **3 names**
+- !`names.splice` or `pop` or `shift` [The Knife] | ~Do **NOT** call on a state array | Cuts `'Anna'` out of **`names` in place** | Mutates the existing state array
+```
+
+### Predicate Filtering Mechanics: Evaluated Conditions in Immutable Slices
+
+In JavaScript, the operator `!==` means "is not equal to." It compares two values and returns `true` when they are different, or `false` when they are the same:
+
+```js title="Plain JavaScript: how !== tests whether two IDs differ"
+console.log(~1 !== 2~); // true -> 1 is different from 2, so filter keeps this item
+console.log(~2 !== 2~); // false -> 2 equals 2, so filter leaves this item out
+```
+
+When you call `filter` on an array of songs, JavaScript runs your test function once for each song. Every song whose ID is different from the clicked ID gets `true` and goes into the new array. The one song whose ID matches the clicked ID gets `false` and is left out of the new array. Even if your test returns `true` for every song and drops nothing, `filter` still builds and returns a brand-new array.
+
+Mutating removal methods destroy the source array and return deceptive values. Calling `pop` or `shift` mutates the original array in place and returns only the single removed item. Calling `splice` also mutates the original array in place and returns an array of the removed items, never the remaining list. That return value sets a second trap. A developer who hands it to the setter, hoping for the shorter list, gets only the removed name:
+
+```js title="Plain JavaScript: what splice hands back"
+const names = ['Cara', 'Anna', 'Ben'];
+const result = ~names.splice(1, 1)~; // Cuts Anna out of names and returns what it cut
+
+console.log(~result~); // ['Anna'] -> only the removed name, not the list that is left!
+```
+
+So a developer who passes the result of `splice` to the setter leaves the page showing Anna alone, the one name the user wanted to remove.
+
+### The Persistent Item Trap: splice Mutates State and Traps Removed Rows on Screen
+
+Now we want to add a **Remove** button next to every song in our music queue. To cut a song out with `splice`, the handler first needs the song's position. The array method `findIndex` runs a test on each item and returns the position of the first item that passes:
+
+```js title="Plain JavaScript: findIndex returns the position of the first match"
+const i = ~queue.findIndex(s => s.id === 2)~; // 1 -> Blue Bicycle sits at index 1
+```
+
+Suppose a developer writes the remove handler by finding the song's index, cutting it out with `queue.splice`, and passing the array back to the setter:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="18"
+  function handleRemove(id) {
+    const i = queue.findIndex(s => s.id === id);
+    ~queue.splice(i, 1);~ // **WRONG:** mutates the existing queue array in place!
+    ~setQueue(queue);~ // **WRONG:** hands React the same queue array, so the row stays on screen!
+  }
+```
+
+Inside the ordered list, each song row gets a **Remove** button that passes that song's ID to the handler when clicked:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="32"
+        {queue.map((song, index) => (
+          <li key={song.id}>
+            {song.title}
+            {index === 0 && ' · Now playing'}{' '}
+            <button ~onClick={() => handleRemove(song.id)}~>Remove</button> {/* Passes this row's song.id on click */}
+          </li>
+        ))}
+```
+
+Every row now carries its own **Remove** button:
+
+```page width=text caption="The Up Next page with a Remove button on every song row."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue]
+line: 1. Sunny Road · Now playing [Remove]
+line: 2. Blue Bicycle [Remove]
+line: 3. Night Train [Remove]
+console: quiet
+```
+
+First, look at where `id` inside `handleRemove` comes from. The button tag itself has no `id` attribute! Instead, while `queue.map` draws each row, the click arrow function remembers that row's own `song` object. When the listener clicks **Remove** on Blue Bicycle, that row's arrow function runs and passes `2` to `handleRemove`.
+
+The screen refuses to remove the item: clicking Remove deletes the song from array memory, but the row stays stubbornly visible on screen with zero console warnings.
+
+**In-place removal mutates without re-rendering: `splice` deletes elements from the original array but returns only the removed items, trapping the remaining items on screen when the original array is passed to the setter.**
+1. Calling `queue.splice` cuts Blue Bicycle out of the existing `queue` array in memory.
+2. Calling `setQueue` with `queue` passes that exact same array box back to React.
+3. Inside the setter, `Object.is` compares the array with itself, gets `true`, and skips the render.
+4. Blue Bicycle stays right on the screen, with zero errors in the Console!
+
+```page width=text caption="The Up Next page after a click on Remove next to Blue Bicycle, when the handler cuts it out with splice."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue]
+line: 1. Sunny Road · Now playing [Remove]
+line: 2. Blue Bicycle [Remove] | bad
+line: 3. Night Train [Remove]
+console: quiet
+```
+
+### Immutable State Transitions: Storing Unmutated Prior Snapshots for Zero-Cost Undo
+
+Now let us replace `splice` with `queue.filter`. Because `filter` leaves the old `queue` array completely untouched, we can also add an **Undo** button that brings a removed song right back!
+
+First, we add a second state variable starting at `null` to hold the previous queue, and save the current queue before adding a song:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="11"
+export default function PlayQueue() {
+  const [queue, setQueue] = useState(initialQueue);
+  const ~[previous, setPrevious] = useState(null)~; // Holds the untouched previous queue array for Undo
+
+  function handleAddToQueue() {
+    ~setPrevious(queue);~ // Saves the current queue before adding
+    setQueue([...queue, { id: nextId++, title: 'Rainy Window', liked: false }]);
+  }
+```
+
+Next, we write the remove handler with `filter`, and add an undo handler that restores `previous`:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="20"
+  function handleRemove(id) {
+    ~setPrevious(queue);~ // 1. Saves the untouched 3-song queue array in previous
+    ~setQueue(queue.filter(s => s.id !== id));~ // 2. Builds a brand-new array without the matching song
+  }
+
+  function handleUndo() {
+    ~setQueue(previous);~ // 3. Restores the untouched previous array
+    setPrevious(null);
+  }
+```
+
+In the JSX return, we show the **Undo** button beside **Add to queue** whenever `previous` holds an earlier array:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="31"
+      <p>
+        Suggested: Rainy Window{' '}
+        <button onClick={handleAddToQueue}>Add to queue</button>{' '}
+        {~previous && <button onClick={handleUndo}>Undo</button>~} {/* Shows Undo whenever previous is not null */}
+      </p>
+```
+
+Look closely at `handleRemove`. No line inside it names Sunny Road or Night Train as the songs to keep!
+
+**Predicate filtering preserves unselected elements: `filter` evaluates each element against the condition, copying matching references into a new array container.**
+1. JavaScript's `filter` calls the arrow function once for each of the three songs in `queue`.
+2. For Sunny Road, `1 !== 2` is true, so `filter` keeps Sunny Road in the new array.
+3. For Blue Bicycle, `2 !== 2` is false, so `filter` leaves Blue Bicycle out.
+4. For Night Train, `3 !== 2` is true, so `filter` keeps Night Train in the new array.
+5. Finally, `filter` hands that brand-new two-song array to `setQueue`. Because it is a different array box in memory, `Object.is` returns `false` and React removes Blue Bicycle from the screen at once!
+
+```page width=text caption="The Up Next page after a click on Remove next to Blue Bicycle, when the handler uses filter and saves the old queue for Undo."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Undo]
+line: 1. Sunny Road · Now playing [Remove]
+line: 2. Night Train [Remove] | good
+console: quiet
+```
+
+Now look at the `setPrevious` call on the line above `setQueue`. Nothing on that line copies `queue` before saving it for **Undo**!
+
+**Non-mutating operations protect historical state: because `filter` never modifies the source array, passing `queue` to `setPrevious` stores an uncorrupted snapshot without requiring defensive cloning.**
+1. Because `filter` never modifies the array it is called on, the old `queue` array stays completely whole with all three songs.
+2. Passing `queue` to `setPrevious` stores that untouched three-song array for **Undo**. Meanwhile, the screen updates to show the new two-song array.
+3. When the listener removes a song by mistake and clicks **Undo**, `handleUndo` passes `previous` back to the setter. It then resets that state variable to `null`.
+4. Because `previous` is a different array box from the two-song array on the screen, React renders the three songs again. The removed song returns right to its old spot!
+
+```page width=text caption="The Up Next page after a click on Undo, with Blue Bicycle back in its old spot."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue]
+line: 1. Sunny Road · Now playing [Remove]
+line: 2. Blue Bicycle [Remove] | good
+line: 3. Night Train [Remove]
+console: quiet
+```
+
+Keeping `previous` in its own state variable gives our player one step of Undo. How to structure state for a longer history belongs to a later lesson.
+
+Here is how `handleRemove` saves the untouched three-song array for **Undo** and builds the new two-song array with `filter`:
+
+```tree dir=right caption="How queue.filter builds a new array of two songs while leaving the old three-song array whole in previous for Undo."
+Clicking `Remove` on `Blue Bicycle` with `id: 2`
+- +Save `queue` in `previous` | Keeps the untouched 3-song array | `['Sunny Road', 'Blue Bicycle', 'Night Train']` stays whole for **`Undo`**
+- +Call `queue.filter` with `s.id !== 2` | Tests each song with `!== 2` | Returns a **new 2-song array** `['Sunny Road', 'Night Train']` so React **re-renders**
+```
+
+> [!PRINCIPLE]
+> **Principle 2: `filter` Removes a Song into a New Array and Leaves the Old Array Whole**
+>
+> *To remove an item from a state array, call `queue.filter` with a test like `s.id !== id` and pass the new array to the setter.*
+>
+> In React, removing an item from state never means cutting it out of the existing array. Mutating methods like `splice` and `pop` change the original array in place. Passing that same array back to the setter leaves the removed row stuck on the screen! Instead, call `filter` to pour every item except the removed one into a brand-new array. Because `filter` leaves the old array completely untouched, you can also keep that old array in memory and restore it directly with **Undo**.
+>
+> **DO THIS:**
+> ```jsx
+> function handleRemove(id) {
+>   setPrevious(queue);
+>   ~setQueue(queue.filter(s => s.id !== id));~ // Returns a new array without the removed song
+> }
+> ```
+>
+> **DO NOT DO THIS:**
+> ```jsx
+> function handleRemove(id) {
+>   const i = queue.findIndex(s => s.id === id);
+>   ~queue.splice(i, 1);~ // **WRONG:** mutates the existing queue array in place!
+>   ~setQueue(queue);~ // **WRONG:** same array box, so React skips the render!
+> }
+> ```
+
+---
+
+## 3. Principle 3: Positional Assembly: Combining slice Slices Around Inserted Items Without Mutation
+
+### Linguistic Look-Alike vs. Engine Collision: Non-Mutating slice vs. Mutating splice
+
+Suppose our `names` array holds Cara, Anna, and Ben, and we want to insert Dan at index 1, right between Cara and Anna. Compare two ways of putting Dan at index 1 in plain JavaScript.
+
+First, look at Way A, which copies the two halves around index 1 with `slice` and places Dan between them inside a brand-new array:
+
+```js title="Way A: Assembling two slices with 'Dan' between them"
+const names = ['Cara', 'Anna', 'Ben'];
+const nextNames = ~[...names.slice(0, 1), 'Dan', ...names.slice(1)]~; // 1. Two slices with 'Dan' in between
+
+console.log(~nextNames~); // 2. ['Cara', 'Dan', 'Anna', 'Ben'] -> brand-new array of 4 names
+console.log(~names~); // 3. ['Cara', 'Anna', 'Ben'] -> original names array is untouched!
+```
+
+Second, compare Way A with Way B, which calls `splice` at index `1` to insert Dan directly into the original array:
+
+```js title="Way B: Splicing 'Dan' directly into the original names array"
+const names = ['Cara', 'Anna', 'Ben'];
+~names.splice(1, 0, 'Dan');~ // 1. Cuts open names at index 1 and inserts 'Dan' in place!
+
+console.log(~names~); // 2. ['Cara', 'Dan', 'Anna', 'Ben'] -> the original names array was mutated!
+```
+
+Look closely at the three confusions that catch developers when inserting into the middle of an array:
+1. **First confusion**: `slice` and `splice` differ by only one letter, and both take a position number, so they look like the same word, **but they are NOT the same thing**! Remember the everyday action inside each word. The word **splice** has a **`p`**: a film editor cuts the original film reel and tapes a piece directly into it, changing the original reel in place. The word **slice** has **no `p`**, like taking a slice of bread to keep. In JavaScript, `slice` copies part of the array into a brand-new array while the original array stays whole.
+2. **Second confusion**: Way A and Way B both produce Cara, Dan, Anna, and Ben in the exact same order, **but they are NOT the same thing**! Way A builds a brand-new array of four names and leaves `names` untouched with three names. Way B mutates `names` itself in place, so passing `names` to a React setter hands back the same array box and skips the render.
+3. **Third confusion**: Inserting in the middle is the exact same spread recipe as adding at the start or the end in Principle 1! When you add at the start, you write the new item before all the old items. When you add at the end, you write the new item after all the old items. To insert in the middle, you use `slice` to copy the items before the insert spot and the items from that spot onward. Then you write the new item right between those two copies inside a new array:
+
+```tree caption="Why React state uses slice with no p to copy two halves around the new item, and never splice."
+`slice` vs. `splice` when inserting `'Dan'` at index `1`
+- +`slice` with no `p` [two `names.slice` calls + spread] | +**DO** use to copy parts of a state array | Copies `['Cara']` and `['Anna', 'Ben']` into a **brand-new array** with `'Dan'` between them | Leaves `names` **untouched**
+- !`splice` with a `p` [`names.splice` at index `1`] | ~Do **NOT** call on a state array | Cuts open `names` at index `1` and **mutates it in place** | Passing `names` to the setter **skips the render**
+```
+
+### Positional Partitioning: Index-Bounded Slices Isolate Insertion Points
+
+Look at how `slice` works when you pass two numbers versus one number:
+
+```js title="Plain JavaScript: how slice copies before and after insertAt"
+const names = ['Cara', 'Anna', 'Ben'];
+const insertAt = 1;
+
+const before = ~names.slice(0, insertAt)~; // 1. From index 0 up to, not including, index 1 -> ['Cara']
+const after = ~names.slice(insertAt)~; // 2. From index 1 to the end of the array -> ['Anna', 'Ben']
+```
+
+Look at why both calls use the exact same `insertAt` number without skipping or duplicating any item:
+1. **With two numbers, start and end**: Passing zero and `insertAt` copies items starting at index 0 and stops **right before** `insertAt`. Because the end index itself is never included, an insert spot of 1 copies only index 0, which gives `['Cara']`.
+2. **With one number, start only**: Passing only `insertAt` starts copying right at index 1 and continues all the way to the end of the array. Here, that copies index 1 and index 2, which gives `['Anna', 'Ben']`.
+
+Because the first slice stops right before `insertAt` and the second slice starts right at `insertAt`, the array splits cleanly into two halves around that spot. Newer JavaScript environments also offer `toSpliced`, which copies the array and inserts the item in one call. Even so, spreading two `slice` calls around the new item is the standard React recipe you will meet across codebases and interviews.
+
+### The Silent In-Place Insertion Trap: splice Bypasses Reconciliation
+
+In our music player, the first row at index 0 is the song playing right now: Sunny Road. When the listener clicks **Play next** for Rainy Window, the new song should not replace Sunny Road at the top. It should not wait at the very bottom either. It belongs at index 1, right below the song playing now!
+
+First, we add the **Play next** button right beside **Add to queue**. It runs a new handler, `handlePlayNext`:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="40"
+      <p>
+        Suggested: Rainy Window{' '}
+        <button onClick={handleAddToQueue}>Add to queue</button>{' '}
+        <button ~onClick={handlePlayNext}~>Play next</button>{' '} {/* Inserts Rainy Window at index 1 */}
+        {previous && <button onClick={handleUndo}>Undo</button>}
+      </p>
+```
+
+The suggested song now offers two buttons:
+
+```page width=text caption="The Up Next page with the new Play next button beside Add to queue."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next]
+line: 1. Sunny Road · Now playing [Remove]
+line: 2. Blue Bicycle [Remove]
+line: 3. Night Train [Remove]
+console: quiet
+```
+
+Suppose a developer writes `handlePlayNext` so that it inserts the new song at index 1 with `splice` and passes the array to the setter:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="25"
+  function handlePlayNext() {
+    const newSong = { id: nextId++, title: 'Rainy Window', liked: false };
+    ~queue.splice(1, 0, newSong);~ // **WRONG:** mutates queue in place by inserting newSong at index 1!
+    ~setQueue(queue);~ // **WRONG:** passes the same queue array box, so React skips the render!
+  }
+```
+
+The screen fails to insert the item: clicking Play next inserts the song in memory via splice, but the UI remains completely unchanged with zero console errors.
+
+```page width=text caption="The Up Next page after a click on Play next, when the handler inserts with splice."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next]
+line: 1. Sunny Road · Now playing [Remove]
+line: 2. Blue Bicycle [Remove] | bad
+line: 3. Night Train [Remove]
+console: quiet
+```
+
+Calling `queue.splice` cut open the existing state array and inserted Rainy Window in place. Passing `queue` to `setQueue` then handed React the exact same array box it already held. Inside the setter, `Object.is` returned `true` and React skipped the render.
+
+### The Discarded Copy Trap: Calling slice Without Passing the Returned Array
+
+After reading a warning about `splice`, developers often make a second mistake. They delete the letter p so `splice` becomes `slice`, and leave the rest of the handler the same:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="25"
+  function handlePlayNext() {
+    const newSong = { id: nextId++, title: 'Rainy Window', liked: false };
+    ~queue.slice(1, 0, newSong);~ // **WRONG:** returns an unused empty slice and ignores newSong!
+    ~setQueue(queue);~ // **WRONG:** queue is still unchanged, so nothing happens on screen!
+  }
+```
+
+The screen ignores the click and discards the copy: calling slice without spreading it into a new array leaves the UI frozen on three songs.
+
+**Pure methods require explicit consumption: `slice` produces a new array that is discarded immediately unless assigned to a variable or passed to a state setter.**
+1. Unlike `splice`, `slice` never inserts anything into an array. It takes only a start index and an end index, so it completely ignores the third argument, `newSong`.
+2. Calling `queue.slice` on that line returns a brand-new empty array and leaves `queue` untouched. Because no variable stores that returned array and nothing passes it to the setter, JavaScript throws the copy away immediately.
+3. On the next line, `queue` is still the exact same three-song array box, so the setter sees the same array with `Object.is` and skips the render!
+
+### Multi-Slice Array Assembly: Slicing and Spreading Around Mid-Array Inserts
+
+To insert Rainy Window at index 1, we set `insertAt` to 1 and build a brand-new array by spreading two `slice` calls with the new song between them:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="25"
+  function handlePlayNext() {
+    const insertAt = 1;
+    const newSong = { id: nextId++, title: 'Rainy Window', liked: false };
+    setPrevious(queue);
+    ~setQueue([~ // 1. Opens a brand-new array for setQueue
+      ~...queue.slice(0, insertAt),~ // 2. Songs before index 1: ['Sunny Road']
+      newSong,
+      ~...queue.slice(insertAt),~ // 3. Songs from index 1 onward: ['Blue Bicycle', 'Night Train']
+    ]);
+  }
+```
+
+Look closely at the new array inside `setQueue`. You do not see Sunny Road, Blue Bicycle, or Night Train written anywhere in those lines!
+
+**Positional slicing partitions an array into non-overlapping segments: spreading slices before and after `insertAt` inserts elements at precise indices while preserving immutable references.**
+1. First, `newSong` gets its unique ID once from `nextId++` inside the handler. Then `setPrevious` saves the untouched three-song `queue` array for **Undo**.
+2. Inside the new square brackets, the first `queue.slice` call copies the items before index 1, returning a one-item array with Sunny Road. The three dots `...` lay Sunny Road into slot 0.
+3. Next, `newSong` is placed right after it in slot 1, and its `key` stays tied to Rainy Window even when other songs move later.
+4. The second `queue.slice` call copies the remaining items from index 1 to the end. The three dots `...` lay Blue Bicycle and Night Train into slots 2 and 3.
+5. Finally, `setQueue` receives that brand-new four-song array. Because it is a different array box in memory, `Object.is` returns `false`, and React renders Rainy Window in the second row right below Sunny Road!
+
+```page width=text caption="The Up Next page after a click on Play next, when the handler assembles two slices around the new song."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next] [Undo]
+line: 1. Sunny Road · Now playing [Remove]
+line: 2. Rainy Window [Remove] | good
+line: 3. Blue Bicycle [Remove]
+line: 4. Night Train [Remove]
+console: quiet
+```
+
+Here is how the three parts inside the square brackets assemble the four-song queue when inserting at index `1`:
+
+```tree dir=right caption="How the three parts inside the square brackets assemble the new queue when inserting at index 1."
+Inserting `newSong` at `insertAt = 1`
+- +Part 1: first `...queue.slice` up to `insertAt` | Copies items before index `1` | Places **`Sunny Road`** at index `0`
+- +Part 2: `newSong` | The item being inserted | Places **`Rainy Window`** at index `1`
+- +Part 3: second `...queue.slice` from `insertAt` | Copies items from index `1` to the end | Places **`Blue Bicycle`** and **`Night Train`** at indexes `2` and `3`
+```
+
+> [!PRINCIPLE]
+> **Principle 3: Inserting in the Middle Is Two Slices and the New Song Between Them**
+>
+> *To insert an item at `insertAt`, build a brand-new array by spreading two `queue.slice` calls with the new item between them, never mutating in place.*
+>
+> The method names `slice` and `splice` differ by only one letter, which makes them an easy trap. Calling `splice` with a `p` cuts into the existing state array and mutates it in place. Passing that same array back to the setter leaves the screen unchanged! By contrast, `slice` with no `p` never touches the original array. To insert an item in the middle of a state array, open new square brackets and spread a `slice` of the items before the insert spot. Then write the new item and spread a `slice` of the remaining items right after it.
+>
+> **DO THIS:**
+> ```jsx
+> function handlePlayNext() {
+>   const insertAt = 1;
+>   const newSong = { id: nextId++, title: 'Rainy Window', liked: false };
+>   ~setQueue([...queue.slice(0, insertAt), newSong, ...queue.slice(insertAt)]);~ // Assembles a new array from two slices
+> }
+> ```
+>
+> **DO NOT DO THIS:**
+> ```jsx
+> function handlePlayNext() {
+>   const newSong = { id: nextId++, title: 'Rainy Window', liked: false };
+>   ~queue.splice(1, 0, newSong);~ // **WRONG:** splice mutates the existing queue array in place!
+>   ~setQueue(queue);~ // **WRONG:** same array reference, so React skips the render!
+> }
+> ```
+
+---
+
+## 4. Principle 4: Local Mutation Scope: Confining In-Place Operations to Fresh Shallow Copies
+
+### In-Place Sorting vs. Isolated Copy Mutation: The Local Mutation Boundary
+
+Suppose we want to sort our `names` array alphabetically, or swap two items by their position. Compare two ways of sorting Cara, Anna, and Ben in plain JavaScript.
+
+First, look at Way A, which calls `sort` directly on the original array:
+
+```js title="Way A: Calling sort directly on names"
+const names = ['Cara', 'Anna', 'Ben'];
+const sorted = ~names.sort()~; // 1. Sorts names in place AND returns that same names array!
+
+console.log(~Object.is(names, sorted)~); // 2. true -> sorted and names are the exact same array box!
+```
+
+Second, compare Way B, which copies `names` into a brand-new array first with `[...names]` and then sorts that copy:
+
+```js title="Way B: Copying with [...names] first, then sorting the copy"
+const names = ['Cara', 'Anna', 'Ben'];
+const sorted = ~[...names].sort()~; // 1. Copies names into a new array first, then sorts the new copy!
+
+console.log(~names~); // 2. ['Cara', 'Anna', 'Ben'] -> original names array stays in its old order!
+console.log(~Object.is(names, sorted)~); // 3. false -> sorted is a brand-new array box!
+```
+
+Look closely at the three confusions that catch developers when reordering an array:
+1. **First confusion**: Calling `names.sort` directly and calling `sort` on `[...names]` both evaluate to Anna, Ben, and Cara, so they look as if they do the same job, **but they are NOT the same thing**! Both `sort` and `reverse` rearrange the original array in place and then hand that exact same original array right back. If you pass the result of `names.sort` directly to `setNames`, you hand React the very same array box it already holds. Inside the setter, `Object.is` returns `true` and React skips the render!
+2. **Second confusion**: Assigning the array to a new variable without spread and spreading `[...names]` into new square brackets look like two ways to make a copy, **but they are NOT the same thing**! Look at both lines side by side:
+
+```js title="Assigning the same array variable vs. copying with spread"
+const nextSame = ~names~; // 1. NOT a copy: nextSame and names point at the exact same array box!
+const nextCopy = ~[...names]~; // 2. Real copy: builds a brand-new array box holding the same items!
+```
+
+Assigning `names` to `nextSame` without the three dots only creates a second variable name pointing at the exact same array box in memory. Spreading `[...names]` into `nextCopy` builds a brand-new array box holding those items.
+3. **Third confusion**: Changing slots by index or calling `sort` or `reverse` on that fresh copy looks like the forbidden mutation, and it is the exact same kind of JavaScript operation, **but it is completely safe here**! Think of a seating plan pinned to a classroom wall. You must never scribble on the plan pinned to the wall. Yet once you walk to the photocopier and make your own fresh photocopy, nobody else has seen that photocopy yet. Rearranging rows on your fresh photocopy before handing it to React is a **local mutation**. Local mutation is completely safe because no other code points at your new copy yet. Newer JavaScript environments also offer `toSorted` and `toReversed`, which make the copy and reorder it in a single call:
+
+```tree caption="Why reordering a state array directly fails, while mutating a freshly created spread copy is safe."
+Three ways developers try to reorder or swap items in `names`
+- !Mutate `names` directly [`names.sort` or `names[i] = ...`] | ~Do **NOT** reorder a state array in place | Rearranges the **existing array** and returns that **same array** | `Object.is` returns **`true`** and **skips the render**
+- !Assign without spread [`next = names` then swap] | ~Do **NOT** copy the variable without `[...names]` | `next` still points at the **exact same `names` array** | `Object.is` returns **`true`** and **skips the render**
+- +Copy with spread first [`next = [...names]` then swap or `sort`] | +**DO** make a fresh copy first | Local mutation on `next` touches **only the new copy** | `Object.is` returns **`false`** and **re-renders**
+```
+
+### Index-Based Element Swapping: Temporary Variable Preservation in Local Copies
+
+In our music queue, the first row at index 0 is the song playing now, and the second row at index 1 sits right below it. Any song from the third row down, where `index > 1`, can move one spot higher toward the top without passing the song playing now.
+
+To swap the song at `index` with the song right above it inside the fresh copy, plain JavaScript uses a spare variable named `above`:
+
+```js title="Plain JavaScript: swapping two adjacent items through a spare variable"
+const next = [...queue];
+const ~above = next[index - 1]~; // 1. Save the song above in a spare variable so it is not lost
+~next[index - 1] = next[index];~ // 2. Move the clicked song up into index - 1
+~next[index] = above;~ // 3. Put the saved song down into index
+```
+
+**Adjacent index swapping requires temporary variable caching: overwriting an array slot destroys its value unless preserved in a separate identifier.**
+1. First, `above` saves the song currently sitting one row higher.
+2. Second, the clicked song at `index` moves up into that upper slot. Without `above`, overwriting the upper slot would erase its song forever!
+3. Third, the saved song in `above` moves down into `index` so the two songs trade places cleanly.
+
+### The Direct Index Mutation Trap: Swapping State Slots Bypasses the Reconciler
+
+First, the list rows get a **Move up** button. We show it only on rows where `index > 1`, so the song playing now and the song right below it never get one:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="52"
+        {queue.map((song, index) => (
+          <li key={song.id}>
+            {song.title}
+            {index === 0 && ' · Now playing'}{' '}
+            {~index > 1 && <button onClick={() => handleMoveUp(index)}>Move up</button>~}{' '} {/* Passes row index from map */}
+            <button onClick={() => handleRemove(song.id)}>Remove</button>
+          </li>
+        ))}
+```
+
+Only Night Train, on the third row, now shows **Move up**:
+
+```page width=text caption="The Up Next page with a Move up button on the third row only."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next]
+line: 1. Sunny Road · Now playing [Remove]
+line: 2. Blue Bicycle [Remove]
+line: 3. Night Train [Move up] [Remove]
+console: quiet
+```
+
+Look at where `index` inside `handleMoveUp` comes from. The button tag has no position attribute written on it! Instead, as `queue.map` draws each row, it supplies each song's position as its second argument, `index`. For Night Train on the third row, `index` is `2`. Clicking its **Move up** button runs the arrow function and passes `2` to `handleMoveUp`.
+
+Suppose a developer writes `handleMoveUp` so that it swaps the two slots directly inside the existing `queue` array and passes that array to the setter:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="34"
+  function handleMoveUp(index) {
+    const above = queue[index - 1];
+    ~queue[index - 1] = queue[index];~ // **WRONG:** mutates the existing queue array in place!
+    ~queue[index] = above;~ // **WRONG:** mutates the existing queue array in place!
+    ~setQueue(queue);~ // **WRONG:** passes the same queue array back to React!
+  }
+```
+
+The screen refuses to reorder: clicking Move up mutates the array order in place, but the rows stay frozen in their old positions with zero console warnings.
+
+```page width=text caption="The Up Next page after a click on Move up next to Night Train, when the handler swaps inside queue."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next]
+line: 1. Sunny Road · Now playing [Remove]
+line: 2. Blue Bicycle [Remove]
+line: 3. Night Train [Move up] [Remove] | bad
+console: quiet
+```
+
+Assigning the two slots on `queue` mutated the existing state array in place. Passing `queue` to `setQueue` then handed React the exact same array box it already held. Inside the setter, `Object.is` returned `true` and React skipped the render.
+
+### The Reference Alias Trap: Variable Assignment Copies Memory Addresses, Not Arrays
+
+Next, suppose the developer tries to fix the bug by storing the state array in a variable without spread before swapping the two slots:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="34"
+  function handleMoveUp(index) {
+    ~const next = queue;~ // **WRONG:** does NOT copy the array; next and queue are the exact same array!
+    const above = next[index - 1];
+    next[index - 1] = next[index];
+    next[index] = above;
+    ~setQueue(next);~ // **WRONG:** next is still the same array box that React already holds!
+  }
+```
+
+The screen remains frozen on the original order: assigning the array to a variable creates a second reference to the same array, so the swap is ignored by React.
+
+**Variable assignment copies references, not data: writing `const next = queue` creates an alias to the same memory address, leaving the array vulnerable to in-place mutation.**
+1. In JavaScript, assigning an array variable without `[...queue]` copies only the reference link to the existing array.
+2. Both `next` and `queue` still point at the exact same array box in memory. Swapping slots inside `next` still mutates the state array in place.
+3. When `setQueue` receives that variable, React compares the two references with `Object.is`. That check returns `true` and skips the render again.
+
+### Safe Local Mutation: Reordering Fresh Spread Instances Before Setter Invocation
+
+To make **Move up** update the screen, we build `next` with `[...queue]` on the first line and then swap the two slots inside that new copy:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="34"
+  function handleMoveUp(index) {
+    ~const next = [...queue];~ // 1. Creates a brand-new array copy with the same songs
+    const above = next[index - 1];
+    ~next[index - 1] = next[index];~ // 2. Safe local mutation on the brand-new next array
+    next[index] = above;
+    setPrevious(queue);
+    ~setQueue(next);~ // 3. Hands the brand-new reordered array to React
+  }
+```
+
+Look closely at the swap lines inside `handleMoveUp`. Those three assignment lines do not create a new array by themselves!
+
+**Local mutation is bounded to newly created memory: mutating an array created in the current execution frame cannot affect prior state snapshots or trigger reconciliation bailouts.**
+1. On the first line, `[...queue]` creates a brand-new three-song array in memory with the songs in their old order.
+2. Because `next` was just created inside this handler, changing its slots is a safe local mutation. Here `above` saves Blue Bicycle from index 1, while Night Train and Blue Bicycle trade places.
+3. Calling `setPrevious` saves the untouched `queue` array in its original order for **Undo**.
+4. Finally, passing `next` to `setQueue` hands the brand-new array to React. Because that copy is a different array box in memory, `Object.is` returns `false` and React re-renders the list. Night Train moves up to the second row above Blue Bicycle! Because each row carries `key={song.id}`, React knows the two songs simply traded places rather than being destroyed and rebuilt.
+
+```page width=text caption="The Up Next page after a click on Move up next to Night Train, when the handler swaps inside a fresh copy."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next] [Undo]
+line: 1. Sunny Road · Now playing [Remove]
+line: 2. Night Train [Remove] | good
+line: 3. Blue Bicycle [Move up] [Remove] | good
+console: quiet
+```
+
+Blue Bicycle now sits on the third row, so it gets the **Move up** button, and Night Train on the second row loses it.
+
+The exact same copy-first rule applies whenever you sort or reverse a state array, such as sorting the songs by title. Calling `queue.sort` or `queue.reverse` directly mutates the state array in place and returns that same array box, so the setter skips the render. Instead, copy the array first with `[...queue]`. Then call `sort` or `reverse` on that fresh copy. Newer JavaScript environments also provide `toSorted` and `toReversed`, which copy and reorder in one call. Full drag-and-drop list reordering belongs to a later lesson.
+
+Here is how `handleMoveUp` copies the queue first, swaps the two songs on the copy, and hands the new array to React:
+
+```tree dir=right caption="How handleMoveUp copies queue with spread first, swaps slots 1 and 2 on the fresh copy, and hands next to setQueue."
+Clicking `Move up` on `Night Train` at `index = 2`
+- +1. Copy with `[...queue]` | Builds a brand-new `next` array | Leaves the old `queue` order untouched for **`Undo`**
+- +2. Swap slots `1` and `2` on `next` | Safe **local mutation** through `above` | Places **`Night Train`** at index `1` and **`Blue Bicycle`** at index `2`
+- +3. Pass `next` to `setQueue` | `Object.is` sees a **different array box** | React **re-renders** the queue with `Night Train` second
+```
+
+> [!PRINCIPLE]
+> **Principle 4: Reordering Happens on a Copy: Copy First, Then Move, Sort, or Reverse the Copy**
+>
+> *Before swapping items by index, sorting, or reversing, copy the state array first with `[...queue]`, reorder that copy, and pass the copy to the setter.*
+>
+> Reordering an array in JavaScript can be a trap because `sort`, `reverse`, and index swaps all change the original array in place. Even though `sort` and `reverse` return the reordered list, they return the exact same array box they just mutated. Passing that returned array to the setter makes `Object.is` return `true`, so React skips the render and the list on screen never moves! Instead, spread the state array into a brand-new copy first. Because no other code points at that fresh copy yet, you can freely swap its slots, sort it, or reverse it before passing it to the setter.
+>
+> **DO THIS:**
+> ```jsx
+> function handleMoveUp(index) {
+>   ~const next = [...queue];~ // 1. Copy the array into a brand-new box first
+>   const above = next[index - 1];
+>   ~next[index - 1] = next[index];~ // 2. Mutating the fresh copy is a safe local mutation
+>   next[index] = above;
+>   setQueue(next);
+> }
+> ```
+>
+> **DO NOT DO THIS:**
+> ```jsx
+> function handleMoveUp(index) {
+>   const above = queue[index - 1];
+>   ~queue[index - 1] = queue[index];~ // **WRONG:** mutates the existing state array in place!
+>   queue[index] = above;
+>   ~setQueue(queue);~ // **WRONG:** passes the same array back, so React skips the render!
+> }
+> ```
+
+---
+
+## 5. Principle 5: Deep Reference Isolation: Shallow Copies Share Child Objects Across Snapshots
+
+### Shallow Array Copying vs. Deep Element Duplication: The Shared Memory Pitfall
+
+In Principle 4, spreading an array into new square brackets gives us a fresh array copy that we can reorder freely. However, spreading an array of objects introduces a critical architectural constraint: copying the container does not duplicate the objects inside it.
+
+Suppose an array named `people` holds an object for Anna with `seen: false`, and we want to mark Anna as seen. Compare two ways of writing that update in plain JavaScript.
+
+First, look at Way A, which copies the outer array with `[...people]` and then flips `copy[0].seen` in place:
+
+```js title="Way A: Copying the array, then mutating copy[0].seen in place"
+const people = [{ id: 1, name: 'Anna', seen: false }];
+const copy = ~[...people]~; // 1. New outer array, yet copy[0] === people[0] is still true!
+~copy[0].seen = true;~ // 2. Mutates that shared Anna object in place!
+
+console.log(~people[0].seen~); // 3. true -> the original people[0] object was secretly changed too!
+```
+
+Now compare Way A with Way B, which uses `people.map` and object spread `{ ...p }` to create a brand-new object for Anna:
+
+```js title="Way B: Using map and object spread to replace only the changed object"
+const people = [{ id: 1, name: 'Anna', seen: false }];
+const next = ~people.map(p => p.id === 1 ? { ...p, seen: true } : p)~; // Builds a new array AND a new Anna object!
+
+console.log(~next[0].seen~); // true -> the new Anna object in next has seen: true
+console.log(~people[0].seen~); // false -> the original Anna object in people is still untouched!
+```
+
+Look at why those two ways differ even though both build a brand-new outer array whose first person has `seen` set to `true`. In React, both even trigger a re-render on the first click! **It may look the same on the first click, and it may seem to work the same at first, but it is NOT the same thing**. Way A mutates the person object that the old array still holds, while Way B creates a brand-new person object.
+
+**Spreading an array duplicates only the top-level container: array slots store reference pointers to objects elsewhere in memory, so two distinct arrays point at the exact same child object instances.**
+
+Remember our photocopy of a guest list from the start of the lesson. Making a shallow copy with `[...people]` gives you a brand-new sheet of paper. Yet the first line on both sheets still points at the exact same real Anna standing in the room, so `copy[0] === people[0]` is `true`. If you use the new sheet to put a hat on Anna with `copy[0].seen = true`, Anna on the original sheet is wearing that hat too!
+
+Way B avoids that trap by following the nested-state rule from our object lessons (as seen in Lesson 17). You must copy every level on the path to the change, all the way up to the top level. Here `people.map` builds a brand-new outer array, and `{ ...p }` builds a brand-new inner object for the one person who changed. Every unchanged person is returned as is.
+
+Compare how Way A and Way B treat the outer array and the inner person object in memory:
+
+```tree caption="Copying the outer array with [...people] and mutating copy[0].seen in place vs. replacing the changed item object with people.map and { ...p }."
+Updating one object inside an array of objects [`const people = [{ id: 1, name: 'Anna', seen: false }]`]
+- !Way A: Shallow array copy and item mutation [`const copy = [...people]; copy[0].seen = true`] | Builds a new outer array, yet `copy[0] === people[0]` is **`true`** | Mutates the **shared Anna object**, so `people[0].seen` becomes **`true` too**
+- +Way B: Replace the changed item with `map` and spread [`people.map` with `{ ...p, seen: true }`] | Builds a **new outer array** and a **brand-new Anna object** | `next[0] === people[0]` is **`false`**, and `people[0].seen` stays **`false`**
+```
+
+### The Corrupted Snapshot Trap: Mutating Shared Child Objects Destroys Undo History
+
+Now let us add a **Like** button to every song row in our play queue. Each song starts with `liked: false`, and clicking **Like** switches the button label to **Liked**. Inside the ordered list, each row gets the button, which passes the row's `index` to a new handler, `handleLike`:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="60"
+        {queue.map((song, index) => (
+          <li key={song.id}>
+            {song.title}
+            {index === 0 && ' · Now playing'}{' '}
+            <button ~onClick={() => handleLike(index)}~> {/* Passes this row's position */}
+              {~song.liked ? 'Liked' : 'Like'~} {/* Shows Liked when song.liked is true */}
+            </button>{' '}
+            {index > 1 && <button onClick={() => handleMoveUp(index)}>Move up</button>}{' '}
+            <button onClick={() => handleRemove(song.id)}>Remove</button>
+          </li>
+        ))}
+```
+
+Every row now shows a **Like** button:
+
+```page width=text caption="The Up Next page with a Like button on every song row."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next]
+line: 1. Sunny Road · Now playing [Like] [Remove]
+line: 2. Blue Bicycle [Like] [Remove]
+line: 3. Night Train [Like] [Move up] [Remove]
+console: quiet
+```
+
+Suppose a developer writes `handleLike` by copying the queue array and then flipping the song's `liked` flag directly on that item:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="41"
+  function handleLike(index) {
+    const next = [...queue];
+    ~next[index].liked = !next[index].liked;~ // **WRONG:** mutates the song object shared with queue!
+    setPrevious(queue);
+    ~setQueue(next);~ // Re-renders because next is a new array, hiding the bug on the first click!
+  }
+```
+
+The interface displays broken state history: clicking Undo clears the Undo button, but Blue Bicycle remains permanently stuck on Liked because the saved snapshot shared the mutated object.
+
+Watch what happens on the screen when the listener clicks **Like** on Blue Bicycle at index `1` and then clicks **Undo**. First, the listener clicks **Like** on Blue Bicycle. Because `next` is a brand-new outer array, React sees a new array reference, re-renders right away, and switches Blue Bicycle's button to **Liked**. Everything looks fine on the first click:
+
+```page width=text caption="The Up Next page after a click on Like next to Blue Bicycle, when the handler mutates the song inside a copied array."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next] [Undo]
+line: 1. Sunny Road · Now playing [Like] [Remove]
+line: 2. Blue Bicycle [Liked] [Remove] | good
+line: 3. Night Train [Like] [Move up] [Remove]
+console: quiet
+```
+
+Next, the listener clicks **Undo** to take that like back. The **Undo** button disappears, yet Blue Bicycle stays stuck on **Liked**!
+
+```page width=text caption="The Up Next page after a click on Undo, with Blue Bicycle still stuck on Liked."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next]
+line: 1. Sunny Road · Now playing [Like] [Remove]
+line: 2. Blue Bicycle [Liked] [Remove] | bad
+line: 3. Night Train [Like] [Move up] [Remove]
+console: quiet
+```
+
+**Shared references break historical state: mutating an object through a shallow array copy alters the same object referenced by previous state snapshots, making Undo appear completely non-functional.**
+1. Spreading `queue` into `next` built a new outer array, yet the second slot of both arrays still pointed at the exact same Blue Bicycle object.
+2. Flipping `next[1].liked` walked down that shared link and mutated that shared object's `liked` property in place.
+3. Calling `setPrevious` with `queue` saved the old array for **Undo**, and its second slot still pointed at that same mutated Blue Bicycle object!
+4. When the listener clicked **Undo**, React restored `previous`, read `song.liked` from that mutated object, and rendered **Liked** all over again!
+
+The same bug appears whenever two arrays share item objects. Suppose a second list on the page, such as a **Favorites** list, started as a copy of `queue`. Mutating Blue Bicycle through `queue` would flip it in **Favorites** too, because both arrays point at the exact same Blue Bicycle object in memory.
+
+### Targeted Object Replacement: map and Object Spread Preserve Snapshot Isolation
+
+To update one song without touching any earlier array that holds it, we use `queue.map` inside `handleLike`. For the matching song we build a brand-new object with spread, and we return every other song unchanged:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="41"
+  function handleLike(id) {
+    setPrevious(queue);
+    ~setQueue(queue.map(s => s.id === id ? { ...s, liked: !s.liked } : s));~ // Replaces ONLY the matching song with a brand-new object
+  }
+```
+
+The new handler finds the song by its `id` instead of its position, so the **Like** button in each row now passes `song.id`:
+
+```jsx title="src/components/PlayQueue.jsx" startLine="60"
+        {queue.map((song, index) => (
+          <li key={song.id}>
+            {song.title}
+            {index === 0 && ' · Now playing'}{' '}
+            <button ~onClick={() => handleLike(song.id)}~> {/* Passes song.id so handleLike replaces only this song */}
+              {song.liked ? 'Liked' : 'Like'}
+            </button>{' '}
+            {index > 1 && <button onClick={() => handleMoveUp(index)}>Move up</button>}{' '}
+            <button onClick={() => handleRemove(song.id)}>Remove</button>
+          </li>
+        ))}
+```
+
+Look closely at `{ ...s }` inside `queue.map`. You do not see `id` or `title` written inside those curly braces!
+
+**Targeted mapping preserves unmutated object identities: `map` returns existing references for untouched items and allocates a fresh object literal via object spread only for the target item.**
+1. Calling `queue.map` runs our arrow function once for each song `s`. It also passes the item index as a second argument whenever you need to replace an item by index.
+2. For Sunny Road and Night Train, `s.id === id` is `false`, so the ternary returns the existing song object as is. Only the changed song gets a new object!
+3. For Blue Bicycle, `s.id === id` is `true`. Object spread `{ ...s }` creates a brand-new object and copies every existing property from `s`, including its id and title. Then `liked: !s.liked` after the spread overwrites that property to `true` on the new object!
+4. Now the second slot of `previous` still points at the original Blue Bicycle object with `liked: false`. Meanwhile, the second slot of the new `queue` points at the brand-new Blue Bicycle object with `liked: true`.
+5. When the listener clicks **Undo**, React restores `previous`, reads `liked: false` from the untouched original object, and flips the button right back to **Like**!
+
+```page width=text caption="The Up Next page after Like and then Undo on Blue Bicycle, when the handler replaces the song with queue.map."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next]
+line: 1. Sunny Road · Now playing [Like] [Remove]
+line: 2. Blue Bicycle [Like] [Remove] | good
+line: 3. Night Train [Like] [Move up] [Remove]
+console: quiet
+```
+
+Notice that `queue.map` is not limited to replacing a single item by `id`. You use the exact same `map` pattern whenever you want to change several items or every item at once. For instance, an **Unlike all** button can map over `queue` and return a fresh copy of every song with `liked: false`.
+
+When state is deeply nested and copying every level by hand feels repetitive, the optional **Immer** library can help. With Immer, you change a temporary `draft` object, and Immer builds the new nested copies for you behind the scenes. Moving each song row into its own child component, or gathering every array update into a reducer, comes in later lessons.
+
+Here is what the second slot of `previous` and the new `queue` point to in memory under both approaches:
+
+```tree dir=right caption="Why mutating next[1].liked inside a shallow array copy corrupts previous[1], while queue.map and { ...s } give the new array its own song object."
+Slot `1` for Blue Bicycle inside `previous` vs. the new `queue`
+- !Mutate `next[1].liked` inside `[...queue]` | `previous[1]` and `next[1]` point at the **same object** | Both see `liked: true`, so **Undo fails**
+- +Replace with `queue.map` and `{ ...s, liked: !s.liked }` | `previous[1]` keeps the **original `liked: false` object** | New `queue[1]` gets a **new `liked: true` object**, so **Undo works**
+```
+
+> [!PRINCIPLE]
+> **Principle 5: A Copied Array Still Holds the Same Songs, So Changing One Song Means a New Song Object**
+>
+> *To update one object inside a state array, use `map` to return a brand-new copied object for that item and keep every other item unchanged.*
+>
+> Copying an array with spread, `slice`, or `filter` makes a shallow copy whose slots still point at the exact same item objects in memory. Mutating an item inside a copied array changes that shared object inside the old state array and inside any saved `previous` snapshot too. That hidden mutation breaks **Undo**, because the saved array shows the change too.
+>
+> **DO THIS:**
+> ```jsx
+> function handleLike(id) {
+>   setPrevious(queue);
+>   ~setQueue(queue.map(s => s.id === id ? { ...s, liked: !s.liked } : s));~ // New array AND a brand-new object for the liked song
+> }
+> ```
+>
+> **DO NOT DO THIS:**
+> ```jsx
+> function handleLike(index) {
+>   const next = [...queue];
+>   ~next[index].liked = !next[index].liked;~ // **WRONG:** mutates the song object still shared with queue and previous!
+>   setPrevious(queue);
+>   setQueue(next);
+> }
+> ```
+
+---
+
+## Architectural Synthesis: The Unified Non-Mutating Queue Lifecycle
+
+### Production Implementation: The Complete Up Next Music Player Queue
+
+Here are the complete files of our **Up Next** music player queue, bringing all five array principles together in one component.
+
+First, our main application file imports and renders `PlayQueue`:
+
+```jsx title="src/App.jsx"
+import PlayQueue from './components/PlayQueue.jsx';
+
+export default function App() {
+  return ~<PlayQueue />~; // Renders the complete Up Next music queue component
+}
+```
+
+Second, our queue file holds the `queue` array and the `previous` array for **Undo** in state. Every button handler saves the untouched array for **Undo** and hands `setQueue` a brand-new array across all five operations:
+
+```jsx title="src/components/PlayQueue.jsx"
+import { useState } from 'react';
+
+let nextId = 4;
+
+const initialQueue = [
+  { id: 1, title: 'Sunny Road', liked: false },
+  { id: 2, title: 'Blue Bicycle', liked: false },
+  { id: 3, title: 'Night Train', liked: false },
+];
+
+export default function PlayQueue() {
+  const [queue, setQueue] = useState(initialQueue);
+  const [previous, setPrevious] = useState(null);
+
+  function handleAddToQueue() {
+    setPrevious(queue);
+    ~setQueue([...queue, { id: nextId++, title: 'Rainy Window', liked: false }]);~ // Principle 1: Spread to add at end
+  }
+
+  function handleRemove(id) {
+    setPrevious(queue);
+    ~setQueue(queue.filter(s => s.id !== id));~ // Principle 2: Filter to remove into a new array
+  }
+
+  function handlePlayNext() {
+    const insertAt = 1;
+    const newSong = { id: nextId++, title: 'Rainy Window', liked: false };
+    setPrevious(queue);
+    ~setQueue([...queue.slice(0, insertAt), newSong, ...queue.slice(insertAt)]);~ // Principle 3: Two slices to insert at index 1
+  }
+
+  function handleMoveUp(index) {
+    const next = [...queue];
+    const above = next[index - 1];
+    next[index - 1] = next[index];
+    next[index] = above;
+    setPrevious(queue);
+    ~setQueue(next);~ // Principle 4: Copy first, then swap on the copy
+  }
+
+  function handleLike(id) {
+    setPrevious(queue);
+    ~setQueue(queue.map(s => s.id === id ? { ...s, liked: !s.liked } : s));~ // Principle 5: Map + object spread to update one item
+  }
+
+  function handleUndo() {
+    setQueue(previous);
+    setPrevious(null);
+  }
+
+  return (
+    <section>
+      <h1>Up Next</h1>
+      <p>
+        Suggested: Rainy Window{' '}
+        <button onClick={handleAddToQueue}>Add to queue</button>{' '}
+        <button onClick={handlePlayNext}>Play next</button>{' '}
+        {previous && <button onClick={handleUndo}>Undo</button>}
+      </p>
+      <ol>
+        {queue.map((song, index) => (
+          <li key={song.id}>
+            {song.title}
+            {index === 0 && ' · Now playing'}{' '}
+            <button onClick={() => handleLike(song.id)}>
+              {song.liked ? 'Liked' : 'Like'}
+            </button>{' '}
+            {index > 1 && <button onClick={() => handleMoveUp(index)}>Move up</button>}{' '}
+            <button onClick={() => handleRemove(song.id)}>Remove</button>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+```
+
+### End-to-End Execution Flow: State Transitions Across Array Lifecycle Events
+
+Suppose the listener clicks **Play next** to insert Rainy Window behind Sunny Road at index `1`, and then clicks **Like** on Sunny Road. The **Up Next** page now shows Sunny Road as **Now playing** with **Liked**, Rainy Window in second place, and an active **Undo** button above the four songs:
+
+```page width=text caption="The finished Up Next music queue after inserting Rainy Window with Play next and liking Sunny Road."
+heading: Up Next
+line: Suggested: Rainy Window [Add to queue] [Play next] [Undo]
+line: 1. Sunny Road · Now playing [Liked] [Remove] | good
+line: 2. Rainy Window [Like] [Remove] | good
+line: 3. Blue Bicycle [Like] [Move up] [Remove]
+line: 4. Night Train [Like] [Move up] [Remove]
+console: quiet
+```
+
+Here is how the component and state flow work across the app on every click. First, `App` renders `<PlayQueue />`, which holds the current queue and the previous snapshot in state. When the listener clicks a button, the handler saves the untouched `queue` in `previous` and builds a brand-new array. Finally, `setQueue` compares the two arrays with `Object.is` (as seen in Lesson 13), sees a different array box, and re-renders the list with **Undo** history intact:
+
+```tree dir=right caption="How App mounts PlayQueue and how each button handler hands setQueue a brand-new array while preserving previous for Undo."
+Component and state flow in `music-queue`
+- +1. `App` renders `<PlayQueue />` | Holds `queue` and `previous` in state
+- +2. Listener clicks a queue button | Saves the untouched `queue` in `previous`, then builds a **brand-new array**
+- +3. `setQueue` checks `Object.is` | Sees a **different array box** and re-renders `PlayQueue` with intact `Undo` history
+```
+
+Compare the five plain JavaScript habits that mutate a state array in place with the five React rules we proved in this lesson:
+
+| Aspect | The Plain JavaScript Habit | The React Rule |
+| :--- | :--- | :--- |
+| **Adding an item** | Call `queue.push` or `queue.unshift` in place | Pass `[...queue, song]` for the end or `[song, ...queue]` for the start |
+| **Removing an item** | Call `queue.splice`, `pop`, or `shift` in place | Call `queue.filter` with `s.id !== id` so the old array stays whole |
+| **Inserting in the middle** | Call `queue.splice` at `insertAt` in place | Spread two `queue.slice` calls with the new song between them |
+| **Reordering or sorting** | Call `queue.sort`, `queue.reverse`, or swap `queue[i]` directly | Copy first with `const next = [...queue]`, then swap, sort, or reverse `next` |
+| **Changing one item's field** | Copy the array and mutate `next[i].liked = true` on the shared object | Call `queue.map` and return `{ ...s, liked: !s.liked }` for the target song |
+
+---
+
+## For the Interview
+
+> **The Interview Question:** How do you add, remove, insert, and reorder items in a state array?
+
+### How to Answer Clearly in 30 Seconds
+
+"In React, every array stored in state must be treated as read-only. In JavaScript, an array is a kind of object, and a state setter checks whether the state changed using `Object.is` (as seen in Lesson 13). Mutating the existing array in place with `push`, `splice`, `sort`, or `reverse` and passing that same array back makes `Object.is` return `true` and skips the re-render. Instead, we always pass a brand-new array to the setter using non-mutating methods:
+1. **To add**: spread the old items into a new array, using `[...arr, newItem]` for the end or `[newItem, ...arr]` for the start, or call `arr.concat`.
+2. **To remove**: call `arr.filter` with a test like `item.id !== id`, which returns a new array without that item and keeps the old array intact for **Undo**.
+3. **To insert in the middle**: spread two `arr.slice` calls with the new item between them inside new square brackets, because `slice` copies while `splice` mutates.
+4. **To reorder**: copy the array first with `const next = [...arr]`, then swap items or call `sort` or `reverse` on that fresh local copy, or use `toSorted` and `toReversed`.
+5. **To update an object inside the array**: because array copying is shallow, both the old array and the copied array point at the same item objects. We call `arr.map` and return a brand-new `{ ...item }` object for the changed item while returning every other item unchanged. For deeply nested arrays, we can also use Immer."
+
+### Three Classic Follow-Up Questions Interviewers Ask
+
+1. **"Why does calling `push`, `splice`, or `sort` on a state array leave the screen unchanged, and when might the mutated items suddenly show up?"**
+   Calling `push`, `splice`, or `sort` modifies the existing array in place instead of creating a new array. Passing that mutated array back to `setQueue` makes `Object.is` compare the array with itself, return `true`, and skip the re-render. However, the new items were already written into that array in memory. Whenever an unrelated state update in the component triggers a re-render later, React reads the mutated array and all the hidden changes suddenly appear on screen.
+2. **"If I copy the array first with `const next = [...queue]`, why is `next[0].liked = true` still a bug even though the screen re-renders?"**
+   Spreading `[...queue]` only creates a **shallow copy** of the array. Because the outer `next` array is a new array box, `Object.is` returns `false` and the screen re-renders on the first click. However, `next[0]` and `queue[0]` still point at the exact same song object in memory. Mutating `next[0].liked = true` corrupts that shared song object inside earlier render snapshots and inside any saved `previous` array for **Undo**. You must copy both the array and the changed item object using `queue.map` and object spread `{ ...s, liked: true }` (as seen in Lesson 17).
+3. **"What is the difference between `slice` and `splice`, and how do newer methods like `toSorted`, `toReversed`, and `toSpliced` help?"**
+   The `slice` method has no letter `p` and is non-mutating: it returns a shallow copy of part of the array and leaves the original array untouched. The `splice` method has the letter `p` and mutates the original array in place by inserting or deleting items directly. Newer JavaScript methods like `toSorted`, `toReversed`, and `toSpliced` are the non-mutating counterparts of `sort`, `reverse`, and `splice`. Each one copies the array and applies the change in a single call, returning a brand-new array ready to pass straight to `setQueue`.
+
+Here is a quick interview reference pairing each mutating JavaScript array method with the non-mutating React state recipe that replaces it:
+
+```tree dir=right caption="Quick interview reference: mutating array methods to avoid vs. non-mutating React state recipes."
+Updating an array in React state
+- +Add [`[...arr, item]` `[item, ...arr]`] | Replaces `push` and `unshift` | Returns a **new array** with the item at the end or start
+- +Remove [`arr.filter` with `x.id !== id`] | Replaces `pop`, `shift`, and `splice` | Returns a **new array** without the item and keeps the old array intact
+- +Insert [two `arr.slice` calls + spread] | Replaces `splice` at index `i` | Assembles two non-mutating **`slice` copies** around the new item
+- +Reorder [`const next = [...arr]` then `sort` or swap] | Replaces direct `arr.sort` or `arr[i] = ...` | Applies safe **local mutation** to a fresh copy, or uses `toSorted`
+- +Update item [`arr.map` with `{ ...x }`] | Replaces `next[i].field = ...` on a shallow copy | Builds both a **new array** and a **new item object**
+```
