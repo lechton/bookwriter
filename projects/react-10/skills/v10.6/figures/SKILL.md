@@ -77,8 +77,8 @@ A browser preview shows what the reader would see in a real browser. It shows ex
 - ` ```overlay `: the Vite error screen, with `message:`, `file:`, `help:`, and `code:` lines.
 
 **Size**:
-- `width=text` puts a small browser in the text column, at the same width as the paragraphs. Use it for one form, a few controls, one card, a short list, or a short Console.
-- Without it, the browser takes the full width. Use that for two columns, card grids, shop and mail pages, and long Console messages.
+- Without a width, a browser or a panel sits in the text column, at the same width as the paragraphs. That fits one form, a few controls, one card, a short list, or a short Console.
+- `width=full` makes it take the full width. Use it for long Console messages. Card grids (`row:` or `stack:`), shop pages, and mail pages take the full width without it. Inside `::: col`, the column sets the width.
 - Every state of the same page keeps the same width, so the reader sees only what changed.
 - `size=mini` makes the inside of the frame more compact. It does not change the width.
 

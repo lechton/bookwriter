@@ -257,11 +257,16 @@ function treeRight(node, theme = 'book') {
 }
 
 let figCounter = 0;
+let colDepth = 0;
 
-function widthCls(attrs) {
-  if (!attrs.width || attrs.width === 'full') return '';
-  if (attrs.width === 'text') return 'fig-text';
-  throw new Error(`Unknown figure width "${attrs.width}" (use width=text or width=full)`);
+function widthCls(attrs, { wide = false } = {}) {
+  if (attrs.width && attrs.width !== 'text' && attrs.width !== 'full') {
+    throw new Error(`Unknown figure width "${attrs.width}" (use width=text or width=full)`);
+  }
+  // Inside ::: col the column sets the width; the prose indent would push the picture out of its column.
+  if (colDepth > 0) return '';
+  if (attrs.width) return attrs.width === 'text' ? 'fig-text' : '';
+  return wide ? '' : 'fig-text';
 }
 
 function figWrap(inner, caption, cls = '') {
@@ -404,7 +409,7 @@ function pageMock(body, attrs) {
     if (raw.startsWith('line:') || raw.startsWith('text:')) {
       const [text, flag] = raw.slice(5).split('|').map((s) => s.trim());
       const cls = flag === 'good' ? ' pline-good' : flag === 'bad' ? ' pline-bad' : '';
-      const withButtons = esc(text).replace(/\[([A-Za-z][^\]]+)\]/g, '<span class="pbtn pbtn-inline">$1</span>');
+      const withButtons = esc(text).replace(/\[([A-Za-z0-9+-][^\]]*)\]/g, '<span class="pbtn pbtn-inline">$1</span>');
       items.push(`<div class="pline${cls}">${withButtons}</div>`);
       i++;
       continue;
@@ -543,7 +548,8 @@ function pageMock(body, attrs) {
   )}</span></div>
   <div class="${viewCls}">${viewInner}</div>${conHTML}
 </div>`;
-  return figWrap(html, attrs.caption, widthCls(attrs));
+  const grid = body.some((l) => /^\s*(row|stack):/.test(l));
+  return figWrap(html, attrs.caption, widthCls(attrs, { wide: grid }));
 }
 
 function shopMock(body, attrs) {
@@ -609,7 +615,7 @@ function shopMock(body, attrs) {
     </div>
   </div>
 </div>`;
-  return figWrap(html, attrs.caption, widthCls(attrs));
+  return figWrap(html, attrs.caption, widthCls(attrs, { wide: true }));
 }
 
 function mailMock(body, attrs) {
@@ -693,7 +699,7 @@ function mailMock(body, attrs) {
   </div>
   ${toolbar}${section}${list}
 </div>`;
-  return figWrap(html, attrs.caption, widthCls(attrs));
+  return figWrap(html, attrs.caption, widthCls(attrs, { wide: true }));
 }
 
 function domPanel(body, attrs) {
@@ -833,6 +839,62 @@ function renderCodeBlock(lang, attrs, body) {
   return editorBlock(body, edAttrs);
 }
 
+/* ---------------------------------------------------------------- Versus Titles (opt-in with a `<!-- vs -->` line above a heading) */
+
+function splitOutsideCode(s, sep) {
+  const codes = [];
+  const masked = s.replace(/`[^`]+`/g, (c) => {
+    codes.push(c);
+    return `\u0001${codes.length - 1}\u0001`;
+  });
+  const at = masked.indexOf(sep);
+  if (at < 0) return null;
+  const restore = (t) => t.replace(/\u0001(\d+)\u0001/g, (_, n) => codes[Number(n)]);
+  return [restore(masked.slice(0, at)).trim(), restore(masked.slice(at + sep.length)).trim()];
+}
+
+function versusSide(text, letter) {
+  const code = (text.match(/`([^`]+)`/) || [])[1];
+  const label = text
+    .replace(/`[^`]+`/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^[a-z]/, (c) => c.toUpperCase());
+  const codeHtml = code ? `<code class="vs-code">${esc(code)}</code>` : '';
+  const labelCls = code ? 'vs-label' : 'vs-label vs-label-solo';
+  return `<span class="vs-side vs-${letter}"><span class="vs-letter">${letter.toUpperCase()}</span><span class="${labelCls}">${inline(label)}</span>${codeHtml}</span>`;
+}
+
+/* Two shapes: "A vs. B: explanation" and "Topic: A vs. B". Returns null when the heading has neither. */
+function renderVersusTitle(raw, level) {
+  const head = splitOutsideCode(raw, ': ');
+  let topic = '';
+  let pair = null;
+  let explain = '';
+  if (head && splitOutsideCode(head[0], ' vs. ')) {
+    pair = splitOutsideCode(head[0], ' vs. ');
+    explain = head[1];
+  } else if (head && splitOutsideCode(head[1], ' vs. ')) {
+    topic = head[0];
+    pair = splitOutsideCode(head[1], ' vs. ');
+  } else {
+    pair = splitOutsideCode(raw, ' vs. ');
+  }
+  if (!pair) return null;
+  const board = `<span class="vs-board">${versusSide(pair[0], 'a')}<span class="vs-medal" aria-hidden="true">vs</span>${versusSide(pair[1], 'b')}</span>`;
+  let explainHtml = '';
+  explain = explain.replace(/^[a-z]/, (c) => c.toUpperCase());
+  if (explain) {
+    const clauses = splitOutsideCode(explain, ', while ');
+    explainHtml = clauses
+      ? `<span class="vs-explain"><span class="vs-u vs-u-a">${inline(clauses[0])}</span>, while <span class="vs-u vs-u-b">${inline(clauses[1])}</span></span>`
+      : `<span class="vs-explain"><span class="vs-u vs-u-ab">${inline(explain)}</span></span>`;
+  }
+  const kicker = level === 2 ? `<span class="section-kicker">Overview · Two Ways Side by Side</span>` : '';
+  const topicHtml = topic ? `<span class="vs-topic">${inline(topic)}</span>` : '';
+  return `<h${level} class="vs-title vs-h${level}">${kicker}${topicHtml}${board}${explainHtml}</h${level}>`;
+}
+
 /* ---------------------------------------------------------------- Block Parser & Renderer */
 
 function parseAndRender(md, theme = 'book') {
@@ -853,6 +915,21 @@ function parseAndRender(md, theme = 'book') {
     }
 
     let m;
+    // Opt-in marker: draw the next heading as a versus title
+    if (line.trim() === '<!-- vs -->') {
+      const next = lines[i + 1] || '';
+      const hm = next.match(/^(#{2,3})\s+(.*)$/);
+      const vs = hm && theme !== 'old' ? renderVersusTitle(hm[2], hm[1].length) : null;
+      if (vs) {
+        if (hm[1].length === 3) lastH3 = hm[2];
+        out.push(vs);
+        i += 2;
+      } else {
+        i++;
+      }
+      continue;
+    }
+
     // H1
     if ((m = line.match(/^#\s+(.*)$/))) {
       const numMatch = m[1].match(/^Lecture\s+(\d+):\s*(.*)$/);
@@ -946,12 +1023,10 @@ function parseAndRender(md, theme = 'book') {
           const flow = attrs.flow === 'down' ? ' col-flow' : '';
           const tag = attrs.tag ? ` <span class="col-tag">${esc(attrs.tag)}</span>` : '';
           const head = attrs.title ? `<div class="col-head">${inline(attrs.title)}${tag}</div>` : '';
-          cols.push(
-            `<div class="col${tone}${flow}">${head}<div class="col-body">${parseAndRender(
-              body.join('\n'),
-              theme
-            )}</div></div>`
-          );
+          colDepth++;
+          const colHTML = parseAndRender(body.join('\n'), theme);
+          colDepth--;
+          cols.push(`<div class="col${tone}${flow}">${head}<div class="col-body">${colHTML}</div></div>`);
         } else {
           i++;
         }
