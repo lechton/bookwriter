@@ -1,0 +1,995 @@
+# Lecture 12: Component Memory with useState
+> INTERVIEW QUESTION | ❱ CORE | Why do ordinary variables forget their values between renders, and how does useState remember?
+
+---
+
+## The Stateless Function Dilemma: Why Components Need External Fiber Memory
+
+### Ephemeral Local Variables vs. Persistent React State
+
+In JavaScript, a function is stateless. When a function executes, it allocates temporary variables on its call stack, returns a value, and immediately discards its stack frame. When you call that function a second time, it starts over from scratch.
+
+A React component is a plain JavaScript function. When a user interacts with your page by clicking a button, typing into a field, or opening a menu, the component must remember what happened and update the screen.
+
+Look at what happens when you build a counter using an ordinary local variable versus React's `useState`:
+
+```jsx title="Option 1: A plain local let variable inside a component"
+function Counter() {
+  ~let count = 0;~ // 1. Allocated fresh on every single render
+
+  function handleClick() {
+    ~count = count + 1;~ // 2. Modifies local stack memory, but never notifies React!
+  }
+
+  return <button onClick={handleClick}>Count: {count}</button>;
+}
+```
+
+Now compare that with the React state Hook:
+
+```jsx title="Option 2: Component memory with useState"
+import { ~useState~ } from 'react'; // 1. Import useState from React
+
+function Counter() {
+  const ~[count, setCount]~ = useState(0); // 2. React stores count externally on the component Fiber node
+
+  function handleClick() {
+    ~setCount(count + 1);~ // 3. Dispatches next value to React and schedules a re-render!
+  }
+
+  return <button onClick={handleClick}>Count: {count}</button>;
+}
+```
+
+**When the page first loads, both versions display `Count: 0` on the screen. They look identical at first, but under the hood they are NOT the same thing at all!**
+
+In Option 1, clicking the button leaves the screen completely frozen on `Count: 0`. A plain local `let` variable fails to update the screen for two physical reasons:
+1. **Mutating local variables never notifies React**: Writing `count = count + 1` alters a local memory address in silence. React has zero listeners on plain local variables and receives no signal that data changed, so it never schedules a re-render.
+2. **Re-rendering destroys and recreates local variables**: Even if the component re-renders because its parent updated, React invokes `Counter` from line 1. The line `let count = 0` runs all over again, instantly wiping out any previous local mutation.
+
+In Option 2, calling `useState` instructs React to allocate a persistent memory cell outside the component function on its internal Fiber node. When the component function finishes executing, React holds the value safe in memory. Calling `setCount` updates that external cell and immediately schedules a new render pass.
+
+Look at the three core terms of React component memory:
+- **State**: component-scoped memory that React stores outside the function on its Fiber tree so it survives across renders.
+- **Hook**: a special function whose name begins with `use`, such as `useState`, that connects a component to React internal memory and lifecycle systems.
+- **The two returned items**: calling `useState` returns a two-item array. Item 0 is the current state value read from React memory, and item 1 is the setter function that dispatches updates and schedules re-renders.
+
+```tree caption="Why a plain local let variable leaves the screen frozen while useState remembers values across renders."
+Two ways to store data inside a component
+- !Plain local variable [`let count = 0`] | Stack frame destroyed when function returns | Mutating variable **never notifies React**, so the UI stays frozen
+- +React state Hook [`[count, setCount]`] | Stored externally on React **Fiber node** | Calling `setCount` **saves the next value** and **triggers a re-render**
+```
+
+### Array Destructuring: Unpacking Tuple Positions into Arbitrary Names
+
+When you see the square brackets around `[count, setCount]`, they represent standard JavaScript array destructuring.
+
+Calling `useState` returns a two-item array where item 0 is the value and item 1 is the setter function. You could read those two items out one by one using numeric indices:
+
+```jsx title="Reading the two array items by index 0 and 1"
+const ~pair~ = useState(0); // 1. Returns a two-item array: [0, function]
+const ~count = pair[0]~; // 2. First item at index 0 is the current value
+const ~setCount = pair[1]~; // 3. Second item at index 1 is the setter function
+```
+
+Instead of writing three lines, JavaScript lets you unpack both items by position in one line using square brackets:
+
+```jsx title="The shortcut: unpacking both array items with [count, setCount]"
+const ~[count, setCount]~ = useState(0); // Exact same thing as reading pair[0] and pair[1]!
+```
+
+**Yes, it is the exact same thing!** Unpacking an array with square brackets on the left side of `=` is standard JavaScript array destructuring. Because arrays work by position rather than property names, you can choose any local variable names that fit your component, following the `[something, setSomething]` convention.
+
+```tree caption="Reading pair[0] and pair[1] by index is the exact same thing as array destructuring with [count, setCount]."
+Two ways to unpack the two-item array returned by `useState`
+- +1. Read by index one by one [`pair[0]` and `pair[1]`] | Reads item `0` into `count` and item `1` into `setCount` | Takes **three lines** of code
+- +2. Unpack with array destructuring [`[count, setCount]`] | Unpacks item `0` and item `1` **in one line** | **Exact same result**; you can choose any names you like
+```
+
+### The Interactive Story Card: Independent Counters and Toggles on Screen
+
+Now look at where component memory matters on a real page. Suppose our reader page displays a story card with a `Like` button and a `Show summary` toggle button.
+
+Each interaction on that card needs memory that survives between renders and updates the screen:
+1. When a reader clicks `Like`, the card must add one to its like count and display the new number on screen right away.
+2. When a reader clicks `Show summary`, the card must switch the button label to `Hide summary` and display the summary paragraph below the buttons.
+3. When two story cards sit side by side on the page, clicking a button on the first card must update only that first card, leaving the second card count and summary untouched.
+
+As our story card grows through this lesson, we configure `useState` in three ways depending on what the component needs:
+- **Passing a simple starting value directly**: when the starting value is an existing literal number or boolean like `0` or `false`, we pass it directly to the Hook.
+- **Passing an initializer function without parentheses**: when computing the starting value requires calling a setup function, we pass that function reference without parentheses so React calls it only on mount.
+- **Calling `useState` multiple times at the top level**: when one component tracks two independent pieces of data, we call `useState` once for each piece at the very top of the component.
+
+```tree caption="The three ways we set up useState as our story card grows across this chapter."
+Three ways to set up state with `useState`
+- +Simple starting value [`0` or `false`] | Best when the starting value is **already a simple value** | React uses it on the **first render** and ignores it on re-renders
+- +Initializer function [Passed by name without parentheses] | Best when computing the starting value **calls a function** | React calls the function **only once** on the first render
+- +Multiple `useState` calls [Two or more Hooks at the top] | Best when a component tracks **independent pieces of memory** | Called in the **exact same top-level order** on every render
+```
+
+### Prerequisites and File Architecture
+
+This lesson builds on three habits from earlier lessons:
+- **Object destructuring vs. array destructuring**: curly braces `{ title }` match fixed property names on an object, whereas square brackets `[count, setCount]` unpack array items by position (as seen in Lesson 08).
+- **Conditional rendering**: inside JSX, the ternary operator `? :` switches button labels between Hide and Show, and logical `&&` renders the summary paragraph only when its condition is true (as seen in Lesson 10).
+- **Passing a function reference vs. calling a function**: writing `onClick={handleClick}` without parentheses passes the function itself so it runs on user interaction, which is the exact same JavaScript rule governing initializer functions passed to `useState` (as seen in Lesson 11).
+
+Our project uses four files on disk. The main application file renders the page heading and story cards, while the card file holds the card state, buttons, and markup:
+
+```files title="story-reader: File Explorer" caption="How our four project files are organized on disk, and what each file exports or imports."
+index.html | entry | The HTML page with the root div where React mounts the app
+src/
+  main.jsx | boundary | Imports `App` from `./App.jsx` and mounts it into `#root`
+  App.jsx | parent | Exports `App` as default and imports `StoryCard` from `./components/StoryCard.jsx`
+  components/
+    StoryCard.jsx | state | Imports `useState` from `react` and exports `StoryCard` as default
+```
+
+### The Four Invariants of Component State
+
+**PRINCIPLES:** A component function runs from top to bottom every time it renders. Any ordinary local variable inside that function is created fresh when the function starts and forgotten when the function finishes. To give a component memory that lasts across renders and updates the screen, React provides the `useState` Hook, governed by four foundational invariants:
+1. **Principle 1: Ephemeral Stack Execution: Local Variables Vanish and Never Notify Reconcilers**: Storing changing screen data in a local `let` variable fails because local mutations never schedule a render and subsequent renders wipe stack memory back to `0`. Use `useState` so React stores the value externally and re-renders when you invoke its setter.
+2. **Principle 2: Lazy State Initialization: Pass an Initializer Reference to Defer Setup**: React uses initial state only on mount. If computing that starting value requires calling a setup function, pass the function reference without parentheses so JavaScript does not re-execute expensive setup on every re-render.
+3. **Principle 3: Call Order Invariance: React Matches State Slots by Sequential Execution Order**: React identifies multiple `useState` calls by their sequential execution order rather than by variable names. Because of that, every Hook must sit unconditionally at the top level of the component, never inside `if` blocks, loops, or after an early return.
+4. **Principle 4: Tree-Position Isolation: State Belongs to Rendered Instances, Not Functions**: State belongs to individual rendered component instances in the UI tree, not to the component function definition or module scope. Rendering two cards gives each card its own independent memory, and parent components cannot directly read or mutate a child card state.
+
+Here is the complete overview of all four principles before we walk through each one:
+
+| # | Principle | Why It Matters in Debugging and Interviews | The React Rule |
+| :--- | :--- | :--- | :--- |
+| **Principle 1** | **Ephemeral Stack Execution** | Updating a local `let` variable logs incrementing values in the Console while the screen stays frozen on the initial value. | Store changing UI data with `useState` and update it with its setter function so React records the value and schedules a re-render. |
+| **Principle 2** | **Lazy State Initialization** | Calling a setup function with parentheses inside `useState` executes that setup on every single render, even though React discards its return value after mount. | Pass the setup function reference without parentheses to `useState` so React invokes it only once during the initial mount. |
+| **Principle 3** | **Call Order Invariance** | Placing a `useState` call inside an `if` block or below an early `return` shifts React internal slot index and crashes the application on re-render. | Call every Hook unconditionally at the very top level of the component function so the call order stays identical on every render. |
+| **Principle 4** | **Tree-Position Isolation** | Developers often worry that two card tags will share one counter, or they place a `let` variable at module scope and accidentally link all card instances together. | Keep `useState` inside the component function; each rendered card on screen gets its own isolated state array attached to its position in the tree. |
+
+---
+
+## 1. Principle 1: Ephemeral Stack Execution: Local Variables Vanish and Never Notify Reconcilers
+
+### The Two-Fold Failure Mode of Local Variables
+
+When you declare an ordinary variable inside a component function using `let count = 0`, that variable is tied to the temporary execution stack frame of the function call.
+
+A plain local variable fails to update a component for two physical reasons:
+1. **Mutating local variables never schedules a render pass**: Writing `likes = likes + 1` modifies a memory address inside the current stack frame. Because React does not intercept assignments to plain JavaScript variables, the reconciler receives no notification and never schedules a new render pass.
+2. **Every re-render recreates local variables from scratch**: When React re-renders the component, JavaScript calls the component function again from line 1. The line `let likes = 0` executes again, resetting the variable to zero and wiping out any prior in-memory assignment.
+
+```tree caption="The two separate reasons an ordinary local let variable fails to update a React component."
+Why `let likes = 0` inside a component never updates the screen
+- !1. Mutating `likes` never triggers a re-render [`likes = likes + 1`] | Changes the local number in memory, **but never notifies React** | React **never calls the component again**, so the screen stays frozen
+- !2. Re-rendering resets `likes` from scratch [`let likes = 0` at line 1] | Every render calls your component function **again from the top** | Runs `let likes = 0` **all over again**, wiping out any earlier change
+```
+
+### Positional Destructuring and Constant Render Snapshots
+
+When we replace a local variable with `useState`, we write `const [likes, setLikes] = useState(0)`.
+
+Notice why we unpack `props` with curly braces like `{ title }` while unpacking `useState` with square brackets like `[likes, setLikes]`. Objects store values under fixed property keys, so curly braces match the exact name of each property (as seen in Lesson 08). Arrays store values by sequential position, so square brackets unpack item 0 and item 1 under any local names you choose:
+
+```js title="Object destructuring with { } vs. array destructuring with [ ]"
+const props = { ~title~: 'New Park Opens Today' }; // 1. An object: values are stored under fixed property names
+const ~{ title }~ = props; // Curly braces { } match the exact property name "title"
+
+const statePair = ~useState(0)~; // 2. An array: returns [0, function] at position 0 and position 1
+const ~[likes, setLikes]~ = statePair; // Square brackets [ ] unpack position 0 and position 1 under any names you choose!
+```
+
+Also notice why we declare `likes` with `const` even though the count changes over time.
+
+You never reassign `likes` with `=` yourself. During a single render of your component function, `likes` is a constant snapshot representing the state for that specific render pass. When you call `setLikes`, React executes the component function again in a brand-new render pass. In that new pass, React creates a fresh `const likes` holding the updated value:
+
+```tree caption="Why props use curly braces { } while useState uses square brackets [ ] and const."
+How `[likes, setLikes]` works in JavaScript
+- +Square brackets `[ ]` [Array destructuring] | `useState` returns a **two-item array** by position `0` and `1` | Lets you give item `0` and item `1` **any names you want**
+- +Declared with `const` [Never reassigned with `=`] | You **never** reassign `likes` with `=` | Each re-render runs the function anew with a **fresh `const likes`** holding the new value
+```
+
+### The Silent Failure: Console Logs Advance While the UI Remains Frozen
+
+Now let us start building our reader page and see the local variable defect in action. First, our main file imports the story card and places one card on the page with its title and summary props:
+
+```jsx title="src/App.jsx" startLine="1"
+import StoryCard from './components/StoryCard.jsx';
+
+export default function App() {
+  return (
+    <main>
+      <h1>Top Stories</h1>
+      ~<StoryCard~ // Renders one story card with its title and summary props
+        title="New Park Opens Today"
+        summary="The park on Main Street opens at noon."
+      />
+    </main>
+  );
+}
+```
+
+Inside the card file, suppose a developer stores the like count in a local `let` variable at the top of the function. Inside the click handler, the developer increments that variable and logs the value to the Console:
+
+```jsx title="src/components/StoryCard.jsx" startLine="1"
+export default function StoryCard({ title }) {
+  ~let likes = 0;~ // **WRONG:** plain local variable forgets its value and never triggers a re-render!
+
+  function handleLike() {
+    ~likes = likes + 1;~ // **WRONG:** mutates local variable in silence without telling React!
+    console.log('Local likes:', likes);
+  }
+
+  return (
+    <article className="card">
+      <h3>{title}</h3>
+      <p className="likes-text">Likes: {likes}</p>
+      <button className="like-btn" onClick={handleLike}>
+        Like
+      </button>
+    </article>
+  );
+}
+```
+
+**The user interface is completely frozen. Even though the Console logs incrementing numbers on every click, the screen stays stuck on `Likes: 0`.**
+
+**Mutating a local variable updates stack memory in silence without dispatching a render request, leaving the UI frozen.** Here is what happens in order when the user clicks the button:
+1. When the page first loads, React calls `StoryCard`, initializes `likes` to zero, and renders `Likes: 0` on the card.
+2. The user clicks `Like` a first time, and then a second time.
+3. In Chrome's Console panel, two lines appear: `Local likes: 1` and `Local likes: 2`. That confirms the click handler executed on each click.
+4. On the screen, the card remains stuck on `Likes: 0`. Because assigning to a local variable does not notify React, no re-render occurs.
+
+### Reconciler Dispatch: How setLikes Triggers a Fresh Render Pass
+
+To make the card remember its likes and redraw the screen on every click, we bring in React's state Hook at the top of the file and allocate a state slot for the like count:
+
+```jsx title="src/components/StoryCard.jsx" startLine="1"
+import { ~useState~ } from 'react'; // 1. Import the useState Hook from React
+
+export default function StoryCard({ title }) {
+  const ~[likes, setLikes]~ = useState(0); // 2. Unpacks the current likes count and the setLikes setter
+```
+
+Inside the click handler, we call `setLikes` with the next count so React records the new number and redraws the card:
+
+```jsx title="src/components/StoryCard.jsx" startLine="6"
+  function handleLike() {
+    ~setLikes(likes + 1);~ // 3. Save the next number in React and request a re-render!
+  }
+
+  return (
+    <article className="card">
+      <h3>{title}</h3>
+      <p className="likes-text">Likes: ~{likes}~</p> {/* 4. Displays the latest likes count from React state */}
+      <button className="like-btn" onClick={handleLike}>
+        Like
+      </button>
+    </article>
+  );
+}
+```
+
+React manages both persistence and execution scheduling through `useState` and `setLikes`.
+
+**Invoking a setter stores the updated value in React Fiber tree and schedules a new render pass, during which `useState` retrieves the updated value.** Here is how React handles the render cycle step by step:
+1. **On the first render**, `StoryCard` calls `useState(0)`. React allocates a state cell in its own memory outside `StoryCard`, initializes it to `0`, and returns `[0, setLikes]`. The card renders `Likes: 0`.
+2. **When the user clicks the button**, `handleLike` calls `setLikes(1)`.
+3. **Inside React**, `setLikes` records the number `1` into that state cell and dispatches a render request for `StoryCard`.
+4. **On the second render**, React calls `StoryCard` again. This time, `useState` ignores the initial argument `0`, reads the stored value `1` from React memory, and returns `[1, setLikes]`. React calculates the new DOM output and updates the paragraph to `Likes: 1`.
+
+```tree dir=right caption="What happens step by step from the first render through clicking Like with useState."
+How `useState` remembers `likes` across renders
+- +1. First render [`useState` with `0`] | React stores `0` in its external memory slot and returns `[0, setLikes]` | Screen shows **`Likes: 0`**
+- +2. User clicks `Like` [`setLikes` with `0 + 1`] | `setLikes` saves **`1`** into React memory slot | Tells React to **re-render `StoryCard`**
+- +3. Second render [`StoryCard` runs again] | `useState` ignores `0` and returns **`[1, setLikes]`** from React memory | Screen updates to **`Likes: 1`**
+```
+
+A plain local variable remains appropriate only for intermediate calculations that do not need to persist across renders or cause screen updates. Whenever a value must survive across render passes and reflect changes on the screen, store it in `useState`:
+
+::: row caption="Clicking Like twice with a local let variable vs. clicking Like twice with useState and setLikes."
+::: col title="With Local let likes = 0" tag="screen frozen at Likes: 0" tone=bad
+```page size=mini
+heading: Top Stories
+card: title=New Park Opens Today | text=Likes: 0 | foot=Like | bad=text
+```
+```devconsole
++ Local likes: 1 | StoryCard.jsx:6
++ Local likes: 2 | StoryCard.jsx:6
+```
+`handleLike` adds `1` in memory, but React never re-renders the card.
+:::
+::: col title="With useState and setLikes" tag="screen updates to Likes: 2" tone=good
+```page size=mini
+heading: Top Stories
+card: title=New Park Opens Today | text=Likes: 2 | foot=Like | good=text
+```
+```devconsole
+= No messages
+```
+Each click calls `setLikes`, which stores the new number in React and re-renders the card.
+:::
+:::
+
+> [!PRINCIPLE]
+> **Principle 1: Component Memory: Store Changing UI Data in `useState`, Never in a Local `let` Variable**
+>
+> *Store any changing value that updates the screen inside `useState`, and call its setter function to save the next value and trigger a re-render.*
+>
+> When you want a number on the screen to climb on every click, a plain local variable inside the component is a trap. You can add one to that variable in your click handler and watch the new number print in the Console, yet the screen stays frozen on zero. Changing a local variable never tells React to redraw the page, and every re-render resets that variable back to zero. Calling `useState` stores the value in React memory outside the function, and calling the setter updates the stored value and schedules a re-render.
+>
+> **DO THIS:**
+> ```jsx
+> import { useState } from 'react';
+>
+> export default function StoryCard({ title }) {
+>   const ~[likes, setLikes] = useState(0)~; // Stored in React memory across renders
+>   return <button onClick={() => ~setLikes(likes + 1)~}>{title}: {likes}</button>; // Saves next value and re-renders
+> }
+> ```
+>
+> **DO NOT DO THIS:**
+> ```jsx
+> export default function StoryCard({ title }) {
+>   ~let likes = 0;~ // **WRONG:** resets to 0 on every render and never triggers a re-render!
+>   return <button onClick={() => { ~likes = likes + 1;~ }}>{title}: {likes}</button>; // **WRONG:** screen stays frozen at 0!
+> }
+> ```
+
+---
+
+## 2. Principle 2: Lazy State Initialization: Pass an Initializer Reference to Defer Setup
+
+### Eager Argument Evaluation vs. Deferred Initializer Execution
+
+Suppose our starting like count is not zero, but must be computed by a helper function named `loadSavedLikes` that returns `10`.
+
+Look at the two ways you can provide `loadSavedLikes` to `useState`:
+
+```jsx title="Two ways to write loadSavedLikes inside useState"
+function loadSavedLikes() {
+  console.log('Reading saved likes...');
+  return 10;
+}
+
+const [likes, setLikes] = ~useState(loadSavedLikes())~; // 1. WITH parentheses: calls loadSavedLikes on EVERY render!
+const [likes, setLikes] = ~useState(loadSavedLikes)~;   // 2. WITHOUT parentheses: hands the function to React to call ONCE!
+```
+
+**Whether you write parentheses after `loadSavedLikes` or leave them off, the card starts at `Likes: 10` and increments on every click. On the screen both versions look identical, but in runtime performance they are NOT the same thing!**
+
+React only requires initial state during the very first render. On all subsequent renders, React already holds the active state value in its Fiber memory and ignores the initial value argument. You have two choices:
+- **Choice A: Direct call with `useState(loadSavedLikes())` for eager evaluation.** JavaScript evaluates call expressions inside argument lists immediately, before `useState` is entered.
+  - *Trade-off:* Acceptable for simple primitive literals like `0` or `false`, but wasteful if initialization involves storage reads, JSON parsing, or heavy computation because the function executes on every single re-render even though React discards its return value.
+- **Choice B: Initializer reference with `useState(loadSavedLikes)` for lazy initialization.** Hands the function reference itself to React without executing it. React invokes it only once during initial mount.
+  - *Trade-off:* Eliminates redundant execution on every subsequent render, but requires the function to accept zero arguments and be a pure calculation.
+
+```tree caption="Calling loadSavedLikes with parentheses inside useState vs. passing the initializer function without parentheses."
+Two ways to pass a function-computed starting value to `useState`
+- !With parentheses [`loadSavedLikes` called inside `useState`] | JavaScript calls `loadSavedLikes` **before `useState` runs on every render** | Wastes work on **every re-render** even though React throws the result away
+- +Without parentheses [`loadSavedLikes` passed by name] | Hands the **initializer function** to React | React calls `loadSavedLikes` **only once** on the first render
+```
+
+### Immediate Call Expressions vs. Passed Function References
+
+This follows the exact same JavaScript rule governing event handlers (as seen in Lesson 11). Appending parentheses to a function name executes it immediately and evaluates to its return value, whereas writing the function name without parentheses passes the function reference itself:
+
+```js title="Plain JavaScript: calling a function right now vs. passing the function itself"
+function loadSavedLikes() {
+  return 10;
+}
+
+const result = ~loadSavedLikes()~; // 1. With parentheses: runs loadSavedLikes RIGHT NOW and stores the number 10
+const fn = ~loadSavedLikes~;       // 2. Without parentheses: does NOT run it yet; stores the function itself
+```
+
+When you pass an initializer function to `useState` without parentheses, it must satisfy three requirements:
+1. It must accept zero arguments.
+2. It must be pure and return the starting state value.
+3. It is necessary only when computing the starting value requires executing logic, such as reading from storage or parsing complex data. When starting from a primitive literal like `0` or `false`, pass that value directly.
+
+### The Redundant Execution Trap: Setup Logic Fires on Every Single Render
+
+Look at what occurs when a developer defines `loadSavedLikes` and calls it with parentheses inside `useState`:
+
+```jsx title="src/components/StoryCard.jsx" startLine="1"
+import { useState } from 'react';
+
+function ~loadSavedLikes~() { // Helper that logs when it runs and returns the starting count 10
+  console.log('Reading saved likes...');
+  return 10;
+}
+```
+
+Inside the card component, the developer invokes that helper with parentheses inside the Hook:
+
+```jsx title="src/components/StoryCard.jsx" startLine="8"
+export default function StoryCard({ title }) {
+  const [likes, setLikes] = useState(~loadSavedLikes()~); // **WRONG:** parentheses call loadSavedLikes on EVERY re-render!
+
+  function handleLike() {
+    setLikes(likes + 1);
+  }
+
+  return (
+    <article className="card">
+      <h3>{title}</h3>
+      <p className="likes-text">Likes: {likes}</p>
+      <button className="like-btn" onClick={handleLike}>
+        Like
+      </button>
+    </article>
+  );
+}
+```
+
+**The user interface updates normally, but your application burns CPU on every frame by re-running expensive initialization logic in secret.**
+
+**Call expressions inside argument lists evaluate on every single render regardless of React, running setup logic repeatedly while React silently discards the result.** Here is what happens in Chrome's Console as the user clicks `Like` twice:
+1. **On initial page load**, JavaScript executes `loadSavedLikes()` and logs `Reading saved likes...` a first time. It passes the returned `10` into `useState`, and the card renders `Likes: 10`.
+2. **On the first click**, `setLikes` updates the state to `11` and re-renders `StoryCard`. As the component executes again, JavaScript runs `loadSavedLikes()` a second time and logs `Reading saved likes...` again. React ignores the returned `10` because the card already holds `11` in memory!
+3. **On the second click**, `StoryCard` re-renders for `12`, and JavaScript executes `loadSavedLikes()` a third time. Because the screen numbers advance from `10` to `11` and `12`, this redundant execution remains invisible until you inspect the Console.
+
+### The Initializer Pattern: Handing Execution Control to React
+
+To eliminate wasted setup work, we remove the parentheses and pass the function reference directly:
+
+```jsx title="src/components/StoryCard.jsx" startLine="8"
+export default function StoryCard({ title }) {
+  const [likes, setLikes] = useState(~loadSavedLikes~); // Passes the initializer function reference so React calls it ONCE!
+```
+
+**Passing a function reference inverts execution control: React executes the initializer exactly once during mount and quietly skips it on all subsequent renders.** Here is the runtime behavior:
+1. **On initial mount**, `StoryCard` passes the `loadSavedLikes` function reference to `useState`. React recognizes that the argument is a function, executes it once, stores the returned `10` in its memory cell, and returns `[10, setLikes]`. The Console logs `Reading saved likes...` exactly once.
+2. **On the second render after a click**, `StoryCard` passes `loadSavedLikes` to `useState` again. Because React already holds `11` in its memory cell, React ignores the argument and does not call `loadSavedLikes`. The Console stays clean.
+
+```tree dir=right caption="Why passing loadSavedLikes without parentheses runs it only on the first render."
+Why passing `loadSavedLikes` without parentheses runs it once
+- +1. First render [`loadSavedLikes` passed by name] | React sees a function, calls `loadSavedLikes`, and saves **`10`** | Console logs **`Reading saved likes...` once**
+- +2. Second render [Clicked `Like`, count is `11`] | React already holds **`11`** in memory and **skips `loadSavedLikes`** | **Zero extra Console logs**; no wasted work
+```
+
+::: row caption="Calling loadSavedLikes with parentheses inside useState vs. passing loadSavedLikes without parentheses."
+::: col title="Called with Parentheses: useState(loadSavedLikes())" tag="runs on every click" tone=bad
+```page size=mini
+heading: Top Stories
+card: title=New Park Opens Today | text=Likes: 12 | foot=Like
+```
+```devconsole
++ Reading saved likes... | StoryCard.jsx:4
++ Reading saved likes... | StoryCard.jsx:4
++ Reading saved likes... | StoryCard.jsx:4
+```
+JavaScript calls `loadSavedLikes()` on every render even though React discards the result.
+:::
+::: col title="Passed Without Parentheses: useState(loadSavedLikes)" tag="runs only once" tone=good
+```page size=mini
+heading: Top Stories
+card: title=New Park Opens Today | text=Likes: 12 | foot=Like
+```
+```devconsole
++ Reading saved likes... | StoryCard.jsx:4
+```
+React invokes `loadSavedLikes` once on mount and skips it on every subsequent render.
+:::
+:::
+
+> [!PRINCIPLE]
+> **Principle 2: Lazy Initialization: Pass an Initializer Function Reference to Avoid Wasted Setup Work**
+>
+> *When computing initial state requires executing a setup function, pass the function reference without parentheses so React calls it only once on mount.*
+>
+> React uses the initial state value only during the component initial render pass. When you write `useState(setup())` with parentheses, JavaScript executes `setup()` on every single re-render before `useState` is entered, and React throws away that returned value on every render after the first. Passing `useState(setup)` without parentheses hands the function to React as an initializer function. React invokes it once on mount and skips it on every re-render.
+>
+> **DO THIS:**
+> ```jsx
+> function loadSavedLikes() {
+>   return Number(localStorage.getItem('likes') ?? 10);
+> }
+> export default function StoryCard({ title }) {
+>   const [likes, setLikes] = ~useState(loadSavedLikes)~; // React calls loadSavedLikes only on initial mount
+>   return <p>Likes: {likes}</p>;
+> }
+> ```
+>
+> **DO NOT DO THIS:**
+> ```jsx
+> function loadSavedLikes() {
+>   return Number(localStorage.getItem('likes') ?? 10);
+> }
+> export default function StoryCard({ title }) {
+>   const [likes, setLikes] = ~useState(loadSavedLikes())~; // **WRONG:** reads localStorage again on every click, and React throws the result away!
+>   return <p>Likes: {likes}</p>;
+> }
+> ```
+
+---
+
+## 3. Principle 3: Call Order Invariance: React Matches State Slots by Sequential Execution Order
+
+### The Name Illusion: React Uses Index Pointers, Not Variable Identifiers
+
+Now suppose our card component needs two independent pieces of state: a number `likes` for the like count, and a boolean `showSummary` for toggling the summary text.
+
+To manage two pieces of state, we call `useState` twice at the top of the component:
+
+```jsx title="Calling useState twice at the top of a component"
+const [likes, setLikes] = ~useState(10)~;                // 1. First useState call -> Slot 0 holds 10
+const [showSummary, setShowSummary] = ~useState(false)~; // 2. Second useState call -> Slot 1 holds false
+```
+
+**When you write `likes` on line 1 and `showSummary` on line 2, it looks like React reads those variable names. In fact, React CANNOT see your variable names at all!**
+
+In JavaScript, the expression on the right side of `=` evaluates completely before the returned array is unpacked into local variable names on the left side. Neither `useState` call receives a string identifier like `'likes'` or `'showSummary'`.
+
+React tells multiple `useState` calls apart using an internal array of state cells and an index pointer:
+- When React begins rendering a component, it initializes an internal pointer `currentHookIndex` to `0`.
+- The first `useState` call that executes reads Slot 0, retrieves `10`, and advances the pointer to `1`.
+- The second `useState` call that executes reads Slot 1, retrieves `false`, and advances the pointer to `2`.
+
+As long as every Hook runs unconditionally at the top level of the component, every render executes Hook 1 and Hook 2 in the exact same sequence. Slot 0 always matches `likes`, and Slot 1 always matches `showSummary`. If a Hook is skipped or added conditionally, the slot order shifts and React aborts with a fatal error:
+
+```tree caption="React cannot see your variable names; it matches each useState call to its memory slot by its top-to-bottom call order."
+How React tells multiple `useState` calls apart inside one component
+- +1st `useState` call at the top [`likes`] | Always opens **Slot 0** in React internal array | Returns **`[10, setLikes]`** on every render
+- +2nd `useState` call right below it [`showSummary`] | Always opens **Slot 1** in React internal array | Returns **`[false, setShowSummary]`** on every render
+- !A `useState` call inside `if` or after `return` [Skipped on some renders] | Changes how many Hooks run from one render to the next | **Crashes React** because the slot order no longer matches!
+```
+
+### The Fiber Hook Array: Index Pointers and Unconditional Call Order
+
+Under the hood, React maintains an internal array of state slots paired with a call index counter that resets to `0` at the start of every render pass:
+
+```js title="Mental model: how React tracks useState slots by call order"
+let componentHooks = [ ~[10, setLikes]~, ~[false, setShowSummary]~ ]; // Slot 0 and Slot 1 stored by React
+let ~currentHookIndex = 0~; // Resets to 0 at the start of every render, then steps 0 -> 1 as each useState runs!
+```
+
+Because React relies on `currentHookIndex` stepping through slots in the exact same sequence on every render pass, all Hooks must obey one strict rule:
+- **Call every Hook unconditionally at the very top level of your component function.**
+- Never call `useState` inside an `if` block, a loop, or a nested function.
+- Never place a Hook below an early `return`; early return conditions must sit below every Hook call at the top of the function.
+
+### The Early Return Crash: Skipping Hooks Throws Reconciler Mismatch Errors
+
+Suppose a developer declares the first state variable and then adds an early return for popular stories above the second state variable:
+
+```jsx title="src/components/StoryCard.jsx" startLine="8"
+export default function StoryCard({ title, summary }) {
+  const [likes, setLikes] = useState(loadSavedLikes); // 1. Slot 0: runs on every render
+
+  if (likes > 10) {
+    ~return <p>Popular story!</p>;~ // **WRONG:** early return sits ABOVE the second useState call!
+  }
+
+  const [showSummary, setShowSummary] = ~useState(false)~; // **WRONG:** Slot 1 runs on Render 1, but is skipped when likes > 10!
+```
+
+When the page first loads, `likes` is `10`. The condition `likes > 10` is false, so both Hook calls execute for Slot 0 and Slot 1, and the page renders without errors.
+
+**The screen instantly crashes to a blank white page with an unrecoverable runtime error.**
+
+**Skipping a Hook changes the number of Hook calls between renders, causing React internal slot index to misalign and triggering a fatal reconciler crash.** Here is the crash sequence when the user clicks `Like`:
+1. Calling `setLikes` updates the count from `10` to `11` and triggers a re-render.
+2. On this second render, `useState` for `likes` runs at Slot 0.
+3. Because `likes` is now `11`, the condition `likes > 10` evaluates to true, and `StoryCard` returns early on line 12.
+4. The second `useState` call on line 15 is skipped. React expected two Hook calls just like on mount, detects only one, and immediately crashes:
+
+```devconsole
+x Uncaught Error: Rendered fewer hooks than expected. This may be caused by an accidental early return statement.
+```
+
+### The Conditional Hook Crash: Adding Hooks on Re-render Crashes React
+
+The opposite mistake triggers the exact same failure mode. Suppose a developer places the second Hook inside an `if` block so it runs only when likes exceed ten:
+
+```jsx title="src/components/StoryCard.jsx" startLine="8"
+export default function StoryCard({ title, summary }) {
+  const [likes, setLikes] = useState(loadSavedLikes);
+
+  if (likes > 10) {
+    const [showSummary, setShowSummary] = ~useState(false)~; // **WRONG:** Hook inside an if block only runs when likes > 10!
+  }
+```
+
+**The user interface crashes immediately upon interaction. Dynamically executing an additional Hook shifts pointer indices and violates React call-order invariant.**
+
+**Adding a Hook inside a conditional branch causes the second render to execute more Hooks than the first, instantly crashing React.** On initial mount, `likes` is `10`, so only one Hook executes. When the user clicks `Like`, `likes` becomes `11` and triggers a re-render. The `if` block executes and calls a second Hook that did not run on mount. React detects the unexpected call and aborts:
+
+```devconsole
+x React has detected a change in the order of Hooks called by StoryCard.
+x Uncaught Error: Rendered more hooks than during the previous render.
+```
+
+### Top-Level Unconditional Execution Guarantees Slot Alignment
+
+To ensure slot alignment across all renders, declare both `useState` calls unconditionally at the very top of the function:
+
+```jsx title="src/components/StoryCard.jsx" startLine="8"
+export default function StoryCard({ title, summary }) {
+  const [likes, setLikes] = ~useState(loadSavedLikes)~;     // 1. Slot 0: always runs 1st at the top of StoryCard
+  const [showSummary, setShowSummary] = ~useState(false)~; // 2. Slot 1: always runs 2nd at the top of StoryCard
+
+  function handleLike() {
+    setLikes(likes + 1);
+  }
+
+  function handleToggleSummary() {
+    ~setShowSummary(!showSummary);~ // 3. Flips Slot 1 between false and true
+  }
+```
+
+Below the handlers, the card renders the like button, the summary toggle button, and the conditional summary paragraph:
+
+```jsx title="src/components/StoryCard.jsx" startLine="20"
+  return (
+    <article className="card">
+      <h3>{title}</h3>
+      <p className="likes-text">Likes: {likes}</p>
+      <button className="like-btn" onClick={handleLike}>
+        Like
+      </button>
+      <button className="toggle-btn" onClick={handleToggleSummary}>
+        ~{showSummary ? 'Hide' : 'Show'} summary~ {/* 4. Switches button text when showSummary changes */}
+      </button>
+      ~{showSummary && <p className="summary-text">{summary}</p>}~ {/* 5. Renders summary paragraph only when showSummary is true */}
+    </article>
+  );
+}
+```
+
+Now Slot 0 for `likes` and Slot 1 for `showSummary` execute in the exact same sequence on every render. When the user clicks the toggle button, `setShowSummary` flips Slot 1 from `false` to `true` while Slot 0 stays at `10`. The button label switches to `Hide summary`, and the summary paragraph appears:
+
+::: row caption="Placing a second useState call after an early return vs. calling both useState Hooks unconditionally at the top of StoryCard."
+::: col title="Hook Below Early return" tag="crashes on re-render" tone=bad
+```page size=mini
+blank
+```
+```devconsole
+x Uncaught Error: Rendered fewer hooks than expected. This may be caused by an accidental early return statement.
+```
+When the count reaches eleven, the early `return` skips the second `useState` call and crashes React.
+:::
+::: col title="Both Hooks at the Top Level" tag="both states work independently" tone=good
+```page size=mini
+heading: Top Stories
+card: title=New Park Opens Today | text=Likes: 10 | lines=Like · Hide summary; The park on Main Street opens at noon. | good=lines
+```
+```devconsole
++ Reading saved likes... | StoryCard.jsx:4
+```
+Slot 0 for `likes` and Slot 1 for `showSummary` run in the exact same order on every render.
+:::
+:::
+
+> [!PRINCIPLE]
+> **Principle 3: Top-Level Hooks: Call Every `useState` Unconditionally at the Top of the Component**
+>
+> *Give a component as many `useState` variables as it needs, and always call every Hook unconditionally at the very top level of the component function.*
+>
+> When you declare multiple `useState` calls, React does not track them by variable name. React counts the calls sequentially: the first call accesses Slot 0, and the second call accesses Slot 1. If you place `useState` inside an `if` block, a loop, or after an early return, the Hook count and order shift between renders. The memory slots misalign, and React crashes with an unrecoverable error. Always call every Hook unconditionally at the top of your component.
+>
+> **DO THIS:**
+> ```jsx
+> export default function StoryCard({ title, summary }) {
+>   const [likes, setLikes] = ~useState(loadSavedLikes)~;     // 1. Slot 0: always runs 1st
+>   const [showSummary, setShowSummary] = ~useState(false)~; // 2. Slot 1: always runs 2nd
+>   return <article><h3>{title}</h3>{showSummary && <p>{summary}</p>}</article>;
+> }
+> ```
+>
+> **DO NOT DO THIS:**
+> ```jsx
+> export default function StoryCard({ title, summary }) {
+>   const [likes, setLikes] = useState(loadSavedLikes);
+>   if (!summary) {
+>     return <article><h3>{title}</h3></article>;
+>   }
+>   const [showSummary, setShowSummary] = ~useState(false)~; // **WRONG:** skipped while the summary is still loading, so the Hook order changes when it arrives and React throws an error!
+>   return <article><h3>{title}</h3>{showSummary && <p>{summary}</p>}</article>;
+> }
+> ```
+
+---
+
+## 4. Principle 4: Tree-Position Isolation: State Belongs to Rendered Instances, Not Functions
+
+### Function Blueprint vs. Distinct Tree Node Memory
+
+Now let us render a second `<StoryCard />` tag inside `App` directly below the first card:
+
+```jsx title="Rendering two <StoryCard /> tags inside App"
+export default function App() {
+  return (
+    <main>
+      <h1>Top Stories</h1>
+      ~<StoryCard~ // 1. First rendered StoryCard instance on screen
+        title="New Park Opens Today"
+        summary="The park on Main Street opens at noon."
+      />
+      ~<StoryCard~ // 2. Second rendered StoryCard instance on screen
+        title="Library Extends Hours"
+        summary="The central library stays open until 9 PM."
+      />
+    </main>
+  );
+}
+```
+
+**Both `<StoryCard />` tags on the page call the exact same `StoryCard` function. Because of that, it is easy to assume both cards share the same `likes` and `showSummary` variables, but they do NOT share state at all!**
+
+A component function is merely a blueprint. Each JSX tag placed in the render tree creates an independent Fiber node in the virtual DOM, and React attaches state cells directly to those individual Fiber nodes:
+- React does not attach state to the `StoryCard` function definition in your file.
+- React attaches a distinct two-slot state array to each rendered component instance at its exact position in the UI tree.
+- Updating state in the first card triggers reconciliation only for that first Fiber node, leaving the second card completely untouched.
+
+Unlike props, which `App` passes down into each card, state is completely private to the component instance that declares it. The parent component cannot inspect or mutate either card internal state.
+
+```tree caption="Each rendered <StoryCard /> tag on screen gets its own isolated, private state slots in React memory."
+Two `<StoryCard />` tags rendered inside `App`
+- +First `<StoryCard />` [`"New Park Opens Today"`] | Owns its own **`[Slot 0, Slot 1]`** state array in memory | Clicking `Like` here updates **only this first card**
+- +Second `<StoryCard />` [`"Library Extends Hours"`] | Owns a **completely separate `[Slot 0, Slot 1]`** state array | Stays untouched at **`Likes: 10`** and **`Show summary`**
+```
+
+### The Shared Module Variable Anti-Pattern: Corrupting State Across Instances
+
+When developers first notice that local variables reset on every render, they sometimes attempt a shortcut by moving the variable outside the component function to module scope:
+
+```jsx title="src/components/StoryCard.jsx" startLine="1"
+~let sharedLikes = 10;~ // **WRONG:** one module-level variable is shared across EVERY <StoryCard /> on the page!
+
+export default function StoryCard({ title }) {
+  return <article><h3>{title}</h3><p>Likes: {sharedLikes}</p></article>;
+}
+```
+
+**Interacting with one component silently corrupts or couples every other component instance across the screen.**
+
+Because ES modules are evaluated once when imported, there is exactly one `sharedLikes` memory address for the entire application. Every `<StoryCard />` instance reads from and writes to that single shared variable. Clicking one card alters data for every other card on the screen.
+
+When you declare state inside `StoryCard` with `useState`, you never have to duplicate component code to create separate cards. Each `<StoryCard />` tag rendered in the tree automatically receives its own isolated state cells.
+
+### Independent Fiber Nodes: Updating One Card Leaves Siblings Untouched
+
+Here is our updated main application file rendering two story cards side by side:
+
+```jsx title="src/App.jsx" startLine="1"
+import StoryCard from './components/StoryCard.jsx';
+
+export default function App() {
+  return (
+    <main>
+      <h1>Top Stories</h1>
+      ~<StoryCard~ // 1st card instance: gets its own [likes, showSummary] state in memory
+        title="New Park Opens Today"
+        summary="The park on Main Street opens at noon."
+      />
+      ~<StoryCard~ // 2nd card instance: gets its own separate [likes, showSummary] state in memory
+        title="Library Extends Hours"
+        summary="The central library stays open until 9 PM."
+      />
+    </main>
+  );
+}
+```
+
+Neither card file nor parent file passes an instance identifier into `useState`.
+
+**React binds state to each component distinct position in the UI tree; invoking a setter triggers reconciliation only for the targeted instance, leaving sibling instances completely untouched.** Here is how React tracks both instances:
+1. When `App` renders the `<main>` container, React identifies two `<StoryCard />` children at child position 1 and child position 2.
+2. React attaches an isolated two-slot state array to the first card Fiber node, and an entirely separate two-slot state array to the second card Fiber node.
+3. The user clicks `Like` twice and clicks `Show summary` once on the first card.
+4. Those interactions invoke the `setLikes` and `setShowSummary` dispatchers belonging exclusively to the first card instance.
+5. React re-renders only the first card with `[12, true]`, while the second card remains at `[10, false]` with its summary hidden.
+
+::: row caption="Two <StoryCard /> instances on the same page: interacting with the first card never affects the second card."
+::: col title="1. On Initial Page Load" tag="both cards start at [10, false]" tone=plain
+```page size=mini
+heading: Top Stories
+card: title=New Park Opens Today | text=Likes: 10 | lines=Like · Show summary
+card: title=Library Extends Hours | text=Likes: 10 | lines=Like · Show summary
+```
+Both `<StoryCard />` instances initialize their own two-slot state arrays to `[10, false]`.
+:::
+::: col title="2. After Clicking Card 1 Only" tag="Card 1 is [12, true]; Card 2 stays [10, false]" tone=good
+```page size=mini
+heading: Top Stories
+card: title=New Park Opens Today | text=Likes: 12 | lines=Like · Hide summary; The park on Main Street opens at noon. | good=text,lines
+card: title=Library Extends Hours | text=Likes: 10 | lines=Like · Show summary
+```
+Card 1 updates to `Likes: 12` and shows its summary, while Card 2 stays at `Likes: 10` with its summary hidden.
+:::
+:::
+
+Chrome's Elements panel confirms that only the first card DOM nodes were altered:
+
+```dom caption="What Chrome Elements panel shows after clicking Like twice and Show summary on the first StoryCard only."
+<main>
+  <h1>Top Stories</h1>
++ <article class="card"> | note: 1st <StoryCard /> instance: likes = 12, showSummary = true
+    <h3>New Park Opens Today</h3>
++   <p class="likes-text">Likes: 12</p>
+    <button class="like-btn">Like</button>
++   <button class="toggle-btn">Hide summary</button>
++   <p class="summary-text">The park on Main Street opens at noon.</p>
+  </article>
+  <article class="card"> | note: 2nd <StoryCard /> instance: still likes = 10, showSummary = false
+    <h3>Library Extends Hours</h3>
+    <p class="likes-text">Likes: 10</p>
+    <button class="like-btn">Like</button>
+    <button class="toggle-btn">Show summary</button>
+  </article>
+</main>
+```
+
+When you need two sibling components to share state and remain synchronized, state cannot be shared directly between siblings. Instead, you lift state up into their closest common ancestor (as taught in Lesson 24).
+
+> [!PRINCIPLE]
+> **Principle 4: Instance Isolation: State Is Isolated and Private to Each Rendered Component Tag**
+>
+> *State is attached to each rendered component instance on the screen, not to the function definition. Rendering `<StoryCard />` twice gives each card its own separate memory.*
+>
+> Because you write the `StoryCard` function only once in its file, it is easy to assume every `<StoryCard />` on the page shares the same state variables. React does not attach state to the function definition in the file. React attaches a separate state array to each component instance at its specific position in the render tree. Clicking a button on the first card updates only that first card. Never declare changing data at module scope outside the component, or every instance will overwrite the same shared variable.
+>
+> **DO THIS:**
+> ```jsx
+> export default function App() {
+>   return (
+>     <main>
+>       ~<StoryCard title="New Park Opens Today" summary="Opens at noon." />~ {/* Own isolated state */}
+>       ~<StoryCard title="Library Extends Hours" summary="Open until 9 PM." />~ {/* Own isolated state */}
+>     </main>
+>   );
+> }
+> ```
+>
+> **DO NOT DO THIS:**
+> ```jsx
+> ~let sharedLikes = 10;~ // **WRONG:** module-level variable is shared across all StoryCard instances!
+> export default function StoryCard({ title }) {
+>   return <article><h3>{title}</h3><p>Likes: {sharedLikes}</p></article>;
+> }
+> ```
+
+---
+
+## Complete Architectural Synthesis
+
+### Production Implementation: The 4-File Application
+
+Here are all four files of our story reader project working together. First, the HTML entry page provides the root container where React mounts the application:
+
+```html title="index.html" startLine="1"
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Top Stories</title>
+  </head>
+  <body>
+    ~<div id="root"></div>~ <!-- Root container where React mounts App -->
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+```
+
+Second, the entry script initializes the React root and renders the top-level component:
+
+```jsx title="src/main.jsx" startLine="1"
+import { createRoot } from 'react-dom/client';
+import App from './App.jsx';
+
+const root = createRoot(document.getElementById('root'));
+~root.render(<App />);~ // Mounts the App component tree into #root
+```
+
+Third, the story card component file defines the lazy initializer helper and declares both state variables unconditionally at the top of the function:
+
+```jsx title="src/components/StoryCard.jsx" startLine="1"
+import { ~useState~ } from 'react'; // Principle 1: Import the useState Hook from React
+
+function ~loadSavedLikes~() { // Principle 2: Initializer function called once per card instance on mount
+  console.log('Reading saved likes...');
+  return 10;
+}
+
+export default function StoryCard({ title, summary }) {
+  const [likes, setLikes] = ~useState(loadSavedLikes)~;     // Principle 2 & 3: Slot 0 initialized via function reference
+  const [showSummary, setShowSummary] = ~useState(false)~; // Principle 3: Slot 1 declared unconditionally at top level
+
+  function handleLike() {
+    setLikes(likes + 1);
+  }
+
+  function handleToggleSummary() {
+    setShowSummary(!showSummary);
+  }
+
+  return (
+    <article className="card">
+      <h3>{title}</h3>
+      <p className="likes-text">Likes: {likes}</p>
+      <button className="like-btn" onClick={handleLike}>
+        Like
+      </button>
+      <button className="toggle-btn" onClick={handleToggleSummary}>
+        {showSummary ? 'Hide' : 'Show'} summary
+      </button>
+      {showSummary && <p className="summary-text">{summary}</p>}
+    </article>
+  );
+}
+```
+
+Fourth, the main application file renders two independent story card instances side by side:
+
+```jsx title="src/App.jsx" startLine="1"
+import StoryCard from './components/StoryCard.jsx';
+
+export default function App() {
+  return (
+    <main>
+      <h1>Top Stories</h1>
+      ~<StoryCard~ // Principle 4: 1st card instance with its own private [likes, showSummary] state
+        title="New Park Opens Today"
+        summary="The park on Main Street opens at noon."
+      />
+      ~<StoryCard~ // Principle 4: 2nd card instance with its own private [likes, showSummary] state
+        title="Library Extends Hours"
+        summary="The central library stays open until 9 PM."
+      />
+    </main>
+  );
+}
+```
+
+### End-to-End Render Lifecycle and Instance Isolation
+
+When the application mounts, React calls `loadSavedLikes` once for each card instance. When the user clicks Like twice and toggles the summary on the first card, only that specific card re-renders with state `[12, true]`:
+
+```page caption="The finished application in the browser after clicking Like twice and Show summary on the first StoryCard."
+heading: Top Stories
+card: title=New Park Opens Today | text=Likes: 12 | lines=Like · Hide summary; The park on Main Street opens at noon. | good=text,lines
+card: title=Library Extends Hours | text=Likes: 10 | lines=Like · Show summary
+```
+
+```tree caption="The rendered component tree in App and the isolated state arrays React stores for each StoryCard instance."
+`App` [Root component in `App.jsx`] | Renders `<main>` with two `<StoryCard />` children | Cannot read or change either card private state
+- +1st `StoryCard` [`"New Park Opens Today"`] | **Slot 0**: `likes` is **`12`** | **Slot 1**: `showSummary` is **`true`** | Renders `Likes: 12`, `Hide summary`, and the summary paragraph
+- +2nd `StoryCard` [`"Library Extends Hours"`] | **Slot 0**: `likes` is **`10`** | **Slot 1**: `showSummary` is **`false`** | Renders `Likes: 10` and `Show summary` with the summary hidden
+```
+
+| Aspect | The Plain JavaScript Habit | The React Rule |
+| :--- | :--- | :--- |
+| **Where changing data lives** | Store a local `let` variable inside the function and reassign it with `=`, which never re-renders and resets on the next call | Unpack `[likes, setLikes]` from `useState` and call `setLikes` so React remembers the value and re-renders |
+| **Unpacking `useState`** | Confuse curly braces `{ }` for objects with square brackets `[ ]` for arrays | Use square-bracket array destructuring `[likes, setLikes]` to unpack item `0` and item `1` by position |
+| **Function-computed initial state** | Call `loadSavedLikes` with parentheses inside `useState`, which runs `loadSavedLikes` on every single re-render | Pass the initializer function `loadSavedLikes` without parentheses so React calls it only once on the first render |
+| **Multiple `useState` calls** | Assume React reads variable names, and place `useState` inside an `if` block or after an early `return` | Call every Hook unconditionally at the top level of the component so React `[Slot 0, Slot 1]` call order never changes |
+| **Multiple component instances** | Put `let sharedLikes` at the top of the file outside the function, linking all cards together | Keep `useState` inside the component; each rendered `<StoryCard />` tag on screen gets its own isolated, private state |
+
+---
+
+## Architectural Mastery for Senior Interviews
+
+> **The Interview Question:** Why do ordinary variables forget their values between renders, and how does useState remember?
+
+### The 30-Second Senior Invariant Summary
+
+Ordinary local variables declared inside a component function fail across renders for two reasons. First, reassigning a local variable like `likes` with `=` modifies stack memory in silence and never notifies React, so no re-render is scheduled. Second, whenever React re-renders the component, it executes the function again from line 1 and recreates all local variables from scratch.
+
+`useState` solves both problems by allocating state cells outside the component call stack on its Fiber node. Calling `useState` returns a two-item tuple unpacked via array destructuring: the current state value read from Fiber memory, and a setter function that dispatches the next value and schedules a reconciliation pass.
+
+Three architectural rules govern component state in production:
+- **Lazy initialization**: React consumes initial state only on mount. When initial state is computed by a function, passing the function reference without parentheses defers execution so setup runs once instead of on every frame.
+- **Call order invariance**: React matches multiple `useState` calls to Fiber state slots by sequential execution index rather than by variable names. Hooks must always be invoked unconditionally at the top level of the component.
+- **Tree-position isolation**: State is attached to individual component instances at their position in the UI tree. Rendering multiple instances of a component provides each instance with completely private, independent memory.
+
+### Deep-Dive Architectural Follow-Ups
+
+1. **"If `likes` changes across renders, why do we declare `[likes, setLikes]` with `const` instead of `let`, and with square brackets instead of curly braces?"**
+   We use `const` because we never mutate `likes` directly with `=` during a render pass. On each re-render, React calls the component function anew, producing a fresh `const likes` binding that holds that render snapshot value. We use square brackets `[likes, setLikes]` because `useState` returns a two-item array destructured by positional index `0` and `1`. By contrast, props is an object destructured by property key using curly braces `{ title, summary }` (as seen in Lesson 08).
+2. **"What is the runtime difference between calling `loadSavedLikes()` with parentheses inside `useState` versus passing `loadSavedLikes` without parentheses?"**
+   In JavaScript, function call expressions inside argument lists evaluate eagerly before the outer function receives control. If you write `useState(loadSavedLikes())`, JavaScript executes `loadSavedLikes()` on every single render pass, and React discards the returned value on all renders after initial mount. When you pass `useState(loadSavedLikes)` without parentheses, you provide an initializer function reference. React invokes the function only once during initial mount and skips it on all subsequent re-renders.
+3. **"Since you do not pass variable names into `useState`, how does React know which state value belongs to `likes` and which belongs to `showSummary`?"**
+   React associates Hooks with internal Fiber state cells strictly by sequential call order. Each component Fiber node maintains an internal linked list of hook records and an index pointer that resets to `0` at the start of each render pass. Call 1 accesses Slot 0, Call 2 accesses Slot 1, and so on. If a Hook is placed inside an `if` block or after an early return, the number of Hook calls shifts between renders, corrupting index alignment and causing React to throw a fatal error such as `Rendered fewer hooks than expected`.
+
+```tree dir=right caption="Interview comparison: a plain local variable vs. React state with useState."
+Local variable `let likes = 0` vs. `useState` in an interview
+- !Plain local variable [`let likes = 0`] | Reassigning `likes` with `=` **never triggers a re-render** | Re-running the component function **recreates `likes` at `0` from scratch**
+- +React `useState` Hook [`[likes, setLikes]`] | Stored by React **per component instance** and matched by **top-level call order** | Calling `setLikes` **updates the stored slot** and **triggers a re-render**
+```

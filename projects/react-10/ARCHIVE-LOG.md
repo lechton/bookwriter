@@ -217,3 +217,26 @@ The `archive/` subfolders of the `v1` folders were copied unchanged from the rea
 - 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/13-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-earth01-2026-11-09-2037.pdf
 - 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/13-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-old-2026-11-09-2037.pdf
 - 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/13-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-2026-11-09-2037.pdf
+- 2026-11-09 23:25 | archive Q35 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/35.md -> 01-02-md-LECTURES/v1/archive/35-2026-11-09-2325.md
+- 2026-11-10 01:34 | archive Q36 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/36.md -> 01-02-md-LECTURES/v1/archive/36-2026-11-10-0134.md
+- 2026-11-10 02:06 | archive Q37 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/37.md -> 01-02-md-LECTURES/v1/archive/37-2026-11-10-0206.md
+- 2026-11-10 02:35 | archive Q12 | bookstyle: before the style rewrite | 01-02-md-LECTURES/v1/12-gemini.md -> 01-02-md-LECTURES/v1/archive/12-gemini-2026-11-10-0235.md
+- 2026-11-10 02:35 | archive Q12 | bookstyle: before the style rewrite | 01-03-md-lectures-HTML/v1/12-gemini.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-2026-11-10-0235.html
+- 2026-11-10 02:35 | archive Q12 | bookstyle: before the style rewrite | 01-04-md-lectures-PDF/v1/12-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-2026-11-10-0235.pdf
+- 2026-11-10 02:38 | archive Q38 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/38.md -> 01-02-md-LECTURES/v1/archive/38-2026-11-10-0238.md
+- 2026-11-10 03:45 | archive Q13 | bookstyle: before the style rewrite | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0345.md
+- 2026-11-10 03:45 | archive Q13 | bookstyle: before the style rewrite | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0345.html
+- 2026-11-10 03:45 | archive Q13 | bookstyle: before the style rewrite | 01-04-md-lectures-PDF/v1/13-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-2026-11-10-0345.pdf
+- 2026-11-10 04:26 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0426.md
+- 2026-11-10 04:26 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0426.html
+- 2026-11-10 04:32 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0432.md
+- 2026-11-10 04:32 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0432.html
+- 2026-11-10 04:35 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0435.md
+- 2026-11-10 04:35 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0435.html
+- 2026-11-10 04:37 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0437.md
+- 2026-11-10 04:37 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0437.html
+- 2026-11-10 04:39 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0439.md
+- 2026-11-10 04:39 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0439.html
+- 2026-11-10 04:40 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0440.md
+- 2026-11-10 04:40 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0440.html
+- 2026-11-10 04:54 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0454.html
