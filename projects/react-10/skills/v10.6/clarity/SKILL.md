@@ -169,3 +169,128 @@ The owner's note: ALWAYS give a sharp, clear "what is going on" image with maxim
 > ```
 
 *Why this fails*: Nobody reads the page with `document.querySelector` right after `setCount`, so the reader learns to avoid a mistake no one makes, and misses the one everyone makes: using `count` right after `setCount` and getting the old number.
+
+## [ ] Is the style of the written text written with clarity-first principles? #2026_11_10_01_group_1
+
+The owner's words, 2026-11-10:
+
+> "In bookaudit I have processed some files into -gemini.html already, but I
+> find disappointing that the text is not clear in its style of writing...
+> Rewrite the whole logic from the original, try to be cautious in the way you
+> write it: clear vocabulary, active voice instead of passive, short sentences
+> instead of long (but not always short so that it is boring)... Examine and
+> apply the best principles to make it more readable... Use value to tell the
+> box what to display."
+
+**Instead of this** (COUNTER-EXAMPLE, Lecture 20):
+
+> ## Autonomous DOM State vs. Declarative Component State
+>
+> With normal elements like `<p>` or `<h1>`, changing the screen is simple: you
+> put a state variable inside the tag, update the state, and the screen
+> updates.
+>
+> Form inputs like `<input>`, `<textarea>`, and `<select>` are different because
+> the browser gives them their own private memory. When a user types into a plain
+> HTML input, the browser updates the text on its own. Your React component
+> cannot see what is inside the input while the user types, and cannot change or
+> clear the input simply by updating state.
+>
+> To make an input work like the rest of React, where changing state changes the
+> screen, we make it a controlled input in two steps:
+>
+> 1. Lock the input to state with value: Writing `value={text}` tells the input
+> to ignore its own browser memory and display only what is inside the text state
+> variable. Now, whenever your code changes text, for example by calling
+> `setText('')` when the user clicks Clear or Send, the input updates on screen
+> immediately.
+>
+> 2. Let keystrokes update state with onChange: Once value is locked to text,
+> typing on the keyboard will not change the input unless text itself changes.
+> Adding onChange takes every keystroke the user types and saves it into text, so
+> the input and the rest of your component update together on every letter.
+
+**You can write this** (PROPER, agreed with the owner for Lecture 20):
+
+> ## Autonomous DOM State vs. Declarative Component State
+> *(Who controls the text: the browser or React?)*
+>
+> With regular HTML elements like `<p>` or `<h1>`, React is fully in charge. You
+> put a state variable inside the tag, update that state, and React updates the
+> screen.
+>
+> Form inputs break this rule.
+>
+> Tags like `<input>`, `<textarea>`, and `<select>` manage themselves by default.
+> When someone types into a plain text box, the browser stores and displays that
+> text directly. React is completely left out:
+> - React cannot see what the user is typing.
+> - Updating React state will not clear or reset the input.
+>
+> To fix this disconnect, we turn the input into a **controlled input**. This
+> puts React back in the driver's seat using two steps:
+>
+> 1. **Use `value` to tell the box what to display:** Add `value={text}` to your
+> input tag. This tells the box to stop showing its own browser text and only show
+> what is inside your `text` variable. If your code resets `text` to empty—like
+> when the user clicks "Clear"—the box on screen empties at the same time.
+>
+> 2. **Update your state on every keystroke with `onChange`:** Once you set
+> `value={text}`, the box freezes. If you try to type, nothing happens because
+> the `text` variable has not changed yet. Adding `onChange` grabs each keystroke,
+> saves it into `text`, and updates the screen smoothly.
+
+*Why this fails*:
+1. **Abstract jargon and passive voice:** Phrasing like "private memory" or
+"lock the input to state with value" hides the direct human action. In contrast,
+"Use `value` to tell the box what to display" states the exact goal immediately.
+2. **Hidden consequences:** The counter-example buries what breaks inside a
+long paragraph. The rewrite immediately highlights the contrast and lists the
+two exact problems React faces.
+3. **Monotonous rhythm:** The original drags through long, flat sentences. The
+rewrite mixes punchy statements ("Form inputs break this rule.", "Once you set
+`value={text}`, the box freezes.") with clear explanations to keep the reader
+awake.
+
+### Style Checklist: Questions for the Auditor
+
+When checking each paragraph, ask these seven questions. If a paragraph fails
+any question, flag it and provide the rewrite:
+
+1. **[ ] Is there any passive voice, a missing actor, or indirect phrasing?**
+   Every action must clearly name the actor: the browser, React, the user, or
+   your component. Never hide the actor behind *"the text is updated"* or
+   *"memory is given"*.
+2. **[ ] Does the text use abstract metaphors instead of physical facts?**
+   Replace fanciful words like *"private memory"* or *"autonomous DOM state"*
+   with concrete reality: the browser remembers what was typed.
+3. **[ ] Are the consequences and practical stakes hidden or delayed?**
+   Never explain a technical rule without stating what breaks on screen:
+   *"React cannot see what the user types, and cannot clear the box."*
+4. **[ ] Is the sentence rhythm flat, sleepy, and monotone?**
+   Never string three or four long, comma-heavy sentences together. Break up
+   the rhythm with short, punchy statements (*"Form inputs break this rule."*,
+   *"The box freezes."*).
+5. **[ ] Does the text talk around the code with weak, indirect verbs?**
+   Replace weak descriptions like *"Writing `value={text}` enables the input
+   to..."* with direct, active instructions: *"Use `value` to tell the box
+   what to display."*
+6. **[ ] Are there academic filler words or stiff transitions?**
+   Cut formal words like *"Furthermore,"*, *"Consequently,"*, and *"It is worth
+   noting that"*. Use plain spoken transitions (*"Because of this,"*, *"Now,"*).
+7. **[ ] Does the text lean on the cliché "they look identical under the hood"?** #2026_11_10_02_group_1
+
+   What this asks:
+   1. Use the formula to underline a real, subtle difference, never a fake or toy difference raised for rhetorical effect.
+   2. Say what may be confused: something in the code, or something the reader sees, such as a Console message.
+   3. The confusion may live in the mental model rather than on the page: two pieces of code look different, but an inexperienced developer believes they do the same job. In that case, "they may look the same, they are NOT!" is earned.
+   4. If the two pieces of code look different and no confusion is in question, say so honestly.
+   5. Name the exact physical difference: who owns the data, when the code runs, or what breaks when real inputs arrive.
+
+   **PROPER** (mental-model similarity, agreed with the owner, Lecture 19):
+
+   > Adding Dan with `push` and adding Dan with three dots look different on the page, and the text should say so honestly. In the reader's mind, though, both do the same thing: "the list now has Dan in it." Here the confusion is real, and it is conceptual, not visual. The text earns its "NOT the same thing" by naming the hidden difference. `push` changes the existing array in place, so React receives the same array it already holds and skips the re-render. The three dots build a brand-new array, so React sees a change and updates the screen. In this case you can say "they may look the same, they are NOT!" Such mental-model similarities are ones that the inexperienced developer cannot fully grasp.
+
+   **COUNTER-EXAMPLE** (fake similarity, agreed with the owner, Lecture 12):
+
+   > A plain variable and a React state variable look different on the page. They also behave differently on the screen at the very first click: one counter stays frozen while the other goes up. Neither the eye nor the mind is likely to confuse them, so "they look identical at first, but under the hood they are NOT the same thing at all" is a rhetorical effect, not a real trap.
