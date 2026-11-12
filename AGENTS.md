@@ -19,7 +19,8 @@ All operations, shell commands, file inspections, and project workflows are root
 | `react 07` | `projects/react-07` | React 19 Production Lectures v7 (Q01–Q17) |
 | `react 08` | `projects/react-08` | React 19 Production Lectures v8 (experiment copied from react-07; react-07 frozen) |
 | `react 09` | `projects/react-09` | React 19 Production Lectures v9 (`v1` = **Original Version**, `v2` = **River Version**; frozen, continued in react-10) |
-| `react 10` | `projects/react-10` | React 19 Production Lectures v10 (`v1` = **River Version**, copied from react-09 `v2`; the default React project) |
+| `react 10` | `projects/react-10` | React 19 Production Lectures v10 (`v1` = **River Version**, copied from react-09 `v2`; frozen, continued in react-11) |
+| `react 11` | `projects/react-11` | React 19 Production Lectures v11 (exact copy of react-10, skills `v11.1`; the default React project) |
 | `react player` | `projects/react-player` | Svelte reader for the react-10 chapters with synced audio (Lecture 21 fully voiced) |
 | `vue 01` | `projects/vue-01` | Vue 3 Core & Architecture |
 | `css 01` | `projects/css-01` | CSS Interview Lectures |
@@ -33,7 +34,7 @@ Shared assets (not per-project):
 - `assets/` — shared stylesheets used by generated card/diagram HTML (referenced as `../../../assets/...` from build output folders).
 - `tools/` — workspace tooling: `resolve.mjs` (config resolver), `check-links.mjs` (link verifier), `shot.mjs` (screenshot helper).
 
-Whenever executing a command (e.g. `node src/build-lectures.mjs`), set the working directory to the active project folder under `projects/`. When a React request names no project, the active project is `react 10` (`projects/react-10`).
+Whenever executing a command (e.g. `node src/build-lectures.mjs`), set the working directory to the active project folder under `projects/`. When a React request names no project, the active project is `react 11` (`projects/react-11`).
 
 ## Machine Paths & The Config Law (Hardcore Expectation)
 
@@ -78,7 +79,7 @@ A project that keeps its own bank (react-06 today) has one live file, `questions
 
 ## Rule Authoring
 
-When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/`, `projects/react-06/skills/v6.7/`, `projects/react-07/skills/v7.1/`, `projects/react-08/skills/v8.1/`, `projects/react-09/skills/v9.1/`, and `projects/react-10/skills/v10.6/` (the latest version folder is live).
+When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/`, `projects/react-06/skills/v6.7/`, `projects/react-07/skills/v7.1/`, `projects/react-08/skills/v8.1/`, `projects/react-09/skills/v9.1/`, `projects/react-10/skills/v10.7/`, and `projects/react-11/skills/v11.1/` (the latest version folder is live).
 
 ### The Principles of Principles (Authoring Doctrine)
 
