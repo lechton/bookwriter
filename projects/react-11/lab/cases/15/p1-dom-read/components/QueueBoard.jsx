@@ -1,0 +1,26 @@
+import { useState } from 'react';
+
+export default function QueueBoard() {
+  const [number, setNumber] = useState(12);
+  const [announcement, setAnnouncement] = useState(
+    'Welcome! Please take a number.'
+  );
+
+  function handleNext() {
+    setNumber(number + 1);
+    setAnnouncement('Number ' + number + ', please come to the counter');
+    console.log(number);
+    console.log('DOM reads: ' + document.querySelector('.now-serving').textContent);
+  }
+
+  return (
+    <main>
+      <h1>Bakery Queue</h1>
+      <p className="now-serving">Now serving: {number}</p>
+      <p className="announcement">{announcement}</p>
+      <button className="next-btn" onClick={handleNext}>
+        Next customer
+      </button>
+    </main>
+  );
+}

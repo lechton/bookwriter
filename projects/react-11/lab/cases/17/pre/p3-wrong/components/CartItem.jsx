@@ -1,0 +1,42 @@
+import { useState } from 'react';
+
+const initialItem = {
+  quantity: 1,
+  giftWrap: false,
+  delivery: { address: '12 Main Street', time: 'Morning' },
+};
+
+export default function CartItem() {
+  const [item, setItem] = useState(initialItem);
+
+  function handleAddOne() {
+    setItem({ ...item, quantity: item.quantity + 1 });
+  }
+
+  function handleGiftWrap() {
+    setItem({ ...item, giftWrap: true });
+  }
+
+  function handleEvening() {
+    const nextItem = { ...item };
+    nextItem.delivery.time = 'Evening';
+    setItem(nextItem);
+  }
+
+  function handleStartOver() {
+    setItem(initialItem);
+  }
+
+  return (
+    <section>
+      <h1>Coffee mug</h1>
+      <p>Quantity: {item.quantity}</p>
+      <p>Gift wrap: {item.giftWrap ? 'Yes' : 'No'}</p>
+      <p>Delivery: {item.delivery.address}, {item.delivery.time}</p>
+      <button onClick={handleAddOne}>+1</button>
+      <button onClick={handleGiftWrap}>Add gift wrap</button>
+      <button onClick={handleEvening}>Deliver in the evening</button>
+      <button onClick={handleStartOver}>Start over</button>
+    </section>
+  );
+}

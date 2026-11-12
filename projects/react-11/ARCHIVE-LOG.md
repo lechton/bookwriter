@@ -1,0 +1,702 @@
+# Archive Log
+
+Every move made by archive_lecture.py, newest last. Files are only moved, never deleted.
+
+The `archive/` subfolders of the `v1` folders were copied unchanged from the react-09 River Version (`v2`) on 2026-11-05; their moves are logged in `projects/react-09/ARCHIVE-LOG.md`.
+
+- 2026-11-06 18:58 | archive Q20 | manual | 01-01-md-DRAFT-lectures/v1/20.md -> 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-06-1858.md
+
+- 2026-11-06 18:58 · moved 01-02-md-LECTURES/v1/parts/20/ (Argon part 01) -> 01-02-md-LECTURES/v1/parts/archive/20-2026-11-06-1858/ by hand, the script does not cover parts; reason: lesson 20 all-Opus experiment
+- 2026-11-06 20:35 | archive Q20 | rewrite under skills v10.3 | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-06-2035.md
+- 2026-11-06 20:35 | archive Q20 | rewrite under skills v10.3 | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-06-2035.html
+- 2026-11-06 20:35 | archive Q20 | rewrite under skills v10.3 | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-06-2035.html
+- 2026-11-06 20:35 | archive Q20 | rewrite under skills v10.3 | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-06-2035.html
+- 2026-11-06 20:35 | archive Q20 | rewrite under skills v10.3 | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-06-2035.pdf
+- 2026-11-06 20:35 | archive Q20 | rewrite under skills v10.3 | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-06-2035.pdf
+- 2026-11-06 20:35 | archive Q20 | rewrite under skills v10.3 | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-06-2035.pdf
+- 2026-11-06 23:06 | archive Q20 | manual | 01-01-map-principles/v1/20.md -> 01-01-map-principles/v1/archive/20-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q20 | manual | 01-01-md-DRAFT-lectures/v1/20.md -> 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q20 | manual | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-06-2306.pdf
+- 2026-11-06 23:06 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-06-2306.pdf
+- 2026-11-06 23:06 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-06-2306.pdf
+- 2026-11-06 23:06 | archive Q21 | manual | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q21 | manual | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q21 | manual | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-06-2306.md
+- 2026-11-06 23:06 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21-earth01.html -> 01-03-md-lectures-HTML/v1/archive/21-earth01-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21-old.html -> 01-03-md-lectures-HTML/v1/archive/21-old-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-06-2306.html
+- 2026-11-06 23:06 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/21-earth01-2026-11-06-2306.pdf
+- 2026-11-06 23:06 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21-old.pdf -> 01-04-md-lectures-PDF/v1/archive/21-old-2026-11-06-2306.pdf
+- 2026-11-06 23:06 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-06-2306.pdf
+
+- 2026-11-06 23:11 · moved lab/reports/20.md -> lab/reports/archive/20-2026-11-06-2311.md and lab/cases/20/ -> lab/cases/archive/20-2026-11-06-2311/ by hand, the script does not cover the lab; reason: rewrite of lesson 20 with skills v10.4
+
+- 2026-11-07 00:25 · moved lab/reports/21.md -> lab/reports/archive/21-2026-11-07-0025.md and lab/cases/21/ -> lab/cases/archive/21-2026-11-07-0025/ by hand, the script does not cover the lab; reason: rewrite of lesson 21 with skills v10.4
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-0120.md
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-0120.html
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-0120.html
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-0120.html
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-0120.pdf
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-0120.pdf
+- 2026-11-07 01:20 | archive Q20 | Rewrite of all presentation text under skills v10.4 batch 2026_11_07_02; code, previews, and figures kept | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-0120.pdf
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-0243.md
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-0243.html
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-0243.html
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-0243.html
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-0243.pdf
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-0243.pdf
+- 2026-11-07 02:43 | archive Q20 | Final lecture retired before the rewrite under writing Section 1 (brief_2026_11_07_03) | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-0243.pdf
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-0304.md
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-0304.html
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-0304.html
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-0304.html
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-0304.pdf
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-0304.pdf
+- 2026-11-07 03:04 | archive Q20 | Second rewrite: every code name re-anchored to its meaning (golden line of thought) | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-0304.pdf
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-0359.md
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-0359.html
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-0359.html
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-0359.html
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-0359.pdf
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-0359.pdf
+- 2026-11-07 03:59 | archive Q20 | Retired before rewrite of presentation text under brief_2026_11_07_04 | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-0359.pdf
+- 2026-11-07 14:33 | archive Q20 | manual | 01-01-map-principles/v1/20.md -> 01-01-map-principles/v1/archive/20-2026-11-07-1433.md
+- 2026-11-07 14:33 | archive Q20 | manual | 01-01-md-DRAFT-lectures/v1/20.md -> 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-07-1433.md
+- 2026-11-07 14:33 | archive Q20 | manual | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-1433.md
+- 2026-11-07 14:33 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-1433.html
+- 2026-11-07 14:33 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-1433.html
+- 2026-11-07 14:33 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-1433.html
+- 2026-11-07 14:33 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-1433.pdf
+- 2026-11-07 14:33 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-1433.pdf
+- 2026-11-07 14:33 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-1433.pdf
+- 2026-11-07 16:20 | archive Q20 | manual | 01-01-map-principles/v1/20.md -> 01-01-map-principles/v1/archive/20-2026-11-07-1620.md
+- 2026-11-07 16:20 | archive Q20 | manual | 01-01-md-DRAFT-lectures/v1/20.md -> 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-07-1620.md
+- 2026-11-07 16:20 | archive Q20 | manual | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-1620.md
+- 2026-11-07 16:20 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-1620.html
+- 2026-11-07 16:20 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-1620.html
+- 2026-11-07 16:20 | archive Q20 | manual | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-1620.html
+- 2026-11-07 16:20 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-1620.pdf
+- 2026-11-07 16:20 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-1620.pdf
+- 2026-11-07 16:20 | archive Q20 | manual | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-1620.pdf
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-01-map-principles/v1/20.md -> 01-01-map-principles/v1/archive/20-2026-11-07-1657.md
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-01-md-DRAFT-lectures/v1/20.md -> 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-07-1657.md
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-07-1657.md
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-1657.html
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-1657.html
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-1657.html
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-1657.pdf
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-1657.pdf
+- 2026-11-07 16:57 | archive Q20 | Retire broken rewrite that dropped River page/tree/files blocks | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-1657.pdf
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-01-map-principles/v1/archive/20-2026-11-07-1620.md -> 01-01-map-principles/v1/20.md
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-07-1620.md -> 01-01-md-DRAFT-lectures/v1/20.md
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-02-md-LECTURES/v1/archive/20-2026-11-07-1620.md -> 01-02-md-LECTURES/v1/20.md
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-03-md-lectures-HTML/v1/archive/20-2026-11-07-1620.html -> 01-03-md-lectures-HTML/v1/20.html
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-07-1620.html -> 01-03-md-lectures-HTML/v1/20-earth01.html
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-07-1620.html -> 01-03-md-lectures-HTML/v1/20-old.html
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-04-md-lectures-PDF/v1/archive/20-2026-11-07-1620.pdf -> 01-04-md-lectures-PDF/v1/20.pdf
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-07-1620.pdf -> 01-04-md-lectures-PDF/v1/20-earth01.pdf
+- 2026-11-07 16:58 | restore Q20 | Restore illustrated River Lecture 20 from 16:20 | 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-07-1620.pdf -> 01-04-md-lectures-PDF/v1/20-old.pdf
+- 2026-11-07 17:07 | archive Q21 | manual | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-07-1707.md
+- 2026-11-07 17:07 | archive Q21 | manual | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-07-1707.md
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-07-2106.md
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-07-2106.md
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-07-2106.md
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21-earth01.html -> 01-03-md-lectures-HTML/v1/archive/21-earth01-2026-11-07-2106.html
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21-old.html -> 01-03-md-lectures-HTML/v1/archive/21-old-2026-11-07-2106.html
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-07-2106.html
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/21-earth01-2026-11-07-2106.pdf
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21-old.pdf -> 01-04-md-lectures-PDF/v1/archive/21-old-2026-11-07-2106.pdf
+- 2026-11-07 21:06 | archive Q21 | Retired before a from-scratch rewrite under skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-07-2106.pdf
+
+- 2026-11-07 21:06 · moved lab/reports/21.md -> lab/reports/archive/21-2026-11-07-2106.md and lab/cases/21/ -> lab/cases/archive/21-2026-11-07-2106/ by hand, the script does not cover the lab; reason: from-scratch rewrite of lesson 21 with skills v10.5, all steps Opus
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-07-2233.md
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-07-2233.md
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-07-2233.md
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21-earth01.html -> 01-03-md-lectures-HTML/v1/archive/21-earth01-2026-11-07-2233.html
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21-old.html -> 01-03-md-lectures-HTML/v1/archive/21-old-2026-11-07-2233.html
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-07-2233.html
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/21-earth01-2026-11-07-2233.pdf
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21-old.pdf -> 01-04-md-lectures-PDF/v1/archive/21-old-2026-11-07-2233.pdf
+- 2026-11-07 22:33 | archive Q21 | Did not pass the standards; retired before a second from-scratch rewrite under the updated skills v10.5, all steps Opus | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-07-2233.pdf
+
+- 2026-11-07 22:33 · moved lab/reports/21.md -> lab/reports/archive/21-2026-11-07-2233.md and lab/cases/21/ -> lab/cases/archive/21-2026-11-07-2233/ by hand, the script does not cover the lab; reason: second from-scratch rewrite of lesson 21 under the updated skills v10.5, all steps Opus
+- 2026-11-07 23:13 | archive Q21 | manual | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-07-2313.md
+- 2026-11-07 23:13 | archive Q21 | manual | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-07-2313.md
+- 2026-11-07 23:13 | archive Q21 | manual | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-07-2313.md
+- 2026-11-07 23:13 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21-earth01.html -> 01-03-md-lectures-HTML/v1/archive/21-earth01-2026-11-07-2313.html
+- 2026-11-07 23:13 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21-old.html -> 01-03-md-lectures-HTML/v1/archive/21-old-2026-11-07-2313.html
+- 2026-11-07 23:13 | archive Q21 | manual | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-07-2313.html
+- 2026-11-07 23:13 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/21-earth01-2026-11-07-2313.pdf
+- 2026-11-07 23:13 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21-old.pdf -> 01-04-md-lectures-PDF/v1/archive/21-old-2026-11-07-2313.pdf
+- 2026-11-07 23:13 | archive Q21 | manual | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-07-2313.pdf
+
+- 2026-11-08 00:23 · moved lab/reports/21.md -> lab/reports/archive/21-2026-11-08-0023.md and lab/cases/21/ -> lab/cases/archive/21-2026-11-08-0023/ by hand, the script does not cover the lab; reason: third from-scratch rewrite of lesson 21 under skills v10.5, final lecture by Argon high
+- 2026-11-08 02:49 | copy Q21 | kept in place; copy saved before the bookfix correction of the word picture (audit 21_2026_11_08_001) | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-08-0249.md
+- 2026-11-08 02:49 | copy Q21 | kept in place; copy saved before the bookfix correction of the word picture (audit 21_2026_11_08_001) | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-08-0249.html
+- 2026-11-08 02:49 | copy Q21 | kept in place; copy saved before the bookfix correction of the word picture (audit 21_2026_11_08_001) | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-08-0249.pdf
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-02-md-LECTURES/v1/22.md -> 01-02-md-LECTURES/v1/archive/22-2026-11-08-0505.md
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-03-md-lectures-HTML/v1/22-earth01.html -> 01-03-md-lectures-HTML/v1/archive/22-earth01-2026-11-08-0505.html
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-03-md-lectures-HTML/v1/22-old.html -> 01-03-md-lectures-HTML/v1/archive/22-old-2026-11-08-0505.html
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-03-md-lectures-HTML/v1/22.html -> 01-03-md-lectures-HTML/v1/archive/22-2026-11-08-0505.html
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-04-md-lectures-PDF/v1/22-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/22-earth01-2026-11-08-0505.pdf
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-04-md-lectures-PDF/v1/22-old.pdf -> 01-04-md-lectures-PDF/v1/archive/22-old-2026-11-08-0505.pdf
+- 2026-11-08 05:05 | archive Q22 | Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High | 01-04-md-lectures-PDF/v1/22.pdf -> 01-04-md-lectures-PDF/v1/archive/22-2026-11-08-0505.pdf
+- 2026-11-08 05:05 · moved lab/reports/22.md -> lab/reports/archive/22-2026-11-08-0505.md and lab/cases/22/ -> lab/cases/archive/22-2026-11-08-0505/ by hand, the script does not cover the lab; reason: Final lecture by Argon broke the draft's shape and figures; map and draft kept, lecture rewritten by Opus 5.5 High
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-08-2300.md
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-08-2300.html
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-08-2300.html
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-08-2300.html
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-08-2300.pdf
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-08-2300.pdf
+- 2026-11-08 23:00 | archive Q20 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-08-2300.pdf
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-02-md-LECTURES/v1/22.md -> 01-02-md-LECTURES/v1/archive/22-2026-11-09-0121.md
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/22-earth01.html -> 01-03-md-lectures-HTML/v1/archive/22-earth01-2026-11-09-0121.html
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/22-old.html -> 01-03-md-lectures-HTML/v1/archive/22-old-2026-11-09-0121.html
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/22.html -> 01-03-md-lectures-HTML/v1/archive/22-2026-11-09-0121.html
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/22-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/22-earth01-2026-11-09-0121.pdf
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/22-old.pdf -> 01-04-md-lectures-PDF/v1/archive/22-old-2026-11-09-0121.pdf
+- 2026-11-09 01:21 | archive Q22 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/22.pdf -> 01-04-md-lectures-PDF/v1/archive/22-2026-11-09-0121.pdf
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-09-0224.md
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-09-0224.html
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-09-0224.html
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-09-0224.html
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-09-0224.pdf
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-09-0224.pdf
+- 2026-11-09 02:24 | archive Q20 | before rewriting Lesson 20 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-09-0224.pdf
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-02-md-LECTURES/v1/22.md -> 01-02-md-LECTURES/v1/archive/22-2026-11-09-0314.md
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/22-earth01.html -> 01-03-md-lectures-HTML/v1/archive/22-earth01-2026-11-09-0314.html
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/22-old.html -> 01-03-md-lectures-HTML/v1/archive/22-old-2026-11-09-0314.html
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/22.html -> 01-03-md-lectures-HTML/v1/archive/22-2026-11-09-0314.html
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/22-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/22-earth01-2026-11-09-0314.pdf
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/22-old.pdf -> 01-04-md-lectures-PDF/v1/archive/22-old-2026-11-09-0314.pdf
+- 2026-11-09 03:14 | archive Q22 | before rewriting Lesson 22 opening example under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/22.pdf -> 01-04-md-lectures-PDF/v1/archive/22-2026-11-09-0314.pdf
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-02-md-LECTURES/v1/26.md -> 01-02-md-LECTURES/v1/archive/26-2026-11-09-0344.md
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/26-earth01.html -> 01-03-md-lectures-HTML/v1/archive/26-earth01-2026-11-09-0344.html
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/26-old.html -> 01-03-md-lectures-HTML/v1/archive/26-old-2026-11-09-0344.html
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-03-md-lectures-HTML/v1/26.html -> 01-03-md-lectures-HTML/v1/archive/26-2026-11-09-0344.html
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/26-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/26-earth01-2026-11-09-0344.pdf
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/26-old.pdf -> 01-04-md-lectures-PDF/v1/archive/26-old-2026-11-09-0344.pdf
+- 2026-11-09 03:44 | archive Q26 | bookaudit: before the rewrite | 01-04-md-lectures-PDF/v1/26.pdf -> 01-04-md-lectures-PDF/v1/archive/26-2026-11-09-0344.pdf
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-02-md-LECTURES/v1/26.md -> 01-02-md-LECTURES/v1/archive/26-2026-11-09-0425.md
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/26-earth01.html -> 01-03-md-lectures-HTML/v1/archive/26-earth01-2026-11-09-0425.html
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/26-old.html -> 01-03-md-lectures-HTML/v1/archive/26-old-2026-11-09-0425.html
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-03-md-lectures-HTML/v1/26.html -> 01-03-md-lectures-HTML/v1/archive/26-2026-11-09-0425.html
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/26-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/26-earth01-2026-11-09-0425.pdf
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/26-old.pdf -> 01-04-md-lectures-PDF/v1/archive/26-old-2026-11-09-0425.pdf
+- 2026-11-09 04:25 | archive Q26 | before rewriting Lesson 26 opening under skills v10.6 (#2026_11_09_01) | 01-04-md-lectures-PDF/v1/26.pdf -> 01-04-md-lectures-PDF/v1/archive/26-2026-11-09-0425.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-02-md-LECTURES/v1/33-GPT.md -> 01-02-md-LECTURES/v1/archive/33-GPT-2026-11-09-1605.md
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-02-md-LECTURES/v1/33-gemini.md -> 01-02-md-LECTURES/v1/archive/33-gemini-2026-11-09-1605.md
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-GPT-earth01.html -> 01-03-md-lectures-HTML/v1/archive/33-GPT-earth01-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-GPT-old.html -> 01-03-md-lectures-HTML/v1/archive/33-GPT-old-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-GPT.html -> 01-03-md-lectures-HTML/v1/archive/33-GPT-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/33-gemini-earth01-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/33-gemini-old-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-03-md-lectures-HTML/v1/33-gemini.html -> 01-03-md-lectures-HTML/v1/archive/33-gemini-2026-11-09-1605.html
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-GPT-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/33-GPT-earth01-2026-11-09-1605.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-GPT-old.pdf -> 01-04-md-lectures-PDF/v1/archive/33-GPT-old-2026-11-09-1605.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-GPT.pdf -> 01-04-md-lectures-PDF/v1/archive/33-GPT-2026-11-09-1605.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/33-gemini-earth01-2026-11-09-1605.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/33-gemini-old-2026-11-09-1605.pdf
+- 2026-11-09 16:05 | archive Q33 | Archive 33-GPT and first 33-gemini before radical pedagogical rewrite | 01-04-md-lectures-PDF/v1/33-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/33-gemini-2026-11-09-1605.pdf
+- 2026-11-09 19:42 | archive Q34 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/34.md -> 01-02-md-LECTURES/v1/archive/34-2026-11-09-1942.md
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-02-md-LECTURES/v1/12-gemini.md -> 01-02-md-LECTURES/v1/archive/12-gemini-2026-11-09-2037.md
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/12-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-earth01-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/12-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-old-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/12-gemini.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/12-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-earth01-2026-11-09-2037.pdf
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/12-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-old-2026-11-09-2037.pdf
+- 2026-11-09 20:37 | archive Q12 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/12-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-2026-11-09-2037.pdf
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-09-2037.md
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/13-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-earth01-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/13-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-old-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-09-2037.html
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/13-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-earth01-2026-11-09-2037.pdf
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/13-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-old-2026-11-09-2037.pdf
+- 2026-11-09 20:37 | archive Q13 | before fixing toy DO/DO NOT examples | 01-04-md-lectures-PDF/v1/13-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-2026-11-09-2037.pdf
+- 2026-11-09 23:25 | archive Q35 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/35.md -> 01-02-md-LECTURES/v1/archive/35-2026-11-09-2325.md
+- 2026-11-10 01:34 | archive Q36 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/36.md -> 01-02-md-LECTURES/v1/archive/36-2026-11-10-0134.md
+- 2026-11-10 02:06 | archive Q37 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/37.md -> 01-02-md-LECTURES/v1/archive/37-2026-11-10-0206.md
+- 2026-11-10 02:35 | archive Q12 | bookstyle: before the style rewrite | 01-02-md-LECTURES/v1/12-gemini.md -> 01-02-md-LECTURES/v1/archive/12-gemini-2026-11-10-0235.md
+- 2026-11-10 02:35 | archive Q12 | bookstyle: before the style rewrite | 01-03-md-lectures-HTML/v1/12-gemini.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-2026-11-10-0235.html
+- 2026-11-10 02:35 | archive Q12 | bookstyle: before the style rewrite | 01-04-md-lectures-PDF/v1/12-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-2026-11-10-0235.pdf
+- 2026-11-10 02:38 | archive Q38 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/38.md -> 01-02-md-LECTURES/v1/archive/38-2026-11-10-0238.md
+- 2026-11-10 03:45 | archive Q13 | bookstyle: before the style rewrite | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0345.md
+- 2026-11-10 03:45 | archive Q13 | bookstyle: before the style rewrite | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0345.html
+- 2026-11-10 03:45 | archive Q13 | bookstyle: before the style rewrite | 01-04-md-lectures-PDF/v1/13-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-2026-11-10-0345.pdf
+- 2026-11-10 04:26 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0426.md
+- 2026-11-10 04:26 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0426.html
+- 2026-11-10 04:32 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0432.md
+- 2026-11-10 04:32 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0432.html
+- 2026-11-10 04:35 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0435.md
+- 2026-11-10 04:35 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0435.html
+- 2026-11-10 04:37 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0437.md
+- 2026-11-10 04:37 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0437.html
+- 2026-11-10 04:39 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0439.md
+- 2026-11-10 04:39 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0439.html
+- 2026-11-10 04:40 | archive Q13 | manual | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-10-0440.md
+- 2026-11-10 04:40 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0440.html
+- 2026-11-10 04:54 | archive Q13 | manual | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-10-0454.html
+- 2026-11-12 02:20 | archive Q1 | owner: archive every lesson before the new process | 01-01-map-principles/v1/01.md -> 01-01-map-principles/v1/archive/01-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q1 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/01.md -> 01-02-md-LECTURES/v1/archive/01-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q1 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/01-earth01.html -> 01-03-md-lectures-HTML/v1/archive/01-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q1 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/01-old.html -> 01-03-md-lectures-HTML/v1/archive/01-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q1 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/01.html -> 01-03-md-lectures-HTML/v1/archive/01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q1 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/01-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/01-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q1 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/01-old.pdf -> 01-04-md-lectures-PDF/v1/archive/01-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q1 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/01.pdf -> 01-04-md-lectures-PDF/v1/archive/01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q2 | owner: archive every lesson before the new process | 01-01-map-principles/v1/02.md -> 01-01-map-principles/v1/archive/02-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q2 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/02.md -> 01-02-md-LECTURES/v1/archive/02-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q2 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/02-earth01.html -> 01-03-md-lectures-HTML/v1/archive/02-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q2 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/02-old.html -> 01-03-md-lectures-HTML/v1/archive/02-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q2 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/02.html -> 01-03-md-lectures-HTML/v1/archive/02-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q2 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/02-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/02-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q2 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/02-old.pdf -> 01-04-md-lectures-PDF/v1/archive/02-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q2 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/02.pdf -> 01-04-md-lectures-PDF/v1/archive/02-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q3 | owner: archive every lesson before the new process | 01-01-map-principles/v1/03.md -> 01-01-map-principles/v1/archive/03-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q3 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/03.md -> 01-02-md-LECTURES/v1/archive/03-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q3 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/03-earth01.html -> 01-03-md-lectures-HTML/v1/archive/03-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q3 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/03-old.html -> 01-03-md-lectures-HTML/v1/archive/03-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q3 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/03.html -> 01-03-md-lectures-HTML/v1/archive/03-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q3 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/03-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/03-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q3 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/03-old.pdf -> 01-04-md-lectures-PDF/v1/archive/03-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q3 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/03.pdf -> 01-04-md-lectures-PDF/v1/archive/03-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q4 | owner: archive every lesson before the new process | 01-01-map-principles/v1/04.md -> 01-01-map-principles/v1/archive/04-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q4 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/04.md -> 01-02-md-LECTURES/v1/archive/04-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q4 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/04-earth01.html -> 01-03-md-lectures-HTML/v1/archive/04-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q4 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/04-old.html -> 01-03-md-lectures-HTML/v1/archive/04-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q4 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/04.html -> 01-03-md-lectures-HTML/v1/archive/04-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q4 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/04-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/04-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q4 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/04-old.pdf -> 01-04-md-lectures-PDF/v1/archive/04-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q4 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/04.pdf -> 01-04-md-lectures-PDF/v1/archive/04-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q5 | owner: archive every lesson before the new process | 01-01-map-principles/v1/05.md -> 01-01-map-principles/v1/archive/05-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q5 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/05.md -> 01-02-md-LECTURES/v1/archive/05-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q5 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/05-earth01.html -> 01-03-md-lectures-HTML/v1/archive/05-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q5 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/05-old.html -> 01-03-md-lectures-HTML/v1/archive/05-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q5 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/05.html -> 01-03-md-lectures-HTML/v1/archive/05-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q5 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/05-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/05-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q5 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/05-old.pdf -> 01-04-md-lectures-PDF/v1/archive/05-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q5 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/05.pdf -> 01-04-md-lectures-PDF/v1/archive/05-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q6 | owner: archive every lesson before the new process | 01-01-map-principles/v1/06.md -> 01-01-map-principles/v1/archive/06-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q6 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/06.md -> 01-02-md-LECTURES/v1/archive/06-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q6 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/06-earth01.html -> 01-03-md-lectures-HTML/v1/archive/06-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q6 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/06-old.html -> 01-03-md-lectures-HTML/v1/archive/06-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q6 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/06.html -> 01-03-md-lectures-HTML/v1/archive/06-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q6 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/06-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/06-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q6 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/06-old.pdf -> 01-04-md-lectures-PDF/v1/archive/06-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q6 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/06.pdf -> 01-04-md-lectures-PDF/v1/archive/06-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q7 | owner: archive every lesson before the new process | 01-01-map-principles/v1/07.md -> 01-01-map-principles/v1/archive/07-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q7 | owner: archive every lesson before the new process | 01-01-md-PRE-lectures/v1/07.md -> 01-01-md-PRE-lectures/v1/archive/07-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q7 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/07.md -> 01-02-md-LECTURES/v1/archive/07-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q7 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/07-earth01.html -> 01-03-md-lectures-HTML/v1/archive/07-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q7 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/07-old.html -> 01-03-md-lectures-HTML/v1/archive/07-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q7 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/07.html -> 01-03-md-lectures-HTML/v1/archive/07-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q7 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/07-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/07-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q7 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/07-old.pdf -> 01-04-md-lectures-PDF/v1/archive/07-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q7 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/07.pdf -> 01-04-md-lectures-PDF/v1/archive/07-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q8 | owner: archive every lesson before the new process | 01-01-map-principles/v1/08.md -> 01-01-map-principles/v1/archive/08-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q8 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/08.md -> 01-01-md-DRAFT-lectures/v1/archive/08-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q8 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/08.md -> 01-02-md-LECTURES/v1/archive/08-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q8 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/08-earth01.html -> 01-03-md-lectures-HTML/v1/archive/08-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q8 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/08-old.html -> 01-03-md-lectures-HTML/v1/archive/08-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q8 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/08.html -> 01-03-md-lectures-HTML/v1/archive/08-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q8 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/08-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/08-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q8 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/08-old.pdf -> 01-04-md-lectures-PDF/v1/archive/08-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q8 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/08.pdf -> 01-04-md-lectures-PDF/v1/archive/08-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q9 | owner: archive every lesson before the new process | 01-01-map-principles/v1/09.md -> 01-01-map-principles/v1/archive/09-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q9 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/09.md -> 01-01-md-DRAFT-lectures/v1/archive/09-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q9 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/09.md -> 01-02-md-LECTURES/v1/archive/09-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q9 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/09-earth01.html -> 01-03-md-lectures-HTML/v1/archive/09-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q9 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/09-old.html -> 01-03-md-lectures-HTML/v1/archive/09-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q9 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/09.html -> 01-03-md-lectures-HTML/v1/archive/09-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q9 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/09-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/09-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q9 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/09-old.pdf -> 01-04-md-lectures-PDF/v1/archive/09-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q9 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/09.pdf -> 01-04-md-lectures-PDF/v1/archive/09-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q10 | owner: archive every lesson before the new process | 01-01-map-principles/v1/10.md -> 01-01-map-principles/v1/archive/10-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q10 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/10.md -> 01-01-md-DRAFT-lectures/v1/archive/10-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q10 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/10.md -> 01-02-md-LECTURES/v1/archive/10-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q10 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/10-earth01.html -> 01-03-md-lectures-HTML/v1/archive/10-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q10 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/10-old.html -> 01-03-md-lectures-HTML/v1/archive/10-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q10 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/10.html -> 01-03-md-lectures-HTML/v1/archive/10-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q10 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/10-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/10-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q10 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/10-old.pdf -> 01-04-md-lectures-PDF/v1/archive/10-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q10 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/10.pdf -> 01-04-md-lectures-PDF/v1/archive/10-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q11 | owner: archive every lesson before the new process | 01-01-map-principles/v1/11.md -> 01-01-map-principles/v1/archive/11-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q11 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/11.md -> 01-01-md-DRAFT-lectures/v1/archive/11-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q11 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/11.md -> 01-02-md-LECTURES/v1/archive/11-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q11 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/11-earth01.html -> 01-03-md-lectures-HTML/v1/archive/11-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q11 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/11-old.html -> 01-03-md-lectures-HTML/v1/archive/11-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q11 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/11.html -> 01-03-md-lectures-HTML/v1/archive/11-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q11 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/11-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/11-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q11 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/11-old.pdf -> 01-04-md-lectures-PDF/v1/archive/11-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q11 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/11.pdf -> 01-04-md-lectures-PDF/v1/archive/11-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-01-map-principles/v1/12.md -> 01-01-map-principles/v1/archive/12-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/12.md -> 01-01-md-DRAFT-lectures/v1/archive/12-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/12-gemini.md -> 01-02-md-LECTURES/v1/archive/12-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/12.md -> 01-02-md-LECTURES/v1/archive/12-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/12-earth01.html -> 01-03-md-lectures-HTML/v1/archive/12-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/12-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/12-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/12-gemini.html -> 01-03-md-lectures-HTML/v1/archive/12-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/12-old.html -> 01-03-md-lectures-HTML/v1/archive/12-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/12.html -> 01-03-md-lectures-HTML/v1/archive/12-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/12-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/12-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/12-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/12-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/12-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/12-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/12-old.pdf -> 01-04-md-lectures-PDF/v1/archive/12-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q12 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/12.pdf -> 01-04-md-lectures-PDF/v1/archive/12-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-01-map-principles/v1/13.md -> 01-01-map-principles/v1/archive/13-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/13.md -> 01-01-md-DRAFT-lectures/v1/archive/13-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/13-gemini.md -> 01-02-md-LECTURES/v1/archive/13-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/13.md -> 01-02-md-LECTURES/v1/archive/13-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/13-earth01.html -> 01-03-md-lectures-HTML/v1/archive/13-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/13-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/13-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/13-gemini.html -> 01-03-md-lectures-HTML/v1/archive/13-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/13-old.html -> 01-03-md-lectures-HTML/v1/archive/13-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/13.html -> 01-03-md-lectures-HTML/v1/archive/13-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/13-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/13-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/13-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/13-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/13-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/13-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/13-old.pdf -> 01-04-md-lectures-PDF/v1/archive/13-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q13 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/13.pdf -> 01-04-md-lectures-PDF/v1/archive/13-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-01-map-principles/v1/14.md -> 01-01-map-principles/v1/archive/14-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/14.md -> 01-01-md-DRAFT-lectures/v1/archive/14-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/14-gemini.md -> 01-02-md-LECTURES/v1/archive/14-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/14.md -> 01-02-md-LECTURES/v1/archive/14-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/14-earth01.html -> 01-03-md-lectures-HTML/v1/archive/14-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/14-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/14-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/14-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/14-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/14-gemini.html -> 01-03-md-lectures-HTML/v1/archive/14-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/14-old.html -> 01-03-md-lectures-HTML/v1/archive/14-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/14.html -> 01-03-md-lectures-HTML/v1/archive/14-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/14-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/14-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/14-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/14-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/14-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/14-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/14-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/14-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/14-old.pdf -> 01-04-md-lectures-PDF/v1/archive/14-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q14 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/14.pdf -> 01-04-md-lectures-PDF/v1/archive/14-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-01-map-principles/v1/15.md -> 01-01-map-principles/v1/archive/15-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/15.md -> 01-01-md-DRAFT-lectures/v1/archive/15-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/15-gemini.md -> 01-02-md-LECTURES/v1/archive/15-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/15.md -> 01-02-md-LECTURES/v1/archive/15-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/15-earth01.html -> 01-03-md-lectures-HTML/v1/archive/15-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/15-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/15-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/15-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/15-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/15-gemini.html -> 01-03-md-lectures-HTML/v1/archive/15-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/15-old.html -> 01-03-md-lectures-HTML/v1/archive/15-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/15.html -> 01-03-md-lectures-HTML/v1/archive/15-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/15-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/15-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/15-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/15-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/15-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/15-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/15-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/15-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/15-old.pdf -> 01-04-md-lectures-PDF/v1/archive/15-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q15 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/15.pdf -> 01-04-md-lectures-PDF/v1/archive/15-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-01-map-principles/v1/16.md -> 01-01-map-principles/v1/archive/16-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/16.md -> 01-01-md-DRAFT-lectures/v1/archive/16-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/16-03-intro.md -> 01-02-md-LECTURES/v1/archive/16-03-intro-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/16-04-intro.md -> 01-02-md-LECTURES/v1/archive/16-04-intro-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/16-05-deepseek-v2.md -> 01-02-md-LECTURES/v1/archive/16-05-deepseek-v2-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/16-05-deepseek-v3.md -> 01-02-md-LECTURES/v1/archive/16-05-deepseek-v3-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/16-05-deepseek.md -> 01-02-md-LECTURES/v1/archive/16-05-deepseek-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/16-gemini.md -> 01-02-md-LECTURES/v1/archive/16-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/16-gemini3.8-v1.md -> 01-02-md-LECTURES/v1/archive/16-gemini3.8-v1-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/16-gemini3.8-v2.md -> 01-02-md-LECTURES/v1/archive/16-gemini3.8-v2-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/16.md -> 01-02-md-LECTURES/v1/archive/16-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-03-intro-earth01.html -> 01-03-md-lectures-HTML/v1/archive/16-03-intro-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-03-intro-old.html -> 01-03-md-lectures-HTML/v1/archive/16-03-intro-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-03-intro.html -> 01-03-md-lectures-HTML/v1/archive/16-03-intro-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-04-intro-earth01.html -> 01-03-md-lectures-HTML/v1/archive/16-04-intro-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-04-intro-old.html -> 01-03-md-lectures-HTML/v1/archive/16-04-intro-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-04-intro.html -> 01-03-md-lectures-HTML/v1/archive/16-04-intro-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-05-deepseek-earth01.html -> 01-03-md-lectures-HTML/v1/archive/16-05-deepseek-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-05-deepseek-old.html -> 01-03-md-lectures-HTML/v1/archive/16-05-deepseek-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-05-deepseek-v2-earth01.html -> 01-03-md-lectures-HTML/v1/archive/16-05-deepseek-v2-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-05-deepseek-v2-old.html -> 01-03-md-lectures-HTML/v1/archive/16-05-deepseek-v2-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-05-deepseek-v2.html -> 01-03-md-lectures-HTML/v1/archive/16-05-deepseek-v2-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-05-deepseek-v3-earth01.html -> 01-03-md-lectures-HTML/v1/archive/16-05-deepseek-v3-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-05-deepseek-v3-old.html -> 01-03-md-lectures-HTML/v1/archive/16-05-deepseek-v3-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-05-deepseek-v3.html -> 01-03-md-lectures-HTML/v1/archive/16-05-deepseek-v3-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-05-deepseek.html -> 01-03-md-lectures-HTML/v1/archive/16-05-deepseek-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-earth01.html -> 01-03-md-lectures-HTML/v1/archive/16-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/16-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/16-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-gemini.html -> 01-03-md-lectures-HTML/v1/archive/16-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-gemini3.8-v1-earth01.html -> 01-03-md-lectures-HTML/v1/archive/16-gemini3.8-v1-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-gemini3.8-v1-old.html -> 01-03-md-lectures-HTML/v1/archive/16-gemini3.8-v1-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-gemini3.8-v1.html -> 01-03-md-lectures-HTML/v1/archive/16-gemini3.8-v1-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-gemini3.8-v2-earth01.html -> 01-03-md-lectures-HTML/v1/archive/16-gemini3.8-v2-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-gemini3.8-v2-old.html -> 01-03-md-lectures-HTML/v1/archive/16-gemini3.8-v2-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-gemini3.8-v2.html -> 01-03-md-lectures-HTML/v1/archive/16-gemini3.8-v2-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16-old.html -> 01-03-md-lectures-HTML/v1/archive/16-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/16.html -> 01-03-md-lectures-HTML/v1/archive/16-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-04-intro-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/16-04-intro-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-04-intro-old.pdf -> 01-04-md-lectures-PDF/v1/archive/16-04-intro-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-04-intro.pdf -> 01-04-md-lectures-PDF/v1/archive/16-04-intro-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-05-deepseek-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/16-05-deepseek-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-05-deepseek-old.pdf -> 01-04-md-lectures-PDF/v1/archive/16-05-deepseek-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-05-deepseek-v2-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/16-05-deepseek-v2-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-05-deepseek-v2-old.pdf -> 01-04-md-lectures-PDF/v1/archive/16-05-deepseek-v2-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-05-deepseek-v2.pdf -> 01-04-md-lectures-PDF/v1/archive/16-05-deepseek-v2-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-05-deepseek-v3-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/16-05-deepseek-v3-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-05-deepseek-v3-old.pdf -> 01-04-md-lectures-PDF/v1/archive/16-05-deepseek-v3-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-05-deepseek-v3.pdf -> 01-04-md-lectures-PDF/v1/archive/16-05-deepseek-v3-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-05-deepseek.pdf -> 01-04-md-lectures-PDF/v1/archive/16-05-deepseek-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/16-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/16-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/16-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/16-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-gemini3.8-v1-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/16-gemini3.8-v1-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-gemini3.8-v1-old.pdf -> 01-04-md-lectures-PDF/v1/archive/16-gemini3.8-v1-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-gemini3.8-v1.pdf -> 01-04-md-lectures-PDF/v1/archive/16-gemini3.8-v1-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-gemini3.8-v2-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/16-gemini3.8-v2-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-gemini3.8-v2-old.pdf -> 01-04-md-lectures-PDF/v1/archive/16-gemini3.8-v2-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-gemini3.8-v2.pdf -> 01-04-md-lectures-PDF/v1/archive/16-gemini3.8-v2-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16-old.pdf -> 01-04-md-lectures-PDF/v1/archive/16-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q16 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/16.pdf -> 01-04-md-lectures-PDF/v1/archive/16-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-01-map-principles/v1/17.md -> 01-01-map-principles/v1/archive/17-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/17.md -> 01-01-md-DRAFT-lectures/v1/archive/17-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/17-gemini.md -> 01-02-md-LECTURES/v1/archive/17-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/17.md -> 01-02-md-LECTURES/v1/archive/17-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/17-earth01.html -> 01-03-md-lectures-HTML/v1/archive/17-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/17-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/17-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/17-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/17-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/17-gemini.html -> 01-03-md-lectures-HTML/v1/archive/17-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/17-old.html -> 01-03-md-lectures-HTML/v1/archive/17-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/17.html -> 01-03-md-lectures-HTML/v1/archive/17-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/17-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/17-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/17-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/17-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/17-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/17-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/17-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/17-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/17-old.pdf -> 01-04-md-lectures-PDF/v1/archive/17-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q17 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/17.pdf -> 01-04-md-lectures-PDF/v1/archive/17-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-01-map-principles/v1/18.md -> 01-01-map-principles/v1/archive/18-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/18.md -> 01-01-md-DRAFT-lectures/v1/archive/18-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/18-gemini.md -> 01-02-md-LECTURES/v1/archive/18-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/18.md -> 01-02-md-LECTURES/v1/archive/18-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/18-earth01.html -> 01-03-md-lectures-HTML/v1/archive/18-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/18-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/18-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/18-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/18-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/18-gemini.html -> 01-03-md-lectures-HTML/v1/archive/18-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/18-old.html -> 01-03-md-lectures-HTML/v1/archive/18-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/18.html -> 01-03-md-lectures-HTML/v1/archive/18-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/18-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/18-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/18-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/18-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/18-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/18-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/18-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/18-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/18-old.pdf -> 01-04-md-lectures-PDF/v1/archive/18-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q18 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/18.pdf -> 01-04-md-lectures-PDF/v1/archive/18-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-01-map-principles/v1/19.md -> 01-01-map-principles/v1/archive/19-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/19.md -> 01-01-md-DRAFT-lectures/v1/archive/19-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/19-gemini.md -> 01-02-md-LECTURES/v1/archive/19-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/19.md -> 01-02-md-LECTURES/v1/archive/19-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/19-earth01.html -> 01-03-md-lectures-HTML/v1/archive/19-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/19-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/19-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/19-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/19-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/19-gemini.html -> 01-03-md-lectures-HTML/v1/archive/19-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/19-old.html -> 01-03-md-lectures-HTML/v1/archive/19-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/19.html -> 01-03-md-lectures-HTML/v1/archive/19-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/19-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/19-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/19-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/19-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/19-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/19-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/19-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/19-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/19-old.pdf -> 01-04-md-lectures-PDF/v1/archive/19-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q19 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/19.pdf -> 01-04-md-lectures-PDF/v1/archive/19-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-01-map-principles/v1/20.md -> 01-01-map-principles/v1/archive/20-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/20.md -> 01-01-md-DRAFT-lectures/v1/archive/20-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/20-gemini.md -> 01-02-md-LECTURES/v1/archive/20-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/20.md -> 01-02-md-LECTURES/v1/archive/20-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/20-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/20-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/20-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/20-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/20-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/20-gemini.html -> 01-03-md-lectures-HTML/v1/archive/20-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/20-old.html -> 01-03-md-lectures-HTML/v1/archive/20-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/20.html -> 01-03-md-lectures-HTML/v1/archive/20-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/20-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/20-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/20-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/20-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/20-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/20-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/20-old.pdf -> 01-04-md-lectures-PDF/v1/archive/20-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q20 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/20.pdf -> 01-04-md-lectures-PDF/v1/archive/20-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q21 | owner: archive every lesson before the new process | 01-01-map-principles/v1/21.md -> 01-01-map-principles/v1/archive/21-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q21 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/21.md -> 01-01-md-DRAFT-lectures/v1/archive/21-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q21 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/21.md -> 01-02-md-LECTURES/v1/archive/21-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q21 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/21-earth01.html -> 01-03-md-lectures-HTML/v1/archive/21-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q21 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/21-old.html -> 01-03-md-lectures-HTML/v1/archive/21-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q21 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/21.html -> 01-03-md-lectures-HTML/v1/archive/21-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q21 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/21-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/21-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q21 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/21-old.pdf -> 01-04-md-lectures-PDF/v1/archive/21-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q21 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/21.pdf -> 01-04-md-lectures-PDF/v1/archive/21-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q22 | owner: archive every lesson before the new process | 01-01-map-principles/v1/22.md -> 01-01-map-principles/v1/archive/22-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q22 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/22.md -> 01-01-md-DRAFT-lectures/v1/archive/22-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q22 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/22.md -> 01-02-md-LECTURES/v1/archive/22-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q22 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/22-earth01.html -> 01-03-md-lectures-HTML/v1/archive/22-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q22 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/22-old.html -> 01-03-md-lectures-HTML/v1/archive/22-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q22 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/22.html -> 01-03-md-lectures-HTML/v1/archive/22-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q22 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/22-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/22-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q22 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/22-old.pdf -> 01-04-md-lectures-PDF/v1/archive/22-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q22 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/22.pdf -> 01-04-md-lectures-PDF/v1/archive/22-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q23 | owner: archive every lesson before the new process | 01-01-map-principles/v1/23.md -> 01-01-map-principles/v1/archive/23-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q23 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/23.md -> 01-01-md-DRAFT-lectures/v1/archive/23-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q23 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/23.md -> 01-02-md-LECTURES/v1/archive/23-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q23 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/23-earth01.html -> 01-03-md-lectures-HTML/v1/archive/23-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q23 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/23-old.html -> 01-03-md-lectures-HTML/v1/archive/23-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q23 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/23.html -> 01-03-md-lectures-HTML/v1/archive/23-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q23 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/23-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/23-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q23 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/23-old.pdf -> 01-04-md-lectures-PDF/v1/archive/23-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q23 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/23.pdf -> 01-04-md-lectures-PDF/v1/archive/23-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-01-map-principles/v1/24.md -> 01-01-map-principles/v1/archive/24-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/24.md -> 01-01-md-DRAFT-lectures/v1/archive/24-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/24-gemini.md -> 01-02-md-LECTURES/v1/archive/24-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/24.md -> 01-02-md-LECTURES/v1/archive/24-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/24-earth01.html -> 01-03-md-lectures-HTML/v1/archive/24-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/24-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/24-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/24-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/24-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/24-gemini.html -> 01-03-md-lectures-HTML/v1/archive/24-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/24-old.html -> 01-03-md-lectures-HTML/v1/archive/24-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/24.html -> 01-03-md-lectures-HTML/v1/archive/24-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/24-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/24-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/24-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/24-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/24-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/24-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/24-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/24-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/24-old.pdf -> 01-04-md-lectures-PDF/v1/archive/24-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q24 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/24.pdf -> 01-04-md-lectures-PDF/v1/archive/24-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q25 | owner: archive every lesson before the new process | 01-01-map-principles/v1/25.md -> 01-01-map-principles/v1/archive/25-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q25 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/25.md -> 01-01-md-DRAFT-lectures/v1/archive/25-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q25 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/25.md -> 01-02-md-LECTURES/v1/archive/25-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q25 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/25-earth01.html -> 01-03-md-lectures-HTML/v1/archive/25-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q25 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/25-old.html -> 01-03-md-lectures-HTML/v1/archive/25-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q25 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/25.html -> 01-03-md-lectures-HTML/v1/archive/25-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q25 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/25-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/25-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q25 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/25-old.pdf -> 01-04-md-lectures-PDF/v1/archive/25-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q25 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/25.pdf -> 01-04-md-lectures-PDF/v1/archive/25-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q26 | owner: archive every lesson before the new process | 01-01-map-principles/v1/26.md -> 01-01-map-principles/v1/archive/26-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q26 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/26.md -> 01-01-md-DRAFT-lectures/v1/archive/26-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q26 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/26.md -> 01-02-md-LECTURES/v1/archive/26-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q26 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/26-earth01.html -> 01-03-md-lectures-HTML/v1/archive/26-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q26 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/26-old.html -> 01-03-md-lectures-HTML/v1/archive/26-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q26 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/26.html -> 01-03-md-lectures-HTML/v1/archive/26-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q26 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/26-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/26-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q26 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/26-old.pdf -> 01-04-md-lectures-PDF/v1/archive/26-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q26 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/26.pdf -> 01-04-md-lectures-PDF/v1/archive/26-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q27 | owner: archive every lesson before the new process | 01-01-map-principles/v1/27.md -> 01-01-map-principles/v1/archive/27-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q27 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/27.md -> 01-01-md-DRAFT-lectures/v1/archive/27-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q27 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/27.md -> 01-02-md-LECTURES/v1/archive/27-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q27 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/27-earth01.html -> 01-03-md-lectures-HTML/v1/archive/27-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q27 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/27-old.html -> 01-03-md-lectures-HTML/v1/archive/27-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q27 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/27.html -> 01-03-md-lectures-HTML/v1/archive/27-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q27 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/27-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/27-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q27 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/27-old.pdf -> 01-04-md-lectures-PDF/v1/archive/27-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q27 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/27.pdf -> 01-04-md-lectures-PDF/v1/archive/27-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q28 | owner: archive every lesson before the new process | 01-01-map-principles/v1/28.md -> 01-01-map-principles/v1/archive/28-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q28 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/28.md -> 01-01-md-DRAFT-lectures/v1/archive/28-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q28 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/28.md -> 01-02-md-LECTURES/v1/archive/28-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q28 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/28-earth01.html -> 01-03-md-lectures-HTML/v1/archive/28-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q28 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/28-old.html -> 01-03-md-lectures-HTML/v1/archive/28-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q28 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/28.html -> 01-03-md-lectures-HTML/v1/archive/28-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q28 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/28-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/28-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q28 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/28-old.pdf -> 01-04-md-lectures-PDF/v1/archive/28-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q28 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/28.pdf -> 01-04-md-lectures-PDF/v1/archive/28-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q29 | owner: archive every lesson before the new process | 01-01-map-principles/v1/29.md -> 01-01-map-principles/v1/archive/29-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q29 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/29.md -> 01-01-md-DRAFT-lectures/v1/archive/29-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q29 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/29.md -> 01-02-md-LECTURES/v1/archive/29-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q29 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/29-earth01.html -> 01-03-md-lectures-HTML/v1/archive/29-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q29 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/29-old.html -> 01-03-md-lectures-HTML/v1/archive/29-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q29 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/29.html -> 01-03-md-lectures-HTML/v1/archive/29-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q29 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/29-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/29-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q29 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/29-old.pdf -> 01-04-md-lectures-PDF/v1/archive/29-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q29 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/29.pdf -> 01-04-md-lectures-PDF/v1/archive/29-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q30 | owner: archive every lesson before the new process | 01-01-map-principles/v1/30.md -> 01-01-map-principles/v1/archive/30-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q30 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/30.md -> 01-01-md-DRAFT-lectures/v1/archive/30-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q30 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/30.md -> 01-02-md-LECTURES/v1/archive/30-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q30 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/30-earth01.html -> 01-03-md-lectures-HTML/v1/archive/30-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q30 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/30-old.html -> 01-03-md-lectures-HTML/v1/archive/30-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q30 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/30.html -> 01-03-md-lectures-HTML/v1/archive/30-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q30 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/30-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/30-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q30 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/30-old.pdf -> 01-04-md-lectures-PDF/v1/archive/30-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q30 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/30.pdf -> 01-04-md-lectures-PDF/v1/archive/30-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q31 | owner: archive every lesson before the new process | 01-01-map-principles/v1/31.md -> 01-01-map-principles/v1/archive/31-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q31 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/31.md -> 01-01-md-DRAFT-lectures/v1/archive/31-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q31 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/31.md -> 01-02-md-LECTURES/v1/archive/31-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q31 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/31-earth01.html -> 01-03-md-lectures-HTML/v1/archive/31-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q31 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/31-old.html -> 01-03-md-lectures-HTML/v1/archive/31-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q31 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/31.html -> 01-03-md-lectures-HTML/v1/archive/31-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q31 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/31-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/31-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q31 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/31-old.pdf -> 01-04-md-lectures-PDF/v1/archive/31-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q31 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/31.pdf -> 01-04-md-lectures-PDF/v1/archive/31-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q32 | owner: archive every lesson before the new process | 01-01-map-principles/v1/32.md -> 01-01-map-principles/v1/archive/32-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q32 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/32.md -> 01-01-md-DRAFT-lectures/v1/archive/32-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q32 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/32.md -> 01-02-md-LECTURES/v1/archive/32-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q32 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/32-earth01.html -> 01-03-md-lectures-HTML/v1/archive/32-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q32 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/32-old.html -> 01-03-md-lectures-HTML/v1/archive/32-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q32 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/32.html -> 01-03-md-lectures-HTML/v1/archive/32-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q32 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/32-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/32-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q32 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/32-old.pdf -> 01-04-md-lectures-PDF/v1/archive/32-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q32 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/32.pdf -> 01-04-md-lectures-PDF/v1/archive/32-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-01-map-principles/v1/33.md -> 01-01-map-principles/v1/archive/33-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/33.md -> 01-01-md-DRAFT-lectures/v1/archive/33-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/33-gemini.md -> 01-02-md-LECTURES/v1/archive/33-gemini-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/33.md -> 01-02-md-LECTURES/v1/archive/33-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/33-earth01.html -> 01-03-md-lectures-HTML/v1/archive/33-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/33-gemini-earth01.html -> 01-03-md-lectures-HTML/v1/archive/33-gemini-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/33-gemini-old.html -> 01-03-md-lectures-HTML/v1/archive/33-gemini-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/33-gemini.html -> 01-03-md-lectures-HTML/v1/archive/33-gemini-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/33-old.html -> 01-03-md-lectures-HTML/v1/archive/33-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/33.html -> 01-03-md-lectures-HTML/v1/archive/33-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/33-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/33-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/33-gemini-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/33-gemini-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/33-gemini-old.pdf -> 01-04-md-lectures-PDF/v1/archive/33-gemini-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/33-gemini.pdf -> 01-04-md-lectures-PDF/v1/archive/33-gemini-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/33-old.pdf -> 01-04-md-lectures-PDF/v1/archive/33-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q33 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/33.pdf -> 01-04-md-lectures-PDF/v1/archive/33-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q34 | owner: archive every lesson before the new process | 01-01-map-principles/v1/34.md -> 01-01-map-principles/v1/archive/34-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q34 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/34.md -> 01-01-md-DRAFT-lectures/v1/archive/34-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q34 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/34.md -> 01-02-md-LECTURES/v1/archive/34-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q34 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/34-earth01.html -> 01-03-md-lectures-HTML/v1/archive/34-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q34 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/34-old.html -> 01-03-md-lectures-HTML/v1/archive/34-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q34 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/34.html -> 01-03-md-lectures-HTML/v1/archive/34-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q34 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/34-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/34-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q34 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/34-old.pdf -> 01-04-md-lectures-PDF/v1/archive/34-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q34 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/34.pdf -> 01-04-md-lectures-PDF/v1/archive/34-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q35 | owner: archive every lesson before the new process | 01-01-map-principles/v1/35.md -> 01-01-map-principles/v1/archive/35-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q35 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/35.md -> 01-01-md-DRAFT-lectures/v1/archive/35-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q35 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/35.md -> 01-02-md-LECTURES/v1/archive/35-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q35 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/35-earth01.html -> 01-03-md-lectures-HTML/v1/archive/35-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q35 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/35-old.html -> 01-03-md-lectures-HTML/v1/archive/35-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q35 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/35.html -> 01-03-md-lectures-HTML/v1/archive/35-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q35 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/35-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/35-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q35 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/35-old.pdf -> 01-04-md-lectures-PDF/v1/archive/35-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q35 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/35.pdf -> 01-04-md-lectures-PDF/v1/archive/35-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q36 | owner: archive every lesson before the new process | 01-01-map-principles/v1/36.md -> 01-01-map-principles/v1/archive/36-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q36 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/36.md -> 01-01-md-DRAFT-lectures/v1/archive/36-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q36 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/36.md -> 01-02-md-LECTURES/v1/archive/36-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q36 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/36-earth01.html -> 01-03-md-lectures-HTML/v1/archive/36-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q36 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/36-old.html -> 01-03-md-lectures-HTML/v1/archive/36-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q36 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/36.html -> 01-03-md-lectures-HTML/v1/archive/36-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q36 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/36-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/36-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q36 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/36-old.pdf -> 01-04-md-lectures-PDF/v1/archive/36-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q36 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/36.pdf -> 01-04-md-lectures-PDF/v1/archive/36-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q37 | owner: archive every lesson before the new process | 01-01-map-principles/v1/37.md -> 01-01-map-principles/v1/archive/37-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q37 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/37.md -> 01-01-md-DRAFT-lectures/v1/archive/37-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q37 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/37.md -> 01-02-md-LECTURES/v1/archive/37-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q37 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/37-earth01.html -> 01-03-md-lectures-HTML/v1/archive/37-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q37 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/37-old.html -> 01-03-md-lectures-HTML/v1/archive/37-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q37 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/37.html -> 01-03-md-lectures-HTML/v1/archive/37-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q37 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/37-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/37-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q37 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/37-old.pdf -> 01-04-md-lectures-PDF/v1/archive/37-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q37 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/37.pdf -> 01-04-md-lectures-PDF/v1/archive/37-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-01-map-principles/v1/38.md -> 01-01-map-principles/v1/archive/38-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-01-md-DRAFT-lectures/v1/38.md -> 01-01-md-DRAFT-lectures/v1/archive/38-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-02-md-LECTURES/v1/38.md -> 01-02-md-LECTURES/v1/archive/38-2026-11-12-0220.md
+- 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/38-earth01.html -> 01-03-md-lectures-HTML/v1/archive/38-earth01-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/38-old.html -> 01-03-md-lectures-HTML/v1/archive/38-old-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-03-md-lectures-HTML/v1/38.html -> 01-03-md-lectures-HTML/v1/archive/38-2026-11-12-0220.html
+- 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/38-earth01.pdf -> 01-04-md-lectures-PDF/v1/archive/38-earth01-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/38-old.pdf -> 01-04-md-lectures-PDF/v1/archive/38-old-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/38.pdf -> 01-04-md-lectures-PDF/v1/archive/38-2026-11-12-0220.pdf
+- 2026-11-12 02:20 | archive Q39 | owner: archive every lesson before the new process | 01-01-map-principles/v1/39.md -> 01-01-map-principles/v1/archive/39-2026-11-12-0220.md
