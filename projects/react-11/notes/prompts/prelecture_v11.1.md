@@ -1,5 +1,5 @@
 Lesson NN = 14
-skill version SV = v11.1
+skill version SV = v11.3
 
 # Prelecture prompt: Lesson `{NN}`, skills `{SV}`
 
@@ -23,7 +23,7 @@ Paste this prompt into a new chat. This chat writes the prelecture of Lesson `{N
 ## Workspace rules
 
 - Work in `projects/react-11` on River Version (`v1`) Lesson `{NN}` (bank row `{NN}` in [questions/questions.md](../questions/questions.md)).
-- Use only the skills in `skills/{SV}/` (start with [skills/{SV}/README.md](../skills/v11.1/README.md)).
+- Use only the skills in `skills/{SV}/` (start with [skills/{SV}/README.md](../skills/v11.3/README.md)).
 - Do not read anything from `projects/react-09`.
 - Follow the workspace law in [AGENTS.md](../../../AGENTS.md): zero em-dashes, zero hard-wraps, TTS-safe prose.
 - Never overwrite, delete, or hand-move an existing prelecture or lecture file. If `01-01-md-PRE-lectures/v1/{NN}.md` already exists, stop and tell me so I can retire it with `archive_lecture.py` first.
@@ -33,13 +33,13 @@ Paste this prompt into a new chat. This chat writes the prelecture of Lesson `{N
 
 ## Step 1: Load the skills
 
-- [skills/{SV}/README.md](../skills/v11.1/README.md)
-- [skills/{SV}/prelecture/SKILL.md](../skills/v11.1/prelecture/SKILL.md) (the whole file; Section 5 gives the order of the prelecture)
-- [skills/{SV}/definitions/SKILL.md](../skills/v11.1/definitions/SKILL.md) (Section 1 in full, with every GOOD and BAD pair)
-- [skills/{SV}/lecture/SKILL.md](../skills/v11.1/lecture/SKILL.md)
-- [skills/{SV}/titles/SKILL.md](../skills/v11.1/titles/SKILL.md)
-- [skills/{SV}/intro/SKILL.md](../skills/v11.1/intro/SKILL.md) and its three intros: [14.md](../skills/v11.1/intro/14.md), [15.md](../skills/v11.1/intro/15.md), [16.md](../skills/v11.1/intro/16.md)
-- [skills/{SV}/examples/SKILL.md](../skills/v11.1/examples/SKILL.md)
+- [skills/{SV}/README.md](../skills/v11.3/README.md)
+- [skills/{SV}/prelecture/SKILL.md](../skills/v11.3/prelecture/SKILL.md) (the whole file; Section 5 gives the order of the prelecture)
+- [skills/{SV}/definitions/SKILL.md](../skills/v11.3/definitions/SKILL.md) (Section 1 in full, with every GOOD and BAD pair)
+- [skills/{SV}/lecture/SKILL.md](../skills/v11.3/lecture/SKILL.md)
+- [skills/{SV}/titles/SKILL.md](../skills/v11.3/titles/SKILL.md)
+- [skills/{SV}/intro/SKILL.md](../skills/v11.3/intro/SKILL.md) and its three intros: [14.md](../skills/v11.3/intro/14.md), [15.md](../skills/v11.3/intro/15.md), [16.md](../skills/v11.3/intro/16.md)
+- [skills/{SV}/examples/SKILL.md](../skills/v11.3/examples/SKILL.md)
 
 ---
 
@@ -63,7 +63,7 @@ Paste this prompt into a new chat. This chat writes the prelecture of Lesson `{N
 
 ## Step 4: Check the prelecture
 
-- Load [skills/{SV}/check/SKILL.md](../skills/v11.1/check/SKILL.md) (Step A).
+- Load [skills/{SV}/check/SKILL.md](../skills/v11.3/check/SKILL.md) (Step A).
 - Check every definition and every rule against the React documentation it cites.
 - Where the documentation says something different, fix the prelecture.
 - Do not run any code. The lab runs later, on the lecture.

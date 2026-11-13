@@ -1,5 +1,5 @@
 Lesson NN = 14
-skill version SV = v11.1
+skill version SV = v11.3
 
 # Lecture prompt: Lesson `{NN}`, skills `{SV}`
 
@@ -27,7 +27,7 @@ The check and the lab run come later, in a separate step.
 ## Workspace rules
 
 - Work in `projects/react-11` on River Version (`v1`) Lesson `{NN}` (bank row `{NN}` in [questions/questions.md](../questions/questions.md)).
-- Use only the skills in `skills/{SV}/` (start with [skills/{SV}/README.md](../skills/v11.1/README.md)).
+- Use only the skills in `skills/{SV}/` (start with [skills/{SV}/README.md](../skills/v11.3/README.md)).
 - Do not read anything from `projects/react-09`.
 - Follow the workspace law in [AGENTS.md](../../../AGENTS.md): zero em-dashes, zero hard-wraps, TTS-safe prose.
 - Never overwrite, delete, or hand-move an existing prelecture or lecture file. If `01-02-md-LECTURES/v1/{NN}.md` already exists, stop and tell me so I can retire it with `archive_lecture.py` first.
@@ -44,15 +44,15 @@ The check and the lab run come later, in a separate step.
 
 ## Step 2: Load the skills
 
-- [skills/{SV}/README.md](../skills/v11.1/README.md)
-- [skills/{SV}/lecture/SKILL.md](../skills/v11.1/lecture/SKILL.md) (the whole file; *The parts of a lecture* gives the order and the title tags)
-- [skills/{SV}/definitions/SKILL.md](../skills/v11.1/definitions/SKILL.md)
-- [skills/{SV}/intro/SKILL.md](../skills/v11.1/intro/SKILL.md) and its three intros: [14.md](../skills/v11.1/intro/14.md), [15.md](../skills/v11.1/intro/15.md), [16.md](../skills/v11.1/intro/16.md)
-- [skills/{SV}/examples/SKILL.md](../skills/v11.1/examples/SKILL.md) (read the entry closest to this lesson before writing the opening)
-- [skills/{SV}/clarity/SKILL.md](../skills/v11.1/clarity/SKILL.md) (write every paragraph by its checklist)
-- The five moves: [smallest-code-first.md](../skills/v11.1/moves/smallest-code-first.md), [side-by-side.md](../skills/v11.1/moves/side-by-side.md), [everyday-image.md](../skills/v11.1/moves/everyday-image.md), [steps-for-a-surprise.md](../skills/v11.1/moves/steps-for-a-surprise.md), [both-orders-first.md](../skills/v11.1/moves/both-orders-first.md)
-- [skills/{SV}/figures/SKILL.md](../skills/v11.1/figures/SKILL.md) (code blocks, browser previews, file panels, principle cards, definition boxes)
-- [skills/{SV}/titles/SKILL.md](../skills/v11.1/titles/SKILL.md)
+- [skills/{SV}/README.md](../skills/v11.3/README.md)
+- [skills/{SV}/lecture/SKILL.md](../skills/v11.3/lecture/SKILL.md) (the whole file; *The parts of a lecture* gives the order and the title tags)
+- [skills/{SV}/definitions/SKILL.md](../skills/v11.3/definitions/SKILL.md)
+- [skills/{SV}/intro/SKILL.md](../skills/v11.3/intro/SKILL.md) and its three intros: [14.md](../skills/v11.3/intro/14.md), [15.md](../skills/v11.3/intro/15.md), [16.md](../skills/v11.3/intro/16.md)
+- [skills/{SV}/examples/SKILL.md](../skills/v11.3/examples/SKILL.md) (read the entry closest to this lesson before writing the opening)
+- [skills/{SV}/clarity/SKILL.md](../skills/v11.3/clarity/SKILL.md) (write every paragraph by its checklist)
+- The five moves: [smallest-code-first.md](../skills/v11.3/moves/smallest-code-first.md), [side-by-side.md](../skills/v11.3/moves/side-by-side.md), [everyday-image.md](../skills/v11.3/moves/everyday-image.md), [steps-for-a-surprise.md](../skills/v11.3/moves/steps-for-a-surprise.md), [both-orders-first.md](../skills/v11.3/moves/both-orders-first.md)
+- [skills/{SV}/figures/SKILL.md](../skills/v11.3/figures/SKILL.md) (code blocks, browser previews, file panels, principle cards, definition boxes)
+- [skills/{SV}/titles/SKILL.md](../skills/v11.3/titles/SKILL.md)
 
 ---
 

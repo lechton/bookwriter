@@ -1,5 +1,5 @@
 Lesson NN = 31
-skill version SV = v11.2
+skill version SV = v11.3
 
 # Rewrite prompt: Lesson `{NN}`, skills `{SV}`
 
@@ -61,9 +61,9 @@ React: blabla (add code)
 
 ## Step 2: Load the skills
 
-- [skills/{SV}/rewrite/SKILL.md](../skills/v11.2/rewrite/SKILL.md) (the whole file, with every example)
-- [skills/{SV}/figures/SKILL.md](../skills/v11.2/figures/SKILL.md) (only for the exact syntax of code blocks, highlights, browser previews, principle cards, and definition boxes)
-- [skills/{SV}/lecture/SKILL.md](../skills/v11.2/lecture/SKILL.md) (only *The parts of a lecture*, for the title tags)
+- [skills/{SV}/rewrite/SKILL.md](../skills/v11.3/rewrite/SKILL.md) (the whole file, with every example)
+- [skills/{SV}/figures/SKILL.md](../skills/v11.3/figures/SKILL.md) (only for the exact syntax of code blocks, highlights, browser previews, principle cards, and definition boxes)
+- [skills/{SV}/lecture/SKILL.md](../skills/v11.3/lecture/SKILL.md) (only *The parts of a lecture*, for the title tags)
 
 ---
 
