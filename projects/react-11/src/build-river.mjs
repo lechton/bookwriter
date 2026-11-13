@@ -1192,6 +1192,11 @@ function parseAndRender(md, theme = 'book') {
       while (i < lines.length && lines[i].startsWith('>')) {
         inner.push(lines[i++].replace(/^> ?/, ''));
       }
+      const leadMatch = inner.length === 1 && inner[0].trim().match(/^\*\*(.+)\*\*$/);
+      if (leadMatch && theme !== 'old' && /^<h[23] class="vs-title/.test(out[out.length - 1] || '')) {
+        out.push(`<aside class="lead-sentence"><p>${inline(leadMatch[1])}</p></aside>`);
+        continue;
+      }
       if (/^INTERVIEW QUESTION\s*\|/.test(inner[0])) {
         const [, tier, ...q] = inner[0].split('|').map((s) => s.trim());
         out.push(
