@@ -310,4 +310,4 @@ React: blabla (add code)
 
 ## How to start with the simple principle
 
-Start the `VS` section with plain paragraphs right under the `## VS |` heading. Never wrap this opening in a callout box. Read the sections *What the VS opening is for* and *The VS opening: examples* in [intro/SKILL.md](../intro/SKILL.md), and write the opening the way the GOOD examples do. #2026_11_13_02_group_3
+Start the `VS` section with plain paragraphs right under the `## VS |` heading. Never wrap this opening in a callout box. Read [intro/intro-points.md](../intro/intro-points.md), and write the opening the way the GOOD examples do. #2026_11_13_04_group_2
