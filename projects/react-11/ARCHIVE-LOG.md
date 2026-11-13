@@ -700,3 +700,6 @@ The `archive/` subfolders of the `v1` folders were copied unchanged from the rea
 - 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/38-old.pdf -> 01-04-md-lectures-PDF/v1/archive/38-old-2026-11-12-0220.pdf
 - 2026-11-12 02:20 | archive Q38 | owner: archive every lesson before the new process | 01-04-md-lectures-PDF/v1/38.pdf -> 01-04-md-lectures-PDF/v1/archive/38-2026-11-12-0220.pdf
 - 2026-11-12 02:20 | archive Q39 | owner: archive every lesson before the new process | 01-01-map-principles/v1/39.md -> 01-01-map-principles/v1/archive/39-2026-11-12-0220.md
+- 2026-11-13 04:24 | archive Q31 | manual | 01-02-md-LECTURES/v1/31.md -> 01-02-md-LECTURES/v1/archive/31-2026-11-13-0424.md
+- 2026-11-13 04:24 | archive Q31 | manual | 01-03-md-lectures-HTML/v1/theme1/31.html -> 01-03-md-lectures-HTML/v1/theme1/archive/31-2026-11-13-0424.html
+- 2026-11-13 04:24 | archive Q31 | manual | 01-04-md-lectures-PDF/v1/theme1/31.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/31-2026-11-13-0424.pdf
