@@ -79,7 +79,7 @@ A project that keeps its own bank (react-06 today) has one live file, `questions
 
 ## Rule Authoring
 
-When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/`, `projects/react-06/skills/v6.7/`, `projects/react-07/skills/v7.1/`, `projects/react-08/skills/v8.1/`, `projects/react-09/skills/v9.1/`, `projects/react-10/skills/v10.7/`, and `projects/react-11/skills/v11.1/` (the latest version folder is live).
+When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/`, `projects/react-06/skills/v6.7/`, `projects/react-07/skills/v7.1/`, `projects/react-08/skills/v8.1/`, `projects/react-09/skills/v9.1/`, `projects/react-10/skills/v10.7/`, and `projects/react-11/skills/v11.3/` (the latest version folder is live).
 
 ### The Principles of Principles (Authoring Doctrine)
 
