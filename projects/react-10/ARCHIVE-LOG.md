@@ -245,3 +245,4 @@ The `archive/` subfolders of the `v1` folders were copied unchanged from the rea
 - 2026-11-13 03:29 | archive Q41 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/41.md -> 01-02-md-LECTURES/v1/archive/41-2026-11-13-0329.md
 - 2026-11-13 03:54 | archive Q42 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/42.md -> 01-02-md-LECTURES/v1/archive/42-2026-11-13-0354.md
 - 2026-11-13 04:19 | archive Q43 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/43.md -> 01-02-md-LECTURES/v1/archive/43-2026-11-13-0419.md
+- 2026-11-13 04:46 | archive Q44 | bookflow: before the runtime check | 01-02-md-LECTURES/v1/44.md -> 01-02-md-LECTURES/v1/archive/44-2026-11-13-0446.md
