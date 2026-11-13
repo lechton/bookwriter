@@ -703,3 +703,6 @@ The `archive/` subfolders of the `v1` folders were copied unchanged from the rea
 - 2026-11-13 04:24 | archive Q31 | manual | 01-02-md-LECTURES/v1/31.md -> 01-02-md-LECTURES/v1/archive/31-2026-11-13-0424.md
 - 2026-11-13 04:24 | archive Q31 | manual | 01-03-md-lectures-HTML/v1/theme1/31.html -> 01-03-md-lectures-HTML/v1/theme1/archive/31-2026-11-13-0424.html
 - 2026-11-13 04:24 | archive Q31 | manual | 01-04-md-lectures-PDF/v1/theme1/31.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/31-2026-11-13-0424.pdf
+- 2026-11-13 08:01 | archive Q30 | manual | 01-02-md-LECTURES/v1/30.md -> 01-02-md-LECTURES/v1/archive/30-2026-11-13-0801.md
+- 2026-11-13 08:01 | archive Q30 | manual | 01-03-md-lectures-HTML/v1/theme1/30.html -> 01-03-md-lectures-HTML/v1/theme1/archive/30-2026-11-13-0801.html
+- 2026-11-13 08:01 | archive Q30 | manual | 01-04-md-lectures-PDF/v1/theme1/30.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/30-2026-11-13-0801.pdf
