@@ -3856,13 +3856,39 @@ h2:first-of-type {
 
 <h2 class="vs-title vs-h2"><span class="section-kicker kicker-versus">Overview · Two Ways Side by Side</span><span class="vs-board"><span class="vs-side vs-a"><span class="vs-letter">A</span><span class="vs-label vs-label-solo">Deleting a dependency</span></span><span class="vs-medal" aria-hidden="true">vs</span><span class="vs-side vs-b"><span class="vs-letter">B</span><span class="vs-label vs-label-solo">Changing the code</span></span></span><span class="vs-explain"><span class="vs-u vs-u-a">The deleted value is still read</span>, <span class="vs-u vs-u-b">the changed code no longer reads it</span></span></h2>
 
-<aside class="lead-sentence"><p>We do not delete a dependency the Effect still reads: we change the code so the Effect no longer reads it.</p></aside>
+<aside class="lead-sentence"><p>When an Effect runs too often, we do not need to remove its dependencies: we can define the objects of the dependencies in a &quot;safer place&quot; (inside the Effect itself).</p></aside>
 
-<p>In React, an Effect sometimes runs more often than it should, like a chat that reconnects while you type, or a request sent again on every render. The dependency array tells React when to run the Effect again, so the first idea is to delete the value that causes the extra runs. But the array is not a setting you pick. It describes what the code reads. <strong>Never delete a dependency the Effect still reads. Change the code so the Effect no longer reads that value.</strong></p>
+<p>Why do we need dependencies in the first place? It is a form of indirect control of actions. </p>
 
-<p>Take a chat room where the user types a message into the text box at the bottom. The user never switches rooms, yet every letter makes the chat disconnect and connect again. Ask yourself: what changes on every letter? Not the room. The settings object <code>options</code> is built again in the component body on every render, so React sees a new object each time.</p>
+<p><strong>A form of direct control: an action gives a direct order to a target.</strong> When you click a &quot;Print&quot; button, the button's click handler calls <code>window.print()</code>. Cause and effect live in the exact same place: the button knows what it wants to happen and makes it happen on the spot:</p>
 
-<p><strong>Why:</strong> Every letter renders the component again, and the component body builds a brand-new <code>options</code> object, so React thinks the settings changed and restarts the chat. Deleting <code>options</code> from the dependency array only hides the bug: the Effect still reads <code>options</code>, and it no longer runs again when the room really changes. See the problem? The fix is to move the object inside the Effect, so the Effect depends only on <code>serverUrl</code> and <code>roomId</code>, and neither of them changes while the user types.</p>
+<div class="interview-banner interview-banner-full"><p class="interview-banner-q">button clicked → handler runs → <code>window.print()</code> called directly</p></div>
+
+<p><strong>A form of indirect control: an action only changes a value, and an invisible network does the rest.</strong> Imagine a travel page with a city selector at the top, a weather box on the left, a street map in the middle, a list of hotels on the right, and a text box at the bottom for a note to the hotel. When you pick <code>'Rome'</code> from the selector, its handler does not call the weather box, does not move the map, and does not fetch the hotels. The handler only changes a single piece of state: it sets <code>city</code> from <code>'Athens'</code> to <code>'Rome'</code>. Yet a moment later, the weather reloads, the map flies to Italy, and new hotels appear:</p>
+
+<div class="interview-banner interview-banner-full"><p class="interview-banner-q"><code>'Rome'</code> selected → handler changes <code>city</code> → component renders again → weather, map, and hotels see a new <code>city</code> and run again</p></div>
+
+<p><strong>An invisible world of dependencies:</strong> Nothing in the city selector mentions the weather, the map, or the hotels. Instead, each of those three tasks reads <code>city</code> to do its job, which makes <code>city</code> their <strong>dependency</strong>. Behind the scenes, an invisible wire connects the value <code>city</code> to every Effect that reads it. The selector simply drops a new value into <code>city</code>, and every Effect wired to <code>city</code> pulls itself into motion:</p>
+
+<p>* <code>city</code> changes → <strong>Weather Effect</strong> sees a new <code>city</code> → loads Rome's forecast</p>
+
+<p>* <code>city</code> changes → <strong>Map Effect</strong> sees a new <code>city</code> → centers the map on Rome</p>
+
+<p>* <code>city</code> changes → <strong>Hotel Effect</strong> sees a new <code>city</code> → fetches Rome's hotels</p>
+
+<p>That is why dependencies feel like invisible forces. When you look at the click handler, you only see <code>setCity('Rome')</code>: one line of code that appears to do nothing but store a word. You cannot see what will happen next by reading the button; you have to look at what is <em>listening</em> to that word across the component.</p>
+
+<p><strong>Three places to write code:</strong> </p>
+
+<ol><li>We can write code in an event handler, and it runs only after a click or another event. </li><li>We can write code inside an Effect, and it runs after a render, but only when one of its dependencies changed. </li><li>And we can write code in the component body. This place is &quot;radioactive&quot;.</li></ol>
+
+<p><strong>The component body is a &quot;radioactive&quot; place:</strong> This part of the code runs, and reruns, and reruns all the time. Every time a setter gets a new value, React renders the component again and runs the component body from the top. So when we create an object there, like <code>options = { city: city, zoom: 12 }</code>, we create a new object on every render. Believe it or not, the object is NEW even when no variable has changed: <code>city</code> is still <code>'Rome'</code>, but the object around it is a different object. What changed is the reference of the object in javascript. Therefore, defining an object in the component code becomes &quot;radioactive&quot; since it constantly appears as a new object, even when nothing has changed. Imagine if you create a dependency, from an object that constantly changes. </p>
+
+<p><strong>Where is the catch?</strong> React does not look inside the object. It only asks: &quot;Is this the same object as last time?&quot; So when the map Effect depends on <code>options</code>, every keystroke in a text box renders the component again, creates a new <code>options</code>, and fires the map Effect again, even though the text box and the map never touch each other.</p>
+
+<p><strong>The fix is to take the object out of the &quot;radioactive&quot; place and hide it inside the Effect.</strong> Then the only outside value the Effect reads is <code>city</code>, and the map reloads only when the user picks a new city.</p>
+
+<h3 class="leading-q">The Same Bug in a Chat</h3>
 
 <p>Now let's see what that means on a real chat.</p>
 
