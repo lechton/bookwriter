@@ -22,3 +22,6 @@ Notes
 **Preserve structural titles and backticks:** Do not alter the headings starting with `## VS |`, `## PRINCIPLE |`, or `## SECTION |`. Specifically, never remove backticks from `## VS | ...` titles: those backticks are required syntax for the HTML builder to render the code badges.
 
 
+Important
+The principles have idiosyncratic terms inside that makes them difficult to read them autonomously. Rewrite the principles so that they appear self contained each one with normal and easy to understand vocabulary e.g. the term Dentist is confusing when you just open and read the principle text, the whole terms are heavily idiosyncratic. Make it more easy to read directly and in isolation.
+
