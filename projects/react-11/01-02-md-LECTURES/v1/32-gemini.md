@@ -1,0 +1,975 @@
+# Lecture 32: Connecting a Component to an External System with useEffect
+
+*(How does a component start a timer when it appears, and stop it when it leaves?)*
+
+> INTERVIEW QUESTION | ❱ CORE | How do you connect a component to an external system, and how do you disconnect it?
+
+---
+
+## VS | Event Handler `onClick` vs. Effect `useEffect`: one runs because the user clicked, the other because the component is on the screen
+
+> Some tasks must start by themselves when a component appears, like connecting to a server or starting a timer, and stop when it leaves. **You should put that task in `useEffect`, together with a cleanup function.** React starts the task after the component appears on the screen, and runs the cleanup when the component leaves.
+
+In React, a component often needs to start a background task automatically the moment it appears on the screen. Common examples include connecting to a live chat server, starting a ticking timer, or listening for window scroll events. Until now, our code only had two places to run:
+
+- inside an event handler like `onClick` when the user clicks something,
+- or right inside the component body while React renders.
+
+Neither location works when a task must start simply because a component appeared on the page. This is why React provides `useEffect`. It gives your code a third place to run: right after React puts the component on the screen. It also provides a built-in way to clean up that work when the component leaves.
+
+Consider a live chat window on a customer support page. The moment the chat window appears on the screen, it must connect to the chat server automatically, without waiting for the user to click a Connect button. Later, when the user closes the chat window, it must disconnect so it stops receiving messages in the background. Where should the code that opens and closes this connection live? The connection belongs to the chat window component itself, placed inside `useEffect`. It must start automatically when React puts that component on the screen, and end when React removes it.
+
+**Why:** Placing the server connection directly inside the component body fails because React executes the component function from top to bottom on every single render. The component body is not a safe place for background tasks. If the user types a single character into the chat input field, the component re-renders and opens another server connection. Conversely, we cannot place the connection inside an `onClick` handler because the user never clicked a button to initiate it. The connection process must happen automatically. We need the code to run without user interaction, but without repeating on every render. `useEffect` solves this by running your setup code after the component appears on the screen, and running your cleanup code when the component disappears.
+
+### A Timer in Plain JavaScript
+
+In plain JavaScript, a script file runs once, when the page loads. Start a timer at the top of the file, and you get one timer. It runs until the user closes the tab:
+
+```js title="Plain JavaScript: the file runs once, so one timer starts"
+~setInterval(tick, 1000)~; // Runs once, when the page loads
+```
+
+A component is different. React does not call it once. React calls your component function on every render (Lesson 13). So a line at the top of a component runs again and again.
+
+Until now, a component had two places for code:
+1. **The body.** It returns the JSX, it runs on every render, and it must only calculate (Lesson 14).
+2. **Event handlers.** They run when the user does something, such as a click (Lesson 11).
+
+Now take a counter that counts the seconds by itself. It appears, it shows 0, and it goes up by one every second. Nobody clicks anything.
+
+So where does `setInterval` go? Starting a timer is not a calculation, so it cannot sit in the body. No click starts it, so there is no handler to put it in.
+
+React has a third place for exactly this case, `useEffect`:
+
+```jsx title="React: start the timer when Counter appears, stop it when Counter leaves"
+useEffect(() => {
+  const intervalId = ~setInterval(tick, 1000)~; // Runs after Counter appears on the screen
+  return () => ~clearInterval(intervalId)~; // Runs when Counter leaves the screen
+}, []);
+```
+
+> [!DEFINITION]
+> **What is an Effect?** [NEW] An Effect is code that React runs because the component appeared on the screen, rather than in response to a specific user interaction.
+> 1. You declare an Effect with the `useEffect` Hook imported from React: `useEffect(setup, dependencies)`.
+> 2. A component renders its JSX first, React commits the elements to the screen, and only then does React run the setup function.
+> 3. If dependencies change on a later render, React runs the cleanup function with the old values, then runs the setup function with the new values.
+> 4. When the component unmounts from the screen, React runs the cleanup function one final time to release external connections.
+> 
+> The official documentation notes: "Effects let you specify side effects that are caused by rendering itself, rather than by a particular event." React writes Effect with a capital E for this concept (Lesson 32).
+
+> [!DEFINITION]
+> **What is an external system?** [NEW] An external system is any piece of state, runtime, or API that lives outside React's declarative control.
+> 1. React directly controls the elements it creates from your JSX, alongside component props and state.
+> 2. React does not control native browser APIs like `setInterval`, event listeners on `window`, network sockets, or widgets from non-React libraries.
+> 3. An Effect synchronizes your component with that external system, keeping the connection active for as long as the component remains on the screen.
+> 
+> As the official documentation explains: "These systems aren't controlled by React, so they are called external" (Lesson 32).
+
+> [!DEFINITION]
+> **Rendering code must be pure.** [REVIEW] The body of a component takes props and state and calculates JSX. It must perform no side effects.
+> 1. The official documentation states: "Like a math formula, it should only _calculate_ the result, but not do anything else."
+> 2. Event handlers perform side effects in response to user actions, such as updating state or submitting a form.
+> 3. An Effect provides a dedicated home for side effects caused by the component being displayed on the screen (Lesson 14).
+
+```tree caption="Three kinds of code in a component, and what makes each one run."
+Three kinds of code in a component
+- +The body [`return <h1>{count}</h1>`] | Runs on **every render** | Only **calculates** the JSX from props and state
+- +An event handler [`onClick={handleStart}`] | Runs because **the user did something** | **Does** things: changes state, sends a message
+- +An Effect [`useEffect`] | Runs because **the component is on the screen** | **Starts** something, and **stops it** when the component leaves
+```
+
+### React removes what it built, not what your code started
+
+Our counter displays its number inside an `<h1>` heading. When the counter leaves the page, React removes that heading element automatically because React created it from your JSX.
+
+The browser timer operates under different rules. React did not register the timer. Your code registered it by calling the browser's native `setInterval` API (Lesson 30). Because the browser runtime manages the timer independently of React, React cannot stop it automatically. Your code must explicitly call `clearInterval` to cancel it.
+
+Every external resource demands symmetrical teardown. If your setup code registers a background browser resource, your cleanup code must release that resource. Without an explicit cleanup, the timer continues ticking in browser memory even after its parent component is gone.
+
+```tree caption="What React removes when the counter leaves the page, and what your own code must stop."
+When the counter leaves the page
+- +What React built [`<h1>{count}</h1>`] | React built it from **your JSX** | React **removes it by itself**
+- !What your code started [`setInterval`] | The **browser** runs the timer, **not React** | It runs on until **your code** calls `clearInterval`
+```
+
+### The Rule of Thumb: what causes the work?
+
+**Ask what causes the work. Did user interaction cause it? Put it in an event handler. Did the component appearing on the screen cause it? Put it in `useEffect`, and tear it down inside the cleanup function that your Effect returns.**
+
+The official documentation uses a chat room to illustrate this rule. The chat window must remain connected to the server for as long as the user can see it, regardless of which interaction made the component appear.
+
+Experienced engineers recognize four classic Effect mistakes:
+1. **Starting a timer in the component body.** Every render starts an additional timer, making the counter accelerate uncontrollably.
+2. **Omitting the cleanup function.** The timer continues running after the counter disappears, and every remount adds another orphan timer.
+3. **Using a ref guard to force an Effect to run once.** The browser console looks clean in development, but timers still accumulate for real users.
+4. **Triggering a payment or purchase inside an Effect.** The request fires twice in development, and repeats whenever the user revisits the page.
+
+The rest of this lesson walks through each mistake using a concrete seconds counter.
+
+## SECTION | A Seconds Counter You Can Show and Hide
+
+Our page has one button. Under it, when the user asks for it, the counter appears:
+1. The user clicks Show counter. The number 0 appears and goes up by one every second.
+2. The user clicks Hide counter. The number disappears, and the timer stops.
+3. The user clicks Show counter again. The counter starts again from 0, with one timer only.
+
+When the page opens, there is only the button:
+
+```page width=text caption="The counter page when it opens: one button, and no counter yet."
+line: [Show counter]
+console: quiet
+```
+
+`App` keeps `show` in state. It renders the counter only while `show` is true. It uses `&&` from Lesson 10:
+
+```jsx title="src/App.jsx"
+import { useState } from 'react';
+import Counter from './components/Counter.jsx';
+
+export default function App() {
+  const [show, setShow] = useState(false);
+
+  return (
+    <main>
+      <button ~onClick={() => setShow(!show)}~> {/* Each click flips show */}
+        {show ? 'Hide' : 'Show'} counter
+      </button>
+      ~{show && <Counter />}~ {/* Counter is on the page only while show is true */}
+    </main>
+  );
+}
+```
+
+At the start, `Counter` only shows its number:
+
+```jsx title="src/components/Counter.jsx"
+import { useState } from 'react';
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+
+  return ~<h1>{count}</h1>~; // Shows 0, and no line of code ever changes count
+}
+```
+
+The user clicks Show counter, and the number appears:
+
+```page width=text caption="After the user clicks Show counter: the number 0, which never moves."
+line: [Hide counter]
+heading: 0
+console: quiet
+```
+
+Ten seconds later, the page still shows 0. No code starts a timer.
+
+The entry file mounts `App` inside `<StrictMode>`, as in Lesson 07. Here are the files:
+
+```files title="seconds-counter: File Explorer" caption="How the seconds counter project files sit inside src/ and src/components/."
+index.html | entry | The HTML page with the empty root div where React mounts
+src/
+  main.jsx | boundary | Imports `App` from `./App.jsx` and mounts it inside `<StrictMode>`
+  App.jsx | parent | Keeps `show` in state and renders `<Counter />` while `show` is true
+  components/
+    Counter.jsx | Effect | Keeps `count` in state, and starts and stops the timer in an Effect
+```
+
+Each principle now adds one step to `Counter`, and shows what goes wrong without it:
+
+**PRINCIPLES:** `useEffect` runs your code after the component appears on the screen. Whatever resource that code establishes, it must also tear down when the component leaves. Five principles follow:
+1. **Principle 1: useEffect Runs the Code After the Commit.** The commit is the moment React puts the elements on the page. A timer in the body starts again on every render.
+2. **Principle 2: The Empty Array Runs the Effect Only on Mount.** With no array, the Effect runs after every render and starts one more timer each time.
+3. **Principle 3: The Cleanup Function Stops What the Setup Started.** Without it, the timer runs on after the user hides the counter.
+4. **Principle 4: Fix the Extra Run in Development with a Cleanup, Never a Ref.** A ref guard makes the console look right, while timers still pile up for users.
+5. **Principle 5: A Click Causes a Purchase, So It Goes in the Click Handler.** A purchase in an Effect goes out twice.
+
+---
+
+## PRINCIPLE | useEffect: the code runs after the component is on the screen
+
+> [!PRINCIPLE]
+> **Principle 1: useEffect Runs the Code After the Commit**
+> 
+> *Code that must run because the component is on the screen goes inside useEffect. React runs it after the commit. The body runs on every render and must only calculate the JSX.*
+> 
+> A timer, a subscription, or a call to focus in the body runs while React renders. On the first render, the element is not on the page yet. On every later render, the timer starts again. Inside useEffect, you hand React a function, and React calls it once the page is on the screen.
+> 
+> **DO THIS:**
+> ```jsx
+> useEffect(() => {
+>   ~setInterval(onTick, 1000);~ // After the commit: the counter is on the page
+> });
+> ```
+> 
+> **DO NOT DO THIS:**
+> ```jsx
+> function Counter() {
+>   ~setInterval(onTick, 1000);~ // **WRONG:** in the body, every render starts one more timer
+>   return <h1>{count}</h1>;
+> }
+> ```
+
+### The smallest Effect: focus an `<input>` field when it appears
+
+Lesson 31 left one job open: put the cursor in an `<input>` field the moment the field appears. Here is the call to `focus` in the body. The page goes blank, as Lesson 31 showed:
+
+```jsx title="The call to focus in the body of the component" bad="3"
+function MyComponent() {
+  const inputRef = useRef(null);
+  ~inputRef.current.focus();~ // **WRONG:** runs during rendering, while current is still null
+  return <input ref={inputRef} />;
+}
+```
+
+Now the same line, inside `useEffect`:
+
+```jsx title="The same call to focus inside useEffect" good="5"
+import { useEffect, useRef } from 'react';
+
+function MyComponent() {
+  const inputRef = useRef(null);
+  ~useEffect~(() => { // React runs this function after the <input> is on the page
+    inputRef.current.focus();
+  });
+  return <input ref={inputRef} />;
+}
+```
+
+```page width=text caption="With the call to focus inside useEffect, the cursor is in the input field when the page opens."
+form:
+  field: Your name |  | good
+console: quiet
+```
+
+The line is the same. The moment it runs is not:
+1. **In the body**, the line runs while React calls `MyComponent`. React has not created the `<input>` yet. So `inputRef.current` is still `null`.
+2. **Inside `useEffect`**, the line runs after React has put the `<input>` into the page. The docs call that step the commit. Now `inputRef.current` holds the element.
+
+The docs sum it up: "**`useEffect` "delays" a piece of code from running until that render is reflected on the screen.**"
+
+The function you hand to `useEffect` has a name. The docs call it the **setup function**: "The function with your Effect's logic." Your code creates it during the render and hands it to React. React calls it after the commit. Your code never calls it.
+
+```tree dir=right caption="How the setup function gets from your component to the moment React calls it."
+How React runs the setup function
+- +1. Render [`useEffect`] | React calls the component; your code **hands React the setup function** | Nothing runs yet
+- +2. Commit [`<input>`] | React puts the input field **into the page** | `inputRef.current` now holds the element
+- +3. After the commit [`inputRef.current.focus`] | React **calls the setup function** | The input field gets the cursor
+```
+
+### The timer in the body of Counter
+
+Back to our counter. A developer starts the timer in the body, right above the `return`. `onTick` is the function the timer calls every second. The updater `c => c + 1` from Lesson 16 adds one to the latest count:
+
+```jsx title="src/components/Counter.jsx" bad="10"
+import { useState } from 'react';
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+
+  function onTick() {
+    console.log('Tick');
+    setCount(c => c + 1);
+  }
+  ~setInterval(onTick, 1000);~ // **WRONG:** runs during every render, so every render starts one more timer
+
+  return <h1>{count}</h1>;
+}
+```
+
+The user clicks Show counter. The number climbs, then climbs faster and faster, and the console prints more `Tick` lines every second. Here is why:
+1. React calls `Counter` for the first render. The body calls `setInterval`, and one timer starts.
+2. In development, `<StrictMode>` calls the body twice, as Lesson 14 showed. A second timer starts.
+3. A second later, a timer calls `onTick`. The setter asks for a render, and React calls `Counter` again.
+4. The body calls `setInterval` again, and more timers start.
+5. Every render adds timers, and every timer asks for more renders.
+
+Starting a timer is a side effect, not a calculation. The docs state the rule in four words: "Rendering code must be pure." They say the same of a chat connection: connecting to a server cannot happen during rendering.
+
+The same mistake hits a live comments feed. A developer subscribes to the feed in the body. Each change of state renders the component again, and each render opens one more subscription. After six renders, the page holds six subscriptions to the same feed.
+
+### The timer inside useEffect, with no second argument
+
+So we move the timer into `useEffect`. We also log `Timer started` each time the Effect starts a timer:
+
+```jsx title="src/components/Counter.jsx"
+import { useState, ~useEffect~ } from 'react'; // useEffect comes from react, like useState
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    function onTick() {
+      console.log('Tick');
+      setCount(c => c + 1);
+    }
+    console.log('Timer started');
+    ~setInterval(onTick, 1000);~ // Runs after the commit, not during rendering
+  });
+
+  return <h1>{count}</h1>;
+}
+```
+
+The user clicks Show counter, and the number still climbs faster and faster. Moving the timer out of the body was right, but it was not enough:
+1. React commits the first render and runs the Effect. `Timer started` appears, and a timer starts.
+2. A second later, the timer calls `onTick`. `count` changes, and React renders and commits again.
+3. With no second argument, React runs the Effect after every commit. The docs: "By default, your Effect will run after every commit."
+4. So every tick causes a render, and every render starts one more timer.
+
+```page width=text caption="The counter with useEffect and no second argument, one second after the user clicks Show counter."
+line: [Hide counter]
+heading: 2
+log: Timer started | Counter.jsx:11
+log: Timer started | Counter.jsx:11
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Timer started | Counter.jsx:11
+```
+
+The first two `Timer started` lines come from an extra run in development, which Principle 3 explains. The second argument of `useEffect` decides when React runs the Effect again. Principle 2 adds it.
+
+---
+
+## PRINCIPLE | The empty array []: the Effect runs only when the component appears
+
+> [!PRINCIPLE]
+> **Principle 2: The Empty Array Runs the Effect Only on Mount**
+> 
+> *The second argument of useEffect lists every value from the component that the Effect reads. With no array, the Effect runs after every commit. With [], only after the first one. With [a, b], also after any commit where a or b changed.*
+> 
+> The code inside the Effect decides what goes in the array, and the exhaustive-deps lint rule checks it. A timer that adds one with the updater c => c + 1 reads no props and no state, so its array is [], and it runs only when the counter appears. Turning the lint rule off hides a missing value, and the Effect keeps the values of an old render. The return line in both blocks below stops the timer, as Principle 3 shows.
+> 
+> **DO THIS:**
+> ```jsx
+> useEffect(() => {
+>   const intervalId = setInterval(() => setCount(c => c + 1), 1000);
+>   return () => clearInterval(intervalId);
+> }, ~[]~); // Reads no state, so the array is empty and the Effect runs on mount
+> ```
+> 
+> **DO NOT DO THIS:**
+> ```jsx
+> useEffect(() => {
+>   const intervalId = setInterval(() => setCount(count + 1), 1000);
+>   return () => clearInterval(intervalId);
+> }, ~[]~); // **WRONG:** reads count but leaves it out, so the page stops at 1
+> ```
+
+`useEffect` takes a second argument: an array. The docs show three ways to write it:
+
+```jsx title="Three ways to write the second argument of useEffect"
+useEffect(() => { /* ... */ }); // No array: "This runs after every render"
+useEffect(() => { /* ... */ }, ~[]~); // "This runs only on mount (when the component appears)"
+useEffect(() => { /* ... */ }, ~[a, b]~); // "This runs on mount *and also* if either a or b have changed since the last render"
+```
+
+To mount means that React puts the component on the page for the first time. On our page, `Counter` mounts each time the user clicks Show counter.
+
+Omitting the dependency array entirely produces a completely different runtime behavior than passing an empty array `[]`. As the official documentation notes: "The behaviors without the dependency array and with an *empty* `[]` dependency array are different."
+
+```tree caption="When React runs the Effect, for each way of writing the second argument."
+The second argument of `useEffect`
+- !No array [`useEffect`] | Runs after **every commit** | Our counter starts **a new timer after every render**
+- +An empty array [`[]`] | Runs after the **first commit only**, on mount | Our counter starts **one timer** when it appears
+- +An array with values [`[a, b]`] | Runs on mount, and after any commit where **`a` or `b` changed** | React compares each value with the one from the last render
+```
+
+### What goes in the array
+
+> [!DEFINITION]
+> **What is the dependency array?** [NEW] The dependency array is the optional second argument passed to `useEffect`, listing all reactive values referenced by the setup code.
+> 1. In the docs' words, it is "The list of all reactive values referenced inside of the `setup` code". In plain terms: every prop, state variable, or value derived from them that the Effect reads.
+> 2. You do not manually choose which values to list. The docs emphasize: "you can't "choose" your dependencies." The code inside the Effect decides them.
+> 3. After each commit, React compares each dependency with its value from the last render using `Object.is`. If any dependency changed, React cleans up the previous Effect run and executes the setup again. If every dependency is identical, React skips running the Effect for that render (Lesson 35).
+
+The docs show this with a video player. Its Effect plays or pauses the video, depending on the `isPlaying` prop:
+
+```jsx title="The docs' VideoPlayer: the Effect reads isPlaying, so isPlaying is in the array"
+useEffect(() => {
+  if (isPlaying) {
+    ref.current.play();
+  } else {
+    ref.current.pause();
+  }
+}, ~[isPlaying]~); // The Effect reads isPlaying, so it runs again whenever isPlaying changes
+```
+
+With `[]` instead, the Effect would never see a new value of `isPlaying`. A linter catches this. A linter is a tool that reads your code before it runs, in your editor or in the terminal. Its `exhaustive-deps` rule checks that every dependency is listed. The docs show its message: "React Hook useEffect has a missing dependency: 'isPlaying'."
+
+### The counter with []
+
+Our Effect reads no props and no state. The updater `c => c + 1` gets the latest count from React (Lesson 16), so the Effect never reads `count` itself. The docs: "The code inside the Effect does not use any props or state, so your dependency array is `[]`."
+
+So we add `[]`:
+
+```jsx title="src/components/Counter.jsx" startLine="6" good="8"
+  useEffect(() => {
+    function onTick() {
+      console.log('Tick');
+      setCount(c => c + 1);
+    }
+    console.log('Timer started');
+    setInterval(onTick, 1000);
+  }, ~[]~); // Runs only after the first commit, when Counter mounts
+```
+
+The timers no longer pile up on every tick. But in development, the number goes up by two every second:
+1. The user clicks Show counter.
+2. React mounts `Counter` and runs the Effect. `Timer started` appears, and one timer starts.
+3. In development, React mounts the counter a second time, at once, and runs the Effect again. A second timer starts.
+4. No line of our code stopped the first timer, so two timers call `onTick` every second.
+
+```page width=text caption="The counter with [] in development, three seconds after the user clicks Show counter: two timers, so the number goes up by two."
+line: [Hide counter]
+heading: 6
+log: Timer started | Counter.jsx:11
+log: Timer started | Counter.jsx:11
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+```
+
+This is the docs' own challenge: "instead of incrementing once per second, it increments twice." In production, the Effect runs once, and the number goes up by one. Principle 3 explains the second run, and adds the lines that make the page right in both.
+
+### VS | `count + 1` vs. the Updater `c => c + 1`: one reads state, the other reads none
+
+The updater is what makes `[]` honest here. Compare two ways to add one:
+
+```jsx title="Adding one with count + 1, and with the updater c => c + 1"
+setCount(~count + 1~); // Reads count, so count must be in the array
+setCount(~c => c + 1~); // Reads no state, so [] is honest
+```
+
+Both add one on the first tick. But `count + 1` reads the state variable, so `count` is a dependency. With the updater, the Effect reads no state at all, and `[]` tells React the truth.
+
+The documentation explains that passing an updater instead of a direct sum removes the state variable from your Effect dependencies.
+
+Here is the common mistake. A developer writes `count + 1` with `[]`, and the page stops at 1:
+1. The linter reports that `count` is missing, with a message like the one for `isPlaying`.
+2. The developer turns the lint rule off for that line.
+3. The Effect keeps the `count` of the first render, which is 0, because each render keeps its own values (Lesson 15).
+4. So every second, it sets `count` to 0 plus 1, which is 1.
+
+The docs: "By suppressing the linter, you "lie" to React about the values your Effect depends on."
+
+Putting `count` in the array also works. But then the Effect runs again on every change of `count`, and the reference warns that "specifying `count` as a dependency always resets the interval." The updater is the clean fix.
+
+---
+
+## PRINCIPLE | The cleanup function: what the setup started stops when the component leaves
+
+> [!PRINCIPLE]
+> **Principle 3: The Cleanup Function Stops What the Setup Started**
+> 
+> *The function that the setup returns is the cleanup function. React calls it before the Effect runs again, and one final time when the component unmounts, so it must stop or undo what the setup started.*
+> 
+> When a component leaves the page, React removes the elements it built from your JSX. It does not stop a timer, a listener, or a connection that your setup started, because React did not start them. The cleanup stops them: clearInterval for setInterval, removeEventListener for addEventListener, disconnect for connect.
+> 
+> **DO THIS:**
+> ```jsx
+> useEffect(() => {
+>   const intervalId = setInterval(onTick, 1000);
+>   ~return () => clearInterval(intervalId);~ // The cleanup stops the timer this setup started
+> }, []);
+> ```
+> 
+> **DO NOT DO THIS:**
+> ```jsx
+> useEffect(() => {
+>   ~setInterval(onTick, 1000);~ // **WRONG:** no cleanup, so the timer runs on after the counter is hidden
+> }, []);
+> ```
+
+> [!DEFINITION]
+> **What is setInterval?** [REVIEW] `setInterval` is a native browser function that repeatedly calls a function at a set interval.
+> 1. Calling `setInterval(tick, 1000)` instructs the browser runtime to execute `tick` every second.
+> 2. It returns an integer identifier, the interval ID.
+> 3. To stop the timer, you pass that identifier to `clearInterval(intervalId)`. If your code loses this identifier, it can never stop that timer (Lesson 30).
+
+Here is the one new piece. The setup function can return a second function. React keeps it, and calls it when the timer must stop:
+
+```jsx title="The setup returns the function that stops its timer"
+useEffect(() => {
+  const intervalId = ~setInterval(onTick, 1000)~; // The setup starts the timer
+  return ~() => clearInterval(intervalId)~; // The cleanup stops that same timer
+}, []);
+```
+
+> [!DEFINITION]
+> **What is the cleanup function?** [NEW] The cleanup function is the function that your setup returns. Your code writes it, and React calls it.
+> 1. React executes your cleanup function each time before the Effect runs again, and one final time when the component unmounts from the DOM.
+> 2. A component unmounts when React removes it from the page, such as when `show` becomes `false` and `Counter` is no longer in the JSX.
+> 3. Every external resource started by the setup function must be released by the cleanup function to prevent memory leaks and dangling background processes (Lesson 32).
+
+The docs list the usual pairs: ""connect" needs "disconnect", "subscribe" needs "unsubscribe", and "fetch" needs either "cancel" or "ignore"." On our page, `setInterval` needs `clearInterval`.
+
+```tree caption="Each setup that starts something outside React, paired with the cleanup that stops it."
+What the setup starts, and what the cleanup stops
+- +A timer [`setInterval` `clearInterval`] | The setup **starts** the timer | The cleanup **stops** it with the same interval ID
+- +An event listener [`addEventListener` `removeEventListener`] | The setup **adds** the listener to `window` | The cleanup **removes** the same listener
+- +A chat connection [`connect` `disconnect`] | The setup **connects** to the chat server | The cleanup **disconnects**
+```
+
+### Hiding the counter does not stop its timer
+
+The counter with `[]` from Principle 2 has no cleanup. When the user hides it, the number disappears, and it looks as if everything stopped. It did not. The `<h1>` is gone, and the timers still run:
+1. The counter is on the page, and its timers call `onTick` every second.
+2. The user clicks Hide counter. React removes the `<h1>`.
+3. Nothing calls `clearInterval`, so the console still prints `Tick` every second.
+4. The user clicks Show counter again. A new counter starts from 0, because a component removed from the page loses its state (Lesson 25).
+5. Its setup starts new timers, while the old ones still run. Each show adds more timers that nothing will ever stop.
+
+```page width=text caption="The counter with [] and no cleanup, shown for three seconds and then hidden for one: no number on the page, and the Console still prints Tick."
+line: [Show counter]
+log: Timer started | Counter.jsx:11
+log: Timer started | Counter.jsx:11
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+```
+
+The docs tell the same story with a chat page. A `ChatRoom` component connects to the chat server in an Effect with `[]` and no cleanup:
+1. The user opens the chat page, and the component connects.
+2. The user goes to the Settings page. The component unmounts, and the connection stays open.
+3. The user clicks Back, and the component opens a second connection.
+
+"As the user navigates across the app, the connections would keep piling up." The fix is one line: a cleanup that calls `connection.disconnect`.
+
+### The cleanup in Counter
+
+We keep the interval ID and return a cleanup that stops the timer. We log `Timer stopped` each time it runs:
+
+```jsx title="src/components/Counter.jsx" startLine="6" good="7,8,9,10,11"
+  useEffect(() => {
+    function onTick() {
+      console.log('Tick');
+      setCount(c => c + 1);
+    }
+    console.log('Timer started');
+    const ~intervalId~ = setInterval(onTick, 1000); // Keeps the ID of the timer this setup started
+    return () => {
+      console.log('Timer stopped');
+      ~clearInterval(intervalId);~ // Stops that same timer
+    };
+  }, []);
+```
+
+The user clicks Show counter. In development, the setup still runs twice, but now the number goes up by one every second. Here is the extra run, explained:
+
+> [!DEFINITION]
+> **What does React do to an Effect in development?** [NEW] In development, inside `<StrictMode>`, React mounts every component, then at once takes it off and mounts it again.
+> 1. The docs: React "remounts every component once immediately after its initial mount."
+> 2. So every Effect runs setup, cleanup, setup.
+> 3. During this remount, React keeps the state and the elements on the page to verify that cleanup works. In production, there is no extra run (Lesson 32).
+
+With the cleanup, the remount goes like this:
+1. React mounts `Counter` and runs the setup. `Timer started` appears, and the first timer starts.
+2. React remounts the counter. First, it calls the cleanup. `Timer stopped` appears, and the first timer stops.
+3. Then it runs the setup again. `Timer started` appears, and one timer runs.
+
+```page width=text caption="The counter with the cleanup in development, three seconds after the user clicks Show counter: one timer, so the number goes up by one."
+line: [Hide counter]
+heading: 3
+log: Timer started | Counter.jsx:11
+log: Timer stopped | Counter.jsx:14
+log: Timer started | Counter.jsx:11
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+```
+
+The docs' chat page prints its lines in the same order: connecting, disconnected, connecting. And the docs give the result for the counter: "The user-visible behavior in both cases is the same: the counter increments once per second."
+
+Then the user clicks Hide counter. React unmounts `Counter` and calls the cleanup one final time. `Timer stopped` appears, and no `Tick` follows:
+
+```page width=text caption="The counter with the cleanup, after the user clicks Hide counter: the last line is Timer stopped."
+line: [Show counter]
+log: Timer started | Counter.jsx:11
+log: Timer stopped | Counter.jsx:14
+log: Timer started | Counter.jsx:11
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Timer stopped | Counter.jsx:14
+```
+
+The Elements panel shows that React removed the `<h1>` it built:
+
+```dom caption="The Elements panel after the user clicks Hide counter: only the button is left inside main."
+<main>
++ <button>Show counter</button> | note: The h1 with the number is gone
+</main>
+```
+
+How does the cleanup know which timer to stop? It is created inside the setup, so it sees the `intervalId` of that same run. Each run of the setup has its own `intervalId`, and its own cleanup that stops it.
+
+Two more facts about the cleanup:
+1. **When a dependency changes**, React follows the same order: first the cleanup, with the old props and state, then the setup, with the new ones. Lesson 35 walks through it in full.
+2. **Some Effects need no cleanup.** The docs' example is a map widget from a library, whose zoom level the Effect sets. Setting the same zoom level twice produces no unwanted side effects.
+
+---
+
+## PRINCIPLE | Strict Mode: the extra setup and cleanup test your cleanup, and only a cleanup passes
+
+> [!PRINCIPLE]
+> **Principle 4: Fix the Extra Run in Development with a Cleanup, Never a Ref**
+> 
+> *In development, Strict Mode runs one extra setup and cleanup to test the cleanup. The fix for a problem it shows is a cleanup function, never a ref that stops the Effect from running twice.*
+> 
+> A ref guard makes the console show Timer started once, and the counter goes up by one, so the page looks fixed. But no code stops the timer. It runs on after the user hides the counter, and each new mount adds one more. The cleanup fixes the Effect itself, so the user cannot tell one setup from setup, cleanup, setup.
+> 
+> **DO THIS:**
+> ```jsx
+> useEffect(() => {
+>   const intervalId = setInterval(onTick, 1000);
+>   ~return () => clearInterval(intervalId);~ // Works after the remount: the old timer is stopped
+> }, []);
+> ```
+> 
+> **DO NOT DO THIS:**
+> ```jsx
+> useEffect(() => {
+>   ~if (startedRef.current) return;~ // **WRONG:** hides the second run, and the timer never stops
+>   startedRef.current = true;
+>   setInterval(onTick, 1000);
+> }, []);
+> ```
+
+Go back to the moment before the cleanup existed. A developer sees `Timer started` twice and the number going up by two. The developer reads `[]` as "run once", and wants the Effect to run once.
+
+So the developer adds a ref that remembers that the setup already ran, with `useRef` from Lesson 30. The docs call this a **ref guard**:
+
+```jsx title="src/components/Counter.jsx" bad="8,9"
+import { useState, useEffect, useRef } from 'react';
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    ~if (startedRef.current) return;~ // **WRONG:** blocks the second run instead of cleaning up the first
+    startedRef.current = true;
+    function onTick() {
+      console.log('Tick');
+      setCount(c => c + 1);
+    }
+    console.log('Timer started');
+    setInterval(onTick, 1000);
+  }, []);
+
+  return <h1>{count}</h1>;
+}
+```
+
+The page looks fixed. But each hide and show adds one more timer:
+1. The user clicks Show counter. The setup runs, `startedRef.current` becomes `true`, and one timer starts.
+2. React remounts the counter in development. There is no cleanup to call. During the remount, React keeps the state and the refs. In the docs' words, "state and DOM are preserved".
+3. So the setup runs again, finds `startedRef.current` already `true`, and returns at once.
+4. The number goes up by one every second, and `Timer started` appears once. So far, so good.
+5. The user clicks Hide counter. Nothing stops the timer, and `Tick` goes on in the console.
+6. The user clicks Show counter. This is a new `Counter`, with a new `startedRef` set to false. A second timer starts.
+
+Here are the two counters side by side, after the user shows, hides, and shows again:
+
+::: row caption="After Show, Hide, and Show again: the ref guard leaves two timers running, the cleanup leaves one."
+::: col title="A ref guard" tag="two timers" tone=bad
+```page size=mini
+line: [Hide counter]
+heading: 2
+log: Timer started | Counter.jsx:14
+log: Tick | Counter.jsx:11
+log: Tick | Counter.jsx:11
+log: Tick | Counter.jsx:11
+log: Timer started | Counter.jsx:14
+log: Tick | Counter.jsx:11
+log: Tick | Counter.jsx:11
+log: Tick | Counter.jsx:11
+log: Tick | Counter.jsx:11
+```
+```jsx title="Counter.jsx" startLine="7" bad="2"
+useEffect(() => {
+  if (startedRef.current) return;
+  startedRef.current = true;
+  setInterval(onTick, 1000);
+}, []);
+```
+Nothing stops a timer, so the hidden counter's timer still prints Tick.
+:::
+::: col title="A cleanup" tag="one timer" tone=good
+```page size=mini
+line: [Hide counter]
+heading: 1
+log: Timer started | Counter.jsx:11
+log: Timer stopped | Counter.jsx:14
+log: Timer started | Counter.jsx:11
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Timer stopped | Counter.jsx:14
+log: Timer started | Counter.jsx:11
+log: Timer stopped | Counter.jsx:14
+log: Timer started | Counter.jsx:11
+log: Tick | Counter.jsx:8
+```
+```jsx title="Counter.jsx" startLine="12" good="2"
+const intervalId = setInterval(onTick, 1000);
+return () => clearInterval(intervalId);
+```
+Hide calls the cleanup, so the old timer is gone before the new one starts.
+:::
+:::
+
+The docs say of the same guard on the chat page that it prints the connecting line only once in development, "but it doesn't fix the bug." And: "the connections would keep piling up, the same as it would before the "fix"."
+
+In production there is no extra run. But users leave the page and come back, and each visit adds one more timer.
+
+### The extra run is a test
+
+React runs the extra setup and cleanup on purpose. The `useEffect` reference calls it a stress-test: "This is a stress-test that verifies your Effect's logic is implemented correctly."
+
+It shows you the bug at once, on your own screen, before users meet it later. The docs' challenge on the interval says: "React's behavior is not the *cause* of the bug: the bug already exists in the code. React's behavior makes the bug more noticeable."
+
+The docs reframe the question: "**The right question isn't "how to run an Effect once", but "how to fix my Effect so that it works after remounting".**"
+
+The answer is a cleanup. With it, setup, cleanup, setup looks to the user exactly like one setup. The counter goes up by one per second in development and in production.
+
+Turning off `<StrictMode>` hides the test, just as the ref guard does. The docs: "You can turn off Strict Mode to opt out of the development behavior, but we recommend keeping it on." Lesson 47 covers Strict Mode in full.
+
+---
+
+## PRINCIPLE | onClick: work caused by a click runs once per click, never in an Effect
+
+> [!PRINCIPLE]
+> **Principle 5: A Click Causes a Purchase, So It Goes in the Click Handler**
+> 
+> *Work caused by a specific user action, such as buying, goes in the event handler of that action. An Effect is only for work caused by the component being on the screen.*
+> 
+> An Effect runs every time the component appears: twice in development, and again whenever the user comes back to the page. That is right for a timer or a connection, which the cleanup stops. It is wrong for a purchase, which no cleanup can take back. Ask what causes the work: a click, or being on the screen.
+> 
+> **DO THIS:**
+> ```jsx
+> function handleClick() {
+>   ~fetch('/api/buy', { method: 'POST' });~ // One purchase, when the user clicks Buy
+> }
+> ```
+> 
+> **DO NOT DO THIS:**
+> ```jsx
+> useEffect(() => {
+>   ~fetch('/api/buy', { method: 'POST' });~ // **WRONG:** sends a purchase each time the page appears
+> }, []);
+> ```
+
+### VS | Lesson 30's Stopwatch vs. This Counter: the same setInterval, started for two different reasons
+
+The stopwatch from Lesson 30 starts its timer in a click handler:
+
+```jsx title="Lesson 30's stopwatch: the timer starts in the Start click handler"
+function handleStart() {
+  intervalRef.current = ~setInterval(tick, 1000)~; // Starts because the user clicked Start
+}
+
+<button onClick={handleStart}>Start</button>
+```
+
+Our counter starts its timer in an Effect:
+
+```jsx title="This lesson's counter: the timer starts in an Effect"
+useEffect(() => {
+  const intervalId = ~setInterval(onTick, 1000)~; // Starts because the counter appeared on the page
+  return () => clearInterval(intervalId);
+}, []);
+```
+
+Both call the same browser function, and both are right. The cause is different:
+1. **The stopwatch's timer** starts because the user clicked Start. A click on Stop stops it.
+2. **The counter's timer** starts because the counter appeared on the page. Its cleanup stops it.
+
+The docs draw the same distinction on the chat page. Sending a chat message is an event caused directly by a user click. Setting up a server connection is an Effect that must happen whenever the component appears on the screen.
+
+Remember the Rule of Thumb: ask what causes the work. A click causes a purchase. Being on the screen causes a connection.
+
+### Buying a product in an Effect
+
+The docs show what goes wrong when the work of a click moves into an Effect. A developer sends the purchase from an Effect on the order page. It uses `fetch`, which Lesson 33 teaches:
+
+```jsx title="Sending the purchase from an Effect" bad="2"
+useEffect(() => {
+  ~fetch('/api/buy', { method: 'POST' });~ // **WRONG:** sends a purchase every time the page appears
+}, []);
+```
+
+In development, the purchase goes out twice:
+1. The order page appears, and React runs the Effect. One purchase request goes out.
+2. React remounts the page in development and runs the Effect again. A second purchase request goes out.
+3. No cleanup can take back a purchase that the server has already received.
+
+The docs: "This Effect fires twice in development, exposing a problem in the code."
+
+In production, the same thing happens another way: "What if the user goes to another page and then presses Back? Your Effect would run again." The user only opened the order page again, and pays a second time.
+
+The fix is to send the purchase from the handler of the Buy button:
+
+```jsx title="Sending the purchase from the Buy click handler" good="2"
+function handleClick() {
+  ~fetch('/api/buy', { method: 'POST' });~ // Sends one purchase, only when the user clicks Buy
+}
+
+<button onClick={handleClick}>Buy</button>
+```
+
+The documentation states that you should delete the Effect and move the purchase request into the event handler of the Buy button.
+
+### Where each kind of code goes
+
+| What causes the work | Where the code goes | Example |
+| :--- | :--- | :--- |
+| **A specific action by the user** | The event handler of that action | The stopwatch's Start click, the Buy click |
+| **The component being on the screen** | `useEffect`, with a cleanup that stops what the setup started | Our counter's timer, a chat connection, a listener on `window` |
+| **The app starting** | Code outside any component, which runs once | Logic that should only run once when the application starts |
+| **Nothing outside React** | No Effect at all | Changing one state from another state, which Lesson 34 covers |
+
+Why not start the counter's timer in the handler of Show counter? That handler lives in `App`, while the timer belongs to `Counter`. The counter can leave the page in more than one way, and each way would need its own call to `clearInterval`.
+
+The Effect ties the timer to the counter itself. The timer starts when the counter mounts, whatever made it appear. It stops when the counter unmounts.
+
+---
+
+## All 5 Principles Together
+
+### The complete files
+
+The entry file mounts `App` inside `<StrictMode>`:
+
+```jsx title="src/main.jsx"
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App.jsx';
+
+createRoot(document.getElementById('root')).render(
+  ~<StrictMode>~ {/* Principle 4: setup, cleanup, setup in development */}
+    <App />
+  </StrictMode>
+);
+```
+
+`App` shows and hides the counter:
+
+```jsx title="src/App.jsx"
+import { useState } from 'react';
+import Counter from './components/Counter.jsx';
+
+export default function App() {
+  const [show, setShow] = useState(false);
+
+  return (
+    <main>
+      <button ~onClick={() => setShow(!show)}~> {/* Principle 5: the click only changes state, it starts no timer */}
+        {show ? 'Hide' : 'Show'} counter
+      </button>
+      ~{show && <Counter />}~ {/* Principle 3: Counter mounts and unmounts with show */}
+    </main>
+  );
+}
+```
+
+`Counter` starts its timer in an Effect and stops it in the cleanup:
+
+```jsx title="src/components/Counter.jsx"
+import { useState, useEffect } from 'react';
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+
+  ~useEffect~(() => { // Principle 1: React runs the setup after the commit
+    function onTick() {
+      console.log('Tick');
+      setCount(c => c + 1);
+    }
+    console.log('Timer started');
+    const intervalId = setInterval(onTick, 1000);
+    return () => {
+      console.log('Timer stopped');
+      ~clearInterval(intervalId);~ // Principles 3 and 4: stops this timer on remount and on unmount
+    };
+  }, ~[]~); // Principle 2: reads no state, so the Effect runs only on mount
+
+  return <h1>{count}</h1>;
+}
+```
+
+The user clicks Show counter, watches for three seconds, clicks Hide counter, and clicks Show counter again:
+
+```page width=text caption="The finished counter, after the user shows it, hides it, and shows it again: one timer at a time, and the number starts again from 0."
+line: [Hide counter]
+heading: 0
+log: Timer started | Counter.jsx:11
+log: Timer stopped | Counter.jsx:14
+log: Timer started | Counter.jsx:11
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Tick | Counter.jsx:8
+log: Timer stopped | Counter.jsx:14
+log: Timer started | Counter.jsx:11
+log: Timer stopped | Counter.jsx:14
+log: Timer started | Counter.jsx:11
+```
+
+### How React calls the components and runs the Effect
+
+When the user clicks Show counter, React calls `App`, then `Counter`, and puts the number on the page. Only then does it run the Effect. When the user hides the counter, React removes the `<h1>` and calls the cleanup:
+
+```tree dir=right caption="The order in which React renders the components, commits the page, and runs the setup and the cleanup of the Effect."
+From the click on Show counter to the click on Hide counter
+- +1. Render [`App` `Counter`] | React calls `App`, then `Counter` | `Counter` **hands React the setup function**
+- +2. Commit [`<h1>0</h1>`] | React puts the number **into the page** | The user sees 0
+- +3. Setup [`setInterval`] | React runs the setup **after the commit** | **One timer** runs; in development, after a setup, a cleanup, and a second setup
+- +4. Unmount [`clearInterval`] | The user hides the counter; React **removes the `<h1>`** | React calls **the cleanup**, and the timer stops
+```
+
+### Where the timer starts, and what the user sees
+
+| Where the timer starts | What the user sees | Why |
+| :--- | :--- | :--- |
+| **In the body of `Counter`** | The number climbs faster and faster | Every render starts one more timer |
+| **In `useEffect` with no array** | The number still climbs faster and faster | The Effect runs after every commit, so every tick starts one more timer |
+| **In `useEffect` with `[]` and no cleanup** | The number goes up by two in development, and the timers run on after the user hides the counter | Nothing stops the first timer before the second setup, or when the counter unmounts |
+| **With a ref guard and no cleanup** | The number goes up by one, and timers pile up after each hide and show | The guard blocks the second setup, and nothing ever stops a timer |
+| **In `useEffect` with `[]` and a cleanup** | The number goes up by one, and stops when the user hides the counter | React calls the cleanup before each new setup and when the counter unmounts |
+
+One last time, the sentence of this lesson: **`useEffect` runs your code after the component appears on the screen. Whatever that code starts, it must also stop when the component leaves.**
+
+---
+
+## For the Interview
+
+> **The Interview Question:** How do you connect a component to an external system, and how do you disconnect it?
+
+### How to Answer Clearly in 30 Seconds
+
+"With an Effect. An external system is anything React does not control, such as a timer, a listener on `window`, or a chat server. I call `useEffect` at the top level of the component and pass it a setup function that connects, for example by calling `setInterval`. React runs it after the commit, never during rendering, because rendering must stay pure. The setup returns a cleanup function that disconnects, here `clearInterval` with the interval ID. Three rules keep it right:
+1. **The dependency array lists what the Effect reads**: no array runs it after every commit, `[]` only on mount, and `[a, b]` also when `a` or `b` changed. The `exhaustive-deps` lint rule checks the list, and I never turn it off.
+2. **The cleanup undoes the setup**: React calls it before the Effect runs again and one final time when the component unmounts. Without it, the timer runs on and connections pile up.
+3. **Only work caused by being on the screen**: a purchase caused by a click goes in the click handler, not in an Effect."
+
+### Three Classic Follow-Up Questions Interviewers Ask
+
+1. **"Why does my Effect run twice in development, and how do I make it run once?"**
+   In development, Strict Mode remounts every component once right after it first mounts, so React runs setup, cleanup, setup. The `useEffect` reference calls it "a stress-test that verifies your Effect's logic is implemented correctly." The docs say the right question is not how to run an Effect once, but how to fix the Effect so it works after remounting. The fix is a cleanup, so that the user cannot tell one setup from setup, cleanup, setup. A ref guard or turning off `<StrictMode>` only hides the test, and the bug stays for users who leave the page and come back. In production there is no extra run. Lesson 47 covers Strict Mode in full.
+2. **"Can I leave a value out of the dependency array to stop the Effect from running again?"**
+   No. The docs: "you can't "choose" your dependencies." The code inside the Effect decides them, and suppressing the linter means you "lie" to React, so the Effect keeps the values of an old render. For our counter, `count + 1` with `[]` stops the page at 1. The fix is to change the code so that it no longer reads the value, such as the updater `c => c + 1`. A ref from `useRef` and a setter from `useState` keep the same identity on every render. So they can stay out: "If the linter lets you omit a dependency without errors, it is safe to do." Lesson 36 shows `useEffectEvent`, and Lesson 37 removes object and function dependencies.
+3. **"Does an Effect run before or after the browser paints the screen?"**
+   After the commit, and usually after the paint. The `useEffect` caveats explain both cases. For Effects not caused by a click, React lets the browser paint the updated screen before running your Effect. For Effects caused by a discrete user interaction, React may run your Effect before the paint. When the work must happen before the paint, the tool is `useLayoutEffect`, which Lesson 49 teaches. One example is measuring a tooltip before the user sees it in the wrong place. Effects also never run during server rendering, as Lesson 102 shows.
+
+```tree dir=right caption="Interview comparison: where code that does something goes, by what causes it."
+What causes the work in an interview
+- +A click by the user [`onClick={handleClick}`] | The **event handler** runs once per click | A purchase, a message sent in the chat
+- +The component being on the screen [`useEffect`] | The **setup** connects after the commit; the **cleanup** disconnects | A timer, a chat connection, a listener on `window`
+- !The body [`return <h1>{count}</h1>`] | Runs on **every render** | Must only **calculate**; a timer here starts again on every render
+```
