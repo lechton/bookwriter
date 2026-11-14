@@ -8,7 +8,7 @@
 
 ## VS | Props vs. Context for the Cart and `dispatch`: props pass through every component, context skips the middle
 
-> **`useReducer` with context lets any component, however deep in the page, read and change the shared state without passing props.**
+> Deep component trees often need data to travel all the way down, and updates to travel all the way back up. **You should combine `useReducer` with context.** Then any component, no matter how deep in the hierarchy, can read and change that shared top-level state without passing props down every level.
 
 In React, different parts of a page often need to read and update the exact same data, like a shopping cart, a logged-in user profile, or a list of notifications. Normally, we store that shared state at the very top of the page and pass both the data and its update functions down through props, step by step, from parent to child. Passing props down this way, through layer after layer, is called prop drilling. You do not want to pass props by hand through layers of components that never even use them. **This is why we combine `useReducer` with Context**. Together, **they let any component deep in the page read the state and change it directly**, without the components in between passing props down.
 

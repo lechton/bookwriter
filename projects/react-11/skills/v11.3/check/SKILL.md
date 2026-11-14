@@ -45,6 +45,7 @@ Read the lecture twice, and look for one kind of problem each time:
    - A name that appears from nowhere.
    - A version named "box B" or "Way 1" instead of by its one difference.
    - An event without the person who does it, such as "after every key".
+   - In the leading sentence, a title, or a principle Summary: a word the lesson explains only later, such as "throw" in the Lecture 45 leading sentence. Read these three as a reader who knows only the earlier lessons. #2026_11_14_01_group_2
 
 Fix both kinds. A short text that skips a step is not clear. A long text that tells what the reader can already read is not clear either.
 

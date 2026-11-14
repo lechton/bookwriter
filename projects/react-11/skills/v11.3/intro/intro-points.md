@@ -11,7 +11,7 @@
 
 ## The leading sentence
 
-Start the VS opening with one leading sentence that holds the core message. Write it as a bold blockquote, then an empty line, then the rest of the opening:
+Start the VS opening with one leading sentence that holds the one idea the reader must keep, in one or two short sentences. Write it as a bold blockquote, then an empty line, then the rest of the opening:
 
 > **A ref allows you to take control of the browser elements via code.**
 
@@ -32,6 +32,38 @@ BAD: it crams two rules together with a semicolon and uses cryptic shorthand ("l
 > **Keep a form field in state only when the page updates as the user types; otherwise let the browser hold it and read `FormData` at submit.**
 
 GOOD: the leading sentence of every GOOD example below.
+
+### The reader has not read the lesson yet #2026_11_14_01_group_1
+
+The owner's words, 2026-11-14:
+
+> "Who throws? The summary confuses things. Why?"
+>
+> "Lead with the surprise: 'A refusal from the server is still a success for React, so React resets the form. To keep what the user typed, the action must return it.'"
+>
+> "AI seems to have serious clarity problems and condenses ideas. I am not sure how to force clarity."
+
+What this asks:
+1. **No question left open.** The reader meets the leading sentence before the lesson. A word the lesson explains only later, such as "throw", leaves the reader asking what it means and who does it.
+2. **The surprise first.** Start with what the reader would not expect.
+3. **No condensed ideas.** Write each idea out in full, even when it takes two sentences.
+
+Before you keep a leading sentence, ask:
+- [ ] Can a reader who knows only the earlier lessons understand every word on the first read? The new-word question of the owner's checklist in [SKILL.md](SKILL.md) applies here too.
+- [ ] Does each verb name who acts: the user, the server, React, or your code?
+- [ ] Does it start with the surprise?
+- [ ] When it holds a cause and a fix, does each get its own sentence?
+- [ ] Does it say what happens, not what does not happen?
+
+**COUNTER-EXAMPLE** (Lecture 45, 2026-11-14):
+
+> **React empties the form after every action that does not throw, so the action must return what the user typed to keep it on the screen.**
+
+*Why this fails*: The reader meets "throw" before the lesson explains it, so the owner asked "Who throws?", and the sentence never says that the server refused.
+
+**PROPER** (the owner's rewrite, Lecture 45, 2026-11-14):
+
+> **A refusal from the server is still a success for React, so React resets the form. To keep what the user typed, the action must return it.**
 
 ## The title after the intro of the intro #2026_11_13_07_group_1
 

@@ -1192,17 +1192,24 @@ function parseAndRender(md, theme = 'book') {
       while (i < lines.length && lines[i].startsWith('>')) {
         inner.push(lines[i++].replace(/^> ?/, ''));
       }
-      const leadMatch = inner.length === 1 && inner[0].trim().match(/^\*\*(.+)\*\*$/);
-      if (leadMatch && theme !== 'old' && /^<h[23] class="vs-title/.test(out[out.length - 1] || '')) {
-        out.push(`<aside class="lead-sentence"><p>${inline(leadMatch[1])}</p></aside>`);
+      const leadLine = inner.length === 1 && inner[0].includes('**') ? inner[0].trim() : '';
+      if (leadLine && theme !== 'old' && /^<h[23] class="vs-title/.test(out[out.length - 1] || '')) {
+        const wholeBold = leadLine.match(/^\*\*([^*]+)\*\*$/);
+        out.push(wholeBold
+          ? `<aside class="lead-sentence lead-bold"><p>${inline(wholeBold[1])}</p></aside>`
+          : `<aside class="lead-sentence"><p>${inline(leadLine)}</p></aside>`);
         continue;
       }
       if (/^INTERVIEW QUESTION\s*\|/.test(inner[0])) {
         const [, tier, ...q] = inner[0].split('|').map((s) => s.trim());
+        // The plain-words question "*(…?)*" written just above the bank question joins the same block.
+        const plainMatch = (out[out.length - 1] || '').match(/^<p><em>\((.*\?)\)<\/em><\/p>$/);
+        if (plainMatch) out.pop();
+        const plainHtml = plainMatch ? `<p class="iq-plain">${plainMatch[1]}</p>` : '';
         out.push(
-          `<div class="interview-banner interview-banner-top"><div class="interview-banner-label">Interview Question · ${esc(
+          `<div class="interview-banner interview-banner-top"><div class="iq-meta"><span class="iq-label">Interview Question</span><span class="iq-tier">${esc(
             tier
-          )}</div><p class="interview-banner-q">${inline(q.join(' | '))}</p></div>`
+          )}</span></div><p class="interview-banner-q">${inline(q.join(' | '))}</p>${plainHtml}</div>`
         );
       } else if (/^\[!WAYS\]/.test(inner[0])) {
         const cards = [];
@@ -1430,14 +1437,15 @@ function renderPrincipleBox(lines) {
   const dontEditor = editorBlock(dontLines, { tone: 'dont' });
 
   return `<div class="principle-card">
-  <div class="principle-header">
-    <span class="principle-num">${esc(num)}</span>
-    <h4 class="principle-title">${inline(title)}</h4>
-  </div>
-  <div class="principle-body">
+  <div class="principle-text">
+    <div class="principle-header">
+      <span class="principle-num">${esc(num)}</span>
+      <h4 class="principle-title">${inline(title)}</h4>
+    </div>
     <p class="principle-rule"><strong class="principle-label">Summary</strong>: ${inline(rule)}</p>
     <p class="principle-why"><strong class="principle-label">Description</strong>: ${inline(why)}</p>
-    <div class="p-pair">
+  </div>
+  <div class="p-pair">
       <div class="p-do">
         <div class="p-label">\u2713 DO THIS</div>
         ${doEditor}
@@ -1446,7 +1454,6 @@ function renderPrincipleBox(lines) {
         <div class="p-label">\u2717 DO NOT DO THIS</div>
         ${dontEditor}
       </div>
-    </div>
   </div>
 </div>`;
 }
