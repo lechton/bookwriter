@@ -706,3 +706,22 @@ The `archive/` subfolders of the `v1` folders were copied unchanged from the rea
 - 2026-11-13 08:01 | archive Q30 | manual | 01-02-md-LECTURES/v1/30.md -> 01-02-md-LECTURES/v1/archive/30-2026-11-13-0801.md
 - 2026-11-13 08:01 | archive Q30 | manual | 01-03-md-lectures-HTML/v1/theme1/30.html -> 01-03-md-lectures-HTML/v1/theme1/archive/30-2026-11-13-0801.html
 - 2026-11-13 08:01 | archive Q30 | manual | 01-04-md-lectures-PDF/v1/theme1/30.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/30-2026-11-13-0801.pdf
+- 2026-11-14 06:34 | archive Q29 | keep 29-opus5.5 as plain 29 | 01-02-md-LECTURES/v1/29-argon.md -> 01-02-md-LECTURES/v1/archive/29-argon-2026-11-14-0634.md
+- 2026-11-14 06:34 | archive Q29 | keep 29-opus5.5 as plain 29 | 01-02-md-LECTURES/v1/29-opus5.5.md -> 01-02-md-LECTURES/v1/archive/29-opus5.5-2026-11-14-0634.md
+- 2026-11-14 06:34 | archive Q29 | keep 29-opus5.5 as plain 29 | 01-03-md-lectures-HTML/v1/theme1/29-argon.html -> 01-03-md-lectures-HTML/v1/theme1/archive/29-argon-2026-11-14-0634.html
+- 2026-11-14 06:34 | archive Q29 | keep 29-opus5.5 as plain 29 | 01-03-md-lectures-HTML/v1/theme1/29-argon.md -> 01-03-md-lectures-HTML/v1/theme1/archive/29-argon-2026-11-14-0634.md
+- 2026-11-14 06:34 | archive Q29 | keep 29-opus5.5 as plain 29 | 01-03-md-lectures-HTML/v1/theme1/29-argon.pdf -> 01-03-md-lectures-HTML/v1/theme1/archive/29-argon-2026-11-14-0634.pdf
+- 2026-11-14 06:34 | archive Q29 | keep 29-opus5.5 as plain 29 | 01-03-md-lectures-HTML/v1/theme1/29-opus5.5.html -> 01-03-md-lectures-HTML/v1/theme1/archive/29-opus5.5-2026-11-14-0634.html
+- 2026-11-14 06:34 | archive Q29 | keep 29-opus5.5 as plain 29 | 01-03-md-lectures-HTML/v1/theme1/29-opus5.5.md -> 01-03-md-lectures-HTML/v1/theme1/archive/29-opus5.5-2026-11-14-0634.md
+- 2026-11-14 06:34 | archive Q29 | keep 29-opus5.5 as plain 29 | 01-03-md-lectures-HTML/v1/theme1/29-opus5.5.pdf -> 01-03-md-lectures-HTML/v1/theme1/archive/29-opus5.5-2026-11-14-0634.pdf
+- 2026-11-14 06:34 | archive Q29 | keep 29-opus5.5 as plain 29 | 01-04-md-lectures-PDF/v1/theme1/29-argon.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/29-argon-2026-11-14-0634.pdf
+- 2026-11-14 06:34 | archive Q29 | keep 29-opus5.5 as plain 29 | 01-04-md-lectures-PDF/v1/theme1/29-opus5.5.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/29-opus5.5-2026-11-14-0634.pdf
+- 2026-11-14 06:36 | archive Q30 | keep plain 30 only | 01-02-md-LECTURES/v1/30-novel-v2.md -> 01-02-md-LECTURES/v1/archive/30-novel-v2-2026-11-14-0636.md
+- 2026-11-14 06:36 | archive Q30 | keep plain 30 only | 01-02-md-LECTURES/v1/30-novel.md -> 01-02-md-LECTURES/v1/archive/30-novel-2026-11-14-0636.md
+- 2026-11-14 06:36 | archive Q30 | keep plain 30 only | 01-03-md-lectures-HTML/v1/theme1/30-novel-v2.html -> 01-03-md-lectures-HTML/v1/theme1/archive/30-novel-v2-2026-11-14-0636.html
+- 2026-11-14 06:36 | archive Q30 | keep plain 30 only | 01-03-md-lectures-HTML/v1/theme1/30-novel.html -> 01-03-md-lectures-HTML/v1/theme1/archive/30-novel-2026-11-14-0636.html
+- 2026-11-14 06:36 | archive Q30 | keep plain 30 only | 01-04-md-lectures-PDF/v1/theme1/30-novel-v2.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/30-novel-v2-2026-11-14-0636.pdf
+- 2026-11-14 06:36 | archive Q30 | keep plain 30 only | 01-04-md-lectures-PDF/v1/theme1/30-novel.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/30-novel-2026-11-14-0636.pdf
+- 2026-11-14 07:04 | archive Q29 | archive 29-gemini per user request | 01-02-md-LECTURES/v1/29-gemini.md -> 01-02-md-LECTURES/v1/archive/29-gemini-2026-11-14-0704.md
+- 2026-11-14 07:04 | archive Q29 | archive 29-gemini per user request | 01-03-md-lectures-HTML/v1/theme1/29-gemini.html -> 01-03-md-lectures-HTML/v1/theme1/archive/29-gemini-2026-11-14-0704.html
+- 2026-11-14 07:04 | archive Q29 | archive 29-gemini per user request | 01-04-md-lectures-PDF/v1/theme1/29-gemini.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/29-gemini-2026-11-14-0704.pdf
