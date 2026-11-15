@@ -1,6 +1,6 @@
 #!/bin/sh
 # Full rewrite of one lesson or a range: Opus 5.5 high writes NN.md from react-10,
-# then Gemini 3.8 Flash high writes NN-gemini.md, then everything is committed and pushed.
+# then Gemini 3.8 Flash high (Antigravity account) writes NN-gemini.md, then everything is committed and pushed.
 # Usage, from projects/react-11:  ./rewrite_full.sh 46   or   ./rewrite_full.sh 47 58
 set -e
 cd "$(dirname "$0")"
@@ -10,6 +10,12 @@ LECT=01-02-md-LECTURES/v1
 HTML=01-03-md-lectures-HTML/v1/theme1
 MARK=$(mktemp)
 
+# The soft flow's cleanup sends a stop signal to its whole process group at the
+# end, which killed this loop. Run each factory command in its own group.
+run_alone() {
+  python3 -c 'import os,sys;os.setpgrp();os.execvp(sys.argv[1],sys.argv[1:])' "$@"
+}
+
 stage_run_files() {
   find audit/bookrewrite audit/bookrewrite-soft "$LECT/archive" "$HTML/archive" \
     -type f -newer "$MARK" -exec git add -- {} + 2>/dev/null || true
@@ -18,14 +24,15 @@ stage_run_files() {
 
 for N in $(seq -f %02g "$FROM" "$TO"); do
   touch "$MARK"
-  factory workflow bookrewrite lesson=$N model=droid/claude-opus-5-5:high
+  run_alone factory workflow bookrewrite lesson=$N model=droid/claude-opus-5-5:high
   [ "$LECT/$N.md" -nt "$MARK" ] || { echo "Lesson $N: Opus wrote no new $N.md, stopping"; exit 1; }
   git add -- "$LECT/$N.md" "$HTML/$N.html"
   stage_run_files
   git commit -q -m "rewrite lesson $N from react-10 with Opus 5.5 high ($N)"
 
   touch "$MARK"
-  factory workflow bookrewrite-soft lesson=$N model=droid/gemini-3.8-flash:high
+  # The Gemini flow ends as "stopped" with an error code even when it wrote and pushed its file; the check below decides.
+  run_alone factory workflow bookrewrite-soft lesson=$N "model=antigravity/Gemini 3.8 Flash:high" || true
   [ "$LECT/$N-gemini.md" -nt "$MARK" ] || { echo "Lesson $N: Gemini wrote no new $N-gemini.md, stopping"; exit 1; }
   git add -- "$LECT/$N-gemini.md" "$HTML/$N-gemini.html"
   stage_run_files
