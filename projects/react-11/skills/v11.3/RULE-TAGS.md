@@ -124,3 +124,5 @@ One row per group. Search for a tag to find every place it is used. Read the bri
 | #2026_11_15_002_group_2 | Brief, tags, and table of briefs | brief/brief_2026_11_15_002.md, brief/01_TOC.md, skills/v11.3/RULE-TAGS.md | records the change |
 | #2026_11_15_003_group_1 | The good demo chapters | skills/v11.3/rewrite/SKILL.md, brief/brief_2026_11_15_003.md | the good demo chapters are 30.md, 31.md, and 32.md, in place of the retired 30-novel-v2.md; the owner's line "They are some working examples you can study." |
 | #2026_11_15_003_group_2 | Brief, tags, and table of briefs | brief/brief_2026_11_15_003.md, brief/01_TOC.md, skills/v11.3/RULE-TAGS.md | records the change |
+| #2026_11_15_004_group_1 | The Lecture 46 opening as an example | skills/v11.3/intro/first-sentences.md, brief/brief_2026_11_15_004.md | the first draft of the Lecture 46 opening as COUNTER-EXAMPLE, the opening the owner chose as PROPER |
+| #2026_11_15_004_group_2 | Brief, tags, and table of briefs | brief/brief_2026_11_15_004.md, brief/01_TOC.md, skills/v11.3/RULE-TAGS.md | records the change |

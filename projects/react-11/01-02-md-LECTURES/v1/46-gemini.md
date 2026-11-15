@@ -8,7 +8,8 @@
 
 ## VS | A Build Tool `Vite` vs. a Full-Stack Framework `Next.js`: both run React, only the framework decides what the first HTML file holds
 
-> When you share a link in a chat app, that app inspects the HTML file sent by the server rather than the rendered page on your screen. **For any public website or new app, choose a full-stack framework such as Next.js or React Router to place content directly inside that first HTML document**. A standalone build tool like Vite sends an empty HTML shell and renders later with JavaScript, leaving crawlers and slow devices with nothing to display upfront.
+> When you open a web page, the server sends one HTML file, and then the browser runs the JavaScript inside it. **With Vite alone, that file holds one empty element, and the page appears only after the JavaScript runs.** A full-stack framework such as Next.js can put the content into the file itself, so a chat app or a slow phone sees it at once.
+
 
 In Lesson 07, running the setup command produced an `index.html` file with a single empty container element: `<div id="root"></div>`. Then `main.jsx` invoked `createRoot` to mount React and fill that container in the browser. Every application built in earlier lessons followed this exact pattern: the web server delivers an empty HTML shell, and client-side JavaScript constructs the user interface afterwards.
 

@@ -62,3 +62,19 @@ When the user clicks Like or sends a message, waiting on the server makes the pa
 
 **45. Saving User Input on Server Refusal (Returning Form Fields)**
 When a form sends its fields to an action function, the server can still refuse them—a username is already taken, a code is wrong, or a date is fully booked. **You should write the action function so that it returns what the user typed, together with the error message.** Because the action function ended without crashing, React resets the form even after a refusal—so without that return value, the user has to type everything all over again.
+
+---
+
+## Frameworks & Build Tools #2026_11_15_004_group_1
+
+**46. The File the Server Sends (Framework vs. Vite)**
+
+**COUNTER-EXAMPLE** (the first draft of Lecture 46, 2026-11-15, rejected by the owner):
+
+> When you paste a link into a chat app, the app reads the HTML file of that page, not the page you see on your screen. **For a new app or a public website, you should use a full-stack framework, such as Next.js, that can put the content into that HTML file.** A build tool such as Vite alone sends an empty HTML file and builds the page later with JavaScript, so the chat app finds nothing to show.
+
+*Why this fails*: It starts from a difference the reader does not know yet, the HTML file versus the page on the screen, and it gives the fix before the problem.
+
+**PROPER** (chosen by the owner, Lecture 46, 2026-11-15):
+
+> When you open a web page, the server sends one HTML file, and then the browser runs the JavaScript inside it. **With Vite alone, that file holds one empty element, and the page appears only after the JavaScript runs.** A full-stack framework such as Next.js can put the content into the file itself, so a chat app or a slow phone sees it at once.
