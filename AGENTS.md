@@ -68,7 +68,7 @@ The documentation corpus (formerly the in-repo `documentation official/` folder)
 
 ### Writing a Brief
 
-When the owner asks for a brief, write it as a new file in the active project's brief folder (`projects/<name>/brief/`, or `briefs/` where the project uses that name), named `brief_YYYY_MM_DD_NN.md` with the next free number for that day. Then add one row for it to `01_TOC.md` in the same folder (create the file if it is missing): a link to the brief, its date, and a very short summary of what it records. Briefs written before a folder's `01_TOC.md` existed are not added unless the owner asks.
+When the owner asks for a brief, write it as a new file in the active project's brief folder (`projects/<name>/brief/`, or `briefs/` where the project uses that name), named `brief_YYYY_MM_DD_NNN.md` with the next free number for that day, three digits from 001. Then add one row for it to `01_TOC.md` in the same folder (create the file if it is missing): a link to the brief, its date, and a very short summary of what it records. Briefs written before a folder's `01_TOC.md` existed are not added unless the owner asks.
 
 ### Retiring Lecture Files
 Never delete, overwrite, or hand-move a lecture, pre-lecture, figure, HTML, or PDF file. To retire a version, run the project's `archive_lecture.py`: it moves every file of that lecture into the `archive/` subfolder next to it under a timestamped name, refuses to overwrite anything, logs each move in `ARCHIVE-LOG.md`, and brings a version back with `--restore STAMP` (`--list` shows the stamps).
@@ -80,6 +80,8 @@ A project that keeps its own bank (react-06 today) has one live file, `questions
 ## Rule Authoring
 
 When any AI agent creates, reviews, or modifies instructions, prompts, or skills, first consult the meta-rules: `projects/react-04/skills/prompt-writing/SKILL.md` and `projects/react-04/skills/prompt-writing/quality-checklist.md`, plus `projects/react-04/skills/README.md` and `projects/react-04/skills/RULE-TAGS.md`. Mirrors are kept in sync at `projects/react-05/skills/`, `projects/react-06/skills/v6.7/`, `projects/react-07/skills/v7.1/`, `projects/react-08/skills/v8.1/`, `projects/react-09/skills/v9.1/`, `projects/react-10/skills/v10.7/`, and `projects/react-11/skills/v11.3/` (the latest version folder is live).
+
+Before you change a skill file, keep a copy of it, as *Keep a copy before every edit* in `projects/react-11/skills/v11.3/editing-skills/SKILL.md` says. The files in `skills/archive/` are old versions, never current rules.
 
 ### The Principles of Principles (Authoring Doctrine)
 

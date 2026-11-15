@@ -32,7 +32,24 @@ Every edit that carries the owner's words follows the Tech-Lawyer Rule, Principl
 3. **Show it with a good and a bad example.** The good example is approved lecture text or the owner's own words, and its label names the source. The bad example is a rejected draft, labelled as such. Under the bad example, write *Why this fails* in one sentence.
 4. **Keep the build's limits out of the skills.** If a skill says "at most 28 words", the writer writes 28 words every time. Describe what good text looks like instead.
 5. **Keep each file short enough to read in a few minutes.** When a file grows, cut what is repeated before you add more.
-6. **Record the edit.** Tag each new section `#YYYY_MM_DD_NN_group_M`. Add one row per group to [RULE-TAGS.md](../RULE-TAGS.md). Write a brief in `brief/brief_YYYY_MM_DD_NN.md`, and add its row to `brief/01_TOC.md`.
+6. **Record the edit.** Tag each new section `#YYYY_MM_DD_NNN_group_M`. Add one row per group to [RULE-TAGS.md](../RULE-TAGS.md). Write a brief in `brief/brief_YYYY_MM_DD_NNN.md`, and add its row to `brief/01_TOC.md`. NNN has three digits, and the first brief of a day is 001. Older briefs and tags keep their two-digit names.
+
+## Keep a copy before every edit #2026_11_15_001_group_1
+
+The owner's words, 2026-11-15:
+
+> "I want some safety in tracing previous editions on all edits."
+>
+> "Every time? That would be even more safe. I think daily I don't do more than some dozen changes, and only a few days per week. I think it would add safety without loading too much."
+
+> "SKILL_2026_11_15_001.md (three digits, for safety)."
+
+What this asks:
+
+1. **A copy before every edit.** Before you change any file in `skills/v11.3/`, copy it unchanged into `skills/archive/v11.3/`, in the same folder path: a file of `intro/` goes to `skills/archive/v11.3/intro/`. Create the folders when they are missing.
+2. **The name of the copy.** Keep the name of the file, then add the date and a number with three digits: `SKILL_2026_11_15_001.md`, `intro-points_2026_11_15_001.md`. Take the next free number for that file on that day, starting at 001.
+3. **The brief names the copy.** Under "How to trace or revert", the brief of the edit names each copy, so the reason and the old text can be found together.
+4. **A copy is never a rule.** The files in `skills/archive/` are old versions. Never read them as current skills, and never follow them. When you search the skills, leave `skills/archive/` out.
 
 ## Do not let an example grow into a big rule
 
