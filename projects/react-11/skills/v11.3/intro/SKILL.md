@@ -5,16 +5,32 @@ description: "How the intro of a lecture is written, from the short question und
 
 # The Intro #2026_11_12_04_group_1
 
+## General writing skills #2026_11_14_03_group_1
+
+The lectures we want have a clear structure and logic, so that the reader can quickly browse the distinct sections, boxes of information, principles, etc. But the primary objective of the lesson is NOT to simplify the official React documentation. It is to guide the junior developer, or remind the senior developer, how to think about the logic and structure of React. The primary objective is to show the reader the logic and the pedagogy of React. Start from the general picture, which needs to be clear and memorable, and go down to the guiding principles of how code should be written: warnings and considerations about good and bad practices, how to avoid bugs that are either overt or silent, and the actual role and purpose of each element of React, which one has to understand deeply and only then use.
+
+For this reason, before you write or rewrite a lecture, read these files to pick up the key elements of the guiding philosophy:
+- Some considerations on the method of writing: [method-writing.md](method-writing.md)
+- Some considerations on the pedagogical priorities of the text: [method-example-01.md](method-example-01.md)
+- Some working examples of introducing ideas with clarity: [14.md](14.md), [15.md](15.md), [16.md](16.md)
+
+These texts are not exhaustive, nor are they the final word on what to write or how to write it. They show examples of the depth and clarity we seek.
+
+Notice that we need to avoid a boring enumeration of logic, and also avoid naive simplifications. A boring enumeration lists facts one after another, A, B, C, and therefore D, before the reader knows why they matter. Instead, state the point first, then explain it, then conclude. Numbered steps still serve when the reader must follow a process in order, as in the Lecture 37 template below.
+
+We need to help the reader grasp the "big picture", and to build logical guidance from the point of view of the developer first and foremost: what the developer will experience as a bug in an app, rather than a blind explanation of how React works behind the scenes. The information about React must be complete in a technical sense, but framed with the pedagogical clarity of a developer who learns to think in these terms when writing the code.
+
 ## Before you start #2026_11_13_04_group_1 #2026_11_13_05_group_1
 
-THe intro of the intro has two templates: 
+Aristotle said that the start is (more than) half of the whole. This is true and we believe in this. We have carefully designed the intro and even more, the intro of the intro. 
 
-Study the First Template: Before you start, open [intro-points.md](intro-points.md) and read carefully each and every example. Pay attention to the Notes for the AI. Notice where the bad examples fail and where the good examples succeed.
+The intro of the intro has two templates: 
 
-Study the Second Template: Then open [37.md](37.md) and examine the case of Lecture 37 separately. It shows how to ground a process step by step: what happens when the user types a letter, what happens when a dependency of an Effect changes, and how the two together make an Effect run too often.
+- Study the First Template: Before you start, open [intro-points.md](intro-points.md) and read carefully each and every example. Pay attention to the Notes for the AI. Notice where the bad examples fail and where the good examples succeed.
 
+- Study the Second Template: Then open [37.md](37.md) and examine the case of Lecture 37 separately. It shows how to ground a process step by step: what happens when the user types a letter, what happens when a dependency of an Effect changes, and how the two together make an Effect run too often.
 
-The first decision you need to decide is if you are going to take the path of presentation of the intro of the intro, a way that resembles the second template, for more challenging topics, or maybe you will decide to present a combination of both templates that best presents what needs the chapter to present. 
+The first decision you need to make is if you are going to take the path of presentation of the intro of the intro, a way that resembles the second template, for more challenging topics, or maybe you will decide to present a combination of both templates that best presents what needs the chapter to present. 
 
 ## What the intro is overall
 
@@ -23,9 +39,9 @@ The owner's words, 2026-11-12:
 > "I've written some very clear and lucid opening sections here, which inspired the 16 example we have studied together."
 
 What this asks:
-1. **The owner's intros are the model.** The intros are the examples to follow. Read all  before you write an intro: [14.md](14.md), [15.md](15.md), [16.md](16.md).
+1. **The owner's intros are the model.** The intros are the examples to follow. Read all of them before you write an intro: [14.md](14.md), [15.md](15.md), [16.md](16.md).
 
-> IMPORTANT: Need to edit these files to allign to the intro-ponts.md, the intro-points is superior in quality and value and command the rest
+> IMPORTANT: Need to edit these files to align to the intro-points.md, the intro-points is superior in quality and value and command the rest
 
 2. **The intro is the start of the lecture.** It runs from the short question under the title to the Rule of Thumb. The example page and the principles come after it.
 3. **Copy the shape, not the words.** Each intro follows the checklist below. A new lesson keeps the order and the moves, with its own screen, its own names, and its own image.

@@ -224,3 +224,14 @@ The titles of Lecture 45, considered one by one:
 - Which angle does it stand on: the expectation, the surprise, the reason, the bad practice, the cost to the user, why the bug hides, or the fix?
 - Does it touch a moment of the developer: thinking about the code, writing it, or remembering it?
 - Is a condition, a cause, and a fix squeezed into one sentence that two sentences would say better?
+
+
+## 10. Warning the reader in time, and from different angles, about traps and misleading conclusions #2026_11_14_03_group_2
+
+- When you warn the reader, the text becomes more interesting. A warning can take many forms: an obvious "Beware!", a bad practice named as one ("It is a bad practice when..."), a common bug, a silent bug, etc.
+
+- Warning about confusing concepts. The reader needs to be told which framings of a concept can be sources of confusion. For example: can the developer pick the dependencies of a `useEffect`? The documentation says no, but this can be misleading. The developer who writes the code decides what the Effect must stay in sync with, and writes the code of the Effect so that it reads exactly those values. Through that design, the developer controls when the Effect runs again. It is a good opportunity to remind the reader that code runs for two different causes: directly, because of an event such as a click, or in an Effect, because the component is on the screen and must stay in sync with values that change. A purchase belongs to the first: it is an action the user asked for once. A chat connection that follows the selected room belongs to the second. Now, the moment the code of a `useEffect` reads a value from the component, there is no other choice but to add that value to the dependency list. In that sense, the developer has no choice about what to put in the dependency list.
+
+- The full case, with a COUNTER-EXAMPLE and a PROPER rewrite from Lecture 32, is in [method-example-01.md](method-example-01.md). 
+
+
