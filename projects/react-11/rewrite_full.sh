@@ -34,27 +34,38 @@ wait_new() {
   done
 }
 
+# The soft agent commits in the same repo; a clash on git's lock must retry,
+# not kill the loop.
+g() {
+  T2=0
+  until "$@"; do
+    T2=$((T2+1))
+    [ "$T2" -ge 30 ] && return 1
+    sleep 2
+  done
+}
+
 stage_run_files() {
   find audit/bookrewrite audit/bookrewrite-soft "$LECT/archive" "$HTML/archive" \
-    -type f -newer "$MARK" -exec git add -- {} + 2>/dev/null || true
-  git add -- ARCHIVE-LOG.md
+    -type f -newer "$MARK" -exec g git add -- {} + 2>/dev/null || true
+  g git add -- ARCHIVE-LOG.md
 }
 
 for N in $(seq -f %02g "$FROM" "$TO"); do
   touch "$MARK"
   run_alone factory workflow bookrewrite lesson=$N model=droid/claude-opus-5-5:high
   wait_new "$LECT/$N.md" "$HTML/$N.html" || { echo "Lesson $N: Opus wrote no new $N.md, stopping"; exit 1; }
-  git add -- "$LECT/$N.md" "$HTML/$N.html"
+  g git add -- "$LECT/$N.md" "$HTML/$N.html"
   stage_run_files
-  git commit -q -m "rewrite lesson $N from react-10 with Opus 5.5 high ($N)"
+  g git commit -q -m "rewrite lesson $N from react-10 with Opus 5.5 high ($N)"
 
   touch "$MARK"
   # The Gemini flow ends as "stopped" with an error code even when it wrote and pushed its file; the check below decides.
   run_alone factory workflow bookrewrite-soft lesson=$N "model=antigravity/Gemini 3.8 Flash:high" || true
   wait_new "$LECT/$N-gemini.md" "$HTML/$N-gemini.html" || { echo "Lesson $N: Gemini wrote no new $N-gemini.md, stopping"; exit 1; }
-  git add -- "$LECT/$N-gemini.md" "$HTML/$N-gemini.html"
+  g git add -- "$LECT/$N-gemini.md" "$HTML/$N-gemini.html"
   stage_run_files
-  git diff --cached --quiet || git commit -q -m "keep the run notes of lesson $N"
+  git diff --cached --quiet || g git commit -q -m "keep the run notes of lesson $N"
 done
-git push
+g git push
 echo "Done: lessons $FROM to $TO rewritten, committed, and pushed."
