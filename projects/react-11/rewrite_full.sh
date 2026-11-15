@@ -23,6 +23,17 @@ for s in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
 os.execvp(sys.argv[1], sys.argv[1:])' "$@"
 }
 
+# A kill can land seconds before the agent saves its files, while the agent
+# finishes on its own in Synara. Wait for both files instead of checking once.
+wait_new() {
+  T=0
+  until [ "$1" -nt "$MARK" ] && [ "$2" -nt "$MARK" ]; do
+    T=$((T+10))
+    [ "$T" -gt 1800 ] && return 1
+    sleep 10
+  done
+}
+
 stage_run_files() {
   find audit/bookrewrite audit/bookrewrite-soft "$LECT/archive" "$HTML/archive" \
     -type f -newer "$MARK" -exec git add -- {} + 2>/dev/null || true
@@ -32,7 +43,7 @@ stage_run_files() {
 for N in $(seq -f %02g "$FROM" "$TO"); do
   touch "$MARK"
   run_alone factory workflow bookrewrite lesson=$N model=droid/claude-opus-5-5:high
-  [ "$LECT/$N.md" -nt "$MARK" ] || { echo "Lesson $N: Opus wrote no new $N.md, stopping"; exit 1; }
+  wait_new "$LECT/$N.md" "$HTML/$N.html" || { echo "Lesson $N: Opus wrote no new $N.md, stopping"; exit 1; }
   git add -- "$LECT/$N.md" "$HTML/$N.html"
   stage_run_files
   git commit -q -m "rewrite lesson $N from react-10 with Opus 5.5 high ($N)"
@@ -40,7 +51,7 @@ for N in $(seq -f %02g "$FROM" "$TO"); do
   touch "$MARK"
   # The Gemini flow ends as "stopped" with an error code even when it wrote and pushed its file; the check below decides.
   run_alone factory workflow bookrewrite-soft lesson=$N "model=antigravity/Gemini 3.8 Flash:high" || true
-  [ "$LECT/$N-gemini.md" -nt "$MARK" ] || { echo "Lesson $N: Gemini wrote no new $N-gemini.md, stopping"; exit 1; }
+  wait_new "$LECT/$N-gemini.md" "$HTML/$N-gemini.html" || { echo "Lesson $N: Gemini wrote no new $N-gemini.md, stopping"; exit 1; }
   git add -- "$LECT/$N-gemini.md" "$HTML/$N-gemini.html"
   stage_run_files
   git diff --cached --quiet || git commit -q -m "keep the run notes of lesson $N"
