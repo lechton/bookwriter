@@ -725,3 +725,6 @@ The `archive/` subfolders of the `v1` folders were copied unchanged from the rea
 - 2026-11-14 07:04 | archive Q29 | archive 29-gemini per user request | 01-02-md-LECTURES/v1/29-gemini.md -> 01-02-md-LECTURES/v1/archive/29-gemini-2026-11-14-0704.md
 - 2026-11-14 07:04 | archive Q29 | archive 29-gemini per user request | 01-03-md-lectures-HTML/v1/theme1/29-gemini.html -> 01-03-md-lectures-HTML/v1/theme1/archive/29-gemini-2026-11-14-0704.html
 - 2026-11-14 07:04 | archive Q29 | archive 29-gemini per user request | 01-04-md-lectures-PDF/v1/theme1/29-gemini.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/29-gemini-2026-11-14-0704.pdf
+- 2026-11-15 23:07 | archive Q54 | bookrewrite: before the rewrite | 01-02-md-LECTURES/v1/54.md -> 01-02-md-LECTURES/v1/archive/54-2026-11-15-2307.md
+- 2026-11-15 23:07 | archive Q54 | bookrewrite: before the rewrite | 01-03-md-lectures-HTML/v1/theme1/54.html -> 01-03-md-lectures-HTML/v1/theme1/archive/54-2026-11-15-2307.html
+- 2026-11-15 23:07 | archive Q54 | bookrewrite: before the rewrite | 01-04-md-lectures-PDF/v1/theme1/54.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/54-2026-11-15-2307.pdf
