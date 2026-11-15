@@ -6,25 +6,25 @@
 
 ---
 
-## VS | Rendering vs. Committing: React calls the function again, but changes only the DOM nodes that differ
+## VS | A Re-render `Message rendered` vs. a DOM Change `<li>`: React calls the function again, but changes only the DOM nodes that differ
 
-> You type one letter into a chat, and a `console.log` inside an untouched message prints a new line. **That line marks a re-render: React called the component function again to compute its latest JSX, but it updates the DOM only where that JSX changed**. Calling a function that returns unchanged JSX costs very little JavaScript execution time and requires zero DOM work, so measure performance before adding optimizations.
+> You type a single character into an input field, and an untouched message component logs to the Console. **That log line confirms a re-render.** React executed the message component function again to compute its new JSX elements. React mutates the real DOM only when those newly returned elements differ from the previous render output. Calling a lightweight JavaScript function costs negligible CPU time and causes zero DOM changes when its JSX matches, so measure real performance before introducing optimizations.
 
-Remember how you change a page in plain JavaScript? You find the one element, and you change it yourself. Nothing else on the page runs:
+In standard JavaScript, your code searches the document tree and updates that specific DOM element directly. No other code runs, and no other UI elements are queried:
 
 ```js title="Plain JavaScript: you change the one element yourself"
 document.getElementById('count').~textContent = '4 messages'~; // Only this element changes, and no other code runs
 ```
 
-In React, you never manipulate the DOM directly. Instead, you call a state setter, and React handles the update across two distinct phases:
-1. **React renders.** It calls your component function from the top to compute the new JSX. It also calls every child component returned in that JSX tree. This execution is the re-render, and this is what a `console.log` inside a component body prints.
-2. **React commits.** It compares the new JSX elements with the previous elements, and changes only the real DOM nodes that actually differ.
+In declarative React, your code never mutates DOM nodes directly. Instead, you trigger a state update, and React executes a two-step cycle:
+1. **React renders.** It invokes your component function from top to bottom to compute its current JSX output. React also invokes every child component returned by that JSX. This function execution is the re-render, which is what `console.log` statements inside components report.
+2. **React commits.** It compares the new JSX elements against the previous render output. React applies changes only to the specific DOM nodes that differ.
 
 ```jsx title="React: you call the setter, and React decides what to change"
 ~setText('O')~; // React calls ChatRoom and its children again, then changes only the DOM nodes that differ
 ```
 
-A line that says rendered in the Console means React executed this JavaScript function. It does not mean React rebuilt that section of the page. Rendering and committing occur together, but they remain two separate steps.
+A log line in the Console means that React invoked a component function. It does not mean that React rebuilt that section of the browser DOM. Developers often treat rendering and DOM mutations as the same event, but they are completely separate operations.
 
 > [!DEFINITION]
 > **Rendering and committing.** [REVIEW] Every screen update has two separate steps. Rendering is React calling your component functions to get their JSX. Committing is React changing the DOM so that it matches that JSX. A component can render without any change on the page, when its JSX is the same as last time (Lesson 13).
@@ -34,7 +34,7 @@ A line that says rendered in the Console means React executed this JavaScript fu
 
 ### One Letter, and an Untouched Message Logs Again
 
-Here is the smallest chat screen that shows this behavior. `ChatRoom` stores user input in local state. `Message` displays a single message:
+Here is the smallest chat screen that shows this behavior. `ChatRoom` stores user input in state, while `Message` displays an individual message:
 
 ```jsx title="The smallest chat screen"
 function ChatRoom() {
@@ -53,7 +53,7 @@ function Message({ text }) {
 }
 ```
 
-When the page loads, the message Hi! appears above an empty text field. The Console already shows two lines, because StrictMode invoked `Message` twice:
+When the page opens, one message sits above an empty input field. The Console already shows two lines, because StrictMode invoked `Message` twice:
 
 ```page width=text caption="The smallest chat screen when it opens: one message, Hi!, above an empty input field, and two lines in the Console."
 line: Hi!
@@ -63,7 +63,7 @@ log: Message rendered: Hi!
 log: Message rendered: Hi!
 ```
 
-Now clear the Console. Next, the user types the single letter O into the field:
+We clear the Console. The user now types the letter `O` into the field:
 
 ```page width=text caption="The same screen after the user types O: the message still reads Hi!, and the Console prints Message rendered: Hi! again."
 line: Hi!
@@ -73,9 +73,9 @@ log: Message rendered: Hi!
 log: Message rendered: Hi!
 ```
 
-**React called `Message` again, even though the message never changed.** Its `text` prop remained the string Hi!, and the screen still displays Hi!. Typing another letter repeats this exact cycle.
+**React invoked the child component again even though the displayed message did not change.** The prop text still equals `"Hi!"`, and the screen displays the identical text. Each subsequent keystroke triggers this exact sequence.
 
-So what did React change in the DOM? Nothing. `Message` returned the same paragraph element as before, so React left the DOM node untouched. React documentation states this clearly: React does not touch the DOM if the rendering result is the same as last time.
+So what did React modify in the real DOM? React modified nothing. The component returned the same `<p>` element structure as before, so React left the existing DOM node untouched. The official React documentation states that React leaves the DOM unchanged whenever the render output matches the previous pass.
 
 ```tree dir=right caption="One letter typed by the user: React calls Message again, but the p node on the page stays as it was."
 What one letter does to `Message`
@@ -84,38 +84,38 @@ What one letter does to `Message`
 ```
 
 > [!DEFINITION]
-> **A re-render.** [NEW] A re-render is React calling a component function again, after its first render, to get its new JSX. It happens for exactly three reasons. First, the component's own state changed. Second, its parent re-rendered. Third, a context it reads got a different value. A re-render is only a function call: React then changes the DOM only where the new JSX differs from the old one (Lesson 54).
+> **A re-render.** [NEW] A re-render occurs when React invokes a component function again, after its initial mount, to calculate fresh JSX output. It happens for three specific reasons. First, the component updates its own state. Second, its parent component re-renders. Third, a React context consumed by the component receives a new provider value. A re-render is simply a JavaScript function call. React mutates DOM nodes only where the newly returned JSX differs from the previous render output (Lesson 54).
 
 ### What a Re-render Costs the User
 
-The user never sees a re-render. The user only notices whether typing feels responsive on the screen.
-1. **The common case.** Each keystroke re-renders a few components in a couple of milliseconds, and each letter appears instantly. Adding manual optimizations everywhere changes nothing visible for the user. It only makes component code harder to maintain.
-2. **The rare case.** A component re-rendering on every keystroke performs heavy computation, causing typing to stutter. React documentation describes this lag as jank, where letters appear with a noticeable delay.
+Users never observe internal JavaScript execution directly. Users notice only interface responsiveness, such as whether typed letters appear instantly on screen:
+1. **The common case.** Each keystroke re-renders a handful of child components in one or two milliseconds. The character appears in the input field without delay. Adding optimization wrappers to lightweight components delivers zero visible benefit. It only adds boilerplate and harms code readability.
+2. **The rare case.** A component executed during the keystroke performs heavy calculations, creating noticeable input lag. Characters appear with an irritating delay. The official React documentation notes that a sluggish component can make typing feel unresponsive and stutter on screen.
 
-Which case are you facing? A list of Console lines cannot tell you. Only an accurate measurement reveals the real performance cost.
+Which scenario applies to your app? A list of log entries in the Console cannot answer that question. Only an accurate runtime profile provides the answer.
 
 ### The Rule of Thumb: measure first, then pick a fix
 
-**A re-render simply means React called your function again, which is very fast. Leave default re-renders alone, measure with tools, and optimize only when users feel lag.**
+**A re-render is simply React executing your function again, and standard function calls are fast. Leave the code intact, measure execution time, and optimize only when users experience real lag.**
 
-Experienced developers recognize three classic misunderstandings:
-1. **Assuming rendered means rebuilt the DOM.** It does not. It only means React executed the component function. Each log line reports a JavaScript call, not a DOM change.
-2. **Assuming twenty log lines mean a slow application.** A developer sees multiple log lines after a single click and wraps every component in memoization without profiling first.
-3. **Assuming a child re-renders only when its props change.** It does not. By default, a child re-renders whenever its parent component re-renders.
+Senior developers recognize three common misconceptions:
+1. **Assuming a render log indicates a DOM rebuild.** A log entry confirms a JavaScript function invocation. It does not indicate a DOM mutation.
+2. **Assuming numerous log entries prove an application is slow.** A developer spots twenty log lines after a single interaction and wraps every component in memoization without measuring performance.
+3. **Assuming child components re-render only when props change.** By default, whenever a parent component re-renders, React re-renders every child component returned in its JSX tree.
 
-When profiling confirms that a component is genuinely slow, you have four practical ways to resolve it:
-1. **Keep the code simple and measure first.** This strategy applies to most cases, and it forms the core lesson here. React documentation explicitly warns against premature optimization.
-2. **Move state down, or pass unchanged JSX through `children`.** This architecture isolates fast-changing state to the components that need it, avoiding unnecessary renders higher up (Lesson 58).
-3. **Memoize components and values using `memo`, `useMemo`, and `useCallback`.** Memoization stores prior results and reuses them while inputs remain unchanged. This technique helps components that re-render frequently with heavy render calculations (Lessons 55 to 57).
-4. **Use the React Compiler to memoize automatically** during the project build step (Lesson 63).
+When profiling reveals a genuine performance bottleneck, developers apply four primary solutions:
+1. **Profile first before changing code.** This strategy fits most applications. The official React documentation cautions developers against premature optimization.
+2. **Push state down or pass elements as children.** Colocating state near the components that need it prevents higher-level components from re-rendering unnecessarily (Lesson 58).
+3. **Memoize with `memo`, `useMemo`, and `useCallback`.** Memoization caches computation results and skips re-renders when input values remain unchanged. This technique targets expensive components that re-render frequently with identical props (Lessons 55 to 57).
+4. **Enable the React Compiler.** The compiler analyzes component code and inserts memoization automatically during the build step (Lesson 63).
 
-Keep the central lesson in mind. **A re-render is React calling your function again, and that is fast: React updates only the DOM nodes whose output actually changed.**
+Remember the central lesson: a re-render is simply React calling your function again, and React mutates only the DOM nodes that actually changed.
 
 ## SECTION | The Chat Room with Three Messages
 
-Why build a chat room? Because every letter typed into a draft input re-renders every message currently on screen. That scenario frequently causes developer anxiety: a developer logs output from a message component, types a word, and watches log lines multiply.
+Why use a chat room? Typing a single character into an input field causes every message on screen to re-render. This scenario highlights a common source of developer concern: placing a log inside a list item, typing a word, and watching the Console flood with output.
 
-By the end of this lesson, our chat room includes a theme toggle button, three messages, a text input, and a send button. When the page loads, the Console logs each component execution, followed by a final line measuring total elapsed time:
+By the end of this lesson, our chat room includes a theme toggle button, three message items, a text input field, and a submit button. When the application loads, the Console logs each component invocation, followed by a final timing measurement:
 
 ```page width=text caption="The finished chat room when the page loads: a Toggle theme button, three messages, an empty input field, a Send button, and the first lines in the Console."
 line: [Toggle theme]
@@ -136,12 +136,12 @@ log: Message rendered: Sure | Message.jsx:6
 log: ChatRoom mount 1.80 ms | App.jsx:6
 ```
 
-The user performs three primary actions on this interface:
-1. Types into the message input field.
-2. Clicks the send button.
-3. Clicks the theme toggle button.
+The user performs three primary interactions on this screen:
+1. Enters text into the input field.
+2. Clicks the `Send` button.
+3. Clicks the `Toggle theme` button.
 
-The project contains six files. Context and styling arrive in Principle 2, while profiler measurement arrives in Principle 4:
+The application spans six files. The theme context and CSS file arrive in Principle 2, while the profiler measurement arrives in Principle 4:
 
 ```files title="chat-room: File Explorer" caption="How the chat room files sit inside src/ and src/components/."
 index.html | entry | The HTML page with the empty root div where React mounts
@@ -155,13 +155,13 @@ src/
     Message.jsx | default export | Reads `ThemeContext` and renders one `<li>`
 ```
 
-Two log statements in our code track every render: one in `ChatRoom`, and another in `Message`. Official React documentation demonstrates re-renders the same way, placing a log inside the component body.
+Two logging statements track component execution: one log inside the chat room component, and one inside the message component. The official React documentation relies on this exact technique to demonstrate component execution cycles.
 
-**PRINCIPLES:** A re-render is simply React calling a component function again. It stems from three specific triggers, remains distinct from DOM mutation, and has a measurable execution duration. Four principles follow:
-1. **Principle 1: A State Change Renders Every Component Below It Again.** When `ChatRoom` state changes, React calls the component and every child message again, even if message contents are unchanged. React never calls components above it.
-2. **Principle 2: A Context Change Renders Every Reader Again.** Any component reading a context re-renders when the nearest provider above receives a different `value`. No intermediate component can block this update.
-3. **Principle 3: React Changes Only the DOM Nodes That Differ.** When sending a message, React calls four `Message` functions, but only one returns new JSX. React inserts one new list item and leaves existing nodes untouched.
-4. **Principle 4: Measure Before You Optimize.** Counting console lines shows execution count, not execution duration. Using `<Profiler>` gives the exact duration in milliseconds. Optimize only when an interaction feels sluggish.
+**PRINCIPLES:** A re-render is simply React executing a component function again. It stems from three specific triggers, remains distinct from DOM mutations, and carries a measurable runtime cost. Four core principles guide this behavior:
+1. **Principle 1: Parent Re-render: A State Change Renders Every Component Below It Again.** Updating local state causes React to re-render that component and all nested children, even when child props remain identical. Components above the state owner do not re-render.
+2. **Principle 2: Context: A Context Change Renders Every Component That Reads It Again.** Updating the context provider value causes React to re-render all consumer components directly. Intermediate components cannot block this update.
+3. **Principle 3: Render vs. Commit: React Changes Only the DOM Nodes That Differ.** Submitting a message causes React to execute four child component functions, but only one returns new markup. React inserts a single list node and leaves existing nodes untouched.
+4. **Principle 4: Measure First: Read actualDuration Before You Optimize.** Counting console entries reveals call frequency, but `<Profiler>` reports actual execution time. Optimize only when profiling demonstrates real input delay.
 
 ---
 
@@ -192,7 +192,7 @@ Two log statements in our code track every render: one in `ChatRoom`, and anothe
 
 ### A child re-renders because its parent re-rendered
 
-Revisit the smallest chat example. `Message` received the identical text prop Hi! on every keystroke, yet React invoked it each time. Why does this occur? Because React does not automatically verify whether child props changed. When `ChatRoom` re-renders, React executes every component returned in its JSX tree, including `Message`:
+Review the minimal chat screen again. The message component received the same prop after every keystroke, yet React invoked it each time. Why? React does not check whether child props changed before calling a child function. When `ChatRoom` re-renders, React executes every component that `ChatRoom` returns in its JSX tree:
 
 ```jsx title="The smallest chat screen, again"
 function ChatRoom() {
@@ -206,13 +206,13 @@ function ChatRoom() {
 }
 ```
 
-A child component re-renders for two distinct reasons: its own internal state changed, or its parent component re-rendered. As React documentation explains, React normally re-renders a component whenever its parent re-renders.
+A child component therefore has a second reason to re-render, besides updating its own state: its parent component re-rendered. The official React documentation confirms that React normally re-renders a component whenever its parent re-renders.
 
-What about prop updates? A prop change is not an independent trigger. It is simply the new value passed down during the parent re-render. Developers often assume that unchanged props cause React to skip the child. By default, React never skips a child.
+What about a prop update? Changing a prop is not an independent trigger. It is simply the new value passed down during the parent component's re-render. Many developers assume that React skips child components whose props remain unchanged, but React executes them by default.
 
 ### The chat room with three messages
 
-Now let us examine the modular project files. The root `App` component renders `ChatRoom`:
+The chat room now expands into dedicated modular files. `App` serves as the root container rendering `ChatRoom`:
 
 ```jsx title="src/App.jsx"
 import ChatRoom from './components/ChatRoom.jsx';
@@ -222,7 +222,7 @@ export default function App() {
 }
 ```
 
-`ChatRoom` manages two state values: the array of messages and the current input text. It renders one `<Message>` for each item, followed by the text input:
+`ChatRoom` manages two state variables: the message list array and the active input text. It renders a list of message elements followed by the input field:
 
 ```jsx title="src/components/ChatRoom.jsx"
 import { useState } from 'react';
@@ -252,7 +252,7 @@ export default function ChatRoom() {
 }
 ```
 
-`Message` logs its rendered text and outputs a list item:
+`Message` logs a line to the Console and returns an individual list item element:
 
 ```jsx title="src/components/Message.jsx"
 export default function Message({ text }) {
@@ -261,9 +261,9 @@ export default function Message({ text }) {
 }
 ```
 
-Notice that two different variables share the name text. In `ChatRoom`, `text` represents component state holding user input. In `Message`, `text` represents the prop received from the parent.
+Notice an important naming detail: two distinct variables use the identifier text. In the chat room component, the text state stores whatever characters the user typed. In the message component, the text prop represents the string passed to that specific item.
 
-When the page loads, React calls `ChatRoom`, followed by all three message items, with StrictMode doubling each line:
+When the page loads initially, React calls the container component followed by each of the three messages. StrictMode doubles every logged line:
 
 ```page width=text caption="The chat room when the page loads: three messages, an empty input field, and two Console lines for every component."
 line: Hi!
@@ -281,7 +281,7 @@ log: Message rendered: Sure | Message.jsx:2
 log: Message rendered: Sure | Message.jsx:2
 ```
 
-Clear the Console, and type the single letter O into the field:
+We clear the Console. The user now types the letter `O` into the field:
 
 ```page width=text caption="The chat room after the user types O: the three messages stay the same, and the Console prints all the same lines again."
 line: Hi!
@@ -299,14 +299,14 @@ log: Message rendered: Sure | Message.jsx:2
 log: Message rendered: Sure | Message.jsx:2
 ```
 
-**Typing one letter into the input re-executes every message function, even though no message changed.** The sequence occurs in five clear steps:
-1. The user types O, causing the change handler to call `setText('O')`.
-2. React re-renders `ChatRoom` because its internal state changed. The Console logs ChatRoom rendered.
-3. `ChatRoom` returns three `<Message>` tags again with their existing string props.
-4. React invokes `Message` three times because their parent re-rendered. The Console logs the three message lines.
-5. React never calls `App`. Only `ChatRoom` state updated, and `App` sits above it in the tree (Lesson 13).
+**Typing a single character into the field re-executes every message component on screen, even though message contents remained identical.** Here is the sequential order of operations:
+1. The user types `O`. The input change handler calls `setText('O')`.
+2. React re-renders `ChatRoom` because its internal state changed. The Console outputs `ChatRoom rendered`.
+3. The component returns the three child message elements again with their existing strings.
+4. React invokes each child message function because the parent component re-rendered. The Console logs three message lines.
+5. React does not invoke `App`. Only the state of the chat container changed, and parent components higher up do not re-render (Lesson 13).
 
-Typing the letter K triggers the exact same five steps.
+When the user types `K`, the same five steps repeat.
 
 ```tree caption="What React calls after one letter typed into the chat room field."
 `App` | **Not called**: it sits above the state that changed
@@ -318,22 +318,22 @@ Typing the letter K triggers the exact same five steps.
 
 ### The real mistake: twenty lines, and an optimization everywhere
 
-This sequence illustrates how unnecessary optimization cycles often begin:
-1. A developer places a log statement inside a child component to debug unrelated behavior.
-2. They interact with a parent form input or button.
-3. The Console fills with repetitive child logs, showing twenty lines for twenty children.
-4. The developer assumes the application has slowed down without taking real measurements.
-5. They immediately wrap every component and callback in memoization utilities from Lessons 55 to 57.
+This pattern triggers unnecessary optimization anxiety across many teams:
+1. A developer adds a log statement to a child component while debugging an unrelated feature.
+2. They type into an input field or click a button in the parent component.
+3. The Console outputs a wall of logs: twenty lines for twenty child items.
+4. Without profiling execution duration, they assume the page has slowed down.
+5. They wrap every component and callback in memoization hooks.
 
-React documentation highlights the trade-off of this habit. While some developers memoize aggressively, the downside is that code readability suffers substantially, while the user experiences zero perceptible difference.
+The official React documentation warns against this reaction: attempting to memoize everything harms code readability without delivering any noticeable benefit to users.
 
 ### Three facts interviewers ask about
 
-**Setting state to its existing value skips re-rendering.** If your handler calls `setText('')` while the input is already empty, React compares the previous and next values using `Object.is` (Lesson 35). Because both values match, React bails out of re-rendering `ChatRoom` and its children. The documentation notes that in rare cases React may execute the component once before skipping downstream children.
+**Setting state to the value it already holds skips the re-render.** Suppose your code calls `setText('')` when the input field is already empty. React compares the previous and next state values using `Object.is` (Lesson 35). Because the values are identical, React bails out and skips re-rendering the component and its children. The documentation notes that React may occasionally run the component function one extra time before bailing out of child renders.
 
-**Multiple state updates in one event trigger a single re-render.** React automatically batches updates (Lesson 16). A handler that calls two setters causes only one render cycle. We examine this with the send action in Principle 3.
+**Multiple state updates in one event trigger a single re-render.** React automatically batches state updates triggered within the same event handler (Lesson 16). An event handler that calls two state setters causes React to re-render the component exactly once. We examine this batching with the submit button in Principle 3.
 
-**State placement dictates the scope of downstream re-renders.** Our input state lives inside `ChatRoom`, rather than in `App`. As a result, typing re-renders `ChatRoom` and its list items, leaving parent components untouched. React documentation advises keeping fast-moving temporary state localized instead of placing it at the top of the tree. A component at the root re-renders the entire application tree beneath it, making misplaced state expensive.
+**Where state lives determines how much of the tree re-renders.** In our project, the input text state lives in `ChatRoom` rather than `App`. Each keystroke re-renders only `ChatRoom` and its message items, leaving higher components untouched. The official React documentation advises against storing transient state at the top of the tree. Transient state refers to frequently changing data needed only momentarily, such as active input text or hover flags. Placing such state at the root forces the entire application to re-evaluate on every keystroke.
 
 ---
 
@@ -362,7 +362,7 @@ React documentation highlights the trade-off of this habit. While some developer
 
 ### VS | The theme as a prop vs. the theme from context: who makes Message render with the new theme
 
-Our chat messages should turn dark when the user toggles the theme. That theme can reach `Message` through two different channels. Both patterns apply the theme as a CSS class name on the list item, making messages dark upon click:
+Our messages should adopt dark styling when the user clicks the theme toggle button. The active theme can reach the message component through two distinct pathways. Both approaches assign the theme class to the list item element, styling the messages dark upon clicking:
 
 ```jsx title="The theme passed as a prop to Message"
 <Message ~theme={theme}~ text={m.text} /> {/* ChatRoom must receive theme, and write it on every tag */}
@@ -379,13 +379,13 @@ function Message({ text }) {
 }
 ```
 
-Both approaches produce identical visual styling, but their update mechanisms differ completely. The key distinction lies in what causes `Message` to re-render with the updated theme:
-- **When passed as a prop**, the value flows strictly through the component hierarchy. It reaches `Message` only when `ChatRoom` re-renders and passes the new prop down.
-- **When read through `useContext`**, React directly triggers a re-render of `Message` when the provider receives a new value. As the documentation confirms, React automatically re-renders every component reading a context starting from the provider that receives a changed value.
+Both patterns produce the same visual output initially, but their underlying mechanics differ:
+- **With props**, the updated theme travels downward through every intermediate component. The child receives the new prop only when its direct parent re-renders and forwards the attribute.
+- **With `useContext`**, React directly subscribes the consumer component to the context provider. When the provider value changes by `Object.is`, React schedules a re-render for all subscribing components automatically.
 
-This provides a third reason for a component to re-render: its consumed context value changed. React evaluates provider values using `Object.is`. Because primitive strings compare by value, switching between dark and light represents an explicit value change.
+A component reading context therefore has a third reason to re-render: the context value changed. React evaluates the previous and next provider values using `Object.is`. Because string comparisons evaluate text content, `'dark'` and `'light'` register as different values.
 
-Why is this difference so important? Because intermediate components can skip re-rendering. In Lesson 55 we explore `memo`, which allows a component to skip re-rendering when props remain identical. If `ChatRoom` used `memo` and skipped re-rendering, a theme passed as a prop would never reach the messages. A theme provided through context reaches `Message` regardless, because `memo` only inspects props. React documentation notes that skipping parent re-renders with `memo` does not prevent child consumers from receiving updated context values.
+Why does this architectural distinction matter? It matters because intermediate components might skip rendering. In Lesson 55 we explore `memo`, which allows a component to skip re-rendering when its props remain unchanged. If an intermediate container skips re-rendering, an updated prop cannot travel past it to reach deeper children. In contrast, context updates bypass intermediate components completely. The official React documentation confirms that memoization in intermediate components cannot block context updates from reaching consumer components.
 
 ```tree caption="Two ways the theme can reach Message, and what makes Message re-render in each."
 How the theme reaches `Message`
@@ -395,7 +395,7 @@ How the theme reaches `Message`
 
 ### ThemeContext in the chat room
 
-We implement the context pattern. First, create the context definition file:
+We implement the context pattern. First, a dedicated module instantiates the context:
 
 ```js title="src/ThemeContext.js"
 import { createContext } from 'react';
@@ -403,7 +403,7 @@ import { createContext } from 'react';
 export const ThemeContext = ~createContext('light')~; // The value a reader gets with no provider above it
 ```
 
-`App` holds the theme state, renders the toggle button, and wraps `ChatRoom` in the context provider:
+`App` introduces the theme state, the toggle button, and the context provider wrapping the chat container:
 
 ```jsx title="src/App.jsx"
 import { useState } from 'react';
@@ -423,7 +423,7 @@ export default function App() {
 }
 ```
 
-`Message` consumes the theme from context and assigns it as a class name:
+`Message` reads the theme from context and applies it as a CSS class:
 
 ```jsx title="src/components/Message.jsx"
 import { useContext } from 'react';
@@ -436,14 +436,14 @@ export default function Message({ text }) {
 }
 ```
 
-The stylesheet defines the color rules for both states:
+The stylesheet defines the color palette for each class:
 
 ```css title="src/index.css"
 .light { background: white; color: black; }
 .dark { background: #222; color: white; }
 ```
 
-Clear the Console, and click the theme toggle button:
+We clear the Console. The user clicks the theme toggle button:
 
 ```page width=text caption="The chat room after the user clicks Toggle theme: the three messages turn dark, and every component below the provider logs again."
 line: [Toggle theme]
@@ -462,27 +462,27 @@ log: Message rendered: Sure | Message.jsx:6
 log: Message rendered: Sure | Message.jsx:6
 ```
 
-**One click re-renders the entire tree below `App`, updating each message for two concurrent reasons.** The sequence unfolds in six steps:
-1. The user clicks the button, triggering `setTheme('dark')` in `App`.
-2. React re-renders `App` because its state updated.
-3. `App` renders `<ThemeContext value="dark">`. Through `Object.is`, the string dark differs from light.
-4. React re-renders `ChatRoom` because its parent re-rendered, logging ChatRoom rendered.
-5. React re-renders each `Message` due to both its parent re-rendering and its consumed context changing, logging three message lines.
-6. During the commit phase, React modifies the class attribute on all three list items from light to dark.
+**Clicking the button once re-renders the component tree below `App`, executing each message component for two distinct reasons simultaneously.** Here is the sequential order of operations:
+1. The user clicks the button. The event handler calls `setTheme('dark')` in the parent component.
+2. React re-renders `App` because its state changed.
+3. The provider receives `'dark'`, which `Object.is` evaluates as different from the initial light theme.
+4. React re-renders `ChatRoom` because its parent component re-rendered. The Console logs a line.
+5. React re-renders each child message for two concurrent reasons: its parent re-rendered, and its consumed context changed.
+6. During the commit phase, React updates the class attribute of the three list item elements from `light` to `dark`.
 
-A second click toggles the styling back to light.
+Clicking the button a second time toggles the theme back to light.
 
-Notice that in this simple component tree, the context trigger coincides with the parent re-render. Because theme state lives in `App`, all child components re-render from the parent update anyway. Isolating the context re-render alone requires wrapping intermediate components in `memo`, as shown in Lesson 55.
+Notice an important detail about this layout: you cannot observe context-triggered re-renders in isolation here. Because the theme state lives in `App` above the entire tree, parent re-rendering coincides with context updates. Isolating context-driven re-renders on their own requires wrapping intermediate components in `memo` (Lesson 55).
 
 ### The real mistake: a new object as the value of the provider
 
-Developers frequently attempt to share both a state value and its updater function via context:
-1. They provide an inline object such as `value={{ theme, setTheme }}` on the provider element.
-2. `App` re-renders for any reason, such as an update to an unrelated state variable.
-3. The inline curly braces allocate a fresh object instance on every render pass of `App`.
-4. Because `Object.is` evaluates object references, the context value always counts as changed, forcing every consuming component to re-render unnecessarily.
+Developers frequently bundle state values and dispatch functions into an inline object on the provider:
+1. They write `value={{ theme, setTheme }}` directly on the provider element.
+2. The parent component re-renders for any reason, such as an unrelated state update.
+3. The inline object literal instantiates a brand-new object reference on every render pass, so `Object.is` evaluates the value as changed.
+4. Every consumer component that reads the context re-renders, even when the underlying theme remained identical.
 
-As the documentation warns, creating a new object literal forces React to re-render all deep consumer components. In small applications this overhead is negligible, but Lesson 59 details how to cache context values properly.
+The official React documentation warns that passing an inline object reference forces all context consumers to re-render. In larger applications, this creates unnecessary re-render cascades. We address the proper caching fix in Lesson 59.
 
 ---
 
@@ -511,7 +511,7 @@ As the documentation warns, creating a new object literal forces React to re-ren
 
 ### The Send button
 
-Now let users submit new messages. `ChatRoom` introduces a submission handler:
+The user can now submit a new message. `ChatRoom` introduces an event handler to process submissions:
 
 ```jsx title="src/components/ChatRoom.jsx" startLine="15"
   function handleSend() {
@@ -520,18 +520,18 @@ Now let users submit new messages. `ChatRoom` introduces a submission handler:
   }
 ```
 
-Place the send button immediately following the text input:
+The submit button renders adjacent to the input field:
 
 ```jsx title="src/components/ChatRoom.jsx" startLine="27"
       <input value={text} onChange={e => setText(e.target.value)} />
       <button ~onClick={handleSend}~>Send</button> {/* Calls handleSend when the user clicks Send */}
 ```
 
-Inside the handler, `text` reads the captured state snapshot from the current render (Lesson 15). Our code generates an incremented id, while the key attribute preserves DOM continuity across list items (Lesson 18).
+Inside the submit handler, the text variable captures the state snapshot from the current render pass (Lesson 15). The handler generates a unique identifier, and stable keys ensure React preserves existing DOM nodes across renders (Lesson 18).
 
 ### VS | What the Console shows vs. what the Elements panel shows: four calls, one new node
 
-The user enters OK. Clear the Console, and click Send:
+The user types `OK`. We clear the Console, and the user clicks `Send`:
 
 ```page width=text caption="The chat room after the user types OK and clicks Send: a fourth message OK, an empty input field, and four Message lines in the Console."
 line: [Toggle theme]
@@ -554,7 +554,7 @@ log: Message rendered: OK | Message.jsx:6
 log: Message rendered: OK | Message.jsx:6
 ```
 
-Now inspect the Elements tab in browser developer tools for the same user action:
+The browser Elements inspector monitors the identical click, revealing what actually happened in the DOM:
 
 ```dom caption="The Elements panel after Send: React added one li for OK, and the three earlier li nodes are the same nodes as before the click."
 <ul>
@@ -565,36 +565,36 @@ Now inspect the Elements tab in browser developer tools for the same user action
 </ul>
 ```
 
-**The Console indicates four rendered messages, but the Elements inspector shows only one added DOM node.** Both observations are completely accurate. React called four `Message` functions, but only one produced new output. Consequently, the commit phase inserts a single list item while preserving the previous three nodes. The process follows six steps:
-1. The user clicks Send, causing the send handler to update `messages` and clear `text`.
+**The Console indicates that React rendered four messages, whereas the Elements panel confirms that React inserted only one node.** Both statements are accurate. React executed four message component functions, but only one returned newly generated markup. During the commit phase, React inserted a single list item element and left the three preexisting nodes intact. Here is the sequential order of operations:
+1. The user clicks `Send`. The handler calls `setMessages` with four items, followed by `setText('')`.
 2. React batches both state updates into a single re-render of `ChatRoom`.
-3. React invokes `Message` four times, generating four log statements.
-4. React compares each newly returned JSX element against the previous render output. Three elements remain unchanged, so React leaves their existing DOM nodes in place.
-5. React creates and attaches the new list item for OK, then resets the input element value.
-6. The browser recalculates layout and paints the new text onto the screen.
+3. React invokes the four message functions. The Console outputs four message log entries.
+4. React compares each newly returned JSX element against the previous render output. Three elements match, so React leaves their corresponding DOM nodes untouched.
+5. React creates and inserts a single DOM node for the new message, and resets the input field value.
+6. The browser engine repaints the updated area of the screen.
 
-React documentation describes this exact pipeline. During rendering, React calculates which properties changed since the previous render. In the commit phase, it applies minimal necessary operations to synchronize the DOM. Finally, the browser repaints the display, a browser step distinct from React component rendering.
+The official React documentation describes this exact reconciliation process. During a re-render, React calculates which properties have changed since the previous render pass. Next, during the commit phase, React applies minimal DOM mutations to align the browser DOM with the latest render output. Finally, the browser repaints the screen. The documentation labels this final step painting to prevent confusion with React rendering.
 
 ```tree dir=right caption="One click on Send: four Message functions run, one li is added, and the browser paints one new line."
 What one click on `Send` costs
-- +Render [`Message` x4] | React **calls four functions** | Three return **the same `<li>` as last time**
+- +Render [`Message` four times] | React **calls four functions** | Three return **the same `<li>` as last time**
 - +Commit [`<li class="light">OK</li>`] | React **adds one node** | Leaves **the three old `<li>` nodes alone**
 - +Paint | The browser **draws the new line** | The rest of the screen **stays as it was**
 ```
 
-This pipeline explains why re-rendering is typically fast and harmless. Executing a component function that produces unchanged JSX consumes minimal JavaScript processing and triggers zero DOM mutations.
+This reconciliation model explains why most re-renders remain fast and harmless. Executing a JavaScript function that returns identical JSX costs minimal processing time and zero DOM mutations.
 
 ### What a re-render does not touch
 
-Developers who confuse re-rendering with DOM reconstruction often worry that a re-render erases active user state, such as entered text, focus, or scroll position. A normal re-render preserves all of these. While typing OK, `ChatRoom` re-renders on every character, yet input focus and cursor position remain steady because React retains the underlying input element.
+Developers who equate re-rendering with redrawing the DOM often worry about losing user state. They fear that re-renders reset active input text, text cursor position, or page scroll offsets. In reality, React preserves all of them. While the user types into the field, the component re-renders after every keystroke while the text cursor remains in place. React retains the existing input DOM element and updates only differing attributes.
 
-The documentation illustrates this with a clock component updating every second. React updates the heading text while preserving an adjacent input field without disturbing user keystrokes.
+The official documentation illustrates this principle with a timer component that re-renders every second. React updates the heading text showing the time, but leaves adjacent input fields untouched.
 
-This stability requires pure rendering (Lesson 14). If re-rendering a component causes visual anomalies or unexpected behavior, the underlying component contains an impurity bug that must be resolved directly rather than masked with memoization.
+This preservation relies on pure rendering (Lesson 14). As the documentation warns, visual glitches during re-renders point to side effects inside render functions. Fix the underlying bug rather than masking it with memoization.
 
 ### The real mistake: a key that changes on every render
 
-A re-render remains lightweight only when React can match new JSX nodes to existing DOM elements using stable keys. If a developer provides random keys such as `key={Math.random()}`, every render assigns fresh identities to every item. React cannot match new nodes with old ones, so it unmounts and recreates all DOM elements from scratch. Unstable keys turn an efficient virtual DOM comparison into an expensive and disruptive DOM rebuild on every keystroke.
+Re-renders remain fast because React uses keys to match new JSX elements to existing DOM nodes. If code assigns unstable keys such as `key={Math.random()}`, every render pass produces a brand-new key identifier. React fails to match incoming elements to existing nodes. As a result, React unmounts and reconstructs every list item from scratch. The documentation notes that dynamically generated keys destroy DOM continuity, forcing complete node recreation and degrading performance.
 
 ---
 
@@ -624,7 +624,7 @@ A re-render remains lightweight only when React can match new JSX nodes to exist
 
 ### A log line counts calls, a measurement counts time
 
-Console logs display execution frequency, but they never measure duration. Twenty quick function calls might finish in two milliseconds, whereas one expensive computation could block the main thread for half a second. Instead of guessing performance from call counts, measure execution duration directly. React provides a dedicated timing component for this purpose, called `<Profiler>`:
+Console logs count function calls, not elapsed duration. Twenty component executions might take two milliseconds, while a single unoptimized calculation could block the thread for an entire second. Counting console entries to gauge performance is like counting runner strides to determine speed: you need an actual timer. React provides this measurement tool through `<Profiler>`:
 
 ```jsx title="Measuring ChatRoom with Profiler"
 import { Profiler } from 'react';
@@ -638,21 +638,21 @@ function onRender(id, phase, actualDuration) {
 </Profiler>
 ```
 
-React documentation notes that `<Profiler>` measures the programmatic rendering performance of a component tree. Imported directly from the React package, it accepts two essential props:
-1. **`id`** is a custom string label identifying the profiled UI region, which React passes back into the timing callback.
-2. **`onRender`** is a callback function that React invokes with timing metrics each time components within the profiled tree update.
+The official documentation explains that `<Profiler>` measures React tree rendering performance programmatically. It accepts two primary props:
+1. **`id`** is a string identifying the profiled UI section. React forwards this identifier to the callback so you can pinpoint which component tree logged the timing.
+2. **`onRender`** is a callback function invoked by React after each commit within the profiled tree.
 
-React passes six parameters to the callback: id, phase, actualDuration, baseDuration, startTime, and commitTime. Our callback inspects the first three:
-- **`phase`** indicates why the tree rendered, returning mount for initial rendering or update for subsequent re-renders.
-- **`actualDuration`** reports the time in milliseconds spent rendering the profiled subtree for that update, representing the true rendering cost.
-- **`baseDuration`** estimates how long rendering the entire subtree would take without any memoization.
+React provides six parameters to the callback: `id`, `phase`, and four timing numbers. Our profiling function inspects the first three values:
+- **`phase`** indicates the render trigger. It returns `"mount"` on initial tree insertion and `"update"` on subsequent re-renders.
+- **`actualDuration`** represents the milliseconds spent rendering the profiled tree for the current update. This value reveals the true cost of the re-render.
+- **`baseDuration`** estimates how long rendering the tree would take without memoization optimizations.
 
 ### Profiler in the chat room
 
-We update `App` with three modifications:
-1. Import `Profiler` from the React package.
-2. Define the `onRender` callback outside the component body.
-3. Wrap `<ChatRoom />` inside `<Profiler>`, nested within the provider.
+`App` introduces three specific adjustments:
+1. It imports `Profiler` from the React package.
+2. It declares the `onRender` callback outside the component body.
+3. It wraps `ChatRoom` in `<Profiler>` inside the theme context provider.
 
 ```jsx title="src/App.jsx"
 import { useState, Profiler } from 'react';
@@ -678,7 +678,7 @@ export default function App() {
 }
 ```
 
-When the page loads, the initial measurement logs with the mount phase. Clear the Console, and type the single letter O:
+When the page loads, the initial timing measurement outputs to the Console with the phase mount. We clear the Console, and the user types the letter `O`:
 
 ```page width=text caption="The chat room after the user types O, measured: after the eight render lines, onRender prints ChatRoom update and about two milliseconds."
 line: [Toggle theme]
@@ -699,42 +699,44 @@ log: Message rendered: Sure | Message.jsx:6
 log: ChatRoom update 2.00 ms | App.jsx:6
 ```
 
-**Eight render lines appeared in the Console, yet the entire re-render took only around two milliseconds.** That duration accounts for `ChatRoom` and three messages, with each component called twice by StrictMode. The interaction feels completely instantaneous.
+**Eight console entries appear, but the entire update took approximately two milliseconds.** That measurement encompasses the chat container and all three messages, including StrictMode double-invocations. The user experiences instantaneous input response.
 
-React documentation establishes a clear standard: if users experience no perceptible lag, adding `memo` is unnecessary. For an isolated calculation inside a component, the documentation suggests that calculations taking one millisecond or longer may benefit from memoization. Keep in mind that this benchmark applies to production builds rather than development runs.
+The official documentation provides this guiding rule: if an update causes no perceptible lag, wrapping components in `memo` is unnecessary.
+
+For individual calculations inside a component, the documentation suggests memoizing if the calculation takes one millisecond or longer. That guideline applies to production measurements rather than development mode.
 
 ### Development numbers are higher than real ones
 
-Development measurements always reflect inflated timing numbers compared to production environments:
-1. **StrictMode invokes components twice and React executes development validation checks.** As the documentation warns, measuring performance during development does not provide accurate real-world numbers.
-2. **Production builds run optimized code with development checks stripped out.** To obtain genuine metrics, create a production build and test it on target devices. Notice that `<Profiler>` is disabled in standard production builds by default, requiring a dedicated profiling build.
-3. **Developer workstations usually possess faster processors than consumer phones.** Use developer tools CPU throttling to simulate real user hardware constraints accurately.
+Development measurements are consistently higher than production performance:
+1. **StrictMode double-invocations and development validation.** React executes components twice in development and runs extensive internal safety checks.
+2. **Production optimizations.** Production builds strip debugging assertions and optimize execution. The documentation recommends validating performance bottlenecks on production builds using target user hardware.
+3. **Hardware disparities.** Developer laptops feature powerful processors compared to typical mobile devices. Use browser CPU throttling to simulate real-world mobile performance accurately.
 
 ### When a re-render is not harmless
 
-Profiling is vital because certain re-renders do carry significant performance penalties:
-1. **Rendering logic contains heavy computation.** As documentation notes, normal rendering is rarely expensive unless looping over thousands of objects.
-2. **A component re-renders frequently with identical props**, repeating expensive calculations on every render.
-3. **State placed near the root of the tree updates frequently**, causing massive cascading re-renders across the entire component tree.
-4. **High-frequency interactions trigger rapid updates**, such as dragging canvas elements or sliders.
-5. **Mismatched Effects trigger cascading state loops**, causing components to re-render repeatedly (Lesson 34).
+When do re-renders cause genuine performance issues?
+1. **Computationally heavy render logic.** Complex loops or expensive algorithms running during render cause perceptible frame drops.
+2. **Frequent re-rendering of expensive components.** Repeating heavy calculations on every keystroke blocks the main thread.
+3. **High-level state placement.** Storing rapid state updates near the tree root forces broad re-render cascades.
+4. **High-frequency granular interactions.** Rapid drag-and-drop actions or animations demand 60 frames per second.
+5. **Cascading Effects.** Effects that trigger state updates repeatedly create render loops (Lesson 34).
 
-Before applying memoization, follow the recommended optimization order from the documentation:
-1. Accept JSX as `children` to bypass rendering unchanged trees.
-2. Keep state local to the components that need it.
-3. Ensure rendering logic remains strictly pure.
-4. Remove unnecessary Effects that trigger redundant update cycles.
+Order of solutions recommended by React documentation:
+1. Pass components as children or use composition.
+2. Colocate state locally near consumer elements.
+3. Keep render functions pure.
+4. Eliminate redundant Effects.
 
-If a specific user interaction still feels laggy, profile the component tree using the React Developer Tools profiler (Lesson 64). To measure single calculations within a component, use browser console timing utilities.
+If interface lag persists after these steps, profile the interaction with the React Developer Tools profiler (Lesson 64). To measure isolated calculations within a component, use the browser `console.time` and `console.timeEnd` methods.
 
-### The real mistake: optimizing without measuring
+### The real mistake: memo everywhere, and no measurement
 
-1. A developer observes numerous re-renders and prematurely wraps every component in `memo` (Lesson 55).
-2. A parent component passes an inline object literal or arrow function prop.
-3. The component re-renders anyway, because newly generated references break memoization comparisons.
-4. The resulting codebase becomes harder to read and maintain, while delivering zero user performance improvement.
+1. A developer observes numerous re-render logs and wraps every component in `memo` (Lesson 55).
+2. However, a parent passes an inline object or arrow function as a prop.
+3. The component re-renders anyway because the prop reference changes on every pass. The documentation warns that a single unstable reference breaks memoization for the entire component.
+4. The codebase becomes cluttered and harder to understand, while performance remains unchanged.
 
-A simple `<Profiler>` measurement would have proven immediately that no optimization was needed.
+Profiling with `<Profiler>` would have confirmed that the initial re-renders cost negligible time and required no intervention.
 
 ---
 
@@ -742,7 +744,7 @@ A simple `<Profiler>` measurement would have proven immediately that no optimiza
 
 ### The complete chat room
 
-Here is the whole project. The main entry file mounts App inside StrictMode:
+Here is the entire application across its modular files. The entry file mounts `App` inside `<StrictMode>`:
 
 ```jsx title="src/main.jsx"
 import { StrictMode } from 'react';
@@ -839,7 +841,7 @@ export default function Message({ text }) {
 
 ### Which components React calls for each action
 
-The three user interactions originate from two distinct points in the component tree. Typing and sending messages update `ChatRoom` state, whereas toggling the theme updates `App` state:
+User interactions originate from two separate levels of the component hierarchy. Typing and submitting modify state in `ChatRoom`, while toggling the theme modifies state in `App`:
 
 ```tree caption="Which components React calls when the user types, clicks Send, and clicks Toggle theme in the chat room."
 The action of the user and the components React calls
@@ -850,12 +852,12 @@ The action of the user and the components React calls
 
 | Aspect | What Developers Often Assume | What React Does |
 | :--- | :--- | :--- |
-| **A child with the same props** | React will not call it, because nothing it receives changed | React calls it whenever its parent re-renders |
-| **A component that reads context** | It updates only when its parent passes something new | React re-renders it when the `value` of the provider changes by `Object.is` |
-| **A "rendered" line in the Console** | The page was rebuilt | React called a function; the commit changes only the DOM nodes that differ |
-| **Twenty log lines after one click** | The page is slow, so every component needs an optimization | Only `actualDuration` tells the cost; optimize when the user can feel a lag |
+| **A child with the same props** | React skips it because inputs did not change | React re-renders it whenever its parent re-renders |
+| **A component reading context** | Updates only when its direct parent passes new props | React re-renders it when the provider value changes by `Object.is` |
+| **A "rendered" log in Console** | The browser reconstructed the DOM elements | React executed a JavaScript function, mutating DOM only where output differs |
+| **Numerous logs after an interaction** | The page is slow and requires immediate optimization | Log counts show call frequency, not duration; optimize only for perceptible lag |
 
-Remember the central lesson of this chapter. **A re-render is React calling your function again, and that is cheap: React changes only the DOM nodes whose result is different.**
+Remember the central lesson: a re-render is simply React calling your function again, and React mutates only the DOM nodes that actually changed.
 
 ---
 
@@ -865,20 +867,20 @@ Remember the central lesson of this chapter. **A re-render is React calling your
 
 ### How to Answer Clearly in 30 Seconds
 
-"A component re-renders for three reasons: its own state changed, its parent re-rendered, or a context it reads received a new value. A child component re-renders with its parent even when its props remain unchanged. Setting state to its existing value by `Object.is` skips the re-render. Re-rendering is usually fast and harmless for two reasons:
-1. **A re-render is simply a JavaScript function call.** React executes the component to calculate its JSX representation, which is normally extremely fast.
-2. **Rendering is distinct from committing.** React compares new JSX with previous output and updates only the DOM nodes that differ. A child returning identical JSX causes zero DOM mutations, and the browser only repaints what changed.
+"A component re-renders for three reasons: its own state changed, its parent re-rendered, or a context it reads got a different value. A child re-renders with its parent even when its props are the same. Setting state to the value it already holds, by `Object.is`, skips the re-render. Re-rendering is usually harmless for two reasons:
+1. **A re-render is only a function call.** React calls the component to get its JSX, and that is usually very fast.
+2. **Rendering is not committing.** React compares the new result with the last one and changes only the DOM nodes that differ. A child that returns the same JSX causes zero DOM changes, and the browser paints only what changed.
 
-Always measure performance with `<Profiler>` and `actualDuration` or the React Developer Tools profiler, optimizing only when users experience genuine lag."
+So I measure first with `<Profiler>` and `actualDuration`. I optimize only when an interaction produces lag the user can feel."
 
 ### Three Classic Follow-Up Questions Interviewers Ask
 
 1. **"Does a child re-render if its props did not change?"**
-   **Yes.** By default, React re-renders every child component returned by a re-rendering parent down the tree. In our chat room, every typed letter re-renders every `Message`, even though `text` props stay identical. A prop update is not an independent trigger, but simply new data passed during the parent render. React never calls components above the updated component. To skip unchanged children, use component composition, `memo`, or the React Compiler (Lessons 55, 58, and 63).
+   **Yes.** By default, React re-renders every component that a re-rendered component returns, down the tree. In our chat room, each letter typed into the field re-renders every `Message`, although their `text` props stay the same. A changed prop is not a separate cause, only what the new render of the parent passes down. React does not call the components above the one whose state changed. To skip a child with matching props, use tools like memo, child elements, or the React Compiler. Lessons 55, 58, and 63 cover these options.
 2. **"Is re-rendering the same as repainting the DOM?"**
-   **No.** React updates the screen across three phases. Rendering is React executing component functions to compute virtual output. Committing is React applying minimal necessary DOM mutations. Painting is the browser drawing updated pixels to the screen. After clicking Send, React executes four `Message` functions, but inserts only one new list item while leaving existing nodes untouched. Unchanged JSX causes zero DOM updates, preserving user input focus and cursor placement.
+   **No.** There are three steps. Rendering is React calling the components and working out what changed. Committing is React applying the smallest set of changes to the DOM. Painting is the browser drawing the screen. After the user clicks `Send` in our chat room, React calls four `Message` functions, but adds only one `<li>` and leaves the other three nodes untouched. A re-render that returns the same JSX causes no DOM change, so the typed text and the cursor in an `<input>` field stay where they are.
 3. **"When is a re-render not harmless, and what do you do about it?"**
-   Re-renders become problematic in specific scenarios. They degrade performance when rendering logic performs heavy computation, when root components update continuously, during high-frequency drag events, or when cascading Effects trigger update loops. If re-rendering produces visual glitches, the component contains an impurity bug that must be fixed directly. Otherwise, measure actual duration in production builds under CPU throttling. If sluggishness is confirmed, relocate state locally and compose JSX with `children` before applying memoization hooks.
+   A re-render has real cost when rendering logic is expensive, or when high-level components re-render frequently. It also matters during granular interactions or cascading Effects. If a re-render causes a visible problem, that is a bug in an impure component, and the fix is to make rendering pure. Otherwise I measure with `<Profiler>` on a production build and a slowed-down device. If it is really slow, I first keep state low and pass JSX as `children`, and only then reach for `memo`, `useMemo`, or `useCallback`.
 
 ```tree caption="Interview summary: the three causes of a re-render, and why a re-render is usually cheap."
 When and why a component re-renders
