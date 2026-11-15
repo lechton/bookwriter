@@ -57,3 +57,5 @@
 | [brief_2026_11_14_02](brief_2026_11_14_02.md) | 2026-11-14 | New intro/method-writing.md: the considerations behind a title or a first sentence (the cold reader, each verb keeps its actor, the topic before the scene, significance, the angles), with the titles of Lecture 45 considered one by one |
 | [brief_2026_11_14_03](brief_2026_11_14_03.md) | 2026-11-14 | Lectures teach how to think, not a simpler copy of the docs: the intro skill opens with this goal and links method-example-01.md; method-writing.md section 10 on warning the reader, with the dependency array framed as a design choice, not a trigger |
 | [brief_2026_11_15_001](brief_2026_11_15_001.md) | 2026-11-15 | Keep a copy of each skill file in archive/ before every edit; briefs and tags get three digits from 001 |
+| [brief_2026_11_15_002](brief_2026_11_15_002.md) | 2026-11-15 | The chapter opens with a paragraph of three sentences in a box: simple grounding, the new concept in bold, the reason; intro/first-sentences.md as demos |
+| [brief_2026_11_15_003](brief_2026_11_15_003.md) | 2026-11-15 | The good demo chapters of the rewrite are 30, 31, and 32, in place of the retired 30-novel-v2.md |

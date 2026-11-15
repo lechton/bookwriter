@@ -185,13 +185,14 @@ The catch: the `name` on the tag must match the field letter for letter. If you 
 
 ````
 
-## Study good demo chapter
+## Study good demo chapters
 
-Please open and study with due care and diligence this example: 
-[30-novel-v2.md](../../../01-02-md-LECTURES/v1/30-novel-v2.md)
+Please open and study with due care and diligence these examples:
+- [30.md](../../../01-02-md-LECTURES/v1/30.md)
+- [31.md](../../../01-02-md-LECTURES/v1/31.md)
+- [32.md](../../../01-02-md-LECTURES/v1/32.md)
 
-
-It is a good working example 
+They are some working examples you can study.
 
 
 ## Study bad demo chapter 
@@ -310,4 +311,31 @@ React: blabla (add code)
 
 ## How to start with the simple principle
 
-Start the `VS` section with plain paragraphs right under the `## VS |` heading. Never wrap this opening in a callout box. Read [intro/intro-points.md](../intro/intro-points.md), and write the opening the way the GOOD examples do. #2026_11_13_04_group_2
+### The opening paragraph of three sentences #2026_11_15_002_group_1
+
+The owner's words, 2026-11-15:
+
+> "I want each chapter to start with a paragraph of three sentences that perfectly and clearly capture the essence of the whole chapter."
+>
+> "I want the first sentence to ground clearly on what the reader can understand in simple terms, and the second sentence to introduce the new concept."
+>
+> "The second sentence comes in bold letters. When it comes to the third sentence, in the examples given, a reason is provided."
+>
+> "Of course the AI can take initiative to adapt the structure for each chapter, but I want maximum clarity. The examples serve as demos of good practice."
+>
+> "This paragraph will be presented in a box, and this is how the chapter should start, to capture the attention of the reader."
+
+What this asks:
+
+1. **Three sentences, the whole chapter.** The chapter starts with one paragraph of three sentences. Together they capture the essence of the whole chapter, clearly.
+2. **What each sentence does.**
+   1. The first sentence starts from something the reader can understand in simple terms.
+   2. The second sentence brings in the new concept, in bold.
+   3. The third sentence gives the reason, as the examples do.
+3. **Adapt, but stay clear.** You may adapt this shape to the chapter. Maximum clarity comes first.
+4. **The examples are demos.** [intro/first-sentences.md](../intro/first-sentences.md) shows good practice for Lessons 29 to 45. Learn from them, and write your own sentences for this chapter.
+5. **In a box, at the start.** The paragraph is the first thing under the `## VS |` heading, in one quote box (a line that starts with `>`), so it catches the reader's attention. Where the examples have a dash (—), write a comma or a colon.
+
+### The paragraphs under the box
+
+Under the box, continue with plain paragraphs, not in a box. Read [intro/intro-points.md](../intro/intro-points.md), and write these paragraphs the way the GOOD examples do. #2026_11_13_04_group_2
