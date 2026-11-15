@@ -324,6 +324,8 @@ The owner's words, 2026-11-15:
 > "Of course the AI can take initiative to adapt the structure for each chapter, but I want maximum clarity. The examples serve as demos of good practice."
 >
 > "This paragraph will be presented in a box, and this is how the chapter should start, to capture the attention of the reader."
+>
+> "I want the first step to consult first-sentences-02.md too, on top, and if the title already exists for this specific file, to get inspiration from it."
 
 What this asks:
 
@@ -333,8 +335,9 @@ What this asks:
    2. The second sentence brings in the new concept, in bold.
    3. The third sentence gives the reason, as the examples do.
 3. **Adapt, but stay clear.** You may adapt this shape to the chapter. Maximum clarity comes first.
-4. **The examples are demos.** [intro/first-sentences.md](../intro/first-sentences.md) shows good practice for Lessons 29 to 45. Learn from them, and write your own sentences for this chapter.
-5. **In a box, at the start.** The paragraph is the first thing under the `## VS |` heading, in one quote box (a line that starts with `>`), so it catches the reader's attention. Where the examples have a dash (—), write a comma or a colon.
+4. **The examples are demos.** Read [intro/first-sentences-02.md](../intro/first-sentences-02.md) first, on top of the other demos. Then read [intro/first-sentences.md](../intro/first-sentences.md), which shows good practice for Lessons 29 to 45. Learn from them, and write your own sentences for this chapter.
+5. **An entry for this lesson.** If first-sentences-02.md already has an entry with the number and title of the lesson you rewrite, get your inspiration from it first.
+6. **In a box, at the start.** The paragraph is the first thing under the `## VS |` heading, in one quote box (a line that starts with `>`), so it catches the reader's attention. Where the examples have a dash (—), write a comma or a colon.
 
 ### The paragraphs under the box
 

@@ -126,3 +126,6 @@ One row per group. Search for a tag to find every place it is used. Read the bri
 | #2026_11_15_003_group_2 | Brief, tags, and table of briefs | brief/brief_2026_11_15_003.md, brief/01_TOC.md, skills/v11.3/RULE-TAGS.md | records the change |
 | #2026_11_15_004_group_1 | The Lecture 46 opening as an example | skills/v11.3/intro/first-sentences.md, brief/brief_2026_11_15_004.md | the first draft of the Lecture 46 opening as COUNTER-EXAMPLE, the opening the owner chose as PROPER |
 | #2026_11_15_004_group_2 | Brief, tags, and table of briefs | brief/brief_2026_11_15_004.md, brief/01_TOC.md, skills/v11.3/RULE-TAGS.md | records the change |
+| #2026_11_15_005_group_1 | first-sentences-02.md first | skills/v11.3/rewrite/SKILL.md, brief/brief_2026_11_15_005.md | the owner's words; the rewrite reads intro/first-sentences-02.md first, then intro/first-sentences.md; an entry for the lesson in first-sentences-02.md is the first inspiration |
+| #2026_11_15_005_group_2 | The owner's openings for Lessons 46 to 58 | skills/v11.3/intro/first-sentences-02.md, brief/brief_2026_11_15_005.md | the owner's file, committed unchanged |
+| #2026_11_15_005_group_3 | Brief, tags, and table of briefs | brief/brief_2026_11_15_005.md, brief/01_TOC.md, skills/v11.3/RULE-TAGS.md | records the change |

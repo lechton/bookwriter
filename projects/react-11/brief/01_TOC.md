@@ -60,3 +60,4 @@
 | [brief_2026_11_15_002](brief_2026_11_15_002.md) | 2026-11-15 | The chapter opens with a paragraph of three sentences in a box: simple grounding, the new concept in bold, the reason; intro/first-sentences.md as demos |
 | [brief_2026_11_15_003](brief_2026_11_15_003.md) | 2026-11-15 | The good demo chapters of the rewrite are 30, 31, and 32, in place of the retired 30-novel-v2.md |
 | [brief_2026_11_15_004](brief_2026_11_15_004.md) | 2026-11-15 | The Lecture 46 opening: the first draft as counter-example and the owner's choice as proper example in intro/first-sentences.md; 46.md opens with the owner's choice |
+| [brief_2026_11_15_005](brief_2026_11_15_005.md) | 2026-11-15 | The rewrite reads intro/first-sentences-02.md first and starts from its entry for the lesson; the owner's openings for Lessons 46 to 58 committed |
