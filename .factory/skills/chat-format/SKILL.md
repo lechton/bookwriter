@@ -38,5 +38,11 @@ Shape of a reply: open with one alert that carries the main outcome in bold, the
 
 **Why it stopped:** the Gemini step wrote its file, committed it, and pushed it, but then reported itself as "stopped". My script treated that report as an error and quit.
 
+**What I did to fix it:**
+
+1. **Stopped the run** before any new step could start.
+2. **Fixed the script.** It now checks only whether Gemini wrote a new file.
+3. **Started again** from Lesson 49, so no lesson is half done.
+
 > [!NOTE]
 > **Lessons 49 to 70 are now running, and should take about 5.5 hours.** I will tell you when the run finishes or stops.
