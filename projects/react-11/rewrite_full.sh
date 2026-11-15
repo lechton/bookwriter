@@ -10,10 +10,17 @@ LECT=01-02-md-LECTURES/v1
 HTML=01-03-md-lectures-HTML/v1/theme1
 MARK=$(mktemp)
 
-# The soft flow's cleanup sends a stop signal to its whole process group at the
-# end, which killed this loop. Run each factory command in its own group.
+# The soft flow's cleanup sends stop signals that killed this loop, even from
+# another process group. The loop ignores those signals; each factory command
+# runs in its own group with the default signal behavior restored, so it can
+# still be stopped. Stop the loop itself with: kill -9 <pid>.
+trap '' TERM HUP INT
 run_alone() {
-  python3 -c 'import os,sys;os.setpgrp();os.execvp(sys.argv[1],sys.argv[1:])' "$@"
+  python3 -c 'import os,sys,signal
+os.setpgrp()
+for s in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+    signal.signal(s, signal.SIG_DFL)
+os.execvp(sys.argv[1], sys.argv[1:])' "$@"
 }
 
 stage_run_files() {
