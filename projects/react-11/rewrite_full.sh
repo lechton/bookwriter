@@ -1,6 +1,6 @@
 #!/bin/sh
 # Full rewrite of one lesson or a range: Opus 5.5 high writes NN.md from react-10,
-# then Gemini 3.8 Flash high (Antigravity account) writes NN-gemini.md, then everything is committed and pushed.
+# then Gemini 3.8 Flash high (Antigravity account) writes. Opus runs on the claudeAgent account. NN-gemini.md, then everything is committed and pushed.
 # Usage, from projects/react-11:  ./rewrite_full.sh 46   or   ./rewrite_full.sh 47 58
 set -e
 cd "$(dirname "$0")"
@@ -53,7 +53,7 @@ stage_run_files() {
 
 for N in $(seq -f %02g "$FROM" "$TO"); do
   touch "$MARK"
-  run_alone factory workflow bookrewrite lesson=$N model=droid/claude-opus-5-5:high
+  run_alone factory workflow bookrewrite lesson=$N model=claudeAgent/opus:high
   wait_new "$LECT/$N.md" "$HTML/$N.html" || { echo "Lesson $N: Opus wrote no new $N.md, stopping"; exit 1; }
   g git add -- "$LECT/$N.md" "$HTML/$N.html"
   stage_run_files

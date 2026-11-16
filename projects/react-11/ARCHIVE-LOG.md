@@ -734,3 +734,6 @@ The `archive/` subfolders of the `v1` folders were copied unchanged from the rea
 - 2026-11-16 15:36 | archive Q68 | bookrewrite: before the rewrite | 01-02-md-LECTURES/v1/68.md -> 01-02-md-LECTURES/v1/archive/68-2026-11-16-1536.md
 - 2026-11-16 15:36 | archive Q68 | bookrewrite: before the rewrite | 01-03-md-lectures-HTML/v1/theme1/68.html -> 01-03-md-lectures-HTML/v1/theme1/archive/68-2026-11-16-1536.html
 - 2026-11-16 15:36 | archive Q68 | bookrewrite: before the rewrite | 01-04-md-lectures-PDF/v1/theme1/68.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/68-2026-11-16-1536.pdf
+- 2026-11-16 15:45 | archive Q68 | bookrewrite: before the rewrite | 01-02-md-LECTURES/v1/68.md -> 01-02-md-LECTURES/v1/archive/68-2026-11-16-1545.md
+- 2026-11-16 15:45 | archive Q68 | bookrewrite: before the rewrite | 01-03-md-lectures-HTML/v1/theme1/68.html -> 01-03-md-lectures-HTML/v1/theme1/archive/68-2026-11-16-1545.html
+- 2026-11-16 15:45 | archive Q68 | bookrewrite: before the rewrite | 01-04-md-lectures-PDF/v1/theme1/68.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/68-2026-11-16-1545.pdf
