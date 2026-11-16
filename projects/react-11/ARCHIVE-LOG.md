@@ -737,3 +737,6 @@ The `archive/` subfolders of the `v1` folders were copied unchanged from the rea
 - 2026-11-16 15:45 | archive Q68 | bookrewrite: before the rewrite | 01-02-md-LECTURES/v1/68.md -> 01-02-md-LECTURES/v1/archive/68-2026-11-16-1545.md
 - 2026-11-16 15:45 | archive Q68 | bookrewrite: before the rewrite | 01-03-md-lectures-HTML/v1/theme1/68.html -> 01-03-md-lectures-HTML/v1/theme1/archive/68-2026-11-16-1545.html
 - 2026-11-16 15:45 | archive Q68 | bookrewrite: before the rewrite | 01-04-md-lectures-PDF/v1/theme1/68.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/68-2026-11-16-1545.pdf
+- 2026-11-16 18:11 | archive Q58 | bookrewrite-soft: before the rewrite (manual Gemini tab) | 01-02-md-LECTURES/v1/58-gemini.md -> 01-02-md-LECTURES/v1/archive/58-gemini-2026-11-16-1811.md
+- 2026-11-16 18:11 | archive Q58 | bookrewrite-soft: before the rewrite (manual Gemini tab) | 01-03-md-lectures-HTML/v1/theme1/58-gemini.html -> 01-03-md-lectures-HTML/v1/theme1/archive/58-gemini-2026-11-16-1811.html
+- 2026-11-16 18:11 | archive Q58 | bookrewrite-soft: before the rewrite (manual Gemini tab) | 01-04-md-lectures-PDF/v1/theme1/58-gemini.pdf -> 01-04-md-lectures-PDF/v1/theme1/archive/58-gemini-2026-11-16-1811.pdf
