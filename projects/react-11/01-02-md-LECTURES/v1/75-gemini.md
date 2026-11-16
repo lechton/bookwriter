@@ -8,7 +8,7 @@
 
 ## VS | Two setters in a click handler vs. two setters in a `setTimeout`: since React 18, both give one render
 
-> In a standard click handler, calling two setters triggers only one render because React waits for the handler to finish. **Since React 18, React applies this exact batching behavior to asynchronous operations like timeouts and promises.** Because setters called within the same task run together, the user never sees a half-finished state where only one value has updated.
+> In a standard click handler, calling two setters triggers only one render because React waits for the handler to finish. **Since React 18, React applies this exact batching behavior to asynchronous operations like timeouts and promises**. Because setters called within the same task run together, the user never sees a half-finished state where only one value has updated.
 
 Many user interfaces display two values that must change together. Consider a digital wallet transfer of ten dollars. Your balance decreases by ten dollars, and your recipient balance increases by ten dollars. If the screen displayed the first change without the second, even for a moment, money would seem to vanish. In React, you store these two balances in separate state variables and update them using two consecutive setter calls.
 
@@ -389,7 +389,7 @@ In both implementations, the setter preceding the delay runs during the initial 
 
 ### Step 2: the Buy handler with await
 
-In `OrderTracker.jsx`, update the handler to use `async` and `await`:
+Inside `OrderTracker.jsx`, convert the click handler into an asynchronous function using `await`:
 
 ```jsx title="src/OrderTracker.jsx" startLine="8"
   ~async~ function handleClick() { // async lets the handler wait with await
@@ -457,7 +457,7 @@ Each click event and each finished delay produces a distinct render:
 3. Three seconds after the first click, its batch updates state to `Pending: 1` and `Completed: 1`.
 4. Three seconds after the second click, its batch updates state to `Pending: 0` and `Completed: 2`.
 
-React deliberately isolates separate user clicks. Batching across separate intentional events could produce unexpected bugs. For example, if a user clicks a button that disables a form, React must render that disabled state immediately rather than batching it with a second click, preventing duplicate form submissions.
+React deliberately isolates separate user clicks. Batching across separate intentional events could produce unexpected bugs. For example, consider a button click that disables a form. React must render the disabled state immediately to prevent duplicate form submissions.
 
 ---
 
@@ -501,13 +501,13 @@ This error reveals a crucial distinction in React's execution model. Batching co
 > 2. Immutability: Variables inside a function closure remain unchanged throughout that execution, even when asynchronous operations resume much later.
 > 3. Render isolation: Invoking a setter requests a future update; it does not alter variable values in current executing code (Lesson 15).
 
-Developers often assume that three seconds after a click, the `pending` variable automatically reflects the updated count shown on screen. It does not. Although React rendered an updated screen displaying `Pending: 1`, the paused function remains bound to the closure of its original render, where `pending` was evaluated as `0`.
+Developers often assume that three seconds after a click, the `pending` variable automatically reflects the updated count shown on screen. It does not. Although the screen now displays one pending order, the paused function remains bound to its original render closure where `pending` evaluated to zero.
 
 Here is the exact runtime sequence:
 1. The screen shows `Pending: 0`. The user clicks the button.
 2. The expression `setPending(pending + 1)` evaluates `0 + 1`. React renders `Pending: 1`.
 3. The function pauses for three seconds. In this function closure, `pending` remains `0`.
-4. Resuming execution, `setPending(pending - 1)` calculates `0 - 1`, yielding `-1`. Concurrently, `setCompleted(completed + 1)` calculates `0 + 1`.
+4. Resuming execution, `setPending(pending - 1)` calculates zero minus one, yielding minus one. Concurrently, `setCompleted(completed + 1)` calculates zero plus one.
 5. React batches both updates into a single render pass.
 6. The screen displays `Pending: -1` and `Completed: 1`.
 
@@ -667,7 +667,7 @@ Here is what occurs after the asynchronous delay:
 2. In that intermediate render, pending is zero and completed is still zero. The DOM briefly displays `Pending: 0` and `Completed: 0`.
 3. The second `flushSync` executes `setCompleted(c => c + 1)`. React renders again and updates the DOM to display zero and one.
 
-Even if the browser event loop coalesces paints so the user avoids seeing a visible flicker of `Pending: 0` alongside `Completed: 0`, React still committed that intermediate tree to the DOM. Any external library or mutation observer reading the document during that moment would observe the broken state.
+The browser may coalesce paints so the user never sees a visible flicker. Even so, React committed that intermediate tree to the DOM. Any external library or mutation observer reading the document during that moment would observe the broken state.
 
 Having inspected this behavior, remove `flushSync` and restore the clean batched setters from Principle 3.
 
@@ -709,7 +709,7 @@ export default function App() {
 }
 ```
 
-The `OrderTracker` component uses `await`, applies updater functions, and avoids `flushSync`:
+The order tracker component pauses with `await`, applies updater functions, and avoids `flushSync`:
 
 ```jsx title="src/OrderTracker.jsx"
 import { useState } from 'react';
@@ -775,7 +775,7 @@ Remember this central rule: **React renders once for all setters that execute wi
 1. **An `await` expression divides an async handler:** Setters before the `await` run synchronously and render immediately, while setters after the `await` run in a separate execution turn as a second batch.
 2. **Distinct user interactions are never merged:** Each intentional event, such as a click or keydown, receives its own independent render pass.
 
-Because code after an `await` reads closure variables captured during the original render, you must use updater functions like `p => p - 1` to ensure updates use the latest state. To opt out, `flushSync` from `react-dom` forces synchronous DOM flushes, but it should remain a last resort."
+Code after an `await` reads closure variables captured during the initial render. You must use an updater function like `p => p - 1` to ensure calculations use the latest state. To opt out, `flushSync` from `react-dom` forces synchronous DOM flushes, but it should remain a last resort."
 
 ### Three Classic Follow-Up Questions Interviewers Ask
 
