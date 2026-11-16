@@ -62,7 +62,7 @@ When the user clicks Toggle theme, the page background switches to dark, and the
 + ChatRoom rendered | App.jsx:4
 ```
 
-This behavior represents default React rendering. Because the state of `App` updated, React re-executes `App`. Because the App component evaluates `<ChatRoom />` during its render, React executes `ChatRoom` as well. StrictMode causes the log to appear twice in development. To keep console logs readable, subsequent console examples in this lesson display a single line per render.
+This behavior represents default React rendering. Because the state of `App` updated, React re-executes `App`. Because `App` evaluates `<ChatRoom />` during its render, React executes the chat component as well. StrictMode causes the log to appear twice in development. To keep console logs readable, subsequent console examples in this lesson display a single line per render.
 
 Now we make one structural change. We extract the theme state, the container `<div>`, and the button into a separate component named `ThemeWrapper`. `ThemeWrapper` does not directly write `<ChatRoom />`. Instead, it renders `{children}` where nested content belongs. The parent component writes `<ChatRoom />` between the tags of `ThemeWrapper`:
 
@@ -122,7 +122,7 @@ Which component writes `<ChatRoom />`?
 The official React documentation summarizes this rule clearly: "When a component visually wraps other components, let it accept JSX as children. This way, when the wrapper component updates its own state, React knows that its children don't need to re-render." Neither version requires `memo` or memoization Hooks.
 
 > [!DEFINITION]
-> **Composition.** [NEW] In software architecture, composition is the practice of combining simpler, focused units to build complex structures. In React, component composition means assembling interfaces by nesting components through JSX tags, allowing an outer component to host nested elements that it does not directly instantiate. `ThemeWrapper` hosts the chat layout, while `App` defines and instantiates the chat component (Lesson 58).
+> **Composition.** [NEW] In React, component composition means assembling interfaces by passing components into other components through JSX tags or props. Instead of a container component hardcoding its child components, an outer component instantiates the children and passes them in. `ThemeWrapper` provides the visual container and theme state, while `App` writes `<ChatRoom />` and passes it in as `children` (Lesson 58).
 
 ### What the User Feels
 
@@ -456,7 +456,7 @@ In real-world applications, relying on `memo` frequently triggers an escalating 
 5. The official React documentation recommends simpler structural composition first: "When a component visually wraps other components, let it accept JSX as children."
 
 > [!DEFINITION]
-> **A wrapper component.** [NEW] The React documentation defines a wrapper component as one that visually wraps other components, such as a modal dialog, card container, or our theme container `<div>`. Consider a framed photograph: repainting the wooden frame does not modify the image inside. `ThemeWrapper` encloses the chat without instantiating it, so updating the wrapper state never touches the enclosed chat (Lesson 58).
+> **A wrapper component.** [NEW] The React documentation defines a wrapper component as one that visually wraps other components, such as a modal dialog, card container, or our theme container `<div>`. A wrapper provides layout or styling while accepting its nested contents through `{children}` instead of hardcoding child tags. Because the wrapper only positions incoming children, updating state inside the wrapper does not force those children to re-render (Lesson 58).
 
 ---
 
